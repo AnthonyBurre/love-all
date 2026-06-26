@@ -39,16 +39,35 @@ def _ingest(what: str, force: bool, provenance: bool) -> None:
     print(f"  duckdb  : {len(tables)} tables -> {DB_PATH}")
 
 
-def _coverage(months: int) -> None:
+_GENDER_LABEL = {"M": "Men", "W": "Women"}
+_SECTIONS = [
+    ("slam", "Grand Slam coverage (charted / 127-match draw, since {slam_since})"),
+    ("masters", "Masters 1000 coverage (charted / 15 R16-onward matches, since {m_since})"),
+]
+
+
+def _coverage() -> None:
     from match_charting_project.analysis import coverage
     from match_charting_project.paths import PROJECT_ROOT
     from match_charting_project.viz import coverage_report
 
     con = coverage.connect(read_only=True)
     summary = coverage.summary(con)
-    figs = coverage_report.render_all(con, months=months)
+    slam = coverage.slam_coverage(con)
+    slam_rounds = coverage.slam_round_completion(con)
+    masters = coverage.masters_coverage(con)
+    masters_rounds = coverage.masters_round_completion(con)
+    figs = coverage_report.render_all(con)
+    con.close()
+
+    def _headline(cov, rounds, draw, first_round, last_round, gender):
+        c = cov[cov["gender"] == gender]
+        best = c.loc[c["coverage_pct"].idxmax()]
+        rp = rounds[rounds["gender"] == gender].set_index("round")["completion_pct"]
+        return best, float(rp.get(first_round)), float(rp.get(last_round))
 
     lines = ["# Coverage summary", ""]
+    lines.append("## Dataset totals")
     lines.append(f"- Matches: **{summary['matches']:,}** "
                  f"({summary['men']:,} men / {summary['women']:,} women)")
     lines.append(f"- Points: **{summary['points']:,}**")
@@ -57,17 +76,40 @@ def _coverage(months: int) -> None:
     lines.append(f"- Tier-classified (not Other/Unknown): "
                  f"**{summary['pct_tier_classified']}%**")
     lines.append("")
-    lines.append("## Figures")
-    for f in figs:
-        lines.append(f"- ![{f}]({'../' + f})")
-    (PROJECT_ROOT / "reports" / "coverage_summary.md").write_text("\n".join(lines))
-    con.close()
+    lines.append("## True coverage highlights (charted vs. played)")
+    print("  -- coverage highlights --")
+    for g in ("M", "W"):
+        label = _GENDER_LABEL[g]
+        s_best, s_open, s_final = _headline(slam, slam_rounds, 127, "R128", "F", g)
+        m_best, m_open, m_final = _headline(masters, masters_rounds, 15, "R16", "F", g)
+        lines.append(f"- **{label} slams** — best draw {s_best['slam']} "
+                     f"{int(s_best['year'])} at **{s_best['coverage_pct']:.0f}%** "
+                     f"({int(s_best['charted'])}/127); finals {s_final:.0f}% vs "
+                     f"R128 {s_open:.0f}%.")
+        lines.append(f"- **{label} Masters 1000** — best draw {m_best['event']} "
+                     f"{int(m_best['year'])} at **{m_best['coverage_pct']:.0f}%** "
+                     f"({int(m_best['charted'])}/15); finals {m_final:.0f}% vs "
+                     f"R16 {m_open:.0f}%.")
+        print(f"  {label:<6} slam best {s_best['coverage_pct']:>3.0f}%  "
+              f"F/R128 {s_final:.0f}/{s_open:.0f}   |   "
+              f"masters best {m_best['coverage_pct']:>3.0f}%  "
+              f"F/R16 {m_final:.0f}/{m_open:.0f}")
+    lines.append("")
 
-    for k, v in summary.items():
-        print(f"  {k:<22} {v}")
-    print("  figures:")
-    for f in figs:
-        print(f"    - {f}")
+    by_section = {key: {g: [] for g in ("M", "W")} for key, _ in _SECTIONS}
+    for section, gender, path in figs:
+        by_section[section][gender].append(path)
+    for key, heading in _SECTIONS:
+        heading = heading.format(slam_since=coverage.SLAM_SINCE, m_since=coverage.MASTERS_SINCE)
+        lines.append(f"## {heading}")
+        for g in ("M", "W"):
+            lines.append(f"### {_GENDER_LABEL[g]}")
+            for path in by_section[key][g]:
+                lines.append(f"- ![{path}]({'../' + path})")
+        lines.append("")
+    (PROJECT_ROOT / "reports" / "coverage_summary.md").write_text("\n".join(lines))
+
+    print(f"  figures  : {len(figs)} written")
     print("  summary  -> reports/coverage_summary.md")
 
 
@@ -91,9 +133,7 @@ def main(argv: list[str] | None = None) -> None:
     ig.add_argument("--no-provenance", action="store_true",
                     help="skip GitHub freshness lookups (offline)")
 
-    cv = sub.add_parser("coverage", help="render coverage figures + summary")
-    cv.add_argument("--months", type=int, default=36,
-                    help="window for the recent-activity chart")
+    sub.add_parser("coverage", help="render coverage figures + summary")
 
     sub.add_parser("validate", help="print the data-quality report")
     sub.add_parser("info", help="summarize the duckdb database")
@@ -109,7 +149,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "ingest":
         _ingest(args.what, args.force, provenance=not args.no_provenance)
     elif args.cmd == "coverage":
-        _coverage(args.months)
+        _coverage()
     elif args.cmd == "validate":
         _validate()
     elif args.cmd == "info":

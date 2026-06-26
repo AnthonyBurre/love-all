@@ -35,7 +35,7 @@ uv run match-charting-project info       # list tables and row counts
 | `ingest [--what core\|all]`   | download + capture upstream freshness + build everything |
 | `download [--what core\|all]` | just fetch raw CSVs into `data/raw`                       |
 | `build [--stats core\|all]`   | (re)build parquet + duckdb from `data/raw` (offline)     |
-| `coverage [--months N]`       | render coverage figures + `reports/coverage_summary.md`  |
+| `coverage`                    | render per-gender coverage figures + `reports/coverage_summary.md` |
 | `validate`                    | print the data-quality report                            |
 | `info`                        | summarize the duckdb database                            |
 
@@ -84,6 +84,26 @@ free-text tournament name (Grand Slam / Masters-WTA 1000 / Tour Finals / Tour
 deliberately **not** split — even Sackmann's authoritative ATP data collapses
 them into one level. Splitting them (and validating the whole mapping) by
 cross-referencing the `tennis_atp` / `tennis_wta` repos is a documented next step.
+
+### Coverage methodology
+
+"Coverage" means **charted ÷ played**, not a raw charted count — so it needs a
+denominator. We use the ones that are known exactly without external results
+data, and keep men and women in separate figures throughout (every figure is
+rendered as a `*_men.png` / `*_women.png` pair):
+
+- **Grand Slams** — a singles main draw is always 128 players = **127 matches**
+  (64 in R128 … 1 final), so coverage is `charted / 127` per slam-year-gender.
+  Valid for all four slams since 1990.
+- **Masters 1000 / WTA 1000** — draws vary (56 / 96 / 128), so there is no fixed
+  full-draw denominator. The late rounds are invariant, though: every draw has
+  R16=8, QF=4, SF=2, F=1 = **15 matches**. We report `charted / 15` from the
+  round of 16 onward.
+
+Two findings fall straight out: nothing is fully charted (best slam draw ≈ 50%),
+and charting skews hard to the later rounds (slam finals ~80–90% vs. R128 ~5%).
+Extending true coverage to the 250/500 tiers needs real played-match counts from
+the `tennis_atp` / `tennis_wta` repos — a documented next step.
 
 ## Attribution & license
 
