@@ -90,7 +90,7 @@ def player_quality(con, model, where: str = "", min_shots: int = 400):
     if where:
         sql += f" AND {where}"
 
-    from parser import parse_point  # local import: keep module import light
+    from match_charting_project.shots.notation import parse_point
 
     acc: dict = {}
     for svr, fs, ss, win, p1, p2, gender in con.execute(sql).fetchall():

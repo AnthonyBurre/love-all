@@ -23,24 +23,25 @@ detection** (the centipawn-loss / accuracy idea) — which requires an empirical
 
 ## Files
 
-- `parser.py` — pure decoder: point string → strokes (`hitter`, `side`, `direction`,
-  `depth`, …) + `rally_len`, `outcome`, `server_won`. Notation per the Match Charting
-  Project codebook; the point ending attaches to the last stroke (`*` winner, `#`
-  forced, `@` unforced), strokes alternate from the server.
+The **decoder graduated into the library** — it's reusable infrastructure now, not
+experiment-local: `match_charting_project.shots.notation` (parser, `stroke_kind`,
+`iter_parsed_points`, `point_features`) with a `points_parsed` materialize step
+(`match-charting-project shots`) and tests in `tests/test_notation.py`. What stays
+here is the chess-specific modelling:
+
 - `winprob.py` — `WinProbModel`: a frequency-table value function with parent-shrinkage
-  smoothing (rare states back off to coarser ones, like an opening explorer). Exposes
+  smoothing (rare states back off to coarser ones, like an opening explorer). State
+  reads wing, drive/slice/net kind, direction, net-approach, and return depth. Exposes
   `position_value`, `base`, `shot_wpa`, `explore_state`.
 - `quality.py` — WPA → annotation marks, annotated-point renderer, and per-player
   decision quality (`avg_wpa_lost`, an `accuracy` 0–100 rescale, forced/unforced split).
-- `validate_parser.py` — cross-checks parsed aggregates against the project's own
-  `stats_overview` totals (aces, DFs, winners, unforced; the repo's validation reference).
 - `run.py` — end-to-end: fit the eval per gender, emit figures + a findings report.
 
 ## Run
 
 ```bash
-uv run python experiments/chess_point_analysis/validate_parser.py 1500   # parser ✔ vs charted stats
-uv run python experiments/chess_point_analysis/run.py                    # eval + quality + report
+uv run pytest tests/test_notation.py                 # parser ✔ (incl. vs charted stats)
+uv run python experiments/chess_point_analysis/run.py   # eval + quality + report
 ```
 
 `run.py` writes `reports/chess_point_quality.md` and `reports/figures/chess_*.png`.

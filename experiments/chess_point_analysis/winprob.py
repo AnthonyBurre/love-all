@@ -29,43 +29,11 @@ how the point turns out -- the "opening explorer" view of the eval.
 
 from collections import defaultdict
 
-from parser import ParsedPoint, _other, parse_point
+from match_charting_project.shots.notation import ParsedPoint, other_player, stroke_kind
 
 CAP = 8          # cap the ply so deep rallies share buckets (keeps cells dense)
 K_SHRINK = 50    # pseudo-count pulling a state toward its parent estimate
 EXPLORE_LEVEL = 6  # prefix length used as the opening-explorer state key
-
-# Stroke "kind" groups: drive vs slice is high-signal and well charted; volleys,
-# overheads and half-volleys are inherently net strokes.
-_DRIVE = set("fb")
-_SLICE = set("rs")
-_NET = set("vzopuy")
-
-
-def _kind(letter: str, is_serve: bool) -> str:
-    if is_serve:
-        return "serve"
-    if letter in _DRIVE:
-        return "drive"
-    if letter in _SLICE:
-        return "slice"
-    if letter in _NET:
-        return "net"
-    return "other"
-
-
-def iter_parsed_points(con, where: str = "", sample: "int | None" = None):
-    """Yield ParsedPoint rows from the DuckDB points table."""
-    sql = (
-        "SELECT svr, first_serve, second_serve, pt_winner FROM points "
-        "WHERE svr IN (1,2) AND pt_winner IN (1,2)"
-    )
-    if where:
-        sql += f" AND {where}"
-    if sample:
-        sql += f" USING SAMPLE reservoir({int(sample)} ROWS) REPEATABLE (1)"
-    for svr, fs, ss, win in con.execute(sql).fetchall():
-        yield parse_point(fs, ss, svr, win)
 
 
 class WinProbModel:
@@ -85,10 +53,10 @@ class WinProbModel:
         """Ordered (general->specific) features for the position after j strokes."""
         shots = point.shots
         last = shots[j - 1]
-        nxt = shots[j].hitter if j < len(shots) else _other(last.hitter)
+        nxt = shots[j].hitter if j < len(shots) else other_player(last.hitter)
         to_hit = "S" if nxt == point.server else "R"
         wing = "SV" if last.is_serve else (last.side or "XX")
-        kind = _kind(last.letter, last.is_serve)
+        kind = stroke_kind(last.letter, last.is_serve)
         direction = last.direction or "?"
         approach = 1 if ("+" in last.modifiers or "-" in last.modifiers) else 0
         depth = last.depth or "-"

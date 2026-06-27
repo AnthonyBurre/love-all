@@ -20,6 +20,13 @@ def _info() -> None:
     con.close()
 
 
+def _shots() -> None:
+    from match_charting_project.shots import build as shots_build
+
+    n = shots_build.build_parsed_points()
+    print(f"  points_parsed: {n:,} rows -> table points_parsed")
+
+
 def _ingest(what: str, force: bool, provenance: bool) -> None:
     from match_charting_project.ingest import build as build_mod
     from match_charting_project.ingest import download as download_mod
@@ -135,6 +142,7 @@ def main(argv: list[str] | None = None) -> None:
 
     sub.add_parser("coverage", help="render coverage figures + summary")
 
+    sub.add_parser("shots", help="decode point notation into the points_parsed table")
     sub.add_parser("validate", help="print the data-quality report")
     sub.add_parser("info", help="summarize the duckdb database")
 
@@ -150,6 +158,8 @@ def main(argv: list[str] | None = None) -> None:
         _ingest(args.what, args.force, provenance=not args.no_provenance)
     elif args.cmd == "coverage":
         _coverage()
+    elif args.cmd == "shots":
+        _shots()
     elif args.cmd == "validate":
         _validate()
     elif args.cmd == "info":

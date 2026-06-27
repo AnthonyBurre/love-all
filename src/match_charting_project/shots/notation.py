@@ -1,10 +1,9 @@
 """Decode a single tennis point's shot notation into a structured rally.
 
-This is the foundation for treating a tennis point the way a chess engine treats
-a game: a point string (e.g. ``4b37y1r3n#``) is a tokenized, alternating-turn
-sequence of strokes ending in a terminal result, structurally just like a PGN
-move list. Nothing else in the repo decodes these strings yet; everything
-downstream (win-probability eval, per-shot quality) builds on the structures here.
+A point string (e.g. ``4b37y1r3n#``) is a tokenized, alternating-turn sequence of
+strokes ending in a terminal result — structurally a PGN move list. This module is
+the pure decoder the rest of the repo lacked; the README calls the notation "the
+basis for derived shot analytics", and this delivers that basis.
 
 Notation reference (Match Charting Project "Instructions" tab / quick-start guide,
 http://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/):
@@ -19,6 +18,10 @@ http://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-s
   the server, so the last stroke's hitter is who won (``*``) or lost (``#``/``@``).
 - A serve that ends in a bare error location with no terminal symbol is a fault
   (the rally, if any, is recorded in the second-serve column).
+
+Validated against the project's own ``stats_overview`` totals (see
+``tests/test_notation.py``): aces/double faults near-exact, forehand/backhand
+winner & error splits within a few percent.
 """
 
 from dataclasses import dataclass, field
@@ -50,6 +53,29 @@ SERVE_DIR_NAME = {"4": "wide", "5": "body", "6": "T", "0": "unknown"}
 DIRECTION_NAME = {"1": "fh_corner", "2": "middle", "3": "bh_corner"}
 DEPTH_NAME = {"7": "shallow", "8": "mid", "9": "deep"}
 ERROR_LOC_NAME = {"n": "net", "d": "deep", "w": "wide", "x": "wide_deep"}
+
+# Stroke "kind" groups, the canonical taxonomy shared by the materialized table and
+# any model: drive vs slice is well charted (~12% slices) and shapes the rally;
+# volleys, overheads and half-volleys are inherently net strokes.
+_DRIVE = set("fb")
+_SLICE = set("rs")
+_NET = set("vzopuy")
+
+
+def stroke_kind(letter: str, is_serve: bool) -> str:
+    if is_serve:
+        return "serve"
+    if letter in _DRIVE:
+        return "drive"
+    if letter in _SLICE:
+        return "slice"
+    if letter in _NET:
+        return "net"
+    return "other"
+
+
+def other_player(player: int) -> int:
+    return 2 if player == 1 else 1
 
 
 @dataclass
@@ -88,10 +114,6 @@ class ParsedPoint:
     flags: "list[str]" = field(default_factory=list)
 
 
-def _other(player: int) -> int:
-    return 2 if player == 1 else 1
-
-
 def _new_shot(idx: int, hitter: int, is_serve: bool, letter: str = "") -> Shot:
     if is_serve:
         side, stroke = "", "serve"
@@ -116,7 +138,7 @@ def _tokenize(serve_str: str, server: int) -> "tuple[list[Shot], list[str]]":
         flags.append(f"lead:{serve_str[i]}")
         i += 1
 
-    if i < n and serve_str[i] in {"4", "5", "6", "0"}:
+    if i < n and serve_str[i] in SERVE_DIRS:
         shots.append(_new_shot(1, server, is_serve=True))
         shots[-1].direction = serve_str[i]
         i += 1
@@ -127,7 +149,7 @@ def _tokenize(serve_str: str, server: int) -> "tuple[list[Shot], list[str]]":
     while i < n:
         ch = serve_str[i]
         if ch in SHOT_LETTERS:
-            hitter = _other(hitter)
+            hitter = other_player(hitter)
             shots.append(_new_shot(len(shots) + 1, hitter, is_serve=False, letter=ch))
         elif not shots:
             flags.append(f"stray:{ch}")
@@ -157,7 +179,7 @@ def parse_point(
     fs = (first_serve or "").strip()
     ss = (second_serve or "").strip()
     server = int(server) if server in (1, 2) else 1
-    returner = _other(server)
+    returner = other_player(server)
 
     # The point is played on the second serve whenever one was charted; the first
     # serve then holds only the (faulted) first delivery.
@@ -188,10 +210,10 @@ def parse_point(
         point.winner_by_notation = last.hitter
     elif last.terminal == "#":
         point.outcome = "forced_error"
-        point.winner_by_notation = _other(last.hitter)
+        point.winner_by_notation = other_player(last.hitter)
     elif last.terminal == "@":
         point.outcome = "unforced_error"
-        point.winner_by_notation = _other(last.hitter)
+        point.winner_by_notation = other_player(last.hitter)
     elif last.is_serve and last.error_loc is not None:
         # Serve ended in a fault marker with no terminal: a missed serve.
         if point.serve_in_play == 2:
@@ -214,3 +236,37 @@ def parse_point(
 
     point.parse_ok = point.outcome != "unknown" and "no_serve_dir" not in flags
     return point
+
+
+def point_features(point: ParsedPoint, match_id=None, pt=None) -> dict:
+    """Flatten a parsed point into one tidy row for the materialized table."""
+    last = point.shots[-1] if point.shots else None
+    return {
+        "match_id": match_id,
+        "pt": pt,
+        "server": point.server,
+        "serve_in_play": point.serve_in_play,
+        "rally_len": point.rally_len,
+        "last_hitter": point.last_hitter,
+        "ending_side": point.ending_side or "",
+        "ending_stroke": last.stroke if last else "",
+        "ending_kind": stroke_kind(last.letter, last.is_serve) if last else "",
+        "outcome": point.outcome,
+        "winner_by_notation": point.winner_by_notation,
+        "server_won": point.server_won,
+        "parse_ok": point.parse_ok,
+    }
+
+
+def iter_parsed_points(con, where: str = "", sample: "int | None" = None):
+    """Yield ParsedPoint rows from the DuckDB points table (server/winner known)."""
+    sql = (
+        "SELECT svr, first_serve, second_serve, pt_winner FROM points "
+        "WHERE svr IN (1,2) AND pt_winner IN (1,2)"
+    )
+    if where:
+        sql += f" AND {where}"
+    if sample:
+        sql += f" USING SAMPLE reservoir({int(sample)} ROWS) REPEATABLE (1)"
+    for svr, fs, ss, win in con.execute(sql).fetchall():
+        yield parse_point(fs, ss, svr, win)

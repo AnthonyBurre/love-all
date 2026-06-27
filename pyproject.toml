@@ -22,6 +22,12 @@ analysis = [
     "seaborn>=0.13",
     "plotly>=5.22",
 ]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [project.scripts]
 match-charting-project = "match_charting_project.cli:main"
