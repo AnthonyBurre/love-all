@@ -1,0 +1,360 @@
+player,gender,archetype,shots,avg_wpa_lost,accuracy,archetype_mean,class_rel_z,rank_overall,rank_in_archetype,archetype_size
+Mats Wilander,M,Baseline grinder / counterpuncher,21496,0.0535,72.553,0.072,-2.2912,1,1,98
+Daniil Medvedev,M,Big-serving baseliner,122720,0.0621,68.8764,0.0803,-2.2471,14,1,71
+Jack Draper,M,Big-serving baseliner,10912,0.0639,68.1373,0.0803,-2.025,19,2,71
+Fabrice Santoro,M,Slice & variety,6046,0.0583,70.4935,0.0782,-2.0011,4,1,22
+Andrei Chesnokov,M,Baseline grinder / counterpuncher,8420,0.0573,70.9225,0.072,-1.8229,2,2,98
+Juan Martin Del Potro,M,Big-serving baseliner,62230,0.0663,67.1644,0.0803,-1.7289,32,3,71
+Gilles Simon,M,Baseline grinder / counterpuncher,29686,0.0582,70.5265,0.072,-1.7074,3,3,98
+Bjorn Borg,M,Baseline grinder / counterpuncher,11860,0.0584,70.4362,0.072,-1.681,5,4,98
+Roberto Bautista Agut,M,Baseline grinder / counterpuncher,32550,0.0593,70.06,0.072,-1.5707,6,5,98
+Tomas Martin Etcheverry,M,Baseline grinder / counterpuncher,11171,0.0594,70.0059,0.072,-1.5548,7,6,98
+Roberto Carballes Baena,M,Baseline grinder / counterpuncher,10560,0.0595,69.9789,0.072,-1.5468,8,7,98
+Brandon Nakashima,M,Big-serving baseliner,16785,0.0681,66.4526,0.0803,-1.5096,40,4,71
+Thomas Muster,M,Baseline grinder / counterpuncher,16350,0.0601,69.7353,0.072,-1.475,9,8,98
+Andy Roddick,M,Big-serving baseliner,47360,0.0684,66.3351,0.0803,-1.4732,42,5,71
+Pete Sampras,M,Net-rusher / serve-volleyer,80036,0.0816,61.286,0.0896,-1.4083,143,1,24
+Guy Forget,M,Net-rusher / serve-volleyer,6562,0.0817,61.2449,0.0896,-1.3886,144,2,24
+Janko Tipsarevic,M,Big-serving baseliner,12603,0.0694,65.9487,0.0803,-1.3529,46,6,71
+Boris Becker,M,Net-rusher / serve-volleyer,59199,0.082,61.1429,0.0896,-1.3397,148,3,24
+Guillermo Coria,M,Baseline grinder / counterpuncher,11070,0.0612,69.2772,0.072,-1.3391,10,9,98
+Rafael Nadal,M,Baseline grinder / counterpuncher,186245,0.0612,69.2632,0.072,-1.335,11,10,98
+Alexander Zverev,M,Big-serving baseliner,78786,0.07,65.7169,0.0803,-1.2804,48,7,71
+Andrey Rublev,M,Big-serving baseliner,58444,0.07,65.712,0.0803,-1.2789,49,8,71
+Alex Corretja,M,Baseline grinder / counterpuncher,10806,0.0617,69.0565,0.072,-1.2734,12,11,98
+Lleyton Hewitt,M,Baseline grinder / counterpuncher,64104,0.0618,69.0159,0.072,-1.2613,13,12,98
+Miomir Kecmanovic,M,Baseline grinder / counterpuncher,19911,0.0622,68.8341,0.072,-1.2069,15,13,98
+Filip Krajinovic,M,Big-serving baseliner,7142,0.0709,65.3644,0.0803,-1.1697,55,9,71
+Stefan Edberg,M,Net-rusher / serve-volleyer,66725,0.083,60.7706,0.0896,-1.1603,154,4,24
+Taylor Fritz,M,Big-serving baseliner,47468,0.071,65.3297,0.0803,-1.1588,57,10,71
+Gael Monfils,M,Big-serving baseliner,58541,0.071,65.3186,0.0803,-1.1553,58,11,71
+Marcos Baghdatis,M,Big-serving baseliner,11874,0.0711,65.2607,0.0803,-1.1371,60,12,71
+Mariano Navone,M,Baseline grinder / counterpuncher,6449,0.0629,68.5452,0.072,-1.1202,16,14,98
+John Mcenroe,M,Net-rusher / serve-volleyer,25525,0.0833,60.6794,0.0896,-1.1162,156,5,24
+Nicolas Mahut,M,Net-rusher / serve-volleyer,4053,0.0833,60.6583,0.0896,-1.106,159,6,24
+John Millman,M,Baseline grinder / counterpuncher,9958,0.0633,68.4181,0.072,-1.082,17,15,98
+Radek Stepanek,M,Net-rusher / serve-volleyer,6290,0.0835,60.5927,0.0896,-1.0742,163,7,24
+Stefanos Tsitsipas,M,Big-serving baseliner,75401,0.0717,65.0281,0.0803,-1.0636,65,13,71
+Novak Djokovic,M,Baseline grinder / counterpuncher,247785,0.0638,68.1999,0.072,-1.0162,18,16,98
+Richard Gasquet,M,Slice & variety,35915,0.0681,66.4542,0.0782,-1.0111,39,2,22
+Jesper De Jong,M,Big-serving baseliner,13913,0.0722,64.8414,0.0803,-1.0044,68,14,71
+Alex Molcan,M,Baseline grinder / counterpuncher,6058,0.064,68.1245,0.072,-0.9934,20,17,98
+Ivan Lendl,M,Slice & variety,61359,0.0686,66.2499,0.0782,-0.9595,43,3,22
+Jaume Munar,M,Baseline grinder / counterpuncher,16624,0.0646,67.8821,0.072,-0.9199,21,18,98
+Daniel Evans,M,Slice & variety,12390,0.0691,66.0496,0.0782,-0.9087,45,4,22
+Albert Ramos,M,Baseline grinder / counterpuncher,10961,0.0648,67.8009,0.072,-0.8953,22,19,98
+Michael Chang,M,Baseline grinder / counterpuncher,18870,0.065,67.7131,0.072,-0.8685,23,20,98
+Sergi Bruguera,M,Baseline grinder / counterpuncher,11064,0.065,67.7051,0.072,-0.8661,24,21,98
+Arthur Cazaux,M,Big-serving baseliner,4988,0.0735,64.3544,0.0803,-0.8492,74,15,71
+Thiago Monteiro,M,Big-serving baseliner,4452,0.0736,64.3186,0.0803,-0.8377,75,16,71
+Andy Murray,M,Baseline grinder / counterpuncher,117867,0.0655,67.5113,0.072,-0.807,25,22,98
+Casper Ruud,M,Baseline grinder / counterpuncher,62142,0.0656,67.4658,0.072,-0.7932,26,23,98
+Alex De Minaur,M,Baseline grinder / counterpuncher,61101,0.0658,67.398,0.072,-0.7724,27,24,98
+David Ferrer,M,Baseline grinder / counterpuncher,33959,0.0658,67.3946,0.072,-0.7714,28,25,98
+Lorenzo Musetti,M,Slice & variety,52258,0.0705,65.4969,0.0782,-0.7677,52,5,22
+Mikael Ymer,M,Baseline grinder / counterpuncher,7347,0.0659,67.3317,0.072,-0.7522,29,26,98
+Arnaud Clement,M,Baseline grinder / counterpuncher,7339,0.0659,67.3231,0.072,-0.7495,30,27,98
+Nishesh Basavareddy,M,Baseline grinder / counterpuncher,6325,0.066,67.311,0.072,-0.7458,31,28,98
+Frances Tiafoe,M,Big-serving baseliner,18272,0.0743,64.0123,0.0803,-0.7395,84,17,71
+Marat Safin,M,Big-serving baseliner,40357,0.0748,63.8353,0.0803,-0.6825,87,18,71
+Jenson Brooksby,M,Baseline grinder / counterpuncher,14027,0.0667,67.0199,0.072,-0.6565,33,29,98
+Guido Pella,M,Baseline grinder / counterpuncher,8091,0.0668,66.9787,0.072,-0.6438,34,30,98
+Diego Schwartzman,M,Baseline grinder / counterpuncher,22340,0.067,66.8982,0.072,-0.6191,35,31,98
+Tomas Machac,M,Big-serving baseliner,11024,0.0755,63.5904,0.0803,-0.6033,93,19,71
+Joao Fonseca,M,Big-serving baseliner,17683,0.0755,63.5901,0.0803,-0.6032,94,20,71
+Borna Coric,M,Big-serving baseliner,18163,0.0756,63.5296,0.0803,-0.5837,95,21,71
+Pedro Martinez,M,Baseline grinder / counterpuncher,11843,0.0675,66.6844,0.072,-0.5531,36,32,98
+Jordan Thompson,M,Big-serving baseliner,10866,0.076,63.3934,0.0803,-0.5395,100,22,71
+Sergiy Stakhovsky,M,Net-rusher / serve-volleyer,4927,0.0866,59.4615,0.0896,-0.5207,174,8,24
+Aljaz Bedene,M,Big-serving baseliner,10804,0.0762,63.2932,0.0803,-0.5069,102,23,71
+Jannik Sinner,M,Baseline grinder / counterpuncher,116704,0.0679,66.5215,0.072,-0.5027,37,33,98
+Juan Carlos Ferrero,M,Baseline grinder / counterpuncher,13689,0.068,66.4851,0.072,-0.4914,38,34,98
+Pablo Carreno Busta,M,Baseline grinder / counterpuncher,17187,0.0681,66.4417,0.072,-0.478,41,35,98
+Ugo Humbert,M,Big-serving baseliner,18772,0.0767,63.1343,0.0803,-0.4552,105,24,71
+Cedric Pioline,M,Net-rusher / serve-volleyer,6717,0.087,59.3207,0.0896,-0.4511,178,9,24
+Hubert Hurkacz,M,Big-serving baseliner,122350,0.0767,63.1156,0.0803,-0.4491,106,25,71
+Nuno Borges,M,Big-serving baseliner,7727,0.0768,63.0902,0.0803,-0.4408,107,26,71
+Robin Haase,M,Slice & variety,17565,0.0741,64.0946,0.0782,-0.4046,82,6,22
+Mackenzie Mcdonald,M,Big-serving baseliner,10917,0.0772,62.9359,0.0803,-0.3904,111,27,71
+Yoshihito Nishioka,M,Baseline grinder / counterpuncher,15400,0.0689,66.1508,0.072,-0.3875,44,36,98
+Jonas Bjorkman,M,Net-rusher / serve-volleyer,4319,0.0877,59.0753,0.0896,-0.3293,183,10,24
+Christopher Oconnell,M,Slice & variety,6932,0.0751,63.7178,0.0782,-0.3056,90,7,22
+Robin Soderling,M,Big-serving baseliner,9055,0.0779,62.6507,0.0803,-0.2969,119,28,71
+Tomas Berdych,M,Big-serving baseliner,32587,0.0781,62.5871,0.0803,-0.276,122,29,71
+Mikhail Youzhny,M,Slice & variety,17708,0.0754,63.5966,0.0782,-0.2737,92,8,22
+Andre Agassi,M,Baseline grinder / counterpuncher,93153,0.0699,65.7416,0.072,-0.2597,47,37,98
+Roger Federer,M,Slice & variety,279931,0.0757,63.5109,0.0782,-0.2511,97,9,22
+Botic Van De Zandschulp,M,Big-serving baseliner,48099,0.0784,62.465,0.0803,-0.2358,126,30,71
+Thanasi Kokkinakis,M,Big-serving baseliner,10740,0.0785,62.4522,0.0803,-0.2315,127,31,71
+Cameron Norrie,M,Baseline grinder / counterpuncher,18274,0.0702,65.625,0.072,-0.2231,50,38,98
+Learner Tien,M,Baseline grinder / counterpuncher,10449,0.0703,65.6057,0.072,-0.217,51,39,98
+Daniel Altmaier,M,Slice & variety,8166,0.076,63.3719,0.0782,-0.2143,101,10,22
+Grigor Dimitrov,M,Slice & variety,66554,0.0763,63.2819,0.0782,-0.1905,103,11,22
+Marcos Giron,M,Baseline grinder / counterpuncher,11629,0.0706,65.468,0.072,-0.1737,53,40,98
+Tommy Haas,M,Slice & variety,17552,0.0765,63.2057,0.0782,-0.1703,104,12,22
+Gustavo Kuerten,M,Baseline grinder / counterpuncher,25131,0.0707,65.4126,0.072,-0.1563,54,41,98
+Jiri Novak,M,Baseline grinder / counterpuncher,5388,0.0709,65.3627,0.072,-0.1406,56,42,98
+Aleksandar Vukic,M,Big-serving baseliner,5007,0.0794,62.1177,0.0803,-0.121,130,32,71
+Daniel Elahi Galan,M,Baseline grinder / counterpuncher,6670,0.071,65.2981,0.072,-0.1202,59,43,98
+Zhizhen Zhang,M,Big-serving baseliner,7510,0.0794,62.1116,0.0803,-0.119,131,33,71
+David Nalbandian,M,Baseline grinder / counterpuncher,21594,0.0713,65.1948,0.072,-0.0875,61,44,98
+Bernard Tomic,M,Slice & variety,11717,0.0773,62.8898,0.0782,-0.0862,112,13,22
+Carlos Moya,M,Baseline grinder / counterpuncher,15798,0.0714,65.1564,0.072,-0.0754,62,45,98
+Adrian Mannarino,M,Baseline grinder / counterpuncher,29779,0.0714,65.1493,0.072,-0.0732,63,46,98
+Jakub Mensik,M,Big-serving baseliner,12333,0.0798,61.9467,0.0803,-0.0643,132,34,71
+David Goffin,M,Baseline grinder / counterpuncher,31589,0.0716,65.0729,0.072,-0.049,64,47,98
+Nick Kyrgios,M,Big-serving baseliner,39100,0.08,61.8656,0.0803,-0.0373,133,35,71
+Sebastian Baez,M,Baseline grinder / counterpuncher,19497,0.0719,64.9632,0.072,-0.0142,66,48,98
+Stan Wawrinka,M,Slice & variety,58378,0.0781,62.5884,0.0782,-0.0056,121,14,22
+Karen Khachanov,M,Baseline grinder / counterpuncher,31641,0.072,64.9015,0.072,0.0054,67,49,98
+Ivan Ljubicic,M,Big-serving baseliner,6581,0.0805,61.7099,0.0803,0.0146,134,36,71
+Sebastian Korda,M,Big-serving baseliner,19569,0.0809,61.5367,0.0803,0.0724,138,37,71
+Nicolas Almagro,M,Baseline grinder / counterpuncher,8095,0.0726,64.6896,0.072,0.0728,69,50,98
+Tommy Robredo,M,Baseline grinder / counterpuncher,8565,0.0727,64.6633,0.072,0.0811,70,51,98
+Jim Courier,M,Baseline grinder / counterpuncher,22009,0.0727,64.6548,0.072,0.0839,71,52,98
+Corentin Moutet,M,Slice & variety,9616,0.0792,62.1642,0.0782,0.1085,129,15,22
+Thomas Enqvist,M,Big-serving baseliner,5836,0.0813,61.3951,0.0803,0.1199,141,38,71
+Alex Michelsen,M,Baseline grinder / counterpuncher,6109,0.0731,64.503,0.072,0.1323,72,53,98
+Tommy Paul,M,Baseline grinder / counterpuncher,31327,0.0735,64.3574,0.072,0.1789,73,54,98
+Yannick Hanfmann,M,Big-serving baseliner,4629,0.0818,61.2129,0.0803,0.181,145,39,71
+Gijs Brouwer,M,Big-serving baseliner,5046,0.0818,61.2119,0.0803,0.1814,146,40,71
+Marc Rosset,M,Big-serving baseliner,4869,0.0819,61.1825,0.0803,0.1913,147,41,71
+Alejandro Tabilo,M,Baseline grinder / counterpuncher,8609,0.0736,64.2918,0.072,0.1999,76,55,98
+Mikhail Kukushkin,M,Baseline grinder / counterpuncher,7290,0.0737,64.2526,0.072,0.2124,77,56,98
+Jo Wilfried Tsonga,M,Big-serving baseliner,30901,0.0822,61.0805,0.0803,0.2256,150,42,71
+Todd Martin,M,Net-rusher / serve-volleyer,9428,0.0909,57.9607,0.0896,0.2301,192,11,24
+Andreas Seppi,M,Baseline grinder / counterpuncher,12242,0.074,64.1511,0.072,0.245,78,57,98
+Marcelo Rios,M,Baseline grinder / counterpuncher,10105,0.074,64.138,0.072,0.2492,79,58,98
+Emil Ruusuvuori,M,Baseline grinder / counterpuncher,16432,0.074,64.1357,0.072,0.25,80,59,98
+Dominic Thiem,M,Baseline grinder / counterpuncher,72453,0.074,64.1338,0.072,0.2506,81,60,98
+Felix Auger Aliassime,M,Big-serving baseliner,35769,0.0824,60.9976,0.0803,0.2536,152,43,71
+Tennys Sandgren,M,Slice & variety,5356,0.0809,61.5555,0.0782,0.2736,137,16,22
+Nikolay Davydenko,M,Baseline grinder / counterpuncher,29224,0.0742,64.0606,0.072,0.2741,83,61,98
+Henri Leconte,M,Net-rusher / serve-volleyer,5950,0.0912,57.8643,0.0896,0.279,194,12,24
+Fernando Gonzalez,M,Slice & variety,20405,0.081,61.5101,0.0782,0.286,139,17,22
+Tim Henman,M,Net-rusher / serve-volleyer,13075,0.0913,57.8153,0.0896,0.3039,195,13,24
+Nicolas Massu,M,Baseline grinder / counterpuncher,5521,0.0745,63.9439,0.072,0.3117,85,62,98
+Ernests Gulbis,M,Big-serving baseliner,7141,0.0829,60.793,0.0803,0.3227,153,44,71
+Radu Albot,M,Baseline grinder / counterpuncher,6043,0.0746,63.9031,0.072,0.3248,86,63,98
+James Blake,M,Big-serving baseliner,14044,0.083,60.7696,0.0803,0.3306,155,45,71
+Alexander Bublik,M,Net-rusher / serve-volleyer,28441,0.0915,57.7627,0.0896,0.3306,196,14,24
+Marton Fucsovics,M,Baseline grinder / counterpuncher,20211,0.0749,63.7918,0.072,0.3608,88,64,98
+Fabian Marozsan,M,Baseline grinder / counterpuncher,7554,0.075,63.7672,0.072,0.3687,89,65,98
+Jiri Lehecka,M,Big-serving baseliner,17458,0.0833,60.6536,0.0803,0.37,160,46,71
+Pat Cash,M,Net-rusher / serve-volleyer,6474,0.0917,57.6831,0.0896,0.3711,197,15,24
+Patrick Rafter,M,Net-rusher / serve-volleyer,16955,0.0917,57.6685,0.0896,0.3785,198,16,24
+Jan Lennard Struff,M,Big-serving baseliner,13323,0.0834,60.6174,0.0803,0.3823,161,47,71
+Tallon Griekspoor,M,Big-serving baseliner,40561,0.0836,60.5408,0.0803,0.4083,165,48,71
+Greg Rusedski,M,Net-rusher / serve-volleyer,7201,0.092,57.5904,0.0896,0.4183,199,17,24
+Dusan Lajovic,M,Baseline grinder / counterpuncher,14222,0.0754,63.6101,0.072,0.4195,91,66,98
+Philipp Kohlschreiber,M,Baseline grinder / counterpuncher,14406,0.0756,63.5211,0.072,0.4484,96,67,98
+Carlos Alcaraz,M,Baseline grinder / counterpuncher,85844,0.0757,63.4878,0.072,0.4592,98,68,98
+Otto Virtanen,M,Big-serving baseliner,5017,0.0841,60.3658,0.0803,0.4679,166,49,71
+Marin Cilic,M,Big-serving baseliner,32731,0.0842,60.3413,0.0803,0.4763,167,50,71
+Sebastien Grosjean,M,Baseline grinder / counterpuncher,6458,0.0759,63.4022,0.072,0.487,99,69,98
+Mark Philippoussis,M,Net-rusher / serve-volleyer,7926,0.0924,57.4414,0.0896,0.4944,202,18,24
+Kevin Anderson,M,Big-serving baseliner,9765,0.0845,60.232,0.0803,0.5136,168,51,71
+Matteo Berrettini,M,Slice & variety,33086,0.0833,60.6731,0.0782,0.5158,157,18,22
+Lucas Pouille,M,Big-serving baseliner,10986,0.0849,60.0691,0.0803,0.5693,169,52,71
+Alexei Popyrin,M,Big-serving baseliner,12053,0.085,60.0568,0.0803,0.5735,170,53,71
+Ben Shelton,M,Big-serving baseliner,18184,0.085,60.0518,0.0803,0.5752,171,54,71
+Jimmy Connors,M,Baseline grinder / counterpuncher,20348,0.0768,63.083,0.072,0.591,108,70,98
+Francisco Cerundolo,M,Baseline grinder / counterpuncher,17319,0.077,63.0168,0.072,0.6127,109,71,98
+Joao Sousa,M,Baseline grinder / counterpuncher,6001,0.0771,62.957,0.072,0.6322,110,72,98
+Michael Stich,M,Net-rusher / serve-volleyer,17202,0.0933,57.1256,0.0896,0.6563,204,19,24
+Federico Delbonis,M,Baseline grinder / counterpuncher,6865,0.0773,62.877,0.072,0.6584,113,73,98
+Cristian Garin,M,Baseline grinder / counterpuncher,10719,0.0773,62.8726,0.072,0.6599,114,74,98
+Yevgeny Kafelnikov,M,Baseline grinder / counterpuncher,25862,0.0774,62.8688,0.072,0.6611,115,75,98
+Goran Ivanisevic,M,Net-rusher / serve-volleyer,20387,0.0934,57.1119,0.0896,0.6634,205,20,24
+Kei Nishikori,M,Baseline grinder / counterpuncher,27622,0.0777,62.7569,0.072,0.6978,116,76,98
+Matteo Arnaldi,M,Baseline grinder / counterpuncher,8062,0.0777,62.744,0.072,0.702,117,77,98
+Zizou Bergs,M,Big-serving baseliner,6252,0.0861,59.6585,0.0803,0.7105,172,55,71
+Thomas Johansson,M,Baseline grinder / counterpuncher,4946,0.0778,62.7006,0.072,0.7163,118,78,98
+Alexander Shevchenko,M,Baseline grinder / counterpuncher,6296,0.078,62.6179,0.072,0.7435,120,79,98
+Dustin Brown,M,Net-rusher / serve-volleyer,4256,0.0939,56.9183,0.0896,0.7631,206,21,24
+Thiago Seyboth Wild,M,Baseline grinder / counterpuncher,7524,0.0782,62.5582,0.072,0.7632,123,80,98
+Holger Rune,M,Baseline grinder / counterpuncher,26034,0.0782,62.5492,0.072,0.7661,124,81,98
+Rinky Hijikata,M,Baseline grinder / counterpuncher,4612,0.0783,62.5034,0.072,0.7812,125,82,98
+Arthur Rinderknech,M,Big-serving baseliner,6644,0.0868,59.4192,0.0803,0.7932,175,56,71
+Mardy Fish,M,Big-serving baseliner,4848,0.087,59.3316,0.0803,0.8236,177,57,71
+Arthur Fils,M,Baseline grinder / counterpuncher,22749,0.0787,62.3714,0.072,0.8248,128,83,98
+Jack Sock,M,Big-serving baseliner,5568,0.0871,59.2916,0.0803,0.8375,179,58,71
+Denis Shapovalov,M,Big-serving baseliner,31382,0.0877,59.0857,0.0803,0.9091,182,59,71
+Feliciano Lopez,M,Slice & variety,19445,0.0887,58.7143,0.0782,1.0664,184,19,22
+Roman Safiullin,M,Baseline grinder / counterpuncher,6340,0.0807,61.6006,0.072,1.081,135,84,98
+Alejandro Davidovich Fokina,M,Baseline grinder / counterpuncher,23712,0.0808,61.5824,0.072,1.0872,136,85,98
+Giovanni Mpetshi Perricard,M,Big-serving baseliner,9308,0.0892,58.5597,0.0803,1.0932,186,60,71
+Steve Johnson,M,Slice & variety,6987,0.089,58.6164,0.0782,1.0944,185,20,22
+Laslo Djere,M,Baseline grinder / counterpuncher,13638,0.0811,61.4568,0.072,1.1292,140,86,98
+Karim Mohamed Maamoun,M,Baseline grinder / counterpuncher,16523,0.0813,61.3833,0.072,1.1539,142,87,98
+Milos Raonic,M,Big-serving baseliner,26494,0.0898,58.3466,0.0803,1.1682,187,61,71
+Richard Krajicek,M,Net-rusher / serve-volleyer,10799,0.0963,56.1012,0.0896,1.1878,211,22,24
+Tim Van Rijthoven,M,Slice & variety,5459,0.0904,58.1333,0.0782,1.2333,188,21,22
+Fernando Verdasco,M,Baseline grinder / counterpuncher,19698,0.0821,61.0873,0.072,1.2535,149,88,98
+Pierre Hugues Herbert,M,Big-serving baseliner,4813,0.0905,58.091,0.0803,1.2586,189,62,71
+Marco Cecchinato,M,Baseline grinder / counterpuncher,6898,0.0822,61.0666,0.072,1.2605,151,89,98
+Gilles Muller,M,Big-serving baseliner,4472,0.0906,58.0736,0.0803,1.2647,190,63,71
+Sam Querrey,M,Big-serving baseliner,6467,0.0908,57.9839,0.0803,1.2966,191,64,71
+Nicolas Jarry,M,Big-serving baseliner,15507,0.0911,57.8963,0.0803,1.3277,193,65,71
+Maxime Cressy,M,Net-rusher / serve-volleyer,9063,0.0974,55.7326,0.0896,1.3813,212,23,24
+Fabio Fognini,M,Baseline grinder / counterpuncher,17278,0.0833,60.6654,0.072,1.3963,158,90,98
+Lorenzo Sonego,M,Baseline grinder / counterpuncher,16316,0.0834,60.6145,0.072,1.4136,162,91,98
+Flavio Cobolli,M,Baseline grinder / counterpuncher,8612,0.0836,60.5529,0.072,1.4346,164,92,98
+Benoit Paire,M,Big-serving baseliner,15152,0.092,57.5685,0.0803,1.4446,200,66,71
+Jeremy Chardy,M,Big-serving baseliner,6515,0.093,57.2269,0.0803,1.5671,203,67,71
+Gabriel Diallo,M,Big-serving baseliner,4405,0.0946,56.7041,0.0803,1.756,208,68,71
+Wayne Ferreira,M,Baseline grinder / counterpuncher,4897,0.0865,59.514,0.072,1.7912,173,93,98
+John Isner,M,Big-serving baseliner,27611,0.0951,56.5136,0.0803,1.8253,209,69,71
+Leonardo Mayer,M,Baseline grinder / counterpuncher,5935,0.0869,59.3645,0.072,1.843,176,94,98
+Vasek Pospisil,M,Big-serving baseliner,5602,0.0953,56.4445,0.0803,1.8505,210,70,71
+Nikoloz Basilashvili,M,Baseline grinder / counterpuncher,10826,0.0872,59.2509,0.072,1.8825,180,95,98
+Alexandr Dolgopolov,M,Baseline grinder / counterpuncher,9149,0.0876,59.1083,0.072,1.9321,181,96,98
+Ivo Karlovic,M,Net-rusher / serve-volleyer,11922,0.1034,53.7658,0.0896,2.4365,214,24,24
+Reilly Opelka,M,Big-serving baseliner,15405,0.1005,54.7132,0.0803,2.4917,213,71,71
+Aslan Karatsev,M,Baseline grinder / counterpuncher,10766,0.0923,57.4805,0.072,2.5076,201,97,98
+Petr Korda,M,Baseline grinder / counterpuncher,10236,0.0942,56.812,0.072,2.7487,207,98,98
+Christopher Eubanks,M,Slice & variety,5207,0.1077,52.4099,0.0782,2.9721,215,22,22
+Caroline Wozniacki,W,Baseline grinder / counterpuncher,58330,0.0525,72.9929,0.0704,-2.4595,1,1,53
+Sara Sorribes Tormo,W,Baseline grinder / counterpuncher,17691,0.0538,72.405,0.0704,-2.2746,2,2,53
+Sara Errani,W,Baseline grinder / counterpuncher,10726,0.0572,70.9587,0.0704,-1.8132,3,3,53
+Agnieszka Radwanska,W,Baseline grinder / counterpuncher,20466,0.0574,70.8584,0.0704,-1.7808,4,4,53
+Jennifer Brady,W,Big serve / first-strike,6221,0.0711,65.2843,0.0865,-1.7383,35,1,41
+Monica Seles,W,All-courter,12337,0.0676,66.6557,0.0781,-1.5209,16,1,45
+Arantxa Rus,W,All-courter,25824,0.0681,66.4729,0.0781,-1.4544,18,2,45
+Simona Halep,W,All-courter,5954,0.0681,66.4671,0.0781,-1.4523,19,3,45
+Martina Hingis,W,Baseline grinder / counterpuncher,13674,0.06,69.7609,0.0704,-1.4239,5,5,53
+Kiki Bertens,W,Big serve / first-strike,42784,0.0743,64.0152,0.0865,-1.3703,58,2,41
+Linda Fruhvirtova,W,Baseline grinder / counterpuncher,8389,0.0606,69.505,0.0704,-1.3398,6,6,53
+Suzan Lamens,W,All-courter,11643,0.069,66.1118,0.0781,-1.3226,24,4,45
+Lindsay Davenport,W,Big serve / first-strike,11748,0.0751,63.715,0.0865,-1.2822,63,3,41
+Ashleigh Barty,W,Big serve / first-strike,17836,0.0752,63.6808,0.0865,-1.2721,65,4,41
+Katie Volynets,W,Baseline grinder / counterpuncher,8876,0.0613,69.2261,0.0704,-1.2479,7,7,53
+Angelique Kerber,W,Baseline grinder / counterpuncher,30320,0.0617,69.0537,0.0704,-1.1909,8,8,53
+Magdalena Frech,W,Baseline grinder / counterpuncher,8415,0.062,68.9343,0.0704,-1.1513,9,9,53
+Daria Kasatkina,W,Baseline grinder / counterpuncher,27067,0.0625,68.7366,0.0704,-1.0856,10,10,53
+Jasmine Paolini,W,All-courter,17358,0.0715,65.1075,0.0781,-0.9522,37,5,45
+Clara Tauson,W,Big serve / first-strike,12185,0.0782,62.5645,0.0865,-0.9406,82,5,41
+Carla Suarez Navarro,W,All-courter,12516,0.0717,65.0537,0.0781,-0.9322,38,6,45
+Amelie Mauresmo,W,Slice & net specialist,9420,0.0692,66.0082,0.073,-0.913,26,1,5
+Chris Evert,W,Baseline grinder / counterpuncher,11077,0.0638,68.1936,0.0704,-0.9043,11,11,53
+Dinara Safina,W,All-courter,5797,0.072,64.93,0.0781,-0.8862,40,7,45
+Alexandra Eala,W,All-courter,5461,0.072,64.9171,0.0781,-0.8814,41,8,45
+Karolina Pliskova,W,Big serve / first-strike,24402,0.0792,62.1638,0.0865,-0.8202,86,6,41
+Ana Ivanovic,W,Big serve / first-strike,14941,0.0793,62.1272,0.0865,-0.8091,87,7,41
+Maria Sharapova,W,Big serve / first-strike,35240,0.0795,62.0582,0.0865,-0.7883,88,8,41
+Marketa Vondrousova,W,All-courter,14669,0.0727,64.6315,0.0781,-0.7747,45,9,45
+Flavia Pennetta,W,Baseline grinder / counterpuncher,5964,0.0648,67.7957,0.0704,-0.7704,12,12,53
+Beatriz Haddad Maia,W,All-courter,6740,0.0728,64.6189,0.0781,-0.7699,46,10,45
+Elena Rybakina,W,Big serve / first-strike,37525,0.0799,61.9203,0.0865,-0.7466,92,9,41
+Nuria Parrizas Diaz,W,All-courter,5437,0.0731,64.503,0.0781,-0.7265,49,11,45
+Iga Swiatek,W,All-courter,64432,0.0731,64.4897,0.0781,-0.7215,50,12,45
+Alison Riske Amritraj,W,All-courter,9095,0.0731,64.4874,0.0781,-0.7206,51,13,45
+Jil Teichmann,W,All-courter,11358,0.0731,64.482,0.0781,-0.7186,52,14,45
+Lesia Tsurenko,W,All-courter,6496,0.0732,64.4727,0.0781,-0.7151,53,15,45
+Johanna Konta,W,Big serve / first-strike,6221,0.0804,61.7442,0.0865,-0.6932,97,10,41
+Donna Vekic,W,Big serve / first-strike,17241,0.0806,61.6716,0.0865,-0.6712,99,11,41
+Anett Kontaveit,W,Big serve / first-strike,11627,0.0806,61.643,0.0865,-0.6625,100,12,41
+Justine Henin,W,All-courter,18490,0.0736,64.315,0.0781,-0.6559,54,16,45
+Tamara Zidansek,W,All-courter,7137,0.0736,64.2825,0.0781,-0.6436,55,17,45
+Elena Dementieva,W,Baseline grinder / counterpuncher,18918,0.0659,67.3568,0.0704,-0.6219,13,13,53
+Serena Williams,W,Big serve / first-strike,41893,0.0812,61.4476,0.0865,-0.603,101,13,41
+Sofia Kenin,W,Big serve / first-strike,25025,0.0813,61.4154,0.0865,-0.5931,102,14,41
+Qinwen Zheng,W,Big serve / first-strike,15224,0.0813,61.4119,0.0865,-0.5921,103,15,41
+Lucie Safarova,W,Big serve / first-strike,8490,0.0814,61.3495,0.0865,-0.573,104,16,41
+Elina Svitolina,W,Baseline grinder / counterpuncher,53757,0.0663,67.1953,0.0704,-0.567,14,14,53
+Tatjana Maria,W,Slice & net specialist,6749,0.0708,65.3906,0.073,-0.5349,32,2,5
+Monica Niculescu,W,Slice & net specialist,6004,0.0709,65.3541,0.073,-0.5125,33,3,5
+Garbine Muguruza,W,All-courter,30434,0.0748,63.8561,0.0781,-0.4826,62,18,45
+Alize Cornet,W,Baseline grinder / counterpuncher,12292,0.0671,66.8777,0.0704,-0.4587,15,15,53
+Naomi Osaka,W,Big serve / first-strike,19883,0.0827,60.8984,0.0865,-0.4347,106,17,41
+Jaqueline Cristian,W,All-courter,6932,0.0752,63.7037,0.0781,-0.4248,64,19,45
+Iva Jovic,W,All-courter,14293,0.0756,63.526,0.0781,-0.3572,67,20,45
+Marie Bouzkova,W,Baseline grinder / counterpuncher,14116,0.0678,66.5644,0.0704,-0.3513,17,16,53
+Dominika Cibulkova,W,All-courter,8984,0.0758,63.4432,0.0781,-0.3256,68,21,45
+Mirra Andreeva,W,Baseline grinder / counterpuncher,41582,0.0681,66.4386,0.0704,-0.3081,20,17,53
+Victoria Azarenka,W,Baseline grinder / counterpuncher,32569,0.0682,66.3996,0.0704,-0.2946,21,18,53
+Andrea Petkovic,W,All-courter,6091,0.0761,63.3444,0.0781,-0.2879,69,22,45
+Elina Avanesyan,W,Baseline grinder / counterpuncher,7328,0.0684,66.3273,0.0704,-0.2697,22,19,53
+Paula Badosa,W,Baseline grinder / counterpuncher,17689,0.0687,66.2216,0.0704,-0.2332,23,20,53
+Na Li,W,All-courter,5166,0.0767,63.1061,0.0781,-0.1967,70,23,45
+Ashlyn Krueger,W,Big serve / first-strike,7019,0.0851,60.0294,0.0865,-0.1653,115,18,41
+Yulia Putintseva,W,Baseline grinder / counterpuncher,11135,0.0692,66.0138,0.0704,-0.1613,25,21,53
+Linda Noskova,W,Big serve / first-strike,12862,0.0853,59.9593,0.0865,-0.1434,116,19,41
+Veronika Kudermetova,W,Big serve / first-strike,12887,0.0853,59.9249,0.0865,-0.1326,117,20,41
+Jessica Pegula,W,All-courter,27642,0.0772,62.9272,0.0781,-0.1281,75,24,45
+Jelena Jankovic,W,Baseline grinder / counterpuncher,9780,0.0696,65.8808,0.0704,-0.1152,27,22,53
+Belinda Bencic,W,Baseline grinder / counterpuncher,23305,0.0697,65.8063,0.0704,-0.0894,28,23,53
+Rebecca Marino,W,Big serve / first-strike,5418,0.0859,59.7237,0.0865,-0.0696,118,21,41
+Ekaterina Alexandrova,W,Big serve / first-strike,19968,0.086,59.7072,0.0865,-0.0644,119,22,41
+Polona Hercog,W,All-courter,7175,0.0778,62.7158,0.0781,-0.0466,79,25,45
+Venus Williams,W,All-courter,31478,0.0778,62.7098,0.0781,-0.0443,80,26,45
+Emma Navarro,W,Baseline grinder / counterpuncher,9181,0.0701,65.6639,0.0704,-0.0398,29,24,53
+Viktorija Golubic,W,Baseline grinder / counterpuncher,6857,0.0703,65.5806,0.0704,-0.0108,30,25,53
+Mary Pierce,W,Baseline grinder / counterpuncher,6825,0.0706,65.4602,0.0704,0.0312,31,26,53
+Svetlana Kuznetsova,W,Baseline grinder / counterpuncher,13962,0.071,65.3248,0.0704,0.0786,34,27,53
+Aryna Sabalenka,W,Big serve / first-strike,15568,0.0874,59.2018,0.0865,0.095,121,23,41
+Barbora Krejcikova,W,Big serve / first-strike,8406,0.0875,59.1475,0.0865,0.1121,122,24,41
+Maria Sakkari,W,All-courter,21615,0.0789,62.2793,0.0781,0.1224,85,27,45
+Emma Raducanu,W,Baseline grinder / counterpuncher,21600,0.0713,65.1932,0.0704,0.1247,36,28,53
+Taylor Townsend,W,Big serve / first-strike,4979,0.0877,59.0851,0.0865,0.1319,123,25,41
+Danielle Collins,W,Big serve / first-strike,12049,0.0877,59.0784,0.0865,0.1341,124,26,41
+Arantxa Sanchez Vicario,W,Baseline grinder / counterpuncher,11249,0.0719,64.9751,0.0704,0.2013,39,29,53
+Talia Gibson,W,Big serve / first-strike,4246,0.0885,58.7905,0.0865,0.2256,125,27,41
+Katerina Siniakova,W,All-courter,10865,0.0797,61.9789,0.0781,0.2394,90,28,45
+Kaja Juvan,W,All-courter,6629,0.0797,61.9732,0.0781,0.2416,91,29,45
+Petra Martic,W,Baseline grinder / counterpuncher,8944,0.0722,64.8546,0.0704,0.2438,42,30,53
+Eugenie Bouchard,W,All-courter,18596,0.0799,61.9098,0.0781,0.2664,93,30,45
+Katie Boulter,W,Big serve / first-strike,5960,0.089,58.6185,0.0865,0.2806,127,28,41
+Anastasia Myskina,W,Baseline grinder / counterpuncher,5273,0.0725,64.7418,0.0704,0.2836,43,31,53
+Ons Jabeur,W,Big serve / first-strike,14603,0.0891,58.5925,0.0865,0.2889,128,29,41
+Daria Saville,W,Baseline grinder / counterpuncher,5571,0.0726,64.6813,0.0704,0.305,44,32,53
+Diana Shnaider,W,All-courter,8818,0.0802,61.7993,0.0781,0.3096,95,31,45
+Anhelina Kalinina,W,Baseline grinder / counterpuncher,6986,0.0728,64.6005,0.0704,0.3335,47,33,53
+Samantha Stosur,W,All-courter,8507,0.0805,61.6774,0.0781,0.3574,98,32,45
+Kim Clijsters,W,Baseline grinder / counterpuncher,16231,0.073,64.5273,0.0704,0.3595,48,34,53
+Steffi Graf,W,Slice & net specialist,33919,0.0746,63.9037,0.073,0.3902,61,4,5
+Madison Keys,W,Big serve / first-strike,19343,0.0905,58.1107,0.0865,0.4436,129,30,41
+Julia Goerges,W,Big serve / first-strike,6820,0.0905,58.0919,0.0865,0.4497,130,31,41
+Anastasija Sevastova,W,Baseline grinder / counterpuncher,5572,0.0739,64.1774,0.0704,0.4838,56,35,53
+Elise Mertens,W,Baseline grinder / counterpuncher,13442,0.0741,64.1225,0.0704,0.5034,57,36,53
+Anna Bondar,W,Baseline grinder / counterpuncher,5678,0.0744,64.0069,0.0704,0.5446,59,37,53
+Xin Yu Wang,W,All-courter,6350,0.0818,61.2005,0.0781,0.5452,105,33,45
+Coco Gauff,W,Baseline grinder / counterpuncher,34813,0.0745,63.9392,0.0704,0.5689,60,38,53
+Marta Kostyuk,W,All-courter,20716,0.0828,60.8621,0.0781,0.6794,107,34,45
+Magda Linette,W,Baseline grinder / counterpuncher,23225,0.0755,63.5729,0.0704,0.7002,66,39,53
+Eva Lys,W,All-courter,5609,0.0829,60.8007,0.0781,0.7038,108,35,45
+Shuai Zhang,W,All-courter,5384,0.083,60.7808,0.0781,0.7117,109,36,45
+Anastasia Pavlyuchenkova,W,Big serve / first-strike,9260,0.093,57.2496,0.0865,0.7235,134,32,41
+Bianca Andreescu,W,All-courter,63706,0.0832,60.7056,0.0781,0.7417,110,37,45
+Caroline Garcia,W,Big serve / first-strike,10705,0.0932,57.1754,0.0865,0.7478,135,33,41
+Coco Vandeweghe,W,Big serve / first-strike,3999,0.0934,57.0919,0.0865,0.7752,136,34,41
+Liudmila Samsonova,W,Big serve / first-strike,11853,0.0941,56.8569,0.0865,0.8525,137,35,41
+Camila Osorio,W,Baseline grinder / counterpuncher,6442,0.0767,63.1031,0.0704,0.8698,71,40,53
+Su Wei Hsieh,W,Baseline grinder / counterpuncher,8627,0.0769,63.028,0.0704,0.8971,72,41,53
+Anna Blinkova,W,Baseline grinder / counterpuncher,5561,0.077,63.0075,0.0704,0.9045,73,42,53
+Maya Joint,W,All-courter,5259,0.0844,60.2624,0.0781,0.919,113,38,45
+Lauren Davis,W,All-courter,4928,0.0844,60.2518,0.0781,0.9232,114,39,45
+Anna Kalinskaya,W,Baseline grinder / counterpuncher,11641,0.0771,62.9514,0.0704,0.9249,74,43,53
+Petra Kvitova,W,Big serve / first-strike,26843,0.0948,56.6297,0.0865,0.9275,139,36,41
+Amanda Anisimova,W,Big serve / first-strike,20680,0.0951,56.5018,0.0865,0.9699,140,37,41
+Sloane Stephens,W,Baseline grinder / counterpuncher,11948,0.0775,62.8173,0.0704,0.9736,76,44,53
+Leylah Fernandez,W,Baseline grinder / counterpuncher,14438,0.0776,62.767,0.0704,0.992,77,45,53
+Ajla Tomljanovic,W,Baseline grinder / counterpuncher,6933,0.0776,62.7607,0.0704,0.9942,78,46,53
+Karolina Muchova,W,Baseline grinder / counterpuncher,23695,0.0779,62.6662,0.0704,1.0287,81,47,53
+Victoria Mboko,W,Baseline grinder / counterpuncher,7808,0.0787,62.3505,0.0704,1.1442,83,48,53
+Sabine Lisicki,W,Big serve / first-strike,6866,0.0968,55.9436,0.0865,1.156,141,38,41
+Anastasia Potapova,W,Baseline grinder / counterpuncher,10893,0.0789,62.2871,0.0704,1.1675,84,49,53
+Peyton Stearns,W,All-courter,5037,0.0865,59.5131,0.0781,1.2217,120,40,45
+Sorana Cirstea,W,Baseline grinder / counterpuncher,10837,0.0799,61.9062,0.0704,1.3077,94,50,53
+Shelby Rogers,W,Baseline grinder / counterpuncher,5715,0.0803,61.7814,0.0704,1.3539,96,51,53
+Dayana Yastremska,W,Big serve / first-strike,9931,0.0988,55.2799,0.0865,1.3797,142,39,41
+Laura Siegemund,W,All-courter,7799,0.0886,58.7546,0.0781,1.5321,126,41,45
+Martina Navratilova,W,Slice & net specialist,12185,0.0795,62.0563,0.073,1.5701,89,5,5
+Jelena Ostapenko,W,Big serve / first-strike,13471,0.1013,54.4694,0.0865,1.6566,143,40,41
+Olga Danilovic,W,Baseline grinder / counterpuncher,9402,0.0833,60.6759,0.0704,1.7668,111,52,53
+Kristina Mladenovic,W,Baseline grinder / counterpuncher,6275,0.0841,60.3863,0.0704,1.8762,112,53,53
+Bernarda Pera,W,All-courter,4448,0.0921,57.5491,0.0781,2.0337,131,42,45
+Camila Giorgi,W,All-courter,11403,0.0925,57.4169,0.0781,2.0894,132,43,45
+Arianne Hartono,W,All-courter,5915,0.0927,57.3268,0.0781,2.1274,133,44,45
+Aliaksandra Sasnovich,W,All-courter,7607,0.0945,56.7375,0.0781,2.3775,138,45,45
+Alycia Parks,W,Big serve / first-strike,5415,0.1204,48.5447,0.0865,3.8151,144,41,41
