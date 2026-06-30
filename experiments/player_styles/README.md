@@ -28,6 +28,17 @@ uv run python experiments/player_styles/run.py
 Writes `reports/player_styles.md`, `reports/player_style_clusters.csv`, and
 `reports/figures/styles_{pca,heatmap}_{men,women}.png`.
 
+### Career-era entities (optional `player_eras` layer)
+
+If the `player_eras` table exists (`match-charting-project eras`), `run.py` fingerprints by
+**era entity** instead of by player, so a long evolving career (e.g. *Andre Agassi
+(1988–1997)* vs *(1998–2006)*) clusters as two points. Of the 34 split careers, **6 cross an
+archetype boundary** — Chang (grinder → big-server), Henman (net-rusher → slice & variety),
+Lendl (grinder → slice & variety), Khachanov, Kasatkina, Linette — and the report lists them.
+The other 28 evolve *within* their archetype, consistent with the career-split finding that
+most evolution is style-drift, not a wholesale change. Without the table it falls back to one
+row per player.
+
 ## What it finds (face validity)
 
 The archetypes line up with how fans would describe these players:

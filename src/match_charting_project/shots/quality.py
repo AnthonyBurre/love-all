@@ -73,31 +73,35 @@ def accuracy_score(avg_loss: float, scale: float = 6.0) -> float:
     return 100.0 * math.exp(-scale * avg_loss)
 
 
-def player_quality(con, model, where: str = "", min_shots: int = 400):
+def player_quality(con, model, where: str = "", min_shots: int = 400,
+                   era_map: "dict | None" = None):
     """Per-player decision quality over the points matched by ``where``.
 
     Returns a tidy pandas DataFrame. ``model`` should be fit on the same
-    population (e.g. one gender) so the eval baseline matches.
+    population (e.g. one gender) so the eval baseline matches. With ``era_map``
+    (the ``player_eras`` layer) split careers are keyed by their era entity.
     """
     import pandas as pd
 
+    from match_charting_project.analysis.career_eras import entity_of
+    from match_charting_project.shots.notation import parse_point
+
     sql = (
         "SELECT p.svr, p.first_serve, p.second_serve, p.pt_winner, "
-        "       m.player1, m.player2, m.gender "
+        "       m.player1, m.player2, m.gender, m.year "
         "FROM points p JOIN matches m USING (match_id) "
         "WHERE p.svr IN (1,2) AND p.pt_winner IN (1,2)"
     )
     if where:
         sql += f" AND {where}"
 
-    from match_charting_project.shots.notation import parse_point
-
     acc: dict = {}
-    for svr, fs, ss, win, p1, p2, gender in con.execute(sql).fetchall():
+    for svr, fs, ss, win, p1, p2, gender, year in con.execute(sql).fetchall():
         point = parse_point(fs, ss, svr, win)
         if not point.parse_ok or point.server_won is None:
             continue
-        names = {1: p1, 2: p2}
+        names = {1: entity_of(era_map, gender, p1, year),
+                 2: entity_of(era_map, gender, p2, year)}
         for s in model.shot_wpa(point):
             name = names[s["hitter"]]
             rec = acc.setdefault(name, {

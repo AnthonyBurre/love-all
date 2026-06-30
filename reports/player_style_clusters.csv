@@ -1,360 +1,394 @@
 player,gender,cluster,archetype,n_points
-Roger Federer,M,0,Slice & variety,124055
-Novak Djokovic,M,3,Baseline grinder / counterpuncher,93066
-Rafael Nadal,M,3,Baseline grinder / counterpuncher,70608
-Hubert Hurkacz,M,1,Big-serving baseliner,53897
-Jannik Sinner,M,3,Baseline grinder / counterpuncher,47633
-Daniil Medvedev,M,1,Big-serving baseliner,45388
-Pete Sampras,M,2,Net-rusher / serve-volleyer,44049
-Andy Murray,M,3,Baseline grinder / counterpuncher,44015
-Andre Agassi,M,3,Baseline grinder / counterpuncher,41312
-Carlos Alcaraz,M,3,Baseline grinder / counterpuncher,36875
-Stefan Edberg,M,2,Net-rusher / serve-volleyer,35440
-Stefanos Tsitsipas,M,1,Big-serving baseliner,33092
-Alexander Zverev,M,1,Big-serving baseliner,31810
-Boris Becker,M,2,Net-rusher / serve-volleyer,31040
-Dominic Thiem,M,3,Baseline grinder / counterpuncher,29884
-Grigor Dimitrov,M,0,Slice & variety,27487
-Andrey Rublev,M,1,Big-serving baseliner,26720
-Casper Ruud,M,3,Baseline grinder / counterpuncher,26053
-Juan Martin Del Potro,M,1,Big-serving baseliner,25509
-Lleyton Hewitt,M,3,Baseline grinder / counterpuncher,24704
-Stan Wawrinka,M,0,Slice & variety,24584
-Ivan Lendl,M,0,Slice & variety,24005
-Gael Monfils,M,1,Big-serving baseliner,22904
-Alex De Minaur,M,3,Baseline grinder / counterpuncher,22005
-Andy Roddick,M,1,Big-serving baseliner,21254
-Taylor Fritz,M,1,Big-serving baseliner,20678
-Lorenzo Musetti,M,0,Slice & variety,20506
-Nick Kyrgios,M,1,Big-serving baseliner,20029
-Tallon Griekspoor,M,1,Big-serving baseliner,19578
-Botic Van De Zandschulp,M,1,Big-serving baseliner,18965
-Marat Safin,M,1,Big-serving baseliner,17034
-Felix Auger Aliassime,M,1,Big-serving baseliner,16093
-John Isner,M,1,Big-serving baseliner,15627
-Matteo Berrettini,M,0,Slice & variety,15119
-Richard Gasquet,M,0,Slice & variety,15002
-Marin Cilic,M,1,Big-serving baseliner,14855
-Denis Shapovalov,M,1,Big-serving baseliner,14698
-Alexander Bublik,M,2,Net-rusher / serve-volleyer,14480
-Tomas Berdych,M,1,Big-serving baseliner,14047
-Milos Raonic,M,1,Big-serving baseliner,13928
-Jo Wilfried Tsonga,M,1,Big-serving baseliner,13732
-John Mcenroe,M,2,Net-rusher / serve-volleyer,13583
-Karen Khachanov,M,3,Baseline grinder / counterpuncher,13001
-Tommy Paul,M,3,Baseline grinder / counterpuncher,12939
-David Goffin,M,3,Baseline grinder / counterpuncher,12602
-Goran Ivanisevic,M,2,Net-rusher / serve-volleyer,12087
-Roberto Bautista Agut,M,3,Baseline grinder / counterpuncher,12026
-Yevgeny Kafelnikov,M,3,Baseline grinder / counterpuncher,11902
-David Ferrer,M,3,Baseline grinder / counterpuncher,11814
-Kei Nishikori,M,3,Baseline grinder / counterpuncher,11742
-Adrian Mannarino,M,3,Baseline grinder / counterpuncher,11547
-Nikolay Davydenko,M,3,Baseline grinder / counterpuncher,11295
-Holger Rune,M,3,Baseline grinder / counterpuncher,11291
-Gustavo Kuerten,M,3,Baseline grinder / counterpuncher,11262
-Arthur Fils,M,3,Baseline grinder / counterpuncher,10306
-Jim Courier,M,3,Baseline grinder / counterpuncher,10206
-Alejandro Davidovich Fokina,M,3,Baseline grinder / counterpuncher,9774
-Patrick Rafter,M,2,Net-rusher / serve-volleyer,9674
-Michael Stich,M,2,Net-rusher / serve-volleyer,9665
-Gilles Simon,M,3,Baseline grinder / counterpuncher,9568
-Fernando Gonzalez,M,0,Slice & variety,9346
-Feliciano Lopez,M,0,Slice & variety,9155
-Sebastian Korda,M,1,Big-serving baseliner,8686
-David Nalbandian,M,3,Baseline grinder / counterpuncher,8661
-Reilly Opelka,M,1,Big-serving baseliner,8611
-Ugo Humbert,M,1,Big-serving baseliner,8347
-Jiri Lehecka,M,1,Big-serving baseliner,8178
-Fernando Verdasco,M,3,Baseline grinder / counterpuncher,8173
-Ben Shelton,M,1,Big-serving baseliner,8162
-Joao Fonseca,M,1,Big-serving baseliner,8124
-Frances Tiafoe,M,1,Big-serving baseliner,8030
-Miomir Kecmanovic,M,3,Baseline grinder / counterpuncher,7907
-Diego Schwartzman,M,3,Baseline grinder / counterpuncher,7861
-Borna Coric,M,1,Big-serving baseliner,7608
-Ivo Karlovic,M,2,Net-rusher / serve-volleyer,7540
-Nicolas Jarry,M,1,Big-serving baseliner,7517
-Marton Fucsovics,M,3,Baseline grinder / counterpuncher,7517
-Jimmy Connors,M,3,Baseline grinder / counterpuncher,7494
-Tommy Haas,M,0,Slice & variety,7460
-Lorenzo Sonego,M,3,Baseline grinder / counterpuncher,7448
-Robin Haase,M,0,Slice & variety,7422
-Cameron Norrie,M,3,Baseline grinder / counterpuncher,7370
-Benoit Paire,M,1,Big-serving baseliner,7321
-Michael Chang,M,3,Baseline grinder / counterpuncher,7279
-Tim Henman,M,2,Net-rusher / serve-volleyer,7202
-Sebastian Baez,M,3,Baseline grinder / counterpuncher,7074
-Brandon Nakashima,M,1,Big-serving baseliner,7011
-Fabio Fognini,M,3,Baseline grinder / counterpuncher,7009
-Jan Lennard Struff,M,1,Big-serving baseliner,6936
-Pablo Carreno Busta,M,3,Baseline grinder / counterpuncher,6926
-Mikhail Youzhny,M,0,Slice & variety,6921
-Richard Krajicek,M,2,Net-rusher / serve-volleyer,6909
-Francisco Cerundolo,M,3,Baseline grinder / counterpuncher,6664
-James Blake,M,1,Big-serving baseliner,6565
-Carlos Moya,M,3,Baseline grinder / counterpuncher,6511
-Mats Wilander,M,3,Baseline grinder / counterpuncher,6477
-Karim Mohamed Maamoun,M,3,Baseline grinder / counterpuncher,6380
-Emil Ruusuvuori,M,3,Baseline grinder / counterpuncher,6318
-Jaume Munar,M,3,Baseline grinder / counterpuncher,6278
-Philipp Kohlschreiber,M,3,Baseline grinder / counterpuncher,6217
-Yoshihito Nishioka,M,3,Baseline grinder / counterpuncher,6152
-Thomas Muster,M,3,Baseline grinder / counterpuncher,5781
-Jesper De Jong,M,1,Big-serving baseliner,5764
-Alexei Popyrin,M,1,Big-serving baseliner,5688
-Dusan Lajovic,M,3,Baseline grinder / counterpuncher,5650
-Maxime Cressy,M,2,Net-rusher / serve-volleyer,5594
-Laslo Djere,M,3,Baseline grinder / counterpuncher,5434
-Jakub Mensik,M,1,Big-serving baseliner,5382
-Juan Carlos Ferrero,M,3,Baseline grinder / counterpuncher,5295
-Todd Martin,M,2,Net-rusher / serve-volleyer,5287
-Giovanni Mpetshi Perricard,M,1,Big-serving baseliner,5212
-Petr Korda,M,3,Baseline grinder / counterpuncher,5120
-Bernard Tomic,M,0,Slice & variety,5052
-Thanasi Kokkinakis,M,1,Big-serving baseliner,5027
-Tomas Machac,M,1,Big-serving baseliner,5010
-Janko Tipsarevic,M,1,Big-serving baseliner,5001
-Lucas Pouille,M,1,Big-serving baseliner,4985
-Daniel Evans,M,0,Slice & variety,4968
-Jenson Brooksby,M,3,Baseline grinder / counterpuncher,4929
-Aslan Karatsev,M,3,Baseline grinder / counterpuncher,4838
-Marcos Giron,M,3,Baseline grinder / counterpuncher,4788
-Nikoloz Basilashvili,M,3,Baseline grinder / counterpuncher,4784
-Andreas Seppi,M,3,Baseline grinder / counterpuncher,4770
-Kevin Anderson,M,1,Big-serving baseliner,4701
-Marcos Baghdatis,M,1,Big-serving baseliner,4662
-Jack Draper,M,1,Big-serving baseliner,4620
-Mackenzie Mcdonald,M,1,Big-serving baseliner,4607
-Pedro Martinez,M,3,Baseline grinder / counterpuncher,4602
-Jordan Thompson,M,1,Big-serving baseliner,4487
-Mark Philippoussis,M,2,Net-rusher / serve-volleyer,4439
-Aljaz Bedene,M,1,Big-serving baseliner,4317
-Cristian Garin,M,3,Baseline grinder / counterpuncher,4286
-Greg Rusedski,M,2,Net-rusher / serve-volleyer,4153
-Alexandr Dolgopolov,M,3,Baseline grinder / counterpuncher,4087
-Bjorn Borg,M,3,Baseline grinder / counterpuncher,4065
-Tomas Martin Etcheverry,M,3,Baseline grinder / counterpuncher,4041
-Albert Ramos,M,3,Baseline grinder / counterpuncher,4034
-Sergi Bruguera,M,3,Baseline grinder / counterpuncher,4031
-Marcelo Rios,M,3,Baseline grinder / counterpuncher,3971
-Learner Tien,M,3,Baseline grinder / counterpuncher,3961
-Robin Soderling,M,1,Big-serving baseliner,3954
-Alex Corretja,M,3,Baseline grinder / counterpuncher,3919
-Corentin Moutet,M,0,Slice & variety,3806
-Flavio Cobolli,M,3,Baseline grinder / counterpuncher,3732
-Guillermo Coria,M,3,Baseline grinder / counterpuncher,3732
-Roberto Carballes Baena,M,3,Baseline grinder / counterpuncher,3721
-Pat Cash,M,2,Net-rusher / serve-volleyer,3601
-Zhizhen Zhang,M,1,Big-serving baseliner,3593
-Alejandro Tabilo,M,3,Baseline grinder / counterpuncher,3588
-John Millman,M,3,Baseline grinder / counterpuncher,3580
-Daniel Altmaier,M,0,Slice & variety,3477
-Steve Johnson,M,0,Slice & variety,3458
-Guy Forget,M,2,Net-rusher / serve-volleyer,3450
-Fabian Marozsan,M,3,Baseline grinder / counterpuncher,3394
-Sam Querrey,M,1,Big-serving baseliner,3392
-Matteo Arnaldi,M,3,Baseline grinder / counterpuncher,3388
-Tommy Robredo,M,3,Baseline grinder / counterpuncher,3368
-Arthur Rinderknech,M,1,Big-serving baseliner,3342
-Nuno Borges,M,1,Big-serving baseliner,3258
-Jeremy Chardy,M,1,Big-serving baseliner,3208
-Filip Krajinovic,M,1,Big-serving baseliner,3192
-Cedric Pioline,M,2,Net-rusher / serve-volleyer,3173
-Thiago Seyboth Wild,M,3,Baseline grinder / counterpuncher,3170
-Nicolas Almagro,M,3,Baseline grinder / counterpuncher,3082
-Ernests Gulbis,M,1,Big-serving baseliner,3077
-Henri Leconte,M,2,Net-rusher / serve-volleyer,3051
-Zizou Bergs,M,1,Big-serving baseliner,2988
-Guido Pella,M,3,Baseline grinder / counterpuncher,2974
-Marco Cecchinato,M,3,Baseline grinder / counterpuncher,2955
-Ivan Ljubicic,M,1,Big-serving baseliner,2949
-Christopher Eubanks,M,0,Slice & variety,2883
-Vasek Pospisil,M,1,Big-serving baseliner,2859
-Christopher Oconnell,M,0,Slice & variety,2857
-Radek Stepanek,M,2,Net-rusher / serve-volleyer,2839
-Thomas Enqvist,M,1,Big-serving baseliner,2789
-Federico Delbonis,M,3,Baseline grinder / counterpuncher,2786
-Tim Van Rijthoven,M,0,Slice & variety,2759
-Alexander Shevchenko,M,3,Baseline grinder / counterpuncher,2735
-Jack Sock,M,1,Big-serving baseliner,2722
-Mikhail Kukushkin,M,3,Baseline grinder / counterpuncher,2718
-Andrei Chesnokov,M,3,Baseline grinder / counterpuncher,2717
-Alex Michelsen,M,3,Baseline grinder / counterpuncher,2706
-Roman Safiullin,M,3,Baseline grinder / counterpuncher,2703
-Sebastien Grosjean,M,3,Baseline grinder / counterpuncher,2677
-Arnaud Clement,M,3,Baseline grinder / counterpuncher,2652
-Leonardo Mayer,M,3,Baseline grinder / counterpuncher,2650
-Daniel Elahi Galan,M,3,Baseline grinder / counterpuncher,2620
-Nishesh Basavareddy,M,3,Baseline grinder / counterpuncher,2595
-Joao Sousa,M,3,Baseline grinder / counterpuncher,2561
-Mikael Ymer,M,3,Baseline grinder / counterpuncher,2556
-Radu Albot,M,3,Baseline grinder / counterpuncher,2544
-Pierre Hugues Herbert,M,1,Big-serving baseliner,2513
-Sergiy Stakhovsky,M,2,Net-rusher / serve-volleyer,2455
-Gilles Muller,M,1,Big-serving baseliner,2378
-Dustin Brown,M,2,Net-rusher / serve-volleyer,2358
-Mardy Fish,M,1,Big-serving baseliner,2347
-Marc Rosset,M,1,Big-serving baseliner,2266
-Gijs Brouwer,M,1,Big-serving baseliner,2264
-Tennys Sandgren,M,0,Slice & variety,2259
-Nicolas Mahut,M,2,Net-rusher / serve-volleyer,2255
-Jonas Bjorkman,M,2,Net-rusher / serve-volleyer,2242
-Nicolas Massu,M,3,Baseline grinder / counterpuncher,2237
-Thomas Johansson,M,3,Baseline grinder / counterpuncher,2229
-Otto Virtanen,M,1,Big-serving baseliner,2174
-Gabriel Diallo,M,1,Big-serving baseliner,2171
-Aleksandar Vukic,M,1,Big-serving baseliner,2147
-Jiri Novak,M,3,Baseline grinder / counterpuncher,2143
-Wayne Ferreira,M,3,Baseline grinder / counterpuncher,2138
-Mariano Navone,M,3,Baseline grinder / counterpuncher,2102
-Yannick Hanfmann,M,1,Big-serving baseliner,2100
-Fabrice Santoro,M,0,Slice & variety,2088
-Rinky Hijikata,M,3,Baseline grinder / counterpuncher,2051
-Alex Molcan,M,3,Baseline grinder / counterpuncher,2043
-Arthur Cazaux,M,1,Big-serving baseliner,2037
-Thiago Monteiro,M,1,Big-serving baseliner,2010
-Iga Swiatek,W,0,All-courter,28272
-Bianca Andreescu,W,0,All-courter,27379
-Elina Svitolina,W,3,Baseline grinder / counterpuncher,21508
+Roger Federer (1998–2009),M,2,Slice & variety,62202
+Roger Federer (2010–2021),M,2,Slice & variety,61853
+Hubert Hurkacz,M,3,Big-serving baseliner,53897
+Novak Djokovic (2005–2016),M,0,Baseline grinder / counterpuncher,47569
+Novak Djokovic (2017–2026),M,0,Baseline grinder / counterpuncher,45497
+Daniil Medvedev,M,3,Big-serving baseliner,45388
+Rafael Nadal (2003–2014),M,0,Baseline grinder / counterpuncher,41003
+Carlos Alcaraz,M,0,Baseline grinder / counterpuncher,36875
+Dominic Thiem,M,3,Big-serving baseliner,29884
+Rafael Nadal (2015–2024),M,0,Baseline grinder / counterpuncher,29605
+Grigor Dimitrov,M,2,Slice & variety,27487
+Casper Ruud,M,0,Baseline grinder / counterpuncher,26053
+Jannik Sinner (2013–2023),M,0,Baseline grinder / counterpuncher,25145
+Lleyton Hewitt,M,0,Baseline grinder / counterpuncher,24704
+Stan Wawrinka,M,2,Slice & variety,24584
+Gael Monfils,M,3,Big-serving baseliner,22904
+Andy Murray (2005–2014),M,0,Baseline grinder / counterpuncher,22762
+Jannik Sinner (2024–2026),M,0,Baseline grinder / counterpuncher,22488
+Pete Sampras (1990–1995),M,1,Net-rusher / serve-volleyer,22465
+Alex De Minaur,M,0,Baseline grinder / counterpuncher,22005
+Pete Sampras (1996–2002),M,1,Net-rusher / serve-volleyer,21584
+Andy Roddick,M,3,Big-serving baseliner,21254
+Andy Murray (2015–2024),M,0,Baseline grinder / counterpuncher,21253
+Andre Agassi (1988–1997),M,0,Baseline grinder / counterpuncher,20697
+Taylor Fritz,M,3,Big-serving baseliner,20678
+Andre Agassi (1998–2006),M,0,Baseline grinder / counterpuncher,20615
+Lorenzo Musetti,M,0,Baseline grinder / counterpuncher,20506
+Nick Kyrgios,M,3,Big-serving baseliner,20029
+Alexander Zverev (2014–2023),M,3,Big-serving baseliner,19843
+Tallon Griekspoor,M,3,Big-serving baseliner,19578
+Stefanos Tsitsipas (2016–2022),M,3,Big-serving baseliner,19485
+Botic Van De Zandschulp,M,3,Big-serving baseliner,18965
+Andrey Rublev (2015–2023),M,3,Big-serving baseliner,18031
+Stefan Edberg (1985–1991),M,1,Net-rusher / serve-volleyer,17805
+Stefan Edberg (1992–2012),M,1,Net-rusher / serve-volleyer,17635
+Marat Safin,M,3,Big-serving baseliner,17034
+Boris Becker (1985–1990),M,1,Net-rusher / serve-volleyer,16110
+Felix Auger Aliassime,M,3,Big-serving baseliner,16093
+John Isner,M,3,Big-serving baseliner,15627
+Matteo Berrettini,M,2,Slice & variety,15119
+Richard Gasquet,M,0,Baseline grinder / counterpuncher,15002
+Boris Becker (1991–1999),M,1,Net-rusher / serve-volleyer,14930
+Marin Cilic,M,3,Big-serving baseliner,14855
+Denis Shapovalov,M,3,Big-serving baseliner,14698
+Milos Raonic,M,3,Big-serving baseliner,13928
+Jo Wilfried Tsonga,M,3,Big-serving baseliner,13732
+Stefanos Tsitsipas (2023–2026),M,3,Big-serving baseliner,13607
+Juan Martin Del Potro (2007–2013),M,3,Big-serving baseliner,12953
+Tommy Paul,M,0,Baseline grinder / counterpuncher,12939
+Ivan Lendl (1979–1987),M,0,Baseline grinder / counterpuncher,12850
+David Goffin,M,3,Big-serving baseliner,12602
+Juan Martin Del Potro (2014–2022),M,3,Big-serving baseliner,12556
+Roberto Bautista Agut,M,0,Baseline grinder / counterpuncher,12026
+Alexander Zverev (2024–2026),M,3,Big-serving baseliner,11967
+Yevgeny Kafelnikov,M,3,Big-serving baseliner,11902
+Kei Nishikori,M,0,Baseline grinder / counterpuncher,11742
+Adrian Mannarino,M,0,Baseline grinder / counterpuncher,11547
+Nikolay Davydenko,M,0,Baseline grinder / counterpuncher,11295
+Holger Rune,M,3,Big-serving baseliner,11291
+Gustavo Kuerten,M,3,Big-serving baseliner,11262
+Ivan Lendl (1988–1994),M,2,Slice & variety,11155
+Arthur Fils,M,3,Big-serving baseliner,10306
+Jim Courier,M,0,Baseline grinder / counterpuncher,10206
+Alejandro Davidovich Fokina,M,0,Baseline grinder / counterpuncher,9774
+Patrick Rafter,M,1,Net-rusher / serve-volleyer,9674
+Michael Stich,M,1,Net-rusher / serve-volleyer,9665
+Gilles Simon,M,0,Baseline grinder / counterpuncher,9568
+Fernando Gonzalez,M,2,Slice & variety,9346
+Andrey Rublev (2024–2026),M,3,Big-serving baseliner,8689
+Sebastian Korda,M,3,Big-serving baseliner,8686
+David Nalbandian,M,0,Baseline grinder / counterpuncher,8661
+Reilly Opelka,M,3,Big-serving baseliner,8611
+Alexander Bublik (2017–2023),M,2,Slice & variety,8579
+Ugo Humbert,M,3,Big-serving baseliner,8347
+Jiri Lehecka,M,3,Big-serving baseliner,8178
+Fernando Verdasco,M,3,Big-serving baseliner,8173
+Ben Shelton,M,3,Big-serving baseliner,8162
+Joao Fonseca,M,3,Big-serving baseliner,8124
+Frances Tiafoe,M,3,Big-serving baseliner,8030
+Miomir Kecmanovic,M,0,Baseline grinder / counterpuncher,7907
+Diego Schwartzman,M,0,Baseline grinder / counterpuncher,7861
+Borna Coric,M,3,Big-serving baseliner,7608
+John Mcenroe (1978–1985),M,1,Net-rusher / serve-volleyer,7552
+Ivo Karlovic,M,2,Slice & variety,7540
+Nicolas Jarry,M,3,Big-serving baseliner,7517
+Marton Fucsovics,M,0,Baseline grinder / counterpuncher,7517
+Tommy Haas,M,2,Slice & variety,7460
+Tomas Berdych (2005–2013),M,3,Big-serving baseliner,7456
+Lorenzo Sonego,M,0,Baseline grinder / counterpuncher,7448
+Robin Haase,M,3,Big-serving baseliner,7422
+Cameron Norrie,M,0,Baseline grinder / counterpuncher,7370
+David Ferrer (2003–2013),M,0,Baseline grinder / counterpuncher,7289
+Sebastian Baez,M,0,Baseline grinder / counterpuncher,7074
+Brandon Nakashima,M,3,Big-serving baseliner,7011
+Fabio Fognini,M,3,Big-serving baseliner,7009
+Jan Lennard Struff,M,3,Big-serving baseliner,6936
+Pablo Carreno Busta,M,0,Baseline grinder / counterpuncher,6926
+Mikhail Youzhny,M,2,Slice & variety,6921
+Goran Ivanisevic (1990–1994),M,1,Net-rusher / serve-volleyer,6879
+Karen Khachanov (2015–2022),M,3,Big-serving baseliner,6799
+Francisco Cerundolo,M,0,Baseline grinder / counterpuncher,6664
+Tomas Berdych (2014–2019),M,3,Big-serving baseliner,6591
+James Blake,M,3,Big-serving baseliner,6565
+Carlos Moya,M,0,Baseline grinder / counterpuncher,6511
+Mats Wilander,M,0,Baseline grinder / counterpuncher,6477
+Karim Mohamed Maamoun,M,3,Big-serving baseliner,6380
+Emil Ruusuvuori,M,3,Big-serving baseliner,6318
+Jaume Munar,M,0,Baseline grinder / counterpuncher,6278
+Philipp Kohlschreiber,M,0,Baseline grinder / counterpuncher,6217
+Karen Khachanov (2023–2026),M,0,Baseline grinder / counterpuncher,6202
+Yoshihito Nishioka,M,0,Baseline grinder / counterpuncher,6152
+John Mcenroe (1986–1992),M,1,Net-rusher / serve-volleyer,6031
+Alexander Bublik (2024–2026),M,2,Slice & variety,5901
+Thomas Muster,M,0,Baseline grinder / counterpuncher,5781
+Jesper De Jong,M,3,Big-serving baseliner,5764
+Alexei Popyrin,M,3,Big-serving baseliner,5688
+Dusan Lajovic,M,0,Baseline grinder / counterpuncher,5650
+Maxime Cressy,M,1,Net-rusher / serve-volleyer,5594
+Laslo Djere,M,3,Big-serving baseliner,5434
+Jakub Mensik,M,3,Big-serving baseliner,5382
+Juan Carlos Ferrero,M,0,Baseline grinder / counterpuncher,5295
+Todd Martin,M,1,Net-rusher / serve-volleyer,5287
+Giovanni Mpetshi Perricard,M,2,Slice & variety,5212
+Goran Ivanisevic (1995–2001),M,1,Net-rusher / serve-volleyer,5208
+Petr Korda,M,3,Big-serving baseliner,5120
+Bernard Tomic,M,3,Big-serving baseliner,5052
+Thanasi Kokkinakis,M,3,Big-serving baseliner,5027
+Tomas Machac,M,3,Big-serving baseliner,5010
+Janko Tipsarevic,M,3,Big-serving baseliner,5001
+Lucas Pouille,M,3,Big-serving baseliner,4985
+Daniel Evans,M,2,Slice & variety,4968
+Jenson Brooksby,M,0,Baseline grinder / counterpuncher,4929
+Aslan Karatsev,M,3,Big-serving baseliner,4838
+Feliciano Lopez (2003–2017),M,2,Slice & variety,4834
+Marcos Giron,M,0,Baseline grinder / counterpuncher,4788
+Nikoloz Basilashvili,M,3,Big-serving baseliner,4784
+Andreas Seppi,M,0,Baseline grinder / counterpuncher,4770
+Kevin Anderson,M,3,Big-serving baseliner,4701
+Marcos Baghdatis,M,3,Big-serving baseliner,4662
+Jack Draper,M,3,Big-serving baseliner,4620
+Mackenzie Mcdonald,M,3,Big-serving baseliner,4607
+Pedro Martinez,M,0,Baseline grinder / counterpuncher,4602
+David Ferrer (2014–2019),M,0,Baseline grinder / counterpuncher,4525
+Jordan Thompson,M,3,Big-serving baseliner,4487
+Benoit Paire (2012–2019),M,3,Big-serving baseliner,4473
+Mark Philippoussis,M,1,Net-rusher / serve-volleyer,4439
+Feliciano Lopez (2018–2023),M,2,Slice & variety,4321
+Aljaz Bedene,M,3,Big-serving baseliner,4317
+Cristian Garin,M,3,Big-serving baseliner,4286
+Jimmy Connors (1974–1984),M,0,Baseline grinder / counterpuncher,4264
+Richard Krajicek (1992–1996),M,1,Net-rusher / serve-volleyer,4196
+Greg Rusedski,M,1,Net-rusher / serve-volleyer,4153
+Alexandr Dolgopolov,M,0,Baseline grinder / counterpuncher,4087
+Bjorn Borg,M,0,Baseline grinder / counterpuncher,4065
+Tomas Martin Etcheverry,M,0,Baseline grinder / counterpuncher,4041
+Albert Ramos,M,0,Baseline grinder / counterpuncher,4034
+Sergi Bruguera,M,0,Baseline grinder / counterpuncher,4031
+Marcelo Rios,M,0,Baseline grinder / counterpuncher,3971
+Learner Tien,M,3,Big-serving baseliner,3961
+Robin Soderling,M,3,Big-serving baseliner,3954
+Alex Corretja,M,0,Baseline grinder / counterpuncher,3919
+Corentin Moutet,M,2,Slice & variety,3806
+Michael Chang (1989–1993),M,0,Baseline grinder / counterpuncher,3756
+Guillermo Coria,M,0,Baseline grinder / counterpuncher,3732
+Flavio Cobolli,M,3,Big-serving baseliner,3732
+Roberto Carballes Baena,M,0,Baseline grinder / counterpuncher,3721
+Tim Henman (1995–1999),M,1,Net-rusher / serve-volleyer,3669
+Pat Cash,M,1,Net-rusher / serve-volleyer,3601
+Zhizhen Zhang,M,3,Big-serving baseliner,3593
+Alejandro Tabilo,M,0,Baseline grinder / counterpuncher,3588
+John Millman,M,0,Baseline grinder / counterpuncher,3580
+Tim Henman (2000–2006),M,2,Slice & variety,3533
+Michael Chang (1994–1998),M,3,Big-serving baseliner,3523
+Daniel Altmaier,M,2,Slice & variety,3477
+Steve Johnson,M,2,Slice & variety,3458
+Guy Forget,M,1,Net-rusher / serve-volleyer,3450
+Fabian Marozsan,M,3,Big-serving baseliner,3394
+Sam Querrey,M,3,Big-serving baseliner,3392
+Matteo Arnaldi,M,3,Big-serving baseliner,3388
+Tommy Robredo,M,0,Baseline grinder / counterpuncher,3368
+Arthur Rinderknech,M,3,Big-serving baseliner,3342
+Nuno Borges,M,3,Big-serving baseliner,3258
+Jimmy Connors (1985–1991),M,0,Baseline grinder / counterpuncher,3230
+Jeremy Chardy,M,3,Big-serving baseliner,3208
+Filip Krajinovic,M,3,Big-serving baseliner,3192
+Cedric Pioline,M,1,Net-rusher / serve-volleyer,3173
+Thiago Seyboth Wild,M,3,Big-serving baseliner,3170
+Nicolas Almagro,M,3,Big-serving baseliner,3082
+Ernests Gulbis,M,3,Big-serving baseliner,3077
+Henri Leconte,M,1,Net-rusher / serve-volleyer,3051
+Zizou Bergs,M,3,Big-serving baseliner,2988
+Guido Pella,M,0,Baseline grinder / counterpuncher,2974
+Marco Cecchinato,M,3,Big-serving baseliner,2955
+Ivan Ljubicic,M,3,Big-serving baseliner,2949
+Christopher Eubanks,M,2,Slice & variety,2883
+Vasek Pospisil,M,3,Big-serving baseliner,2859
+Christopher Oconnell,M,2,Slice & variety,2857
+Benoit Paire (2020–2022),M,3,Big-serving baseliner,2848
+Radek Stepanek,M,1,Net-rusher / serve-volleyer,2839
+Thomas Enqvist,M,3,Big-serving baseliner,2789
+Federico Delbonis,M,0,Baseline grinder / counterpuncher,2786
+Tim Van Rijthoven,M,2,Slice & variety,2759
+Alexander Shevchenko,M,0,Baseline grinder / counterpuncher,2735
+Jack Sock,M,3,Big-serving baseliner,2722
+Mikhail Kukushkin,M,0,Baseline grinder / counterpuncher,2718
+Andrei Chesnokov,M,0,Baseline grinder / counterpuncher,2717
+Richard Krajicek (1997–2000),M,1,Net-rusher / serve-volleyer,2713
+Alex Michelsen,M,0,Baseline grinder / counterpuncher,2706
+Roman Safiullin,M,3,Big-serving baseliner,2703
+Sebastien Grosjean,M,3,Big-serving baseliner,2677
+Arnaud Clement,M,0,Baseline grinder / counterpuncher,2652
+Leonardo Mayer,M,3,Big-serving baseliner,2650
+Daniel Elahi Galan,M,0,Baseline grinder / counterpuncher,2620
+Nishesh Basavareddy,M,0,Baseline grinder / counterpuncher,2595
+Joao Sousa,M,0,Baseline grinder / counterpuncher,2561
+Mikael Ymer,M,0,Baseline grinder / counterpuncher,2556
+Radu Albot,M,0,Baseline grinder / counterpuncher,2544
+Pierre Hugues Herbert,M,3,Big-serving baseliner,2513
+Sergiy Stakhovsky,M,2,Slice & variety,2455
+Gilles Muller,M,2,Slice & variety,2378
+Dustin Brown,M,1,Net-rusher / serve-volleyer,2358
+Mardy Fish,M,3,Big-serving baseliner,2347
+Marc Rosset,M,3,Big-serving baseliner,2266
+Gijs Brouwer,M,3,Big-serving baseliner,2264
+Tennys Sandgren,M,3,Big-serving baseliner,2259
+Nicolas Mahut,M,2,Slice & variety,2255
+Jonas Bjorkman,M,1,Net-rusher / serve-volleyer,2242
+Nicolas Massu,M,0,Baseline grinder / counterpuncher,2237
+Thomas Johansson,M,0,Baseline grinder / counterpuncher,2229
+Otto Virtanen,M,3,Big-serving baseliner,2174
+Gabriel Diallo,M,3,Big-serving baseliner,2171
+Aleksandar Vukic,M,3,Big-serving baseliner,2147
+Jiri Novak,M,0,Baseline grinder / counterpuncher,2143
+Wayne Ferreira,M,3,Big-serving baseliner,2138
+Mariano Navone,M,0,Baseline grinder / counterpuncher,2102
+Yannick Hanfmann,M,3,Big-serving baseliner,2100
+Fabrice Santoro,M,0,Baseline grinder / counterpuncher,2088
+Rinky Hijikata,M,3,Big-serving baseliner,2051
+Alex Molcan,M,0,Baseline grinder / counterpuncher,2043
+Arthur Cazaux,M,3,Big-serving baseliner,2037
+Thiago Monteiro,M,3,Big-serving baseliner,2010
+Iga Swiatek,W,1,All-courter,28272
+Elina Svitolina,W,1,All-courter,21508
 Caroline Wozniacki,W,3,Baseline grinder / counterpuncher,20874
 Serena Williams,W,2,Big serve / first-strike,19698
 Elena Rybakina,W,2,Big serve / first-strike,17887
 Kiki Bertens,W,2,Big serve / first-strike,17141
+Bianca Andreescu (2017–2022),W,1,All-courter,16694
 Mirra Andreeva,W,3,Baseline grinder / counterpuncher,15906
 Maria Sharapova,W,2,Big serve / first-strike,15431
-Coco Gauff,W,3,Baseline grinder / counterpuncher,14178
-Venus Williams,W,0,All-courter,13866
-Victoria Azarenka,W,3,Baseline grinder / counterpuncher,13638
+Coco Gauff,W,1,All-courter,14178
 Petra Kvitova,W,2,Big serve / first-strike,13431
-Garbine Muguruza,W,0,All-courter,12832
-Steffi Graf,W,1,Slice & net specialist,12324
-Jessica Pegula,W,0,All-courter,11776
-Karolina Pliskova,W,2,Big serve / first-strike,11546
-Sofia Kenin,W,2,Big serve / first-strike,11471
+Garbine Muguruza,W,1,All-courter,12832
+Steffi Graf,W,0,Slice & net specialist,12324
+Sofia Kenin,W,1,All-courter,11471
 Angelique Kerber,W,3,Baseline grinder / counterpuncher,11421
-Belinda Bencic,W,3,Baseline grinder / counterpuncher,10471
+Bianca Andreescu (2023–2026),W,1,All-courter,10543
+Belinda Bencic,W,1,All-courter,10471
 Amanda Anisimova,W,2,Big serve / first-strike,10243
 Karolina Muchova,W,3,Baseline grinder / counterpuncher,10097
-Daria Kasatkina,W,3,Baseline grinder / counterpuncher,9730
-Magda Linette,W,3,Baseline grinder / counterpuncher,9589
 Naomi Osaka,W,2,Big serve / first-strike,9299
 Ekaterina Alexandrova,W,2,Big serve / first-strike,9069
-Maria Sakkari,W,0,All-courter,9048
+Maria Sakkari,W,1,All-courter,9048
 Emma Raducanu,W,3,Baseline grinder / counterpuncher,9017
 Madison Keys,W,2,Big serve / first-strike,8990
-Marta Kostyuk,W,0,All-courter,8896
-Arantxa Rus,W,0,All-courter,8829
-Eugenie Bouchard,W,0,All-courter,8211
+Jessica Pegula (2015–2024),W,1,All-courter,8899
+Marta Kostyuk,W,1,All-courter,8896
+Arantxa Rus,W,3,Baseline grinder / counterpuncher,8829
 Donna Vekic,W,2,Big serve / first-strike,7886
 Aryna Sabalenka,W,2,Big serve / first-strike,7832
+Venus Williams (1997–2014),W,1,All-courter,7611
 Agnieszka Radwanska,W,3,Baseline grinder / counterpuncher,7580
-Justine Henin,W,0,All-courter,7397
-Ashleigh Barty,W,2,Big serve / first-strike,7270
-Jasmine Paolini,W,0,All-courter,7239
-Paula Badosa,W,3,Baseline grinder / counterpuncher,7202
+Justine Henin,W,1,All-courter,7397
+Ashleigh Barty,W,0,Slice & net specialist,7270
+Karolina Pliskova (2013–2019),W,2,Big serve / first-strike,7253
+Jasmine Paolini,W,1,All-courter,7239
+Paula Badosa,W,1,All-courter,7202
+Victoria Azarenka (2009–2019),W,1,All-courter,7174
 Jelena Ostapenko,W,2,Big serve / first-strike,7032
 Elena Dementieva,W,3,Baseline grinder / counterpuncher,6998
 Qinwen Zheng,W,2,Big serve / first-strike,6752
 Ana Ivanovic,W,2,Big serve / first-strike,6751
 Ons Jabeur,W,2,Big serve / first-strike,6570
 Kim Clijsters,W,3,Baseline grinder / counterpuncher,6502
+Victoria Azarenka (2020–2025),W,1,All-courter,6464
 Linda Noskova,W,2,Big serve / first-strike,6279
-Leylah Fernandez,W,3,Baseline grinder / counterpuncher,6145
-Iva Jovic,W,0,All-courter,6134
+Venus Williams (2015–2026),W,1,All-courter,6255
+Leylah Fernandez,W,1,All-courter,6145
+Iva Jovic,W,1,All-courter,6134
 Danielle Collins,W,2,Big serve / first-strike,5908
 Liudmila Samsonova,W,2,Big serve / first-strike,5901
 Clara Tauson,W,2,Big serve / first-strike,5842
-Marketa Vondrousova,W,0,All-courter,5778
+Marketa Vondrousova,W,1,All-courter,5778
 Veronika Kudermetova,W,2,Big serve / first-strike,5706
-Elise Mertens,W,3,Baseline grinder / counterpuncher,5549
+Elise Mertens,W,1,All-courter,5549
+Daria Kasatkina (2015–2022),W,3,Baseline grinder / counterpuncher,5482
+Magda Linette (2016–2024),W,3,Baseline grinder / counterpuncher,5422
 Caroline Garcia,W,2,Big serve / first-strike,5364
-Martina Navratilova,W,1,Slice & net specialist,5323
+Eugenie Bouchard (2013–2016),W,1,All-courter,5346
+Martina Navratilova,W,0,Slice & net specialist,5323
 Marie Bouzkova,W,3,Baseline grinder / counterpuncher,5303
 Anett Kontaveit,W,2,Big serve / first-strike,5281
-Camila Giorgi,W,0,All-courter,5280
+Camila Giorgi,W,1,All-courter,5280
 Svetlana Kuznetsova,W,3,Baseline grinder / counterpuncher,5264
 Lindsay Davenport,W,2,Big serve / first-strike,5256
-Anna Kalinskaya,W,3,Baseline grinder / counterpuncher,5137
+Anna Kalinskaya,W,1,All-courter,5137
 Martina Hingis,W,3,Baseline grinder / counterpuncher,5070
 Sara Sorribes Tormo,W,3,Baseline grinder / counterpuncher,5038
-Carla Suarez Navarro,W,0,All-courter,4876
-Sorana Cirstea,W,3,Baseline grinder / counterpuncher,4789
-Monica Seles,W,0,All-courter,4784
+Carla Suarez Navarro,W,3,Baseline grinder / counterpuncher,4876
+Sorana Cirstea,W,1,All-courter,4789
+Monica Seles,W,1,All-courter,4784
 Sloane Stephens,W,3,Baseline grinder / counterpuncher,4740
-Anastasia Pavlyuchenkova,W,2,Big serve / first-strike,4587
-Anastasia Potapova,W,3,Baseline grinder / counterpuncher,4442
+Anastasia Pavlyuchenkova,W,1,All-courter,4587
+Anastasia Potapova,W,1,All-courter,4442
 Dayana Yastremska,W,2,Big serve / first-strike,4425
-Suzan Lamens,W,0,All-courter,4284
+Karolina Pliskova (2020–2026),W,2,Big serve / first-strike,4293
+Suzan Lamens,W,1,All-courter,4284
 Yulia Putintseva,W,3,Baseline grinder / counterpuncher,4273
 Alize Cornet,W,3,Baseline grinder / counterpuncher,4259
-Katerina Siniakova,W,0,All-courter,4191
-Jil Teichmann,W,0,All-courter,4165
+Daria Kasatkina (2023–2026),W,1,All-courter,4248
+Katerina Siniakova,W,1,All-courter,4191
+Magda Linette (2025–2026),W,2,Big serve / first-strike,4167
+Jil Teichmann,W,3,Baseline grinder / counterpuncher,4165
 Barbora Krejcikova,W,2,Big serve / first-strike,4049
-Olga Danilovic,W,3,Baseline grinder / counterpuncher,4035
+Olga Danilovic,W,1,All-courter,4035
 Lucie Safarova,W,2,Big serve / first-strike,3931
-Dominika Cibulkova,W,0,All-courter,3909
-Diana Shnaider,W,0,All-courter,3897
+Dominika Cibulkova,W,1,All-courter,3909
+Diana Shnaider,W,1,All-courter,3897
 Sara Errani,W,3,Baseline grinder / counterpuncher,3722
 Jelena Jankovic,W,3,Baseline grinder / counterpuncher,3657
-Amelie Mauresmo,W,1,Slice & net specialist,3644
-Emma Navarro,W,3,Baseline grinder / counterpuncher,3608
+Amelie Mauresmo,W,0,Slice & net specialist,3644
+Emma Navarro,W,1,All-courter,3608
 Arantxa Sanchez Vicario,W,3,Baseline grinder / counterpuncher,3601
-Alison Riske Amritraj,W,0,All-courter,3594
+Alison Riske Amritraj,W,1,All-courter,3594
 Su Wei Hsieh,W,3,Baseline grinder / counterpuncher,3590
-Samantha Stosur,W,0,All-courter,3574
+Samantha Stosur,W,1,All-courter,3574
 Petra Martic,W,3,Baseline grinder / counterpuncher,3562
 Chris Evert,W,3,Baseline grinder / counterpuncher,3551
-Aliaksandra Sasnovich,W,0,All-courter,3546
-Laura Siegemund,W,0,All-courter,3372
+Aliaksandra Sasnovich,W,1,All-courter,3546
+Laura Siegemund,W,1,All-courter,3372
 Sabine Lisicki,W,2,Big serve / first-strike,3370
-Victoria Mboko,W,3,Baseline grinder / counterpuncher,3334
+Victoria Mboko,W,1,All-courter,3334
 Julia Goerges,W,2,Big serve / first-strike,3310
-Linda Fruhvirtova,W,3,Baseline grinder / counterpuncher,3166
+Linda Fruhvirtova,W,1,All-courter,3166
 Ashlyn Krueger,W,2,Big serve / first-strike,3097
 Magdalena Frech,W,3,Baseline grinder / counterpuncher,3041
 Katie Volynets,W,3,Baseline grinder / counterpuncher,3006
-Kristina Mladenovic,W,3,Baseline grinder / counterpuncher,2864
-Ajla Tomljanovic,W,3,Baseline grinder / counterpuncher,2862
+Jessica Pegula (2025–2026),W,1,All-courter,2877
+Eugenie Bouchard (2017–2023),W,1,All-courter,2865
+Kristina Mladenovic,W,1,All-courter,2864
+Ajla Tomljanovic,W,1,All-courter,2862
 Johanna Konta,W,2,Big serve / first-strike,2858
 Alycia Parks,W,2,Big serve / first-strike,2854
 Anhelina Kalinina,W,3,Baseline grinder / counterpuncher,2825
-Xin Yu Wang,W,0,All-courter,2742
+Xin Yu Wang,W,1,All-courter,2742
 Mary Pierce,W,3,Baseline grinder / counterpuncher,2735
 Katie Boulter,W,2,Big serve / first-strike,2711
-Tamara Zidansek,W,0,All-courter,2703
-Arianne Hartono,W,0,All-courter,2674
-Jaqueline Cristian,W,0,All-courter,2664
-Tatjana Maria,W,1,Slice & net specialist,2648
-Polona Hercog,W,0,All-courter,2648
-Kaja Juvan,W,0,All-courter,2638
+Tamara Zidansek,W,3,Baseline grinder / counterpuncher,2703
+Arianne Hartono,W,1,All-courter,2674
+Jaqueline Cristian,W,1,All-courter,2664
+Tatjana Maria,W,0,Slice & net specialist,2648
+Polona Hercog,W,1,All-courter,2648
+Kaja Juvan,W,3,Baseline grinder / counterpuncher,2638
 Jennifer Brady,W,2,Big serve / first-strike,2628
-Shelby Rogers,W,3,Baseline grinder / counterpuncher,2601
+Shelby Rogers,W,1,All-courter,2601
 Elina Avanesyan,W,3,Baseline grinder / counterpuncher,2572
-Beatriz Haddad Maia,W,0,All-courter,2564
-Camila Osorio,W,3,Baseline grinder / counterpuncher,2564
+Beatriz Haddad Maia,W,1,All-courter,2564
+Camila Osorio,W,1,All-courter,2564
 Viktorija Golubic,W,3,Baseline grinder / counterpuncher,2562
-Andrea Petkovic,W,0,All-courter,2550
-Anna Blinkova,W,3,Baseline grinder / counterpuncher,2473
-Alexandra Eala,W,0,All-courter,2456
-Anna Bondar,W,3,Baseline grinder / counterpuncher,2436
-Shuai Zhang,W,0,All-courter,2387
-Eva Lys,W,0,All-courter,2343
-Lesia Tsurenko,W,0,All-courter,2336
-Taylor Townsend,W,2,Big serve / first-strike,2323
+Andrea Petkovic,W,1,All-courter,2550
+Anna Blinkova,W,1,All-courter,2473
+Alexandra Eala,W,1,All-courter,2456
+Anna Bondar,W,1,All-courter,2436
+Shuai Zhang,W,1,All-courter,2387
+Eva Lys,W,1,All-courter,2343
+Lesia Tsurenko,W,3,Baseline grinder / counterpuncher,2336
+Taylor Townsend,W,0,Slice & net specialist,2323
 Rebecca Marino,W,2,Big serve / first-strike,2284
-Peyton Stearns,W,0,All-courter,2269
-Maya Joint,W,0,All-courter,2233
-Daria Saville,W,3,Baseline grinder / counterpuncher,2225
+Peyton Stearns,W,1,All-courter,2269
+Maya Joint,W,1,All-courter,2233
+Daria Saville,W,1,All-courter,2225
 Anastasija Sevastova,W,3,Baseline grinder / counterpuncher,2221
-Dinara Safina,W,0,All-courter,2219
-Simona Halep,W,0,All-courter,2180
+Dinara Safina,W,1,All-courter,2219
+Simona Halep,W,1,All-courter,2180
 Talia Gibson,W,2,Big serve / first-strike,2167
 Flavia Pennetta,W,3,Baseline grinder / counterpuncher,2135
-Na Li,W,0,All-courter,2102
+Na Li,W,1,All-courter,2102
 Coco Vandeweghe,W,2,Big serve / first-strike,2078
-Bernarda Pera,W,0,All-courter,2060
-Lauren Davis,W,0,All-courter,2059
-Monica Niculescu,W,1,Slice & net specialist,2031
+Bernarda Pera,W,1,All-courter,2060
+Lauren Davis,W,1,All-courter,2059
+Monica Niculescu,W,0,Slice & net specialist,2031
 Anastasia Myskina,W,3,Baseline grinder / counterpuncher,2030
-Nuria Parrizas Diaz,W,0,All-courter,2020
+Nuria Parrizas Diaz,W,3,Baseline grinder / counterpuncher,2020

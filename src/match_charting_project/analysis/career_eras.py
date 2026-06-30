@@ -225,6 +225,32 @@ def compute_player_eras(con):
     return pd.DataFrame(out).sort_values(["gender", "player", "era"]).reset_index(drop=True)
 
 
+def load_era_map(con) -> dict:
+    """``{(gender, player): [(y0, y1, entity), ...]}`` for SPLIT careers, from player_eras.
+
+    Returns ``{}`` if the optional table hasn't been built. Consumers map a point's
+    ``(gender, player, year)`` through this and fall back to the plain player name for
+    anyone not listed — see ``entity_of``.
+    """
+    if "player_eras" not in {t[0] for t in con.execute("SHOW TABLES").fetchall()}:
+        return {}
+    m: dict = defaultdict(list)
+    for g, p, y0, y1, ent in con.execute(
+        "SELECT gender, player, year_start, year_end, entity FROM player_eras WHERE n_eras > 1"
+    ).fetchall():
+        m[(g, p)].append((int(y0), int(y1), ent))
+    return dict(m)
+
+
+def entity_of(era_map: dict, gender: str, player: str, year) -> str:
+    """Resolve a point's ``(gender, player, year)`` to its career-era entity label."""
+    if era_map and year is not None:
+        for y0, y1, ent in era_map.get((gender, player), ()):
+            if y0 <= year <= y1:
+                return ent
+    return player
+
+
 def build_player_eras() -> int:
     """(Re)create the ``player_eras`` parquet + DuckDB table. Returns row count."""
     import duckdb

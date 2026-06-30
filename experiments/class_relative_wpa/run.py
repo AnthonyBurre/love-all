@@ -10,8 +10,9 @@ Output is just ranking lists for others to slice:
   reports/class_relative_wpa.csv   one row per player, all the numbers
   reports/class_relative_wpa.md    top class-relative overperformers + best-in-class
 
-Reuses the eval (winprob) + per-player quality (quality.player_quality) from the
-chess_point_analysis experiment, and archetypes from player_styles. No new modelling.
+Reuses the graduated eval + per-player quality (``match_charting_project.shots``) and
+archetypes from player_styles; keyed by era entity via the ``player_eras`` layer when it
+exists, so split careers are rated per era. No new modelling.
 """
 
 import sys
@@ -24,6 +25,7 @@ import pandas as pd  # noqa: E402
 
 from match_charting_project.shots.quality import player_quality  # noqa: E402
 from match_charting_project.shots.winprob import WinProbModel  # noqa: E402
+from match_charting_project.analysis.career_eras import load_era_map  # noqa: E402
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import iter_parsed_points  # noqa: E402
@@ -38,11 +40,12 @@ def main() -> None:
         raise SystemExit("Missing reports/player_style_clusters.csv — run player_styles first.")
     clusters = pd.read_csv(CLUSTERS)[["player", "gender", "archetype"]]
     con = connect(read_only=True)
+    era_map = load_era_map(con)   # keys WPA by era entity for split careers (matches clusters)
 
     frames = []
     for g in ("M", "W"):
         model = WinProbModel().fit(iter_parsed_points(con, where=f"gender='{g}'", sample=FIT_SAMPLE))
-        q = player_quality(con, model, where=f"m.gender='{g}'", min_shots=MIN_SHOTS)
+        q = player_quality(con, model, where=f"m.gender='{g}'", min_shots=MIN_SHOTS, era_map=era_map)
         df = q.merge(clusters[clusters.gender == g], on=["player", "gender"], how="inner")
 
         grp = df.groupby("archetype")["avg_wpa_lost"]

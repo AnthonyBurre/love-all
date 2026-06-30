@@ -62,11 +62,30 @@ def _row(c: dict) -> dict:
     }
 
 
-def build_fingerprints(con, gender: str, min_points: int = 2000) -> pd.DataFrame:
-    """One row per player (>= ``min_points``) with the FEATURES columns."""
+def _entity(era_map: dict, gender: str, player: str, year) -> str:
+    """Map a (player, year) to its career-era entity, falling back to the player name.
+
+    ``era_map`` lists only the split careers (from the ``player_eras`` layer), so any
+    player not in it — or any point without a year — stays a single entity.
+    """
+    if year is not None:
+        for y0, y1, ent in era_map.get((gender, player), ()):
+            if y0 <= year <= y1:
+                return ent
+    return player
+
+
+def build_fingerprints(con, gender: str, min_points: int = 2000,
+                       era_map: "dict | None" = None) -> pd.DataFrame:
+    """One row per *entity* (>= ``min_points``) with the FEATURES columns.
+
+    With ``era_map`` (the ``player_eras`` layer), long evolving careers split into
+    early/late entities so each era clusters on its own; without it, one row per player.
+    """
+    em = era_map or {}
     acc: dict = defaultdict(lambda: defaultdict(int))
     sql = (
-        "SELECT m.player1, m.player2, p.svr, p.first_serve, p.second_serve, p.pt_winner "
+        "SELECT m.player1, m.player2, m.year, p.svr, p.first_serve, p.second_serve, p.pt_winner "
         "FROM points p JOIN matches m USING (match_id) "
         "WHERE p.svr IN (1,2) AND p.pt_winner IN (1,2) AND m.gender = ?"
     )
@@ -75,11 +94,11 @@ def build_fingerprints(con, gender: str, min_points: int = 2000) -> pd.DataFrame
         batch = cur.fetchmany(100_000)
         if not batch:
             break
-        for p1, p2, svr, fs, ss, win in batch:
+        for p1, p2, year, svr, fs, ss, win in batch:
             pt = parse_point(fs, ss, svr, win)
             if not pt.parse_ok:
                 continue
-            names = {1: p1, 2: p2}
+            names = {1: _entity(em, gender, p1, year), 2: _entity(em, gender, p2, year)}
             srv, ret = names[pt.server], names[pt.returner]
             for who in (srv, ret):
                 acc[who]["points"] += 1
