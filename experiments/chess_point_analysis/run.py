@@ -14,7 +14,6 @@ Everything is regenerated from the DuckDB database; nothing here is hand-edited.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import matplotlib
@@ -24,9 +23,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import iter_parsed_points  # noqa: E402
-from quality import (BLUNDER, MISTAKE, find_demo_points, player_quality,  # noqa: E402
-                     render_point)
-from winprob import WinProbModel  # noqa: E402
+from match_charting_project.shots.quality import (BLUNDER, MISTAKE,  # noqa: E402
+                                                  find_demo_points, player_quality,
+                                                  render_point)
+from match_charting_project.shots.winprob import WinProbModel  # noqa: E402
 
 FIT_SAMPLE = 500_000
 LEADERBOARD_WHERE = "m.tier IN ('Grand Slam','Masters 1000') AND m.year >= 2010"

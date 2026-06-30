@@ -16,10 +16,9 @@ import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "chess_point_analysis"))
 
 from match_charting_project.shots.notation import parse_point  # noqa: E402
-from winprob import WinProbModel  # noqa: E402
+from match_charting_project.shots.winprob import WinProbModel  # noqa: E402
 
 UNKNOWN = "?"  # players below the style-fingerprint threshold
 

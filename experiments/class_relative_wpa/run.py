@@ -18,13 +18,12 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve()
-sys.path.insert(0, str(HERE.parents[1] / "chess_point_analysis"))
 sys.path.insert(0, str(HERE.parents[2] / "src"))
 
 import pandas as pd  # noqa: E402
 
-from quality import player_quality  # noqa: E402
-from winprob import WinProbModel  # noqa: E402
+from match_charting_project.shots.quality import player_quality  # noqa: E402
+from match_charting_project.shots.winprob import WinProbModel  # noqa: E402
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import iter_parsed_points  # noqa: E402
