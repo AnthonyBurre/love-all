@@ -8,6 +8,10 @@
 # not the raw CSV slices (large, noisy diffs).
 /reports/*.csv
 
+# Generated site data (brackets feed + insights db) — built by CI, served via Pages,
+# never committed. Only the docs/ source (html/js/css) is tracked.
+/docs/data/
+
 # Python
 __pycache__/
 *.py[cod]

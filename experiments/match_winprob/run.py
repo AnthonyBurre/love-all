@@ -25,8 +25,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
-from matchdata import eventual_winners, parse_score, walk_forward_strength  # noqa: E402
-from winprob_match import MatchWP  # noqa: E402
+from matchdata import eventual_winners  # noqa: E402
+from match_charting_project.winprob_match import (  # noqa: E402
+    MatchWP, parse_score, walk_forward_strength)
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import parse_point  # noqa: E402

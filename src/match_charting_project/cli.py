@@ -34,6 +34,28 @@ def _eras() -> None:
     print(f"  player_eras: {n:,} era rows -> table player_eras")
 
 
+def _live() -> None:
+    from match_charting_project.analysis.coverage import connect
+    from match_charting_project.live import brackets, espn, players
+
+    tours = espn.current_tournaments()
+    if not tours:
+        print("No current Grand Slam / 1000 singles draws found.")
+        return
+    con = connect(read_only=True)
+    universe = players.player_universe(con)
+    con.close()
+    for t in tours:
+        rds = brackets.rounds(t)
+        names = {s.name for m in t.matches for s in (m.a, m.b) if s.name}
+        charted = sum(1 for n in names if players.match_player(n, t.gender, universe))
+        print(f"\n{t.name} — {t.gender} ({t.tier}, best-of-{t.best_of}): "
+              f"{len(t.matches)} matches, {len(rds)} rounds; "
+              f"{charted}/{len(names)} players charted")
+        for r in rds:
+            print(f"  {r['label']:<18} {len(r['matches']):>3} matches")
+
+
 def _ingest(what: str, force: bool, provenance: bool) -> None:
     from match_charting_project.ingest import build as build_mod
     from match_charting_project.ingest import download as download_mod
@@ -151,6 +173,9 @@ def main(argv: list[str] | None = None) -> None:
 
     sub.add_parser("shots", help="decode point notation into the points_parsed table")
     sub.add_parser("eras", help="build the optional player_eras table (split evolving careers)")
+    sub.add_parser("live", help="fetch current tournament brackets from ESPN (smoke test)")
+    site = sub.add_parser("site", help="build site data artifacts")
+    site.add_argument("what", choices=["build-insights", "build-brackets"])
     sub.add_parser("validate", help="print the data-quality report")
     sub.add_parser("info", help="summarize the duckdb database")
 
@@ -170,6 +195,17 @@ def main(argv: list[str] | None = None) -> None:
         _shots()
     elif args.cmd == "eras":
         _eras()
+    elif args.cmd == "live":
+        _live()
+    elif args.cmd == "site":
+        if args.what == "build-insights":
+            from match_charting_project.site import build_insights
+            n = build_insights.build()
+            print(f"  insights.duckdb: {n:,} players -> data/insights.duckdb")
+        else:
+            from match_charting_project.site import build_brackets
+            n = build_brackets.build()
+            print(f"  brackets.json: {n} tournaments -> docs/data/ (+ insights.duckdb copy)")
     elif args.cmd == "validate":
         _validate()
     elif args.cmd == "info":

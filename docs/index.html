@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Charted Court — live majors, x-rayed by shot-by-shot data</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header class="site-head">
+    <div class="wrap">
+      <h1>Charted Court</h1>
+      <p class="tag">Live Grand Slam &amp; 1000 draws, x-rayed through the
+        <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Match Charting Project</a>
+        — every player badged with how much shot-by-shot history exists, and every matchup
+        clickable for style, patterns, and an experimental win probability.</p>
+      <p class="meta"><span id="updated">loading…</span> ·
+        <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject#readme" target="_blank" rel="noopener" class="contribute">Thin data? Chart a match →</a></p>
+    </div>
+  </header>
+
+  <nav class="controls wrap" id="controls" hidden>
+    <div class="seg" id="tourTabs"></div>
+    <div class="seg" id="genderTabs"></div>
+  </nav>
+
+  <main class="wrap">
+    <div id="status" class="status">Loading current draws…</div>
+    <div id="bracket" class="bracket"></div>
+  </main>
+
+  <aside id="matchup" class="matchup" hidden>
+    <button class="close" id="matchupClose" aria-label="Close">×</button>
+    <div id="matchupBody"></div>
+  </aside>
+  <div id="scrim" class="scrim" hidden></div>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <p><strong>How this works.</strong> Brackets &amp; scores come from ESPN's public feed.
+      Player insights are computed from the crowdsourced Match Charting Project and queried
+      in your browser with DuckDB-WASM — nothing but this page's code is on a server.
+      The win probability is an <em>experimental</em> model from each player's charted
+      serve+return rates; it ignores surface, form, and injuries, and is only as good as the
+      charting behind it.</p>
+      <p class="links">
+        <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Contribute charting</a> ·
+        <a href="#" id="exploreLink">Explore the data</a>
+      </p>
+    </div>
+  </footer>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
