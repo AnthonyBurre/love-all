@@ -1,0 +1,50 @@
+name: Deploy live brackets
+
+# Fast path: fetch current brackets/scores from ESPN, reuse the last insights DB (from the
+# Release), and deploy docs/ to Pages. No heavy DB rebuild — runs cheaply on a schedule.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "5 * * * *"         # hourly at :05
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (core only)
+        run: uv sync
+
+      - name: Fetch latest insights.duckdb (from the Release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          gh release download insights-latest --pattern insights.duckdb --dir data --clobber \
+            || echo "no insights release yet — brackets will render without player insights"
+
+      - name: Build brackets + assemble docs/data
+        run: uv run match-charting-project site build-brackets
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

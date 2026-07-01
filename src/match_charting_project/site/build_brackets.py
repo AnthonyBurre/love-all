@@ -10,11 +10,23 @@ import json
 import shutil
 from datetime import datetime, timezone
 
-from match_charting_project.analysis.coverage import connect
+import duckdb
+
 from match_charting_project.live import brackets, espn, players
 from match_charting_project.paths import PROJECT_ROOT
 
 DOCS_DATA = PROJECT_ROOT / "docs" / "data"
+INSIGHTS = PROJECT_ROOT / "data" / "insights.duckdb"
+
+
+def _universe() -> dict:
+    """Player universe from insights.duckdb (the fast path never touches the big DB)."""
+    if not INSIGHTS.exists():
+        return {"M": {}, "W": {}}     # no insights yet -> everyone reads as uncharted
+    con = duckdb.connect(str(INSIGHTS), read_only=True)
+    rows = con.execute("SELECT gender, player FROM player_summary").fetchall()
+    con.close()
+    return players.universe_from_rows(rows)
 
 
 def _side(s, gender, universe) -> dict:
@@ -25,9 +37,7 @@ def _side(s, gender, universe) -> dict:
 
 def payload() -> dict:
     tours = espn.current_tournaments()
-    con = connect(read_only=True)
-    universe = players.player_universe(con)
-    con.close()
+    universe = _universe()
     out = {"updated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
            "tournaments": []}
     for t in tours:

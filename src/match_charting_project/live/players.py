@@ -22,19 +22,22 @@ def normalize(name: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def player_universe(con) -> dict:
-    """``gender -> {normalized_name: canonical MCP name}``."""
-    rows = con.execute(
-        "SELECT DISTINCT gender, player FROM ("
-        "  SELECT gender, player1 AS player FROM matches "
-        "  UNION ALL SELECT gender, player2 FROM matches) "
-        "WHERE player IS NOT NULL"
-    ).fetchall()
+def universe_from_rows(rows) -> dict:
+    """Build ``gender -> {normalized_name: canonical name}`` from (gender, player) rows."""
     uni: dict = {"M": {}, "W": {}}
     for g, p in rows:
-        if g in uni:
+        if g in uni and p:
             uni[g][normalize(p)] = p
     return uni
+
+
+def player_universe(con) -> dict:
+    """``gender -> {normalized_name: canonical MCP name}`` from the main matches table."""
+    return universe_from_rows(con.execute(
+        "SELECT DISTINCT gender, player FROM ("
+        "  SELECT gender, player1 AS player FROM matches "
+        "  UNION ALL SELECT gender, player2 FROM matches) WHERE player IS NOT NULL"
+    ).fetchall())
 
 
 def match_player(name: str, gender: str, universe: dict, cutoff: float = 0.88) -> "str | None":

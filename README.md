@@ -9,6 +9,25 @@ The goal: turn raw shot notation into clean, queryable data, derive
 point/rally/stroke analytics, and ship interactive visualizations to GitHub
 Pages.
 
+## Live site — Charted Court
+
+A GitHub Pages site (`docs/`) shows **live Grand Slam & Masters/WTA-1000 brackets**
+(from ESPN's public feed), badges every player by how much Match Charting history
+exists, and makes each matchup clickable for style archetype, finishing/breakdown
+patterns, class-relative shot quality, and an **experimental pre-match win
+probability** — all queried in-browser via **DuckDB-WASM**, no backend.
+
+Two-speed, static pipeline (nothing generated is committed):
+
+- **`.github/workflows/insights.yml`** (weekly / manual) rebuilds the compact
+  `insights.duckdb` (one row per charted player) and publishes it as a Release asset.
+- **`.github/workflows/live.yml`** (hourly) fetches the current draws, reuses that
+  insights DB, and deploys `docs/` to Pages.
+
+Locally: `match-charting-project site build-insights` then `... site build-brackets`,
+and serve `docs/`. The win-prob model, ESPN adapter, and insights builder live in
+`src/match_charting_project/{winprob_match,live,site}`.
+
 ## Stack
 
 | Layer         | Tool             | Why                                            |
