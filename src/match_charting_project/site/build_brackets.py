@@ -54,12 +54,12 @@ def payload() -> dict:
     return out
 
 
-def build() -> int:
-    """Write docs/data/brackets.json (+ copy insights.duckdb). Returns tournament count."""
+def build() -> "tuple[int, bool]":
+    """Write docs/data/brackets.json (+ copy insights.duckdb). Returns (tournaments, copied)."""
     DOCS_DATA.mkdir(parents=True, exist_ok=True)
     data = payload()
     (DOCS_DATA / "brackets.json").write_text(json.dumps(data))
-    insights = PROJECT_ROOT / "data" / "insights.duckdb"
-    if insights.exists():
-        shutil.copy(insights, DOCS_DATA / "insights.duckdb")
-    return len(data["tournaments"])
+    copied = INSIGHTS.exists()
+    if copied:
+        shutil.copy(INSIGHTS, DOCS_DATA / "insights.duckdb")
+    return len(data["tournaments"]), copied

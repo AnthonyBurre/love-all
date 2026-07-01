@@ -204,8 +204,9 @@ def main(argv: list[str] | None = None) -> None:
             print(f"  insights.duckdb: {n:,} players -> data/insights.duckdb")
         else:
             from match_charting_project.site import build_brackets
-            n = build_brackets.build()
-            print(f"  brackets.json: {n} tournaments -> docs/data/ (+ insights.duckdb copy)")
+            n, copied = build_brackets.build()
+            note = " (+ insights.duckdb)" if copied else " (insights.duckdb MISSING — no player data)"
+            print(f"  brackets.json: {n} tournaments -> docs/data/{note}")
     elif args.cmd == "validate":
         _validate()
     elif args.cmd == "info":

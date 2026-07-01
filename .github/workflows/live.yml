@@ -36,11 +36,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p data
-          gh release download insights-latest --pattern insights.duckdb --dir data --clobber \
-            || echo "no insights release yet — brackets will render without player insights"
+          if gh release download insights-latest --pattern insights.duckdb --dir data --clobber; then
+            echo "downloaded: $(ls -l data/insights.duckdb)"
+          else
+            echo "no insights release yet — brackets will render without player insights"
+          fi
 
       - name: Build brackets + assemble docs/data
-        run: uv run match-charting-project site build-brackets
+        run: |
+          uv run match-charting-project site build-brackets
+          echo "--- docs/data contents ---" && ls -la docs/data/
 
       - uses: actions/upload-pages-artifact@v3
         with:
