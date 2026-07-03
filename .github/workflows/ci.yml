@@ -3,10 +3,13 @@ name: CI
 # Test gate for the library + experiments. The DB-integration tests skip themselves
 # when no tennis.duckdb is present, so this runs the pure-unit suite — fast and
 # data-free. Matrix covers the supported floor (3.11) and the local dev version (3.14).
+#
+# Runs on every branch push (no PR needed): the workflow is branch → push → green
+# check → merge to main. Branch protection on main requires these checks, so this
+# is the promotion gate. No pull_request trigger — same-repo PRs would run twice.
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches: ["**"]
 
 jobs:
   test:
