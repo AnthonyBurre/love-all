@@ -13,28 +13,35 @@ detection** (the centipawn-loss / accuracy idea) — which requires an empirical
 
 ## The chess → tennis mapping built here
 
+All of these have since graduated into the library (`match_charting_project.shots`):
+
 | Chess | Implemented as |
 |---|---|
-| PGN move list | `parser.py` — decode a point string into structured strokes |
-| Engine eval (win-prob for a position) | `winprob.py` — empirical `P(server wins \| rally state)` |
-| Opening explorer (next move + win% from a position) | `winprob.py` `explore_state()` |
-| Centipawn loss / blunder (`?`,`??`) / accuracy % | `quality.py` — per-stroke WPA, marks, decision-quality score |
-| Annotated game | `quality.py` `render_point()` |
+| PGN move list | `shots.notation` — decode a point string into structured strokes |
+| Engine eval (win-prob for a position) | `shots.winprob` — empirical `P(server wins \| rally state)` |
+| Opening explorer (next move + win% from a position) | `shots.winprob` `explore_state()` |
+| Centipawn loss / blunder (`?`,`??`) / accuracy % | `shots.quality` — per-stroke WPA, marks, decision-quality score |
+| Annotated game | `shots.quality` `render_point()` |
 
 ## Files
 
-The **decoder graduated into the library** — it's reusable infrastructure now, not
-experiment-local: `match_charting_project.shots.notation` (parser, `stroke_kind`,
-`iter_parsed_points`, `point_features`) with a `points_parsed` materialize step
-(`match-charting-project shots`) and tests in `tests/test_notation.py`. What stays
-here is the chess-specific modelling:
+Everything this spike built proved useful and **graduated into the library** — it's
+reusable infrastructure now, not experiment-local:
 
-- `winprob.py` — `WinProbModel`: a frequency-table value function with parent-shrinkage
-  smoothing (rare states back off to coarser ones, like an opening explorer). State
-  reads wing, drive/slice/net kind, direction, net-approach, and return depth. Exposes
-  `position_value`, `base`, `shot_wpa`, `explore_state`.
-- `quality.py` — WPA → annotation marks, annotated-point renderer, and per-player
-  decision quality (`avg_wpa_lost`, an `accuracy` 0–100 rescale, forced/unforced split).
+- `match_charting_project.shots.notation` — the decoder (parser, `stroke_kind`,
+  `iter_parsed_points`, `point_features`) with a `points_parsed` materialize step
+  (`match-charting-project shots`) and tests in `tests/test_notation.py`.
+- `match_charting_project.shots.winprob` — `WinProbModel`: a frequency-table value
+  function with parent-shrinkage smoothing (rare states back off to coarser ones, like
+  an opening explorer). State reads wing, drive/slice/net kind, direction, net-approach,
+  and return depth. Exposes `position_value`, `base`, `shot_wpa`, `explore_state`.
+  Tests in `tests/test_winprob.py`.
+- `match_charting_project.shots.quality` — WPA → annotation marks, annotated-point
+  renderer, and per-player decision quality (`avg_wpa_lost`, an `accuracy` 0–100
+  rescale, forced/unforced split).
+
+What stays here is the demo driver:
+
 - `run.py` — end-to-end: fit the eval per gender, emit figures + a findings report.
 
 ## Run
@@ -75,9 +82,12 @@ uv run python experiments/chess_point_analysis/run.py   # eval + quality + repor
 - **Still a coarse state.** The eval reads the last stroke (wing, drive/slice/net
   kind, direction, net-approach, depth) plus capped ply — well-populated and now much
   more resolving, but it ignores the game/set score and flattens very long rallies
-  (the oscillating eval late in the annotated point). Score-aware eval is in the backlog.
+  (the oscillating eval late in the annotated point). (A score-aware variant was later
+  tested in `../score_aware_eval` — it did **not** improve the eval, confirming the
+  Klaassen–Magnus point-independence result, so the score stays out of the state.)
 - **Charting bias.** Win rates inherit the same coverage skew the repo documents
   (later rounds over-charted); treat cross-player numbers as indicative, not official.
 
-If the parser + eval prove useful, they're the natural pieces to graduate into
-`src/match_charting_project/analysis/`.
+The parser + eval + quality scoring all proved useful and were graduated into
+`src/match_charting_project/shots/`; the downstream experiments (`player_styles`,
+`shot_language`, `class_relative_wpa`, `match_winprob`, …) build on them from there.
