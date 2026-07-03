@@ -12,7 +12,12 @@ import pytest
 
 from match_charting_project.paths import DB_PATH
 from match_charting_project.winprob_match import (
-    MatchWP, Score, current_strength, game_wp, matchup_strength)
+    MatchWP,
+    Score,
+    current_strength,
+    game_wp,
+    matchup_strength,
+)
 
 
 def test_game_wp_closed_form():

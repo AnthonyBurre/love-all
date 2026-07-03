@@ -8,7 +8,11 @@ contiguous, non-overlapping year ranges and split eras clear the size floor.
 import pytest
 
 from match_charting_project.analysis.career_eras import (
-    MIN_ERA, compute_player_eras, era_points, greedy_k)
+    MIN_ERA,
+    compute_player_eras,
+    era_points,
+    greedy_k,
+)
 from match_charting_project.paths import DB_PATH
 
 

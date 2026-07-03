@@ -15,13 +15,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import matplotlib  # noqa: E402
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 from match_charting_project.analysis.career_eras import (  # noqa: E402
-    FEATURES, MIN_ERA, MIN_CHARTED_YEARS, MIN_SPAN_YEARS, NOISE_RATIO,
-    evaluate, greedy_k, wz)
+    FEATURES,
+    MIN_CHARTED_YEARS,
+    MIN_ERA,
+    MIN_SPAN_YEARS,
+    NOISE_RATIO,
+    evaluate,
+    greedy_k,
+    wz,
+)
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 
@@ -81,7 +89,8 @@ def main():
     bp = {g: between_player(results[g]) for g in ("M", "W")}
 
     (PROJECT_ROOT / "reports" / "figures").mkdir(parents=True, exist_ok=True)
-    fig(results, np.median(list(bp.values())), PROJECT_ROOT / "reports" / "figures" / "career_splits.png")
+    fig_path = PROJECT_ROOT / "reports" / "figures" / "career_splits.png"
+    fig(results, np.median(list(bp.values())), fig_path)
 
     base = sum(len(results[g]["eligible"]) for g in ("M", "W"))
     md = ["# Career splitting — does it capture real change?", ""]

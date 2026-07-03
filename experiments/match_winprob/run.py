@@ -21,17 +21,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import matplotlib  # noqa: E402
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
-
 from matchdata import eventual_winners  # noqa: E402
-from match_charting_project.winprob_match import (  # noqa: E402
-    MatchWP, parse_score, walk_forward_strength)
+
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import parse_point  # noqa: E402
 from match_charting_project.shots.winprob import WinProbModel  # noqa: E402  (point eval)
+from match_charting_project.winprob_match import (  # noqa: E402
+    MatchWP,
+    parse_score,
+    walk_forward_strength,
+)
 
 FIG = PROJECT_ROOT / "reports" / "figures"
 GLABEL = {"M": "Men", "W": "Women"}

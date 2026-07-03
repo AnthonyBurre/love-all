@@ -18,13 +18,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-
 from cluster import describe, kmeans, pca, silhouette, standardize  # noqa: E402
 from fingerprint import FEATURES, build_fingerprints  # noqa: E402
+
 from match_charting_project.analysis.career_eras import load_era_map  # noqa: E402
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402

@@ -22,9 +22,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np  # noqa: E402
-
 from compare import eval_model, paired_predictions, server_win_by_class  # noqa: E402
 from model import ClassAwareModel, in_test, load_class_map, load_points  # noqa: E402
+
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 

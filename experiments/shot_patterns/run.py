@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shot_language"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import pandas as pd  # noqa: E402
-
 from tokens import point_tokens, pretty  # noqa: E402
+
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import parse_point  # noqa: E402

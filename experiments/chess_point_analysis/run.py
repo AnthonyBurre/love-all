@@ -17,15 +17,20 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import iter_parsed_points  # noqa: E402
-from match_charting_project.shots.quality import (BLUNDER, MISTAKE,  # noqa: E402
-                                                  find_demo_points, player_quality,
-                                                  render_point)
+from match_charting_project.shots.quality import (  # noqa: E402
+    BLUNDER,
+    MISTAKE,
+    find_demo_points,
+    player_quality,
+    render_point,
+)
 from match_charting_project.shots.winprob import WinProbModel  # noqa: E402
 
 FIT_SAMPLE = 500_000
@@ -127,7 +132,7 @@ def fig_wpa_hist(vals, path: Path):
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.hist(vals, bins=80, range=(-0.7, 0.7), color="#4c72b0")
     ax.axvspan(-0.7, BLUNDER, color="#c44", alpha=0.18, label=f"blunder (≤{BLUNDER})")
-    ax.axvspan(BLUNDER, MISTAKE, color="#e9a", alpha=0.18, label=f"mistake")
+    ax.axvspan(BLUNDER, MISTAKE, color="#e9a", alpha=0.18, label="mistake")
     ax.set_xlabel("win-probability added per stroke (hitter's view)")
     ax.set_ylabel("strokes")
     ax.set_title("Per-stroke WPA distribution (men)")
