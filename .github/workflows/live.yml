@@ -28,8 +28,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies (core only)
-        run: uv sync
+      - name: Install dependencies (core + dev for the test gate)
+        run: uv sync --extra dev
+
+      - name: Test gate (unit suite; DB-integration tests self-skip)
+        run: uv run pytest -q
 
       - name: Fetch latest insights.duckdb (from the Release)
         env:
