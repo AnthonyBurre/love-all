@@ -32,7 +32,7 @@ def _universe() -> dict:
 def _side(s, gender, universe) -> dict:
     matched = players.match_player(s.name, gender, universe) if s.name and s.name != "TBD" else None
     return {"name": s.name, "country": s.country, "winner": s.winner,
-            "sets": s.sets, "matched": matched}
+            "sets": s.sets, "matched": matched, "seed": getattr(s, "seed", None)}
 
 
 def payload() -> dict:
@@ -47,6 +47,7 @@ def payload() -> dict:
             "rounds": [
                 {"rank": r["rank"], "label": r["label"], "matches": [
                     {"id": m.id, "state": m.state, "detail": m.detail, "feeds": m.feeds,
+                     "placeholder": getattr(m, "placeholder", False),
                      "a": _side(m.a, t.gender, universe), "b": _side(m.b, t.gender, universe)}
                     for m in r["matches"]]}
                 for r in brackets.rounds(t)],

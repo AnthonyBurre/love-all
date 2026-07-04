@@ -45,7 +45,20 @@ def rounds(tournament) -> list:
 
     Each match gains a ``feeds`` attribute: the id of the next-round match its winner
     advances to, or ``None`` while unresolved (or on the final).
+
+    When a committed draw fixture exists for this tournament (``data/draws/``), the
+    bracket is instead assembled on the fixture's slot scaffold — every slot of every
+    round present (placeholders where undecided), the full path to the final known
+    from day one. Name inference below is the fallback for uncovered tournaments.
     """
+    from match_charting_project.live import draws
+
+    fx = draws.find_fixture(tournament.name, tournament.gender)
+    if fx:
+        out = draws.slot_rounds(tournament, fx)
+        if out:
+            return out
+
     by_rank: dict = {}
     for m in tournament.matches:
         m.feeds = None

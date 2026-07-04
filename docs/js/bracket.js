@@ -11,6 +11,7 @@ const el = (tag, cls, text) => {
 
 // A match is only as analyzable as its lesser-charted player: tier = min(both).
 export function matchTier(m, gender, cov) {
+  if (m.placeholder) return { cls: "t-tbd", note: "path to this match — not decided yet" };
   const n = (s) => (s.matched ? cov[gender + "|" + s.matched] || 0 : s.name && s.name !== "TBD" ? 0 : null);
   const [na, nb] = [n(m.a), n(m.b)];
   if (na == null || nb == null) return { cls: "t-tbd", note: "opponent not decided yet" };
@@ -26,13 +27,16 @@ function sideRow(s) {
   const named = s.name && s.name !== "TBD";
   const row = el("div", "side " + (s.winner ? "win" : named ? "lose" : ""));
   const sets = el("span", "sets", (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" "));
-  row.append(el("span", "nm", s.name || "TBD"), sets);
+  const nm = el("span", "nm");
+  if (s.seed) nm.append(el("span", "seed", s.seed));
+  nm.append(document.createTextNode(s.name || "TBD"));
+  row.append(nm, sets);
   return row;
 }
 
 function matchCard(m, t, cov, onClick) {
   const tier = matchTier(m, t.gender, cov);
-  const card = el("div", "match " + tier.cls);
+  const card = el("div", "match " + tier.cls + (m.placeholder ? " ghost" : ""));
   card.title = tier.note;
   card.append(sideRow(m.a), sideRow(m.b));
   if (m.state === "in") {
@@ -40,7 +44,7 @@ function matchCard(m, t, cov, onClick) {
   } else if (m.state === "pre" && m.detail && m.detail !== "TBD") {
     card.append(el("div", "detail", m.detail));
   }
-  card.onclick = () => onClick(m, t);
+  if (!m.placeholder) card.onclick = () => onClick(m, t);
   return card;
 }
 
