@@ -1,6 +1,6 @@
-// Render a tournament as a linked bracket tree: columns per round, each match card
-// vertically centered between the two matches that feed it (where the linkage is
-// known — see live/brackets.py), with SVG connectors and match-level charting tiers.
+// Bracket rendering: a reusable tree renderer (columns per round, cards centered
+// between their feeders, SVG wires) plus quarter-slicing helpers. app.js decides
+// which slice of the draw goes into which container.
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -50,13 +50,13 @@ function matchCard(m, t, cov, onClick) {
 
 // Lay out one column: a match with known feeders sits at their vertical midpoint,
 // anything else stacks below the previous card. max() keeps cards from overlapping
-// when a column mixes linked and unlinked matches (mid-tournament).
+// when a column mixes linked and unlinked matches.
 function placeColumn(matches, cards, centers, gap) {
   let bottom = 0;
   for (const m of matches) {
     const card = cards.get(m.id);
     const h = card.offsetHeight;
-    const fed = centers.get(m.id);        // [feederCenterY, ...] set by the earlier column
+    const fed = centers.get(m.id);
     let y = bottom;
     if (fed && fed.length) y = Math.max(fed.reduce((a, b) => a + b, 0) / fed.length - h / 2, bottom);
     card.style.top = y + "px";
@@ -70,11 +70,9 @@ function placeColumn(matches, cards, centers, gap) {
   return bottom;
 }
 
-function drawConnectors(t, root, cards) {
+function drawConnectors(rounds, root, cards) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "wires");
-  // Coordinates relative to the bracket's scroll content (offsetLeft/Top would be
-  // relative to each card's own positioned column, not the bracket).
   const rootRect = root.getBoundingClientRect();
   const pos = (id) => {
     const r = cards.get(id).getBoundingClientRect();
@@ -82,9 +80,9 @@ function drawConnectors(t, root, cards) {
     const y = r.top - rootRect.top + root.scrollTop + r.height / 2;
     return { l: x, r: x + r.width, y };
   };
-  for (const round of t.rounds) {
+  for (const round of rounds) {
     for (const m of round.matches) {
-      if (!m.feeds || !cards.has(m.feeds)) continue;
+      if (!m.feeds || !cards.has(m.feeds)) continue;    // target outside this slice
       const a = pos(m.id), b = pos(m.feeds);
       const mid = (a.r + b.l) / 2;
       const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -97,11 +95,11 @@ function drawConnectors(t, root, cards) {
   root.appendChild(svg);
 }
 
-export function renderBracket(t, cov, onClick) {
-  const root = document.getElementById("bracket");
+// Render a set of rounds as a linked tree into `root` (any .bracket-styled container).
+export function renderTree(rounds, root, t, cov, onClick) {
   root.innerHTML = "";
   const cards = new Map();
-  for (const round of t.rounds) {
+  for (const round of rounds) {
     const col = el("div", "round");
     col.append(el("h3", null, round.label));
     const list = el("div", "round-list");
@@ -113,13 +111,49 @@ export function renderBracket(t, cov, onClick) {
     col.append(list);
     root.append(col);
   }
-  // Second pass, once heights are measurable: tree-position the cards, then wire them.
   const gap = 8;
-  const centers = new Map();              // match id -> center-y of each known feeder
+  const centers = new Map();
   let maxBottom = 0;
-  for (const round of t.rounds) {
+  for (const round of rounds) {
     maxBottom = Math.max(maxBottom, placeColumn(round.matches, cards, centers, gap));
   }
   for (const listEl of root.querySelectorAll(".round-list")) listEl.style.height = maxBottom + "px";
-  drawConnectors(t, root, cards);
+  drawConnectors(rounds, root, cards);
+  root.scrollLeft = 0;
+}
+
+// --- quarter slicing (valid only for slot-true, power-of-two draws: t.slotted) ---
+
+// Rounds up to the quarterfinals, sliced to quarter q (0-3): R1 16, …, QF 1.
+export function quarterRounds(t, q) {
+  const upToQF = t.rounds.slice(0, t.rounds.length - 2);
+  return upToQF.map((r) => {
+    const size = r.matches.length / 4;
+    return { ...r, matches: r.matches.slice(q * size, (q + 1) * size) };
+  });
+}
+
+// Semifinals + final — the "business end" strip above the quarter view.
+export function finalsRounds(t) {
+  return t.rounds.slice(-2);
+}
+
+// Label each quarter by its best-seeded (or first-named) player, e.g. "Sinner".
+export function quarterLabels(t) {
+  const labels = [];
+  const r1 = t.rounds[0].matches;
+  const size = r1.length / 4;
+  for (let q = 0; q < 4; q++) {
+    let best = null;                       // {seed, name}
+    for (const m of r1.slice(q * size, (q + 1) * size)) {
+      for (const s of [m.a, m.b]) {
+        const seed = parseInt(s.seed, 10);
+        if (!s.name || s.name === "TBD" || isNaN(seed)) continue;
+        if (!best || seed < best.seed) best = { seed, name: s.name };
+      }
+    }
+    const surname = best ? best.name.split(" ").slice(-1)[0] : `Quarter ${q + 1}`;
+    labels.push(best ? `${surname} ¼` : surname);
+  }
+  return labels;
 }

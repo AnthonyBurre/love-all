@@ -64,6 +64,12 @@ a { color: var(--acc-d); }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
+/* section furniture for the quarters layout */
+.secthead { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 20px 0 2px; }
+.quarter-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+.quarter-head .secthead { margin: 0; }
+.bracket.finals { padding-bottom: 22px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+
 /* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
 .bracket { display: flex; gap: 34px; overflow-x: auto; padding: 14px 0 30px; align-items: flex-start; position: relative; }
 .round { flex: 0 0 auto; width: 232px; }
@@ -135,4 +141,10 @@ a { color: var(--acc-d); }
 .site-foot p { line-height: 1.55; max-width: 820px; }
 .site-foot .links a { margin-right: 14px; font-weight: 600; }
 
+@media (max-width: 700px) {
+  .round { width: 192px; }
+  .bracket { gap: 20px; }
+  .nm { font-size: 12.5px; }
+  .site-head h1 { font-size: 26px; }
+}
 @media (max-width: 560px) { .cards { grid-template-columns: 1fr; } .legend { margin-left: 0; } }
