@@ -41,16 +41,19 @@ def payload() -> dict:
     out = {"updated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
            "tournaments": []}
     for t in tours:
+        rounds = brackets.rounds(t)
+        # Slot-true ordering (draw fixture applied): safe to slice into quarters etc.
+        slotted = all(getattr(m, "slot", 0) for r in rounds for m in r["matches"])
         out["tournaments"].append({
             "id": t.id, "name": t.name, "tier": t.tier, "gender": t.gender,
-            "best_of": t.best_of,
+            "best_of": t.best_of, "slotted": slotted,
             "rounds": [
                 {"rank": r["rank"], "label": r["label"], "matches": [
                     {"id": m.id, "state": m.state, "detail": m.detail, "feeds": m.feeds,
                      "placeholder": getattr(m, "placeholder", False),
                      "a": _side(m.a, t.gender, universe), "b": _side(m.b, t.gender, universe)}
                     for m in r["matches"]]}
-                for r in brackets.rounds(t)],
+                for r in rounds],
         })
     return out
 

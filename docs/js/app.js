@@ -1,12 +1,13 @@
 // Orchestration: load the brackets feed, build tabs, theme the page to the selected
-// tournament, render the bracket, wire the matchup drawer.
-import { renderBracket } from "./bracket.js";
+// tournament, render the bracket (quarter view by default, full draw on demand),
+// and wire the matchup drawer.
+import { renderTree, renderCascade, quarterRounds, quarterLabels } from "./bracket.js";
 import { openMatchup } from "./matchup.js";
 import { query } from "./db.js";
 
 let data = null;
 const cov = {};                 // "G|player" -> charted match count
-const sel = { name: null, gender: null };
+const sel = { name: null, gender: null, view: "quarters", quarter: 0 };
 
 const $ = (id) => document.getElementById(id);
 
@@ -92,6 +93,16 @@ function buildTabs() {
     render();
   });
   $("genderTabs").style.display = g.length > 1 ? "" : "none";
+
+  // Quarter view needs slot-true ordering; otherwise only the full draw is honest.
+  const t = pick();
+  $("viewTabs").style.display = t.slotted ? "" : "none";
+  seg($("viewTabs"), [["quarters", "By quarter"], ["full", "Full draw"]],
+    t.slotted ? sel.view : "full", (v) => {
+      sel.view = v;
+      buildTabs();
+      render();
+    });
 }
 
 function render() {
@@ -100,7 +111,20 @@ function render() {
   document.body.dataset.theme = themeFor(t.name);
   $("pageTitle").textContent = t.name;
   document.title = `${t.name} — Charted Court`;
-  renderBracket(t, cov, openMatchup);
+
+  const quarters = t.slotted && sel.view === "quarters";
+  $("cascadeWrap").hidden = !quarters;
+  if (quarters) {
+    const labels = quarterLabels(t);
+    renderCascade(t, $("cascade"), cov, openMatchup, {
+      labels, selected: sel.quarter,
+      onPick: (q) => { sel.quarter = q; render(); },
+    });
+    $("quarterTitle").textContent = `${labels[sel.quarter]} — round 1 to quarterfinal`;
+    renderTree(quarterRounds(t, sel.quarter), $("bracket"), t, cov, openMatchup);
+  } else {
+    renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
+  }
 }
 
 async function loadCoverage() {
