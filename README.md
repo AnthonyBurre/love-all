@@ -12,8 +12,11 @@ Pages.
 ## Live site — Charted Court
 
 A GitHub Pages site (`docs/`) shows **live Grand Slam & Masters/WTA-1000 brackets**
-(from ESPN's public feed), badges every player by how much Match Charting history
-exists, and makes each matchup clickable for style archetype, finishing/breakdown
+(from ESPN's public feed) as a linked tree — winners wired to their next-round match
+(linkage inferred from names as the draw resolves; ESPN exposes no draw slots) — with
+every **match box shaded by how charted the pairing is** (min of both players), the
+page themed and titled to the current tournament, and each matchup clickable for style
+archetype, serve/return rates vs tour, signature sequences, finishing/breakdown
 patterns, class-relative shot quality, and an **experimental pre-match win
 probability** — all queried in-browser via **DuckDB-WASM**, no backend.
 

@@ -1,4 +1,5 @@
-// Orchestration: load the brackets feed, build tabs, render, wire the matchup drawer.
+// Orchestration: load the brackets feed, build tabs, theme the page to the selected
+// tournament, render the bracket, wire the matchup drawer.
 import { renderBracket } from "./bracket.js";
 import { openMatchup } from "./matchup.js";
 import { query } from "./db.js";
@@ -8,6 +9,17 @@ const cov = {};                 // "G|player" -> charted match count
 const sel = { name: null, gender: null };
 
 const $ = (id) => document.getElementById(id);
+
+// Season/tournament theme: slams get their own palette, 1000s follow their surface.
+const CLAY = ["french", "roland", "madrid", "rome", "italian", "monte", "hamburg", "charleston"];
+const AUS = ["australian"];
+function themeFor(name) {
+  const n = (name || "").toLowerCase();
+  if (n.includes("wimbledon")) return "";          // grass = the default palette
+  if (CLAY.some((c) => n.includes(c))) return "clay";
+  if (AUS.some((c) => n.includes(c))) return "aus-hard";
+  return "us-hard";                                // everything else is a hard court
+}
 
 async function main() {
   try {
@@ -28,8 +40,13 @@ async function main() {
   $("controls").hidden = false;
   buildTabs();
   render();
-  loadCoverage();               // fills coverage dots when the WASM db is ready
+  loadCoverage();               // shades the match tiers when the WASM db is ready
   wireDrawer();
+  let raf = null;               // connectors are position-dependent: relayout on resize
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(render);
+  });
 }
 
 function names() {
@@ -79,14 +96,18 @@ function buildTabs() {
 
 function render() {
   $("status").hidden = true;
-  renderBracket(pick(), cov, openMatchup);
+  const t = pick();
+  document.body.dataset.theme = themeFor(t.name);
+  $("pageTitle").textContent = t.name;
+  document.title = `${t.name} — Charted Court`;
+  renderBracket(t, cov, openMatchup);
 }
 
 async function loadCoverage() {
   try {
     const rows = await query("SELECT gender, player, matches_charted FROM player_summary");
-    for (const r of rows) cov[r.gender + "|" + r.player] = r.matches_charted;
-    render();                   // re-render to light up the coverage dots
+    for (const r of rows) cov[r.gender + "|" + r.player] = Number(r.matches_charted);
+    render();                   // re-render to shade the match tiers
   } catch (e) {
     console.warn("insights db unavailable:", e);
   }
