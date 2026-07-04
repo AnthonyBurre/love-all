@@ -6,6 +6,7 @@ import { preMatchWP } from "./winprob.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const last = (name) => String(name || "").split(" ").slice(-1)[0];
+const pct = (x) => (x * 100).toFixed(1) + "%";
 
 async function playerData(name, gender) {
   if (!name) return null;
@@ -34,10 +35,26 @@ function ratingLabel(z) {
 function patLine(p) {
   const cls = p.kind === "green" ? "green" : "trouble";
   const what = p.kind === "green" ? "goes for a winner" : "tends to err";
-  return `<div class="pat ${cls}">after <code>${esc(p.context)}</code> — ${what} ${Math.round(p.rate * 100)}%</div>`;
+  return `<div class="pat ${cls}">after <code>${esc(p.context)}</code> — ${what} ${Math.round(p.rate * 100)}% <span class="lift">(${Number(p.lift).toFixed(1)}× their norm)</span></div>`;
 }
 
-function playerCard(side, d) {
+// serve/return rate with a ▲/▼ against the tour average (mu = mean serve-win rate).
+function rateStat(label, rate, avg) {
+  if (rate == null) return "";
+  const d = rate - avg;
+  const arrow = Math.abs(d) < 0.005 ? "" :
+    `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"} ${(Math.abs(d) * 100).toFixed(1)}</span>`;
+  return `<div class="stat"><span class="k">${label}:</span> ${pct(rate)} ${arrow}</div>`;
+}
+
+function signatures(s) {
+  if (!s.signatures) return "";
+  const sigs = String(s.signatures).split("; ").slice(0, 2)
+    .map((x) => `<code>${esc(x)}</code>`).join(" ");
+  return `<div class="phead">signature sequences</div><div class="sig">${sigs}</div>`;
+}
+
+function playerCard(side, d, mu, gender) {
   const flag = side.country ? `<span class="flag">${esc(side.country)}</span>` : "";
   if (!d) {
     return `<div class="pcard"><h4>${esc(side.name || "TBD")}</h4>${flag}
@@ -45,20 +62,29 @@ function playerCard(side, d) {
       <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Chart a match →</a></p></div>`;
   }
   const s = d.s;
-  const green = d.patterns.find((p) => p.kind === "green");
-  const trouble = d.patterns.find((p) => p.kind === "trouble");
+  const pats = [...d.patterns.filter((p) => p.kind === "green").slice(0, 2),
+                ...d.patterns.filter((p) => p.kind === "trouble").slice(0, 2)];
   return `<div class="pcard">
     <h4>${esc(side.name)}</h4>${flag}
     ${s.archetype ? `<div class="arch">${esc(s.archetype)}</div>` : ""}
-    <div class="stat"><span class="k">shot quality:</span> ${ratingLabel(s.class_rel_z)}</div>
+    ${rateStat("serve pts won", s.serve_rate, mu)}
+    ${rateStat("return pts won", s.return_rate, 1 - mu)}
+    <div class="stat"><span class="k">shot quality:</span> ${ratingLabel(s.class_rel_z)}${s.accuracy != null ? ` · ${Number(s.accuracy).toFixed(0)}/100` : ""}</div>
     <div class="stat"><span class="k">style:</span> ${s.bits != null ? predictabilityLabel(s.bits) + ` (${s.bits.toFixed(1)} bits)` : "—"}</div>
-    <div class="stat"><span class="k">charted:</span> ${s.matches_charted} matches</div>
-    ${green ? patLine(green) : ""}
-    ${trouble ? patLine(trouble) : ""}
+    <div class="stat"><span class="k">charted:</span> ${s.matches_charted} matches · ${Number(s.points_charted).toLocaleString()} points</div>
+    ${signatures(s)}
+    ${pats.length ? `<div class="phead">finishing / breakdown</div>` + pats.map(patLine).join("") : ""}
   </div>`;
 }
 
-function wpBar(a, b, wpA) {
+function confidence(pa, pb) {
+  const minPts = Math.min(Number(pa.s.points_charted) || 0, Number(pb.s.points_charted) || 0);
+  if (minPts >= 10000) return "high";
+  if (minPts >= 2000) return "moderate";
+  return "low — one side is thinly charted";
+}
+
+function wpBar(a, b, wpA, conf) {
   const pa = Math.round(wpA * 100);
   return `<div class="wp">
     <div class="wp-bar">
@@ -66,8 +92,21 @@ function wpBar(a, b, wpA) {
       <div class="pb" style="width:${(1 - wpA) * 100}%">${100 - pa}% ${esc(last(b))}</div>
     </div>
     <div class="wp-note"><b>Experimental</b> pre-match model from charted serve+return only —
-      no surface, form, or injuries. Confidence tracks how much both players are charted.</div>
+      no surface, form, or injuries. Charting confidence: ${conf}.</div>
   </div>`;
+}
+
+function scoreline(m) {
+  const sets = (s) => (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" ");
+  const a = sets(m.a), b = sets(m.b);
+  return a || b ? `<span class="score">${esc(a)} — ${esc(b)}</span>` : "";
+}
+
+function stateLine(m, t, round) {
+  const where = `${esc(t.name)} · ${t.gender === "M" ? "Men" : "Women"}${round ? " · " + esc(round.label) : ""}`;
+  if (m.state === "in") return `${where} · <span class="live">● ${esc(m.detail || "Live")}</span>`;
+  if (m.state === "post") return `${where} · ${esc(m.detail || "Final")}`;
+  return m.detail ? `${where} · ${esc(m.detail)}` : where;
 }
 
 export async function openMatchup(m, t) {
@@ -75,8 +114,8 @@ export async function openMatchup(m, t) {
   document.getElementById("scrim").hidden = false;
   const body = document.getElementById("matchupBody");
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
-  body.innerHTML = `<h2 class="mh">${esc(m.a.name)} <small>vs</small> ${esc(m.b.name)}</h2>
-    <div class="stat">${esc(t.name)} · ${t.gender === "M" ? "Men" : "Women"}${round ? " · " + esc(round.label) : ""}</div>
+  body.innerHTML = `<h2 class="mh">${esc(m.a.name)} <small>vs</small> ${esc(m.b.name)} ${scoreline(m)}</h2>
+    <div class="mstate">${stateLine(m, t, round)}</div>
     <div id="wpslot"></div><div class="cards" id="cardslot">Loading…</div>`;
 
   const [pa, pb] = await Promise.all([
@@ -84,15 +123,16 @@ export async function openMatchup(m, t) {
     playerData(m.b.matched, t.gender),
   ]);
 
+  const mu = (await leagueMu())[t.gender];
   const wpslot = document.getElementById("wpslot");
   if (pa && pb) {
-    const mu = (await leagueMu())[t.gender];
     const wpA = preMatchWP(
       { serve: pa.s.serve_rate, ret: pa.s.return_rate },
       { serve: pb.s.serve_rate, ret: pb.s.return_rate }, mu, t.best_of);
-    wpslot.innerHTML = wpBar(m.a.name, m.b.name, wpA);
+    wpslot.innerHTML = wpBar(m.a.name, m.b.name, wpA, confidence(pa, pb));
   } else {
     wpslot.innerHTML = `<p class="wp-note">A win probability needs charting history for both players.</p>`;
   }
-  document.getElementById("cardslot").innerHTML = playerCard(m.a, pa) + playerCard(m.b, pb);
+  document.getElementById("cardslot").innerHTML =
+    playerCard(m.a, pa, mu, t.gender) + playerCard(m.b, pb, mu, t.gender);
 }

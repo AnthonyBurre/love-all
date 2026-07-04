@@ -9,11 +9,12 @@
 <body>
   <header class="site-head">
     <div class="wrap">
-      <h1>Charted Court</h1>
+      <p class="brand">Charted Court</p>
+      <h1 id="pageTitle">Live draws, x-rayed</h1>
       <p class="tag">Live Grand Slam &amp; 1000 draws, x-rayed through the
         <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Match Charting Project</a>
-        — every player badged with how much shot-by-shot history exists, and every matchup
-        clickable for style, patterns, and an experimental win probability.</p>
+        — every match box shaded by how much shot-by-shot history exists for the pairing, and
+        every matchup clickable for style, patterns, and an experimental win probability.</p>
       <p class="meta"><span id="updated">loading…</span> ·
         <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject#readme" target="_blank" rel="noopener" class="contribute">Thin data? Chart a match →</a></p>
     </div>
@@ -22,6 +23,12 @@
   <nav class="controls wrap" id="controls" hidden>
     <div class="seg" id="tourTabs"></div>
     <div class="seg" id="genderTabs"></div>
+    <div class="legend" id="legend">
+      <span class="chip t-rich">deep charting</span>
+      <span class="chip t-some">decent</span>
+      <span class="chip t-thin">thin</span>
+      <span class="chip t-none">uncharted</span>
+    </div>
   </nav>
 
   <main class="wrap">
