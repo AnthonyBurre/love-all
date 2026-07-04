@@ -1,7 +1,7 @@
 // Orchestration: load the brackets feed, build tabs, theme the page to the selected
 // tournament, render the bracket (quarter view by default, full draw on demand),
 // and wire the matchup drawer.
-import { renderTree, quarterRounds, finalsRounds, quarterLabels } from "./bracket.js";
+import { renderTree, renderCascade, quarterRounds, quarterLabels } from "./bracket.js";
 import { openMatchup } from "./matchup.js";
 import { query } from "./db.js";
 
@@ -113,15 +113,14 @@ function render() {
   document.title = `${t.name} — Charted Court`;
 
   const quarters = t.slotted && sel.view === "quarters";
-  $("finalsWrap").hidden = !quarters;
-  $("quarterWrap").hidden = !quarters;
+  $("cascadeWrap").hidden = !quarters;
   if (quarters) {
-    renderTree(finalsRounds(t), $("finals"), t, cov, openMatchup);
-    seg($("quarterTabs"), quarterLabels(t).map((l, i) => [i, l]), sel.quarter, (q) => {
-      sel.quarter = q;
-      buildTabs();
-      render();
+    const labels = quarterLabels(t);
+    renderCascade(t, $("cascade"), cov, openMatchup, {
+      labels, selected: sel.quarter,
+      onPick: (q) => { sel.quarter = q; render(); },
     });
+    $("quarterTitle").textContent = `${labels[sel.quarter]} — round 1 to quarterfinal`;
     renderTree(quarterRounds(t, sel.quarter), $("bracket"), t, cov, openMatchup);
   } else {
     renderTree(t.rounds, $("bracket"), t, cov, openMatchup);

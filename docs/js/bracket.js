@@ -133,9 +133,56 @@ export function quarterRounds(t, q) {
   });
 }
 
-// Semifinals + final — the "business end" strip above the quarter view.
-export function finalsRounds(t) {
-  return t.rounds.slice(-2);
+// The "business end" cascade: final on top, the two semifinals below it, and the
+// four quarter selectors below those — each chip under the semifinal its winner
+// feeds, wired with the same SVG connectors, so the structure reads top-down.
+export function renderCascade(t, root, cov, onClick, quarter) {
+  root.innerHTML = "";
+  const final = t.rounds[t.rounds.length - 1].matches[0];
+  const sfs = t.rounds[t.rounds.length - 2].matches;
+  const slots = [];
+
+  const put = (cls, node) => {
+    const cell = el("div", "cslot " + cls);
+    cell.append(node);
+    root.append(cell);
+    slots.push(node);
+    return node;
+  };
+  put("slot-final", matchCard(final, t, cov, onClick));
+  put("slot-sf", matchCard(sfs[0], t, cov, onClick));
+  put("slot-sf", matchCard(sfs[1], t, cov, onClick));
+  quarter.labels.forEach((label, q) => {
+    const chip = el("button", "qchip" + (q === quarter.selected ? " on" : ""), label);
+    chip.title = label;
+    chip.onclick = () => quarter.onPick(q);
+    put("slot-q", chip);
+  });
+
+  // Vertical wires: final ← each SF ← its two quarter chips.
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "wires");
+  const rect = root.getBoundingClientRect();
+  const anchor = (n, edge) => {
+    const r = n.getBoundingClientRect();
+    return { x: r.left - rect.left + r.width / 2,
+             y: r.top - rect.top + (edge === "top" ? 0 : r.height) };
+  };
+  const wire = (from, to, hot) => {
+    const a = anchor(from, "top"), b = anchor(to, "bottom");
+    const mid = (a.y + b.y) / 2;
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", `M ${a.x} ${a.y} C ${a.x} ${mid}, ${b.x} ${mid}, ${b.x} ${b.y}`);
+    if (hot) p.setAttribute("class", "hot");
+    svg.appendChild(p);
+  };
+  const [fc, sf1, sf2, ...chips] = slots;
+  wire(sf1, fc, quarter.selected < 2);
+  wire(sf2, fc, quarter.selected >= 2);
+  chips.forEach((chip, q) => wire(chip, q < 2 ? sf1 : sf2, q === quarter.selected));
+  svg.setAttribute("width", root.scrollWidth);
+  svg.setAttribute("height", root.scrollHeight);
+  root.appendChild(svg);
 }
 
 // Label each quarter by its best-seeded (or first-named) player, e.g. "Sinner".

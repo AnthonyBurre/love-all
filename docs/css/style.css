@@ -66,9 +66,18 @@ a { color: var(--acc-d); }
 
 /* section furniture for the quarters layout */
 .secthead { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 20px 0 2px; }
-.quarter-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
-.quarter-head .secthead { margin: 0; }
-.bracket.finals { padding-bottom: 22px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+
+/* business-end cascade: final -> semifinals -> quarter selectors, top-down */
+.cascade { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 34px; column-gap: 10px; padding: 12px 0 20px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.cslot { display: flex; justify-content: center; align-items: flex-end; min-width: 0; }
+.cslot .match { width: min(250px, 100%); position: relative; z-index: 2; }
+.cslot.slot-final { grid-column: 1 / 5; }
+.cslot.slot-sf { grid-column: span 2; }
+.cslot.slot-q { grid-column: span 1; }
+.qchip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; position: relative; z-index: 2; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qchip:hover { border-color: var(--acc); color: var(--ink); }
+.qchip.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+.cascade .wires .hot { stroke: var(--acc); stroke-width: 2.25; }
 
 /* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
 .bracket { display: flex; gap: 34px; overflow-x: auto; padding: 14px 0 30px; align-items: flex-start; position: relative; }
