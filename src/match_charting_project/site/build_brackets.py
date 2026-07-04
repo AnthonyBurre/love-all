@@ -46,7 +46,7 @@ def payload() -> dict:
             "best_of": t.best_of,
             "rounds": [
                 {"rank": r["rank"], "label": r["label"], "matches": [
-                    {"id": m.id, "state": m.state, "detail": m.detail,
+                    {"id": m.id, "state": m.state, "detail": m.detail, "feeds": m.feeds,
                      "a": _side(m.a, t.gender, universe), "b": _side(m.b, t.gender, universe)}
                     for m in r["matches"]]}
                 for r in brackets.rounds(t)],
