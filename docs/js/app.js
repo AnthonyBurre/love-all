@@ -32,7 +32,7 @@ async function main() {
   $("updated").textContent =
     "Updated " + new Date(data.updated).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
   if (!data.tournaments.length) {
-    $("status").textContent = "No Grand Slam or 1000 draws are live right now — check back during an event.";
+    $("status").textContent = "No Grand Slam or 1000 draws are live right now. Check back during an event.";
     return;
   }
   const first = data.tournaments[0];

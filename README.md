@@ -1,35 +1,38 @@
-# Tennis Match Charting Project — Analysis & Visualization
+# Tennis match charting — analysis and a live bracket site
 
-A data-science project built on the [Tennis Match Charting
-Project](https://github.com/JeffSackmann/tennis_MatchChartingProject), a
+The [Match Charting
+Project](https://github.com/JeffSackmann/tennis_MatchChartingProject) is a
 crowdsourced dataset of **shot-by-shot** records for 5,000+ professional tennis
-matches.
+matches — every rally typed out as point strings. This repo decodes that
+notation into queryable tables, derives point/rally/stroke analytics from it,
+and publishes an interactive site to GitHub Pages.
 
-The goal: turn raw shot notation into clean, queryable data, derive
-point/rally/stroke analytics, and ship interactive visualizations to GitHub
-Pages.
+## The site — Charted Court
 
-## Live site — Charted Court
+`docs/` is a GitHub Pages site showing live **Grand Slam and Masters/WTA-1000
+brackets** from ESPN's public feed, drawn as a linked tree with each winner wired
+to the next-round match it feeds. ESPN exposes no draw slots, so that linkage is
+inferred from names as the draw resolves. The page themes and titles itself to
+whichever tournament you're looking at.
 
-A GitHub Pages site (`docs/`) shows **live Grand Slam & Masters/WTA-1000 brackets**
-(from ESPN's public feed) as a linked tree — winners wired to their next-round match
-(linkage inferred from names as the draw resolves; ESPN exposes no draw slots) — with
-every **match box shaded by how charted the pairing is** (min of both players), the
-page themed and titled to the current tournament, and each matchup clickable for style
-archetype, serve/return rates vs tour, signature sequences, finishing/breakdown
-patterns, class-relative shot quality, and an **experimental pre-match win
-probability** — all queried in-browser via **DuckDB-WASM**, no backend.
+Every match box is shaded by how charted its pairing is, taken as the min of the
+two players — a match is only as analyzable as its lesser-charted side. Click one
+and a drawer opens with, for each player: a style archetype, serve and return
+rates against the tour average, signature shot sequences, finishing and breakdown
+patterns, shot quality relative to that archetype, and an **experimental pre-match
+win probability**. All of it is queried in the browser with **DuckDB-WASM** —
+there is no backend.
 
-Two-speed, static pipeline (nothing generated is committed):
+Two workflows keep it current, and nothing they generate is committed:
 
-- **`.github/workflows/insights.yml`** (weekly / manual) rebuilds the compact
-  `insights.duckdb` (one row per charted player) and publishes it as a Release asset.
+- **`.github/workflows/insights.yml`** (weekly, or manual) rebuilds the compact
+  `insights.duckdb` — one row per charted player — and publishes it as a Release asset.
 - **`.github/workflows/live.yml`** (hourly) fetches the current draws, reuses that
   insights DB, and deploys `docs/` to Pages.
 
-Locally: `match-charting-project site build-insights` then `... site build-brackets`,
-and serve `docs/`. The win-prob model, ESPN adapter, and insights builder live in
-`src/match_charting_project/{winprob_match,live,site}`.
+To run it locally: `match-charting-project site build-insights`, then `... site
+build-brackets`, then serve `docs/`. The win-prob model, ESPN adapter, and insights
+builder live under `src/match_charting_project/{winprob_match,live,site}`.
 
 ## Stack
 
@@ -68,7 +71,7 @@ pre-aggregated `-stats-` table (~550 MB).
 
 ## Repository layout
 
-Built to absorb many experimental directions without becoming a junk drawer:
+A place for each kind of work, so the library doesn't turn into a junk drawer:
 
 ```
 src/match_charting_project/        # the reusable, importable library
@@ -81,7 +84,7 @@ data/                  # raw/ + processed/ parquet + tennis.duckdb   (gitignored
 notebooks/             # numbered, disposable exploration
 experiments/           # one-off idea spikes that aren't library-worthy yet
 reports/               # generated outputs (data_quality.md, figures/, summaries)
-docs/                  # future GitHub Pages site
+docs/                  # the live Charted Court site (Pages)
 ```
 
 **Where does new work go?** Reusable logic → a module under `src/match_charting_project/`.
