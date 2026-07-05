@@ -91,7 +91,7 @@ function wpBar(a, b, wpA, conf) {
       <div class="pa" style="width:${wpA * 100}%">${esc(last(a))} ${pa}%</div>
       <div class="pb" style="width:${(1 - wpA) * 100}%">${100 - pa}% ${esc(last(b))}</div>
     </div>
-    <div class="wp-note"><b>Experimental</b> pre-match model from charted serve+return only —
+    <div class="wp-note"><b>Experimental</b> pre-match model, from charted serve and return only —
       no surface, form, or injuries. Charting confidence: ${conf}.</div>
   </div>`;
 }
