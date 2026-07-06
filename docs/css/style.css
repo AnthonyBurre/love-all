@@ -119,12 +119,12 @@ a { color: var(--acc-d); }
 .mstate { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
 .mstate .live { color: var(--warn); font-weight: 700; }
 
-.wp { margin: 16px 0 6px; }
-.wp-bar { height: 30px; border-radius: 7px; overflow: hidden; display: flex; font-size: 13px; font-weight: 700; color: #fff; }
-.wp-bar .pa { background: var(--a); display: flex; align-items: center; padding: 0 8px; }
-.wp-bar .pb { background: var(--b); display: flex; align-items: center; justify-content: flex-end; padding: 0 8px; }
-.wp-note { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
-.wp-note b { color: var(--warn); }
+/* the win probability is deliberately small print below the tendencies */
+.wp-slim { margin: 18px 0 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.wp-line { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wp-line .wp-bar { flex: 1; height: 7px; border-radius: 4px; overflow: hidden; background: color-mix(in srgb, var(--b) 30%, var(--card)); }
+.wp-line .pa { height: 100%; background: color-mix(in srgb, var(--a) 65%, var(--card)); }
+.wp-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 
 .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
 .pcard { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
@@ -137,7 +137,7 @@ a { color: var(--acc-d); }
 .stat .down { color: var(--b); font-weight: 600; }
 .sig { font-size: 11.5px; color: var(--muted); margin: 6px 0 2px; }
 .sig code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 10.5px; }
-.pat { font-size: 12px; margin: 3px 0; }
+.pat { font-size: 12.5px; margin: 4px 0; line-height: 1.45; }
 .pat .lift { color: var(--muted); font-size: 11px; }
 .pat.green::before { content: "▲ "; color: var(--acc); }
 .pat.trouble::before { content: "▼ "; color: var(--b); }
