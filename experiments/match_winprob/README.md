@@ -117,10 +117,14 @@ All of these improve the `p1/p2` **input** and plug in behind the same scalar se
 engine and the leverage/shot-quality layer don't change. Parked here to keep this experiment
 about the *win-probability layer*, not the strength model:
 
-- **Surface-specific serve/return** (clay / grass / hard — the data has `surface`); likely
-  the biggest single gain.
-- **Recency / form weighting** — time-decay the walk-forward counters instead of equal-weighting
-  a whole career.
+- **Surface-specific serve/return** — **investigated and settled negative** in
+  `../surface_winprob`: on charted samples the surface backoff never beats the career
+  baseline, even restricted to players with deep surface history. Not "likely the
+  biggest single gain" after all.
+- **Recency / form weighting** — **investigated in `../form_streakiness`**: the form
+  signal is real at the points level but too small to improve held-out match
+  predictions, and individual "streakiness" is indistinguishable from noise. Needs
+  dense (non-charted) tour results to revisit.
 - **Opponent-adjusted strength** — common-opponent / Elo-style ratings rather than raw
   serve+return vs the field.
 - **External covariates** — ranking/seed prior, fatigue (days off, prior-round minutes),
