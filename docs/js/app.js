@@ -1,13 +1,14 @@
 // Orchestration: load the brackets feed, build tabs, theme the page to the selected
 // tournament, render the bracket (quarter view by default, full draw on demand),
 // and wire the matchup drawer.
-import { renderTree, renderCascade, quarterRounds, quarterLabels } from "./bracket.js";
+import { renderTree, renderCascade, renderRoundList, currentRound,
+         quarterRounds, quarterLabels } from "./bracket.js";
 import { openMatchup } from "./matchup.js";
 import { query } from "./db.js";
 
 let data = null;
 const cov = {};                 // "G|player" -> charted match count
-const sel = { name: null, gender: null, view: "quarters", quarter: 0 };
+const sel = { name: null, gender: null, view: "quarters", quarter: 0, round: null };
 
 const $ = (id) => document.getElementById(id);
 
@@ -83,12 +84,14 @@ function buildTabs() {
   seg($("tourTabs"), names().map((n) => [n, n]), sel.name, (n) => {
     sel.name = n;
     if (!gendersFor(n).includes(sel.gender)) sel.gender = gendersFor(n)[0];
+    sel.round = null;
     buildTabs();
     render();
   });
   const g = gendersFor(sel.name);
   seg($("genderTabs"), g.map((x) => [x, x === "M" ? "Men" : "Women"]), sel.gender, (x) => {
     sel.gender = x;
+    sel.round = null;
     buildTabs();
     render();
   });
@@ -100,6 +103,7 @@ function buildTabs() {
   seg($("viewTabs"), [["quarters", "By quarter"], ["full", "Full draw"]],
     t.slotted ? sel.view : "full", (v) => {
       sel.view = v;
+      sel.round = null;
       buildTabs();
       render();
     });
@@ -112,9 +116,21 @@ function render() {
   $("pageTitle").textContent = t.name;
   document.title = `${t.name} — Charted Court`;
 
-  const quarters = t.slotted && sel.view === "quarters";
+  // Phones skip the cascade and quarter machinery entirely: the whole draw,
+  // one round at a time, opened on the current round. Wide screens keep the
+  // quarter view (cascade + wired quarter tree) or the full tree.
+  const mobile = window.matchMedia("(max-width: 700px)").matches;
+  const quarters = !mobile && t.slotted && sel.view === "quarters";
   $("cascadeWrap").hidden = !quarters;
-  if (quarters) {
+  $("viewTabs").style.display = t.slotted && !mobile ? "" : "none";
+
+  if (mobile) {
+    if (sel.round == null || sel.round >= t.rounds.length) sel.round = currentRound(t.rounds);
+    renderRoundList(t.rounds, $("bracket"), t, cov, openMatchup, {
+      selected: sel.round, paired: t.slotted,
+      onPick: (i) => { sel.round = i; render(); },
+    });
+  } else if (quarters) {
     const labels = quarterLabels(t);
     renderCascade(t, $("cascade"), cov, openMatchup, {
       labels, selected: sel.quarter,

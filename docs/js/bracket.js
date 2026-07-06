@@ -98,6 +98,7 @@ function drawConnectors(rounds, root, cards) {
 // Render a set of rounds as a linked tree into `root` (any .bracket-styled container).
 export function renderTree(rounds, root, t, cov, onClick) {
   root.innerHTML = "";
+  root.classList.remove("aslist");
   const cards = new Map();
   for (const round of rounds) {
     const col = el("div", "round");
@@ -120,6 +121,54 @@ export function renderTree(rounds, root, t, cov, onClick) {
   for (const listEl of root.querySelectorAll(".round-list")) listEl.style.height = maxBottom + "px";
   drawConnectors(rounds, root, cards);
   root.scrollLeft = 0;
+}
+
+// Phones get a structurally different layout: one round at a time as a vertical
+// list (no horizontal panning), with chips to move through the rounds. Consecutive
+// pairs are bracketed together when ordering is slot-true — those winners meet.
+const shortLabel = (label) => {
+  const m = /^round (?:of )?(\d+)$/i.exec(label);
+  if (m) return { 128: "R1", 64: "R2", 32: "R3", 16: "R16" }[m[1]] || "R" + m[1];
+  const r = /^round (\d+)$/i.exec(label);
+  if (r) return "R" + r[1];
+  return { quarterfinal: "QF", quarterfinals: "QF", semifinal: "SF", semifinals: "SF",
+           final: "F" }[label.toLowerCase()] || label;
+};
+
+export function renderRoundList(rounds, root, t, cov, onClick, roundSel) {
+  root.innerHTML = "";
+  root.classList.add("aslist");
+
+  const chips = el("div", "roundchips");
+  rounds.forEach((r, i) => {
+    const b = el("button", "qchip" + (i === roundSel.selected ? " on" : ""), shortLabel(r.label));
+    b.title = r.label;
+    b.onclick = () => roundSel.onPick(i);
+    chips.append(b);
+  });
+  root.append(chips);
+
+  const round = rounds[roundSel.selected];
+  root.append(el("h3", "roundtitle", round.label));
+  const list = el("div", "rlist");
+  const ms = round.matches;
+  const paired = roundSel.paired && ms.length > 1 && ms.length % 2 === 0;
+  if (paired) {
+    for (let i = 0; i < ms.length; i += 2) {
+      const pair = el("div", "pair");
+      pair.append(matchCard(ms[i], t, cov, onClick), matchCard(ms[i + 1], t, cov, onClick));
+      list.append(pair);
+    }
+  } else {
+    for (const m of ms) list.append(matchCard(m, t, cov, onClick));
+  }
+  root.append(list);
+}
+
+// Default round to open on: the earliest with something still to play.
+export function currentRound(rounds) {
+  const i = rounds.findIndex((r) => r.matches.some((m) => !m.placeholder && m.state !== "post"));
+  return i === -1 ? rounds.length - 1 : i;
 }
 
 // --- quarter slicing (valid only for slot-true, power-of-two draws: t.slotted) ---
