@@ -116,33 +116,30 @@ function render() {
   $("pageTitle").textContent = t.name;
   document.title = `${t.name} — Charted Court`;
 
-  const quarters = t.slotted && sel.view === "quarters";
+  // Phones skip the cascade and quarter machinery entirely: the whole draw,
+  // one round at a time, opened on the current round. Wide screens keep the
+  // quarter view (cascade + wired quarter tree) or the full tree.
   const mobile = window.matchMedia("(max-width: 700px)").matches;
+  const quarters = !mobile && t.slotted && sel.view === "quarters";
   $("cascadeWrap").hidden = !quarters;
+  $("viewTabs").style.display = t.slotted && !mobile ? "" : "none";
 
-  // Phones page through one round at a time; wide screens get the wired tree.
-  const show = (rounds) => {
-    if (mobile) {
-      if (sel.round == null || sel.round >= rounds.length) sel.round = currentRound(rounds);
-      renderRoundList(rounds, $("bracket"), t, cov, openMatchup, {
-        selected: sel.round, paired: t.slotted,
-        onPick: (i) => { sel.round = i; render(); },
-      });
-    } else {
-      renderTree(rounds, $("bracket"), t, cov, openMatchup);
-    }
-  };
-
-  if (quarters) {
+  if (mobile) {
+    if (sel.round == null || sel.round >= t.rounds.length) sel.round = currentRound(t.rounds);
+    renderRoundList(t.rounds, $("bracket"), t, cov, openMatchup, {
+      selected: sel.round, paired: t.slotted,
+      onPick: (i) => { sel.round = i; render(); },
+    });
+  } else if (quarters) {
     const labels = quarterLabels(t);
     renderCascade(t, $("cascade"), cov, openMatchup, {
       labels, selected: sel.quarter,
-      onPick: (q) => { sel.quarter = q; sel.round = null; render(); },
+      onPick: (q) => { sel.quarter = q; render(); },
     });
     $("quarterTitle").textContent = `${labels[sel.quarter]} — round 1 to quarterfinal`;
-    show(quarterRounds(t, sel.quarter));
+    renderTree(quarterRounds(t, sel.quarter), $("bracket"), t, cov, openMatchup);
   } else {
-    show(t.rounds);
+    renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
   }
 }
 
