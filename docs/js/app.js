@@ -1,13 +1,14 @@
 // Orchestration: load the brackets feed, build tabs, theme the page to the selected
 // tournament, render the bracket (quarter view by default, full draw on demand),
 // and wire the matchup drawer.
-import { renderTree, renderCascade, quarterRounds, quarterLabels } from "./bracket.js";
+import { renderTree, renderCascade, renderRoundList, currentRound,
+         quarterRounds, quarterLabels } from "./bracket.js";
 import { openMatchup } from "./matchup.js";
 import { query } from "./db.js";
 
 let data = null;
 const cov = {};                 // "G|player" -> charted match count
-const sel = { name: null, gender: null, view: "quarters", quarter: 0 };
+const sel = { name: null, gender: null, view: "quarters", quarter: 0, round: null };
 
 const $ = (id) => document.getElementById(id);
 
@@ -83,12 +84,14 @@ function buildTabs() {
   seg($("tourTabs"), names().map((n) => [n, n]), sel.name, (n) => {
     sel.name = n;
     if (!gendersFor(n).includes(sel.gender)) sel.gender = gendersFor(n)[0];
+    sel.round = null;
     buildTabs();
     render();
   });
   const g = gendersFor(sel.name);
   seg($("genderTabs"), g.map((x) => [x, x === "M" ? "Men" : "Women"]), sel.gender, (x) => {
     sel.gender = x;
+    sel.round = null;
     buildTabs();
     render();
   });
@@ -100,6 +103,7 @@ function buildTabs() {
   seg($("viewTabs"), [["quarters", "By quarter"], ["full", "Full draw"]],
     t.slotted ? sel.view : "full", (v) => {
       sel.view = v;
+      sel.round = null;
       buildTabs();
       render();
     });
@@ -113,17 +117,32 @@ function render() {
   document.title = `${t.name} — Charted Court`;
 
   const quarters = t.slotted && sel.view === "quarters";
+  const mobile = window.matchMedia("(max-width: 700px)").matches;
   $("cascadeWrap").hidden = !quarters;
+
+  // Phones page through one round at a time; wide screens get the wired tree.
+  const show = (rounds) => {
+    if (mobile) {
+      if (sel.round == null || sel.round >= rounds.length) sel.round = currentRound(rounds);
+      renderRoundList(rounds, $("bracket"), t, cov, openMatchup, {
+        selected: sel.round, paired: t.slotted,
+        onPick: (i) => { sel.round = i; render(); },
+      });
+    } else {
+      renderTree(rounds, $("bracket"), t, cov, openMatchup);
+    }
+  };
+
   if (quarters) {
     const labels = quarterLabels(t);
     renderCascade(t, $("cascade"), cov, openMatchup, {
       labels, selected: sel.quarter,
-      onPick: (q) => { sel.quarter = q; render(); },
+      onPick: (q) => { sel.quarter = q; sel.round = null; render(); },
     });
     $("quarterTitle").textContent = `${labels[sel.quarter]} — round 1 to quarterfinal`;
-    renderTree(quarterRounds(t, sel.quarter), $("bracket"), t, cov, openMatchup);
+    show(quarterRounds(t, sel.quarter));
   } else {
-    renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
+    show(t.rounds);
   }
 }
 
