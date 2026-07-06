@@ -70,11 +70,28 @@ def build() -> int:
                 .groupby(["player", "gender", "kind"]).head(4)
                 [["player", "gender", "kind", "context", "rate", "lift", "n"]])
 
+    # Shot-making triggers (shot_triggers experiment): green lights by attempt lift,
+    # traps by how far conversion falls below the player's norm.
+    tr = pd.read_csv(REPORTS / "shot_triggers.csv")
+    greens = (tr[tr.tag == "green"].sort_values("att_lift", ascending=False)
+              .groupby(["player", "gender"]).head(3))
+    traps = (tr[tr.tag == "trap"].sort_values("conv_delta")
+             .groupby(["player", "gender"]).head(3))
+    triggers = pd.concat([greens, traps])[
+        ["player", "gender", "tag", "context", "att_rate", "att_lift",
+         "conversion", "conv_delta", "n"]]
+
+    tp = pd.read_csv(REPORTS / "shot_triggers_players.csv")[
+        ["player", "gender", "att_rate", "conversion", "sigma", "n_traps"]].rename(
+        columns={"att_rate": "trig_att_rate", "conversion": "trig_conversion"})
+    summary = summary.merge(tp, on=["player", "gender"], how="left")
+
     meta = pd.DataFrame([{"key": f"mu_{g}", "value": round(v, 5)} for g, v in mu.items()])
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     out = duckdb.connect(str(OUT))
-    for name, df in (("player_summary", summary), ("player_patterns", patterns), ("meta", meta)):
+    for name, df in (("player_summary", summary), ("player_patterns", patterns),
+                     ("player_triggers", triggers), ("meta", meta)):
         out.register(f"_{name}", df)
         out.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _{name}")
     out.close()

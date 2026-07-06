@@ -179,7 +179,7 @@ def main() -> None:
               "context-driven the go-for-it decision is (0 = context-blind), with "
               "binomial sampling noise subtracted.*")
     md.append("")
-    csv_rows = []
+    csv_rows, player_rows = [], []
     corr_all, phi_rows = [], []
     for g in ("M", "W"):
         acc = collect(con, g)
@@ -197,6 +197,15 @@ def main() -> None:
                 corr_all.append((g, player, r))
             if not np.isnan(phi):
                 phi_rows.append((g, player, phi, df.attrs["base_att"], int(df.n.sum())))
+            player_rows.append({
+                "player": player, "gender": g,
+                "att_rate": round(df.attrs["base_att"], 3),
+                "conversion": round(df.attrs["base_conv"], 3),
+                "sigma": round(phi, 4) if not np.isnan(phi) else None,
+                "n_ctx": len(df), "n_traps": int((df.tag == "trap").sum()),
+                "n_greens": int((df.tag == "green").sum()),
+                "strokes": a["n"],
+            })
             for row in df[df.tag != "neutral"].itertuples():
                 csv_rows.append({
                     "player": player, "gender": g, "context": _ctx_str(row.context),
@@ -270,6 +279,8 @@ def main() -> None:
     plt.close(fig)
 
     pd.DataFrame(csv_rows).to_csv(PROJECT_ROOT / "reports" / "shot_triggers.csv", index=False)
+    pd.DataFrame(player_rows).to_csv(PROJECT_ROOT / "reports" / "shot_triggers_players.csv",
+                                     index=False)
     (PROJECT_ROOT / "reports" / "shot_triggers.md").write_text("\n".join(md) + "\n")
     print(f"players with corr: {len(corr)} | mean r = {corr.r.mean():+.3f} "
           f"| positive: {(corr.r > 0).mean():.0%}")
