@@ -62,18 +62,19 @@ function playerCard(side, d, mu, gender) {
       <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Chart a match →</a></p></div>`;
   }
   const s = d.s;
-  const pats = [...d.patterns.filter((p) => p.kind === "green").slice(0, 2),
-                ...d.patterns.filter((p) => p.kind === "trouble").slice(0, 2)];
+  const pats = [...d.patterns.filter((p) => p.kind === "green").slice(0, 3),
+                ...d.patterns.filter((p) => p.kind === "trouble").slice(0, 3)];
   return `<div class="pcard">
     <h4>${esc(side.name)}</h4>${flag}
     ${s.archetype ? `<div class="arch">${esc(s.archetype)}</div>` : ""}
+    ${signatures(s)}
+    ${pats.length ? `<div class="phead">finishing / breakdown</div>` + pats.map(patLine).join("") : ""}
+    <div class="phead">the numbers</div>
     ${rateStat("serve pts won", s.serve_rate, mu)}
     ${rateStat("return pts won", s.return_rate, 1 - mu)}
     <div class="stat"><span class="k">shot quality:</span> ${ratingLabel(s.class_rel_z)}${s.accuracy != null ? ` · ${Number(s.accuracy).toFixed(0)}/100` : ""}</div>
     <div class="stat"><span class="k">style:</span> ${s.bits != null ? predictabilityLabel(s.bits) + ` (${s.bits.toFixed(1)} bits)` : "—"}</div>
     <div class="stat"><span class="k">charted:</span> ${s.matches_charted} matches · ${Number(s.points_charted).toLocaleString()} points</div>
-    ${signatures(s)}
-    ${pats.length ? `<div class="phead">finishing / breakdown</div>` + pats.map(patLine).join("") : ""}
   </div>`;
 }
 
@@ -84,15 +85,18 @@ function confidence(pa, pb) {
   return "low — one side is thinly charted";
 }
 
+// Deliberately small print: the shot-sequence tendencies above are this site's
+// substance; the win probability is a rough, tested-and-humbled reference number.
 function wpBar(a, b, wpA, conf) {
   const pa = Math.round(wpA * 100);
-  return `<div class="wp">
-    <div class="wp-bar">
-      <div class="pa" style="width:${wpA * 100}%">${esc(last(a))} ${pa}%</div>
-      <div class="pb" style="width:${(1 - wpA) * 100}%">${100 - pa}% ${esc(last(b))}</div>
-    </div>
-    <div class="wp-note"><b>Experimental</b> pre-match model, from charted serve and return only —
-      no surface, form, or injuries. Charting confidence: ${conf}.</div>
+  return `<div class="wp wp-slim">
+    <div class="phead">rough pre-match number</div>
+    <div class="wp-line"><span>${esc(last(a))} ${pa}%</span>
+      <div class="wp-bar"><div class="pa" style="width:${wpA * 100}%"></div></div>
+      <span>${100 - pa}% ${esc(last(b))}</span></div>
+    <div class="wp-note">Experimental, from charted serve and return rates only. Surface and
+      recent-form adjustments were tested and don't improve it at this data resolution, so
+      it stays deliberately simple. Charting confidence: ${conf}.</div>
   </div>`;
 }
 
@@ -116,7 +120,7 @@ export async function openMatchup(m, t) {
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
   body.innerHTML = `<h2 class="mh">${esc(m.a.name)} <small>vs</small> ${esc(m.b.name)} ${scoreline(m)}</h2>
     <div class="mstate">${stateLine(m, t, round)}</div>
-    <div id="wpslot"></div><div class="cards" id="cardslot">Loading…</div>`;
+    <div class="cards" id="cardslot">Loading…</div><div id="wpslot"></div>`;
 
   const [pa, pb] = await Promise.all([
     playerData(m.a.matched, t.gender),
