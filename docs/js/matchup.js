@@ -15,7 +15,13 @@ async function playerData(name, gender) {
   const p = await query(
     "SELECT kind, context, rate, lift FROM player_patterns WHERE player = ? AND gender = ? ORDER BY rate DESC",
     [name, gender]);
-  return { s: s[0], patterns: p };
+  let triggers = [];
+  try {
+    triggers = await query(
+      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n " +
+      "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
+  } catch (e) { /* insights db predates player_triggers — patterns fallback below */ }
+  return { s: s[0], patterns: p, triggers };
 }
 
 function predictabilityLabel(bits) {
@@ -36,6 +42,26 @@ function patLine(p) {
   const cls = p.kind === "green" ? "green" : "trouble";
   const what = p.kind === "green" ? "goes for a winner" : "tends to err";
   return `<div class="pat ${cls}">after <code>${esc(p.context)}</code> — ${what} ${Math.round(p.rate * 100)}% <span class="lift">(${Number(p.lift).toFixed(1)}× their norm)</span></div>`;
+}
+
+// One decision, two outcomes: a green light converts, a trap is taken bait.
+function trigLine(t) {
+  const ctx = `after <code>${esc(t.context)}</code>`;
+  const lift = `${Number(t.att_lift).toFixed(1)}×`;
+  if (t.tag === "green") {
+    return `<div class="pat green">${ctx} — goes for it ${Math.round(t.att_rate * 100)}% (${lift})
+      and converts ${Math.round(t.conversion * 100)}% <span class="lift">(n=${Number(t.n)})</span></div>`;
+  }
+  return `<div class="pat bait">${ctx} — takes the bait (${lift} their attempts) but converts
+    only ${Math.round(t.conversion * 100)}% <span class="lift">(${Math.round(t.conv_delta * 100)} vs their norm, n=${Number(t.n)})</span></div>`;
+}
+
+// How context-driven is the go-for-it decision (σ from the shot_triggers experiment)?
+function selectionLabel(sigma) {
+  if (sigma == null) return null;
+  if (sigma >= 0.06) return `highly cue-driven (σ ${(sigma * 100).toFixed(1)}pp)`;
+  if (sigma <= 0.025) return `pattern-immune (σ ${(sigma * 100).toFixed(1)}pp)`;
+  return `selective (σ ${(sigma * 100).toFixed(1)}pp)`;
 }
 
 // serve/return rate with a ▲/▼ against the tour average (mu = mean serve-win rate).
@@ -62,16 +88,38 @@ function playerCard(side, d, mu, gender) {
       <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Chart a match →</a></p></div>`;
   }
   const s = d.s;
-  const pats = [...d.patterns.filter((p) => p.kind === "green").slice(0, 3),
-                ...d.patterns.filter((p) => p.kind === "trouble").slice(0, 3)];
+  // Shot-making triggers (one decision + conversion) when the insights db has
+  // them; the older two-book winner/error patterns otherwise.
+  let tendencies = "";
+  if (d.triggers.length) {
+    const greens = d.triggers.filter((t) => t.tag === "green")
+      .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
+    const traps = d.triggers.filter((t) => t.tag === "trap")
+      .sort((a, b) => a.conv_delta - b.conv_delta).slice(0, 2);
+    const unbaitable = s.n_traps != null && Number(s.n_traps) === 0
+      ? `<div class="pat immune">no trap sequences — every lead-up that raises their
+         aggression also meets their usual conversion</div>` : "";
+    tendencies = `<div class="phead">shot-making triggers</div>` +
+      [...greens, ...traps].map(trigLine).join("") + unbaitable;
+  } else {
+    const pats = [...d.patterns.filter((p) => p.kind === "green").slice(0, 3),
+                  ...d.patterns.filter((p) => p.kind === "trouble").slice(0, 3)];
+    tendencies = pats.length
+      ? `<div class="phead">finishing / breakdown</div>` + pats.map(patLine).join("") : "";
+  }
+  const sel = selectionLabel(s.sigma);
+  const trig = s.trig_att_rate != null
+    ? `<div class="stat"><span class="k">goes for it:</span> ${pct(s.trig_att_rate)} of strokes · converts ${Math.round(s.trig_conversion * 100)}%</div>` : "";
   return `<div class="pcard">
     <h4>${esc(side.name)}</h4>${flag}
     ${s.archetype ? `<div class="arch">${esc(s.archetype)}</div>` : ""}
     ${signatures(s)}
-    ${pats.length ? `<div class="phead">finishing / breakdown</div>` + pats.map(patLine).join("") : ""}
+    ${tendencies}
     <div class="phead">the numbers</div>
     ${rateStat("serve pts won", s.serve_rate, mu)}
     ${rateStat("return pts won", s.return_rate, 1 - mu)}
+    ${trig}
+    ${sel ? `<div class="stat"><span class="k">shot selection:</span> ${sel}</div>` : ""}
     <div class="stat"><span class="k">shot quality:</span> ${ratingLabel(s.class_rel_z)}${s.accuracy != null ? ` · ${Number(s.accuracy).toFixed(0)}/100` : ""}</div>
     <div class="stat"><span class="k">style:</span> ${s.bits != null ? predictabilityLabel(s.bits) + ` (${s.bits.toFixed(1)} bits)` : "—"}</div>
     <div class="stat"><span class="k">charted:</span> ${s.matches_charted} matches · ${Number(s.points_charted).toLocaleString()} points</div>

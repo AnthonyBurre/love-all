@@ -48,6 +48,10 @@ This is the third lens on a player, and they compose: `player_styles` says **wha
 player hits (static mix), `shot_language` says **in what order** (sequence/predictability),
 and this says **which orders pay off** (winner) or **cost** (error).
 
+`../shot_triggers` later recast these two books as one: winner and error contexts
+substantially overlap because both mark the *decision to go for it* — see that experiment
+for attempt/conversion, trap patterns, and pattern-immunity.
+
 ## Honest limitations
 
 - **Coarse tokens.** Zones are the codebook's 1/2/3, shot "kind" is drive/slice/net/other —

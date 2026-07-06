@@ -141,6 +141,9 @@ a { color: var(--acc-d); }
 .pat .lift { color: var(--muted); font-size: 11px; }
 .pat.green::before { content: "▲ "; color: var(--acc); }
 .pat.trouble::before { content: "▼ "; color: var(--b); }
+.pat.bait::before { content: "⚠ "; color: var(--warn); }
+.pat.immune { color: var(--acc-d); font-weight: 600; }
+.pat.immune::before { content: "◆ "; }
 .pat code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
 .phead { margin: 10px 0 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .uncharted { font-size: 12.5px; color: var(--warn); }
