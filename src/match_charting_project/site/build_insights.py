@@ -75,6 +75,17 @@ def build() -> int:
     triggers = pd.concat([greens, traps])[
         ["player", "gender", "tag", "context", "att_rate", "att_lift",
          "conversion", "conv_delta", "n"]]
+    triggers["depth"] = 2
+
+    # Gold-star deep patterns (deep_patterns experiment): 3-4 shot sequences that
+    # beat their own shorter parent and replicate — only the hugely-charted have them.
+    # att_lift for these rows is the lift vs the parent pattern, not vs base rate.
+    dp_path = REPORTS / "deep_patterns.csv"
+    if dp_path.exists():
+        dp = pd.read_csv(dp_path).rename(columns={"parent_lift": "att_lift"})
+        deep = (dp.sort_values("att_lift", ascending=False)
+                .groupby(["player", "gender"]).head(3))
+        triggers = pd.concat([triggers, deep[triggers.columns]])
 
     tp = pd.read_csv(REPORTS / "shot_triggers_players.csv")[
         ["player", "gender", "att_rate", "conversion", "sigma", "n_traps"]].rename(
