@@ -119,6 +119,26 @@ a { color: var(--acc-d); }
 .mstate { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
 .mstate .live { color: var(--warn); font-weight: 700; }
 
+/* collapsed notation key: mini courts + text legend */
+.notekey { margin: 14px 0 0; font-size: 12px; color: var(--muted); }
+.notekey summary { cursor: pointer; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--acc-d); }
+.notekey .courts { display: flex; gap: 18px; margin: 10px 0 4px; }
+.notekey .courts svg { flex: 0 1 150px; max-width: 46%; height: auto; }
+.notekey .keytext div { margin: 6px 0; line-height: 1.5; }
+.notekey code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+.ct-line { stroke: var(--muted); stroke-width: 1.4; }
+.ct-line-thin { stroke: var(--muted); stroke-width: 0.9; }
+.ct-net { stroke: var(--ink); stroke-width: 2.2; }
+.ct-dash { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.ct-big { font-size: 15px; font-weight: 700; fill: var(--acc-d); text-anchor: middle; }
+.ct-sub { font-size: 8.5px; fill: var(--muted); text-anchor: middle; }
+.ct-sub.anchor-start { text-anchor: start; }
+.ct-cap { font-size: 8.5px; fill: var(--ink); font-weight: 600; text-anchor: middle; }
+.ct-player { fill: var(--acc); }
+.ct-target { fill: none; stroke: var(--acc); stroke-width: 1.6; }
+.ct-shot { stroke: var(--acc); stroke-width: 1.3; }
+.ct-shot.faint { opacity: 0.35; }
+
 /* the win probability is deliberately small print below the tendencies */
 .wp-slim { margin: 18px 0 6px; padding-top: 12px; border-top: 1px solid var(--line); }
 .wp-line { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -140,10 +160,12 @@ a { color: var(--acc-d); }
 .pat { font-size: 12.5px; margin: 4px 0; line-height: 1.45; }
 .pat .lift { color: var(--muted); font-size: 11px; }
 .pat.green::before { content: "▲ "; color: var(--acc); }
-.pat.trouble::before { content: "▼ "; color: var(--b); }
 .pat.bait::before { content: "⚠ "; color: var(--warn); }
 .pat.immune { color: var(--acc-d); font-weight: 600; }
 .pat.immune::before { content: "◆ "; }
+.pat.gold::before { content: "⭐ "; }
+.pat.gold { background: color-mix(in srgb, #d7b53d 12%, var(--card)); border-radius: 6px; padding: 3px 6px; }
+.phead-note { text-transform: none; letter-spacing: 0; font-weight: 500; }
 .pat code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
 .phead { margin: 10px 0 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .uncharted { font-size: 12.5px; color: var(--warn); }

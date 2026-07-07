@@ -12,16 +12,13 @@ async function playerData(name, gender) {
   if (!name) return null;
   const s = await query("SELECT * FROM player_summary WHERE player = ? AND gender = ?", [name, gender]);
   if (!s.length) return null;
-  const p = await query(
-    "SELECT kind, context, rate, lift FROM player_patterns WHERE player = ? AND gender = ? ORDER BY rate DESC",
-    [name, gender]);
   let triggers = [];
   try {
     triggers = await query(
-      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n " +
+      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, depth " +
       "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
-  } catch (e) { /* insights db predates player_triggers — patterns fallback below */ }
-  return { s: s[0], patterns: p, triggers };
+  } catch (e) { /* stale insights db: show the card without tendencies */ }
+  return { s: s[0], triggers };
 }
 
 function predictabilityLabel(bits) {
@@ -38,16 +35,20 @@ function ratingLabel(z) {
   return `typical for their style (z ${z.toFixed(1)})`;
 }
 
-function patLine(p) {
-  const cls = p.kind === "green" ? "green" : "trouble";
-  const what = p.kind === "green" ? "goes for a winner" : "tends to err";
-  return `<div class="pat ${cls}">after <code>${esc(p.context)}</code> — ${what} ${Math.round(p.rate * 100)}% <span class="lift">(${Number(p.lift).toFixed(1)}× their norm)</span></div>`;
-}
-
 // One decision, two outcomes: a green light converts, a trap is taken bait.
 function trigLine(t) {
   const ctx = `after <code>${esc(t.context)}</code>`;
   const lift = `${Number(t.att_lift).toFixed(1)}×`;
+  if (Number(t.depth) > 2) {
+    // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates
+    // across halves of the player's data — only the hugely-charted earn these.
+    const kind = t.tag === "trap"
+      ? `but converts only ${Math.round(t.conversion * 100)}% ⚠`
+      : `and converts ${Math.round(t.conversion * 100)}%`;
+    return `<div class="pat gold" title="deep pattern: only visible with this player's huge charted history">${ctx}
+      — goes for it ${Math.round(t.att_rate * 100)}% (${lift} the shorter pattern) ${kind}
+      <span class="lift">(n=${Number(t.n)})</span></div>`;
+  }
   if (t.tag === "green") {
     return `<div class="pat green">${ctx} — goes for it ${Math.round(t.att_rate * 100)}% (${lift})
       and converts ${Math.round(t.conversion * 100)}% <span class="lift">(n=${Number(t.n)})</span></div>`;
@@ -88,24 +89,25 @@ function playerCard(side, d, mu, gender) {
       <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Chart a match →</a></p></div>`;
   }
   const s = d.s;
-  // Shot-making triggers (one decision + conversion) when the insights db has
-  // them; the older two-book winner/error patterns otherwise.
   let tendencies = "";
   if (d.triggers.length) {
-    const greens = d.triggers.filter((t) => t.tag === "green")
+    const shallow = d.triggers.filter((t) => !(Number(t.depth) > 2));
+    const greens = shallow.filter((t) => t.tag === "green")
       .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
-    const traps = d.triggers.filter((t) => t.tag === "trap")
+    const traps = shallow.filter((t) => t.tag === "trap")
       .sort((a, b) => a.conv_delta - b.conv_delta).slice(0, 2);
+    const gold = d.triggers.filter((t) => Number(t.depth) > 2)
+      .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
     const unbaitable = s.n_traps != null && Number(s.n_traps) === 0
       ? `<div class="pat immune">no trap sequences — every lead-up that raises their
          aggression also meets their usual conversion</div>` : "";
     tendencies = `<div class="phead">shot-making triggers</div>` +
-      [...greens, ...traps].map(trigLine).join("") + unbaitable;
-  } else {
-    const pats = [...d.patterns.filter((p) => p.kind === "green").slice(0, 3),
-                  ...d.patterns.filter((p) => p.kind === "trouble").slice(0, 3)];
-    tendencies = pats.length
-      ? `<div class="phead">finishing / breakdown</div>` + pats.map(patLine).join("") : "";
+      [...greens, ...traps].map(trigLine).join("") + unbaitable +
+      (gold.length
+        ? `<div class="phead">deep patterns ⭐ <span class="phead-note">3–4 shot
+           sequences only chartable at this player's coverage</span></div>` +
+          gold.map(trigLine).join("")
+        : "");
   }
   const sel = selectionLabel(s.sigma);
   const trig = s.trig_att_rate != null
@@ -148,6 +150,58 @@ function wpBar(a, b, wpA, conf) {
   </div>`;
 }
 
+// Collapsed key for the shot notation: two mini courts (rally zones, serve
+// targets) + a text legend. Tap/click to open — hover isn't a thing on phones.
+function notationHelp() {
+  const court = (inner) => `<svg viewBox="0 0 150 190" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="110" height="170" class="ct-line" fill="none"/>
+    <line x1="20" y1="95" x2="130" y2="95" class="ct-net"/>
+    ${inner}</svg>`;
+  const zones = court(`
+    <line x1="56.7" y1="10" x2="56.7" y2="95" class="ct-dash"/>
+    <line x1="93.3" y1="10" x2="93.3" y2="95" class="ct-dash"/>
+    <text x="38" y="45" class="ct-big">1</text>
+    <text x="75" y="45" class="ct-big">2</text>
+    <text x="112" y="45" class="ct-big">3</text>
+    <text x="38" y="60" class="ct-sub">FH side</text>
+    <text x="75" y="60" class="ct-sub">middle</text>
+    <text x="112" y="60" class="ct-sub">BH side</text>
+    <circle cx="75" cy="172" r="4" class="ct-player"/>
+    <line x1="75" y1="166" x2="40" y2="66" class="ct-shot"/>
+    <line x1="75" y1="166" x2="75" y2="66" class="ct-shot faint"/>
+    <line x1="75" y1="166" x2="110" y2="66" class="ct-shot faint"/>
+    <text x="75" y="189" class="ct-cap">rally direction →1 / →2 / →3</text>`);
+  const serves = court(`
+    <line x1="20" y1="52.5" x2="130" y2="52.5" class="ct-line-thin"/>
+    <line x1="20" y1="137.5" x2="130" y2="137.5" class="ct-line-thin"/>
+    <line x1="75" y1="52.5" x2="75" y2="137.5" class="ct-line-thin"/>
+    <circle cx="27" cy="60" r="3.4" class="ct-target"/>
+    <text x="36" y="64" class="ct-sub anchor-start">wide</text>
+    <circle cx="48" cy="76" r="3.4" class="ct-target"/>
+    <text x="57" y="80" class="ct-sub anchor-start">body</text>
+    <circle cx="70" cy="60" r="3.4" class="ct-target"/>
+    <text x="66" y="49" class="ct-sub">T</text>
+    <circle cx="112" cy="172" r="4" class="ct-player"/>
+    <line x1="108" y1="167" x2="30" y2="64" class="ct-shot faint"/>
+    <text x="75" y="189" class="ct-cap">serve wide / body / T</text>`);
+  return `<details class="notekey">
+    <summary>How to read the shot notation</summary>
+    <div class="courts">${zones}${serves}</div>
+    <div class="keytext">
+      <div><code>FH</code>/<code>BH</code> forehand / backhand ·
+        <code>drive</code> flat or topspin · <code>slice</code> slice or chip ·
+        <code>net</code> volley, overhead, or other net shot ·
+        <code>shot</code> stroke type not charted</div>
+      <div><code>→1/2/3</code> where it was hit, seen from the hitter: zone 1 is a
+        right-hander's forehand side, 3 their backhand side (<code>→·</code> =
+        direction not charted).</div>
+      <div><code>A→B (3.6×)</code> in signatures: the player follows shot A with
+        shot B 3.6× as often as the tour; <code>A · B</code> in triggers: their
+        shot A, then the opponent's reply B, then the stroke being measured.</div>
+    </div>
+  </details>`;
+}
+
 function scoreline(m) {
   const sets = (s) => (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" ");
   const a = sets(m.a), b = sets(m.b);
@@ -168,7 +222,7 @@ export async function openMatchup(m, t) {
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
   body.innerHTML = `<h2 class="mh">${esc(m.a.name)} <small>vs</small> ${esc(m.b.name)} ${scoreline(m)}</h2>
     <div class="mstate">${stateLine(m, t, round)}</div>
-    <div class="cards" id="cardslot">Loading…</div><div id="wpslot"></div>`;
+    <div class="cards" id="cardslot">Loading…</div>${notationHelp()}<div id="wpslot"></div>`;
 
   const [pa, pb] = await Promise.all([
     playerData(m.a.matched, t.gender),
