@@ -64,14 +64,9 @@ def build() -> int:
                     [["player", "gender", "class_rel_z", "accuracy", "avg_wpa_lost"]])
     summary = summary.merge(crw, on=["player", "gender"], how="left")
 
-    sp = pd.read_csv(REPORTS / "shot_patterns.csv")
-    sp["kind"] = sp["outcome"].map({"winner": "green", "unforced_error": "trouble"})
-    patterns = (sp.sort_values("rate", ascending=False)
-                .groupby(["player", "gender", "kind"]).head(4)
-                [["player", "gender", "kind", "context", "rate", "lift", "n"]])
-
     # Shot-making triggers (shot_triggers experiment): green lights by attempt lift,
-    # traps by how far conversion falls below the player's norm.
+    # traps by how far conversion falls below the player's norm. (These superseded the
+    # old separate winner/error pattern books — see experiments/shot_triggers.)
     tr = pd.read_csv(REPORTS / "shot_triggers.csv")
     greens = (tr[tr.tag == "green"].sort_values("att_lift", ascending=False)
               .groupby(["player", "gender"]).head(3))
@@ -89,9 +84,10 @@ def build() -> int:
     meta = pd.DataFrame([{"key": f"mu_{g}", "value": round(v, 5)} for g, v in mu.items()])
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.unlink(missing_ok=True)     # fresh file: dropped tables must not ship forever
     out = duckdb.connect(str(OUT))
-    for name, df in (("player_summary", summary), ("player_patterns", patterns),
-                     ("player_triggers", triggers), ("meta", meta)):
+    for name, df in (("player_summary", summary), ("player_triggers", triggers),
+                     ("meta", meta)):
         out.register(f"_{name}", df)
         out.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _{name}")
     out.close()

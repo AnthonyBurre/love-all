@@ -12,16 +12,13 @@ async function playerData(name, gender) {
   if (!name) return null;
   const s = await query("SELECT * FROM player_summary WHERE player = ? AND gender = ?", [name, gender]);
   if (!s.length) return null;
-  const p = await query(
-    "SELECT kind, context, rate, lift FROM player_patterns WHERE player = ? AND gender = ? ORDER BY rate DESC",
-    [name, gender]);
   let triggers = [];
   try {
     triggers = await query(
       "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n " +
       "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
-  } catch (e) { /* insights db predates player_triggers — patterns fallback below */ }
-  return { s: s[0], patterns: p, triggers };
+  } catch (e) { /* stale insights db: show the card without tendencies */ }
+  return { s: s[0], triggers };
 }
 
 function predictabilityLabel(bits) {
@@ -36,12 +33,6 @@ function ratingLabel(z) {
   if (z <= -0.5) return `beats their archetype (z ${z.toFixed(1)})`;
   if (z >= 0.5) return `below their archetype (z +${z.toFixed(1)})`;
   return `typical for their style (z ${z.toFixed(1)})`;
-}
-
-function patLine(p) {
-  const cls = p.kind === "green" ? "green" : "trouble";
-  const what = p.kind === "green" ? "goes for a winner" : "tends to err";
-  return `<div class="pat ${cls}">after <code>${esc(p.context)}</code> — ${what} ${Math.round(p.rate * 100)}% <span class="lift">(${Number(p.lift).toFixed(1)}× their norm)</span></div>`;
 }
 
 // One decision, two outcomes: a green light converts, a trap is taken bait.
@@ -88,8 +79,6 @@ function playerCard(side, d, mu, gender) {
       <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Chart a match →</a></p></div>`;
   }
   const s = d.s;
-  // Shot-making triggers (one decision + conversion) when the insights db has
-  // them; the older two-book winner/error patterns otherwise.
   let tendencies = "";
   if (d.triggers.length) {
     const greens = d.triggers.filter((t) => t.tag === "green")
@@ -101,11 +90,6 @@ function playerCard(side, d, mu, gender) {
          aggression also meets their usual conversion</div>` : "";
     tendencies = `<div class="phead">shot-making triggers</div>` +
       [...greens, ...traps].map(trigLine).join("") + unbaitable;
-  } else {
-    const pats = [...d.patterns.filter((p) => p.kind === "green").slice(0, 3),
-                  ...d.patterns.filter((p) => p.kind === "trouble").slice(0, 3)];
-    tendencies = pats.length
-      ? `<div class="phead">finishing / breakdown</div>` + pats.map(patLine).join("") : "";
   }
   const sel = selectionLabel(s.sigma);
   const trig = s.trig_att_rate != null

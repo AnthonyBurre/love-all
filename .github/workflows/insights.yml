@@ -32,7 +32,6 @@ jobs:
         run: |
           uv run python experiments/player_styles/run.py
           uv run python experiments/shot_language/run.py
-          uv run python experiments/shot_patterns/run.py
           uv run python experiments/shot_triggers/run.py
           uv run python experiments/class_relative_wpa/run.py
 
