@@ -114,7 +114,7 @@ function render() {
   const t = pick();
   document.body.dataset.theme = themeFor(t.name);
   $("pageTitle").textContent = t.name;
-  document.title = `${t.name} — Charted Court`;
+  document.title = `${t.name} — Love All`;
 
   // Phones skip the cascade and quarter machinery entirely: the whole draw,
   // one round at a time, opened on the current round. Wide screens keep the
