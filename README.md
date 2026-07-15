@@ -1,6 +1,6 @@
 # Tennis match charting — analysis and a live bracket site
 
-> **[→ Visit Charted Court](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam & 1000 draws
+> **[→ Visit Love All](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam & 1000 draws
 
 The [Match Charting
 Project](https://github.com/JeffSackmann/tennis_MatchChartingProject) is a
@@ -9,7 +9,7 @@ matches — every rally typed out as point strings. This repo decodes that
 notation into queryable tables, derives point/rally/stroke analytics from it,
 and publishes an interactive site to GitHub Pages.
 
-## The site — Charted Court
+## The site — Love All
 
 `docs/` is a GitHub Pages site showing live **Grand Slam and Masters/WTA-1000
 brackets** from ESPN's public feed, drawn as a linked tree with each winner wired
@@ -86,7 +86,7 @@ data/                  # raw/ + processed/ parquet + tennis.duckdb   (gitignored
 notebooks/             # numbered, disposable exploration
 experiments/           # one-off idea spikes that aren't library-worthy yet
 reports/               # generated outputs (data_quality.md, figures/, summaries)
-docs/                  # the live Charted Court site (Pages)
+docs/                  # the live Love All site (Pages)
 ```
 
 **Where does new work go?** Reusable logic → a module under `src/match_charting_project/`.
