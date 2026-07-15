@@ -27,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from match_charting_project.shots.notation import parse_point  # noqa: E402
+from match_charting_project.shots.score import serve_side  # noqa: E402
 from match_charting_project.shots.winprob import WinProbModel  # noqa: E402
 
 NA = "na"  # missing / unparseable score
@@ -122,6 +123,7 @@ def load_points(con, gender: str, sample: "int | None" = None):
         sset, rset = (s1, s2) if svr == 1 else (s2, s1)
         pt.pressure = pressure(pts, g1, g2)
         pt.lead = lead(sg, rg, sset, rset)
+        pt.serve_side = serve_side(pts)  # deuce/ad/na, usable as a score component
         pt.match_id = mid
         out.append(pt)
     return out

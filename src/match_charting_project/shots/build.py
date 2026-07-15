@@ -11,10 +11,12 @@ import pandas as pd
 
 from match_charting_project.paths import DB_PATH, PROCESSED_DIR
 from match_charting_project.shots.notation import parse_point, point_features
+from match_charting_project.shots.score import serve_side
 
-# match_id/pt key + everything parse_point needs + gender (handy for filtering).
+# match_id/pt key + everything parse_point needs + gender (handy for filtering)
+# + pts (the game score) so we can tag each point's service side (deuce/ad).
 _SOURCE_SQL = (
-    "SELECT match_id, pt, gender, svr, first_serve, second_serve, pt_winner FROM points"
+    "SELECT match_id, pt, gender, pts, svr, first_serve, second_serve, pt_winner FROM points"
 )
 
 
@@ -30,9 +32,10 @@ def build_parsed_points(chunk: int = 200_000) -> int:
         batch = cursor.fetchmany(chunk)
         if not batch:
             break
-        for match_id, pt, gender, svr, fs, ss, win in batch:
+        for match_id, pt, gender, pts, svr, fs, ss, win in batch:
             feat = point_features(parse_point(fs, ss, svr, win), match_id=match_id, pt=pt)
             feat["gender"] = gender
+            feat["serve_side"] = serve_side(pts)
             rows.append(feat)
 
     df = pd.DataFrame(rows)

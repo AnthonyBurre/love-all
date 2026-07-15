@@ -35,6 +35,26 @@ error-rate correlation across contexts (the "are these the same book?" test),
 the σ dispersion score, and the trap/green-light split. Pure counting — no
 model.
 
+## Opening sequences by serve side
+
+The pooled contexts above average over the court the point was served to, which
+hides real structure in the opening: a wide serve opens a right-hander's forehand
+in the deuce court and their backhand in the ad court, so the same serve token
+means different things on the two sides. A final section splits the attempts that
+sit entirely within the first four plies — the **return** (lead-up: the serve),
+the **serve+1** (serve, return) and the **return+1** (return, serve+1) — by
+deuce/ad court, and scores each context against the player's own baseline *for
+that same shot and side*. Everything deeper in the rally stays pooled, where the
+sample per context is thin enough already.
+
+The output is per-player favorable (green) and trap opening sequences, separated
+by serving vs returning role and by side, with per-side denominators and the same
+`MIN_CTX` / `MIN_ATT` / `TRIGGER_LIFT` floors as the pooled analysis. Full rows in
+`reports/shot_triggers_openings.csv`; the report shows the marquee players. This
+reproduces known shapes without being told them — Nadal's deuce-court `serve wide`
+serve+1 fires at 3× his norm — and separates side-specific traps a pooled view
+can't (a sequence that baits a player only when they serve to one court).
+
 ## Honest limitations
 
 - **"Attempt" is a proxy.** Not every unforced error is a failed finishing
@@ -48,4 +68,5 @@ model.
   restricted to heavily-charted players.
 
 Run: `python experiments/shot_triggers/run.py` → `reports/shot_triggers.md`,
-`reports/shot_triggers.csv`, `reports/figures/shot_triggers.png`.
+`reports/shot_triggers.csv`, `reports/shot_triggers_openings.csv`,
+`reports/figures/shot_triggers.png`.

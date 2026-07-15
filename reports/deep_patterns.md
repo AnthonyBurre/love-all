@@ -37,6 +37,15 @@
 
 ![deep patterns](figures/deep_patterns.png)
 
+## Side heterogeneity (deuce vs ad)
+
+Discovery stays pooled — halving every sample by court before mining costs more power than it buys. Instead, each gold pattern's occurrences whose K-shot window reaches into the first four plies (where the notation is side-relative) are split deuce/ad, and Fisher exact tests ask whether the attempt rate or the conversion differs between courts, Holm-corrected across the whole family. A flagged pattern behaves differently by court and is shown split; the rest keep their pooled estimate with evidence that pooling is justified. Full per-side rows in `reports/deep_patterns_side.csv`.
+
+89 tests across 66 gold patterns (55 attempt-rate, 34 conversion; the rest lacked per-side support) → **1 pattern with a real side difference** at Holm-adjusted p<0.05.
+
+### Jannik Sinner — `FH slice→2 · FH drive→3 · BH drive→3` ✅
+- differs by court in **attempt rate**: deuce fires 50% converting 64% (n=22), ad fires 4% converting 0% (n=24)
+
 ## Verdict
 
 **Viable as a gold-star tier.** 66 deep patterns survive the triple gate across 31 players (median 1 per covered player). These are exactly the "only visible with huge coverage" sequences worth a ⭐ in the drawer — shipped via the insights build, shown only when a player has them.

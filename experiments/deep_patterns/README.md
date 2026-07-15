@@ -27,6 +27,24 @@ still has to land above the parent in two independent halves. Patterns that
 clear all three get green/trap tags from conversion exactly like production
 triggers.
 
+## Side heterogeneity (deuce vs ad)
+
+The pooled gates above ignore which court the point was served to, and the
+notation is side-relative in the opening — a wide serve is the same token on
+both courts but a physically different serve. Discovery still stays pooled,
+because halving every sample by side before mining costs more power than it
+buys. Side enters as a refinement pass over the gold survivors instead: for
+each one, the occurrences whose K-shot window reaches into the first four
+plies (serve, return, serve+1, return+1) are split deuce/ad, and two-sided
+Fisher exact tests ask whether the attempt rate or the conversion differs
+between courts, Holm-corrected across every test performed. A pattern that
+shows a real difference is displayed split by court; the rest keep their
+pooled estimate, now with evidence that pooling is justified rather than
+assumed. Mid-rally occurrences are never split — the `serve_side` model eval
+showed side carries no extra signal once the rally state is known. The K≤2
+openings (serve, return, and the +1 shots) live in `shot_triggers`. Full
+per-side rows in `reports/deep_patterns_side.csv`.
+
 ## Honest limitations
 
 - Still multiple testing: a 160k-stroke player has thousands of candidate deep
@@ -38,4 +56,5 @@ triggers.
   marquee names charted across many years.
 
 Run: `python experiments/deep_patterns/run.py` → `reports/deep_patterns.md`,
-`reports/deep_patterns.csv`, `reports/figures/deep_patterns.png`.
+`reports/deep_patterns.csv`, `reports/deep_patterns_side.csv`,
+`reports/figures/deep_patterns.png`.
