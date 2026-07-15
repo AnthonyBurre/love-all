@@ -106,7 +106,7 @@ function playerCard(side, d, mu, gender) {
       (gold.length
         ? `<div class="phead">deep patterns ⭐ <span class="phead-note">3–4 shot
            sequences only chartable at this player's coverage</span></div>` +
-          gold.map(trigLine).join("")
+        gold.map(trigLine).join("")
         : "");
   }
   const sel = selectionLabel(s.sigma);
@@ -202,6 +202,20 @@ function notationHelp() {
   </details>`;
 }
 
+// On a finished match, the drawer's job shifts from "what might happen" to charting: link
+// straight to the chart if it exists, or invite the viewer to be the one who charts it.
+function chartPanel(m, t) {
+  if (!t.completed) return "";
+  if (m.chart_id) {
+    const url = `https://www.tennisabstract.com/charting/${encodeURIComponent(m.chart_id)}.html`;
+    return `<div class="chartcta charted">✓ This match is charted.
+      <a href="${url}" target="_blank" rel="noopener">View the full chart →</a></div>`;
+  }
+  return `<div class="chartcta uncharted">This match isn't charted yet — a good one to pick up.
+    <a href="https://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/"
+       target="_blank" rel="noopener">Chart this match →</a></div>`;
+}
+
 function scoreline(m) {
   const sets = (s) => (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" ");
   const a = sets(m.a), b = sets(m.b);
@@ -209,9 +223,11 @@ function scoreline(m) {
 }
 
 function stateLine(m, t, round) {
-  const where = `${esc(t.name)} · ${t.gender === "M" ? "Men" : "Women"}${round ? " · " + esc(round.label) : ""}`;
+  const event = t.completed ? `${t.name} ${t.season}` : t.name;
+  const where = `${esc(event)} · ${t.gender === "M" ? "Men" : "Women"}${round ? " · " + esc(round.label) : ""}`;
   if (m.state === "in") return `${where} · <span class="live">● ${esc(m.detail || "Live")}</span>`;
-  if (m.state === "post") return `${where} · ${esc(m.detail || "Final")}`;
+  // In a completed draw every match is final, so the round already says it — no "· Final".
+  if (m.state === "post") return t.completed ? where : `${where} · ${esc(m.detail || "Final")}`;
   return m.detail ? `${where} · ${esc(m.detail)}` : where;
 }
 
@@ -222,6 +238,7 @@ export async function openMatchup(m, t) {
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
   body.innerHTML = `<h2 class="mh">${esc(m.a.name)} <small>vs</small> ${esc(m.b.name)} ${scoreline(m)}</h2>
     <div class="mstate">${stateLine(m, t, round)}</div>
+    ${chartPanel(m, t)}
     <div class="cards" id="cardslot">Loading…</div>${notationHelp()}<div id="wpslot"></div>`;
 
   const [pa, pb] = await Promise.all([
@@ -231,7 +248,9 @@ export async function openMatchup(m, t) {
 
   const mu = (await leagueMu())[t.gender];
   const wpslot = document.getElementById("wpslot");
-  if (pa && pb) {
+  if (t.completed) {
+    wpslot.innerHTML = "";              // result is in — no pre-match number to offer
+  } else if (pa && pb) {
     const wpA = preMatchWP(
       { serve: pa.s.serve_rate, ret: pa.s.return_rate },
       { serve: pb.s.serve_rate, ret: pb.s.return_rate }, mu, t.best_of);

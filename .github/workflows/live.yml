@@ -8,7 +8,7 @@ on:
     - cron: "5 * * * *"         # hourly at :05
 
 permissions:
-  contents: read
+  contents: write             # persist the accumulating draw-history asset on the Release
   pages: write
   id-token: write
 
@@ -45,10 +45,40 @@ jobs:
             echo "no insights release yet — brackets will render without player insights"
           fi
 
+      - name: Fetch accumulated draw history (from the Release)
+        id: history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          if gh release download brackets-history --pattern history.json --dir data --clobber; then
+            echo "history: $(ls -l data/history.json)"
+            echo "seed_needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "no history release yet — will seed the most recent finished slam once"
+            echo "seed_needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Runs at most once, ever: on the first deploy (before the history Release exists) it
+      # archives the most recent finished slam so the site opens with a past draw. Every run
+      # after finds the Release and skips this, so ESPN's dated feed isn't hit repeatedly.
+      - name: Seed the first past draw (one-time)
+        if: ${{ steps.history.outputs.seed_needed == 'true' }}
+        run: uv run match-charting-project history seed
+
       - name: Build brackets + assemble docs/data
         run: |
           uv run match-charting-project site build-brackets
           echo "--- docs/data contents ---" && ls -la docs/data/
+
+      - name: Persist updated draw history (to the Release)
+        if: ${{ hashFiles('data/history.json') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create brackets-history --title "Draw history" \
+            --notes "Completed draws, accumulated as events finish" 2>/dev/null || true
+          gh release upload brackets-history data/history.json --clobber
 
       - uses: actions/upload-pages-artifact@v3
         with:

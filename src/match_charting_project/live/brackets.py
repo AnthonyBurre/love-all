@@ -40,7 +40,7 @@ def _order(rounds: list) -> None:
         earlier["matches"].sort(key=lambda m, p=pos, u=linked: p.get(m.feeds, u))
 
 
-def rounds(tournament) -> list:
+def rounds(tournament, use_fixture: bool = True) -> list:
     """``[{'rank', 'label', 'matches':[...]}, ...]`` ordered first round → final.
 
     Each match gains a ``feeds`` attribute: the id of the next-round match its winner
@@ -49,15 +49,19 @@ def rounds(tournament) -> list:
     When a committed draw fixture exists for this tournament (``data/draws/``), the
     bracket is instead assembled on the fixture's slot scaffold — every slot of every
     round present (placeholders where undecided), the full path to the final known
-    from day one. Name inference below is the fallback for uncovered tournaments.
+    from day one. Name inference below is the fallback for uncovered tournaments, and
+    the only path for ``use_fixture=False`` (harvested past draws, whose slot order the
+    current-season fixture would misrepresent — a fully resolved draw links cleanly by
+    name anyway).
     """
-    from match_charting_project.live import draws
+    if use_fixture:
+        from match_charting_project.live import draws
 
-    fx = draws.find_fixture(tournament.name, tournament.gender)
-    if fx:
-        out = draws.slot_rounds(tournament, fx)
-        if out:
-            return out
+        fx = draws.find_fixture(tournament.name, tournament.gender)
+        if fx:
+            out = draws.slot_rounds(tournament, fx)
+            if out:
+                return out
 
     by_rank: dict = {}
     for m in tournament.matches:
@@ -69,3 +73,28 @@ def rounds(tournament) -> list:
     _link(out)
     _order(out)
     return out
+
+
+def _side_dict(s) -> dict:
+    """ESPN-native side fields only — no ``matched``/``charted`` (those are DB-derived and
+    applied fresh at emit time, so an archived snapshot never carries stale annotation)."""
+    return {"name": s.name, "country": s.country, "winner": s.winner,
+            "sets": s.sets, "seed": getattr(s, "seed", None)}
+
+
+def serialize(tournament, use_fixture: bool = True) -> dict:
+    """A tournament as a JSON-ready payload dict (the ``brackets.json`` tournament shape),
+    structural only. Used for both live draws and the accumulating history archive."""
+    rds = rounds(tournament, use_fixture=use_fixture)
+    slotted = all(getattr(m, "slot", 0) for r in rds for m in r["matches"])
+    return {
+        "id": tournament.id, "name": tournament.name, "tier": tournament.tier,
+        "gender": tournament.gender, "best_of": tournament.best_of, "slotted": slotted,
+        "rounds": [
+            {"rank": r["rank"], "label": r["label"], "matches": [
+                {"id": m.id, "state": m.state, "detail": m.detail, "feeds": m.feeds,
+                 "placeholder": getattr(m, "placeholder", False),
+                 "a": _side_dict(m.a), "b": _side_dict(m.b)}
+                for m in r["matches"]]}
+            for r in rds],
+    }

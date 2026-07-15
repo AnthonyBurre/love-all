@@ -22,6 +22,17 @@ def normalize(name: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+# Tournament name -> stable key, so the charted DB (dirty names like 'Wimbledon ') and the
+# ESPN feed ('Wimbledon', 'French Open') agree. Both build paths must key through this.
+_TOURN_ALIASES = {"french open": "roland garros",
+                  "us open tennis championships": "us open"}
+
+
+def tourn_key(name: str) -> str:
+    k = normalize(name)
+    return _TOURN_ALIASES.get(k, k)
+
+
 def universe_from_rows(rows) -> dict:
     """Build ``gender -> {normalized_name: canonical name}`` from (gender, player) rows."""
     uni: dict = {"M": {}, "W": {}}
