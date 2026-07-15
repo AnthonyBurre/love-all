@@ -11,7 +11,7 @@
 - `FH net→3 · BH shot→2` → goes for it 73% (3.6×), converts 94% (+44% vs their norm) ✅ converts (n=127)
 - `FH drive→3 · BH shot→2` → goes for it 72% (3.5×), converts 92% (+42% vs their norm) ✅ converts (n=383)
 - `BH net→3 · BH shot→2` → goes for it 71% (3.4×), converts 98% (+48% vs their norm) ✅ converts (n=78)
-- `BH net→3 · BH drive→2` → goes for it 67% (3.2×), converts 84% (+34% vs their norm) ✅ converts (n=66)
+- `FH drive→3 · BH shot→1` → goes for it 67% (3.2×), converts 92% (+42% vs their norm) ✅ converts (n=126)
 
 **Worst traps** (pulled into attempts they don't convert):
 - `FH drive→1 · BH slice→1` → attempts 1.5× their norm but converts only 46% vs 50% baseline (n=89)
@@ -122,4 +122,131 @@ Across 274 qualifying players, the correlation between a context's winner rate a
 | Michael Stich (M) | 7.8 | Andrei Chesnokov (M) | 1.5 |
 
 ![shot triggers](figures/shot_triggers.png)
+
+## Opening sequences by serve side (deuce vs ad)
+
+The pooled tables above average over the court the point was served to, but the first four plies mean different things on the two sides: a wide serve opens the forehand in the deuce court and the backhand in the ad court. Here the opening attempts — the return, the serve+1, and the return+1 — are split by side and scored against the player's own norm *for that same shot and side*. Everything deeper in the rally stays pooled (above). Full rows in `reports/shot_triggers_openings.csv`; 311 green / 289 trap sequences across 212 players.
+
+### Men
+
+### Roger Federer
+
+**Serve, deuce court**
+- ✅ `serve T · BH slice→1` → serve+1 attempt 46% (1.9×), converts 70% (+12% vs norm) (n=213)
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 44% (1.8×), converts 82% (+23% vs norm) (n=174)
+
+**Serve, ad court**
+- ✅ `serve wide · BH slice→1` → serve+1 attempt 54% (2.2×), converts 79% (+22% vs norm) (n=142)
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 48% (2.0×), converts 79% (+23% vs norm) (n=781)
+
+**Return, deuce court**
+- ✅ `FH drive→3 · BH slice→2` → return+1 attempt 36% (2.1×), converts 61% (+20% vs norm) (n=92)
+- ✅ `BH drive→2 · BH net→3` → return+1 attempt 30% (1.8×), converts 71% (+31% vs norm) (n=81)
+
+**Return, ad court**
+- ✅ `FH drive→3 · BH slice→2` → return+1 attempt 32% (1.9×), converts 55% (+16% vs norm) (n=62)
+- ✅ `FH drive→1 · FH drive→2` → return+1 attempt 31% (1.8×), converts 47% (+8% vs norm) (n=61)
+- ⚠️ `FH drive→2 · BH drive→2` → return+1 attempt 28% (1.6×) but converts only 25% (-14% vs norm) (n=213)
+
+### Novak Djokovic
+
+**Serve, deuce court**
+- ✅ `serve wide · BH slice→3` → serve+1 attempt 36% (2.1×), converts 85% (+30% vs norm) (n=73)
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 35% (2.0×), converts 72% (+18% vs norm) (n=236)
+
+**Serve, ad court**
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 32% (1.8×), converts 83% (+32% vs norm) (n=584)
+- ✅ `serve T · BH slice→2` → serve+1 attempt 27% (1.6×), converts 74% (+23% vs norm) (n=204)
+
+**Return, deuce court**
+- ✅ `FH drive→3 · BH slice→3` → return+1 attempt 17% (1.7×), converts 47% (+8% vs norm) (n=98)
+- ✅ `BH drive→1 · BH drive→2` → return+1 attempt 16% (1.6×), converts 54% (+15% vs norm) (n=79)
+- ⚠️ `BH drive→3 · BH slice→3` → return+1 attempt 19% (1.9×) but converts only 30% (-9% vs norm) (n=119)
+
+**Return, ad court**
+- ⚠️ `serve body` → return attempt 7% (1.5×) but converts only 31% (-4% vs norm) (n=4797)
+
+### Rafael Nadal
+
+**Serve, deuce court**
+- ✅ `serve wide · FH slice→2` → serve+1 attempt 38% (3.0×), converts 76% (+27% vs norm) (n=77)
+- ✅ `serve wide · FH slice→1` → serve+1 attempt 33% (2.6×), converts 57% (+8% vs norm) (n=90)
+- ⚠️ `serve wide · BH drive→1` → serve+1 attempt 22% (1.7×) but converts only 41% (-8% vs norm) (n=149)
+
+**Serve, ad court**
+- ✅ `serve wide · BH slice→1` → serve+1 attempt 32% (1.9×), converts 91% (+30% vs norm) (n=168)
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 32% (1.9×), converts 83% (+23% vs norm) (n=568)
+
+**Return, deuce court**
+- ✅ `FH drive→1 · FH drive→2` → return+1 attempt 17% (1.6×), converts 73% (+26% vs norm) (n=87)
+- ✅ `BH drive→1 · FH drive→2` → return+1 attempt 16% (1.5×), converts 48% (+1% vs norm) (n=323)
+
+**Return, ad court**
+- ✅ `FH drive→3 · BH drive→3` → return+1 attempt 18% (1.5×), converts 48% (+2% vs norm) (n=472)
+
+### Pete Sampras
+
+**Serve, deuce court**
+- ✅ `serve T · BH slice→1` → serve+1 attempt 45% (1.7×), converts 84% (+24% vs norm) (n=97)
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 43% (1.6×), converts 64% (+4% vs norm) (n=130)
+
+**Serve, ad court**
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 48% (1.7×), converts 68% (+11% vs norm) (n=162)
+- ✅ `serve wide · BH drive→1` → serve+1 attempt 44% (1.6×), converts 76% (+19% vs norm) (n=121)
+
+**Return, deuce court**
+- ✅ `BH drive→2 · FH net→3` → return+1 attempt 35% (1.7×), converts 67% (+19% vs norm) (n=85)
+- ⚠️ `BH slice→2 · BH net→3` → return+1 attempt 34% (1.6×) but converts only 33% (-15% vs norm) (n=62)
+
+### Andre Agassi
+
+**Serve, ad court**
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 32% (1.7×), converts 70% (+21% vs norm) (n=442)
+
+**Return, deuce court**
+- ✅ `BH drive→3 · BH net→3` → return+1 attempt 32% (2.2×), converts 67% (+15% vs norm) (n=65)
+- ✅ `BH drive→2 · BH net→3` → return+1 attempt 24% (1.7×), converts 70% (+18% vs norm) (n=110)
+
+**Return, ad court**
+- ✅ `FH drive→2 · FH net→3` → return+1 attempt 38% (2.4×), converts 64% (+5% vs norm) (n=73)
+
+### Women
+
+### Serena Williams
+
+**Serve, deuce court**
+- ✅ `serve wide · FH slice→2` → serve+1 attempt 42% (1.8×), converts 54% (+10% vs norm) (n=92)
+- ✅ `serve T · BH slice→2` → serve+1 attempt 39% (1.7×), converts 65% (+21% vs norm) (n=88)
+
+**Serve, ad court**
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 41% (1.8×), converts 68% (+20% vs norm) (n=97)
+
+**Return, deuce court**
+- ⚠️ `BH drive→2 · FH drive→2` → return+1 attempt 33% (1.6×) but converts only 36% (-4% vs norm) (n=118)
+
+**Return, ad court**
+- ✅ `FH drive→1 · FH drive→2` → return+1 attempt 33% (1.6×), converts 71% (+33% vs norm) (n=63)
+
+### Iga Swiatek
+
+**Serve, deuce court**
+- ✅ `serve T · BH slice→2` → serve+1 attempt 47% (2.4×), converts 77% (+27% vs norm) (n=64)
+- ✅ `serve wide · FH slice→1` → serve+1 attempt 46% (2.3×), converts 62% (+12% vs norm) (n=84)
+
+**Serve, ad court**
+- ✅ `serve T · FH slice→2` → serve+1 attempt 40% (1.9×), converts 75% (+24% vs norm) (n=80)
+
+**Return, deuce court**
+- ✅ `BH drive→3 · BH drive→2` → return+1 attempt 27% (1.6×), converts 49% (+7% vs norm) (n=128)
+
+### Steffi Graf
+
+**Serve, deuce court**
+- ✅ `serve T · BH slice→2` → serve+1 attempt 28% (1.5×), converts 54% (+12% vs norm) (n=147)
+
+**Serve, ad court**
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 37% (2.1×), converts 64% (+26% vs norm) (n=97)
+
+**Return, ad court**
+- ⚠️ `serve body` → return attempt 15% (1.6×) but converts only 39% (-2% vs norm) (n=503)
 

@@ -6,8 +6,14 @@ For players with >=10k charted points: mine K=3 and K=4 trigger contexts that
 (1) beat their own (K-1)-suffix parent at >=1.3x with an exact binomial p<0.005,
 (2) replicate above the parent rate in both match-hash halves (>=15 strokes each),
 (3) meet the production support floor (>=60 strokes, >=12 attempts). Survivors are
-tagged green/trap by conversion like production triggers. Writes
-reports/deep_patterns.{md,csv} + figure.
+tagged green/trap by conversion like production triggers.
+
+A final section is a side refinement pass over the survivors: each gold
+pattern's occurrences whose K-shot window reaches into the first four plies are
+split by deuce/ad court, and Fisher exact tests (Holm-corrected across the whole
+family) ask whether the attempt rate or conversion differs between courts.
+Discovery itself stays pooled. Writes reports/deep_patterns.{md,csv},
+reports/deep_patterns_side.csv + figure.
 """
 
 import sys
@@ -29,6 +35,7 @@ from tokens import point_tokens, pretty  # noqa: E402
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import parse_point  # noqa: E402
+from match_charting_project.shots.score import serve_side  # noqa: E402
 
 MIN_POINTS = 10_000     # charted points to enter the candidate pool
 DEPTHS = (3, 4)         # deep context lengths (production triggers use 2)
@@ -55,12 +62,20 @@ def candidates(con, gender: str) -> set:
 
 
 def collect(con, gender: str, pool: set):
-    """Per candidate: base [n,att,win]x2 halves + context tables for K=2..4."""
+    """Per candidate: base [n,att,win]x2 halves + context tables for K=2..4.
+
+    Also builds ``side_tabs``: for each deep context, the [n, att, win] counts of
+    its *opening-touching* occurrences — those whose K-shot window reaches into
+    the first four plies (serve, return, serve+1, return+1), where the notation
+    is side-relative — split by deuce/ad. These feed the heterogeneity pass over
+    the pooled gold survivors; mid-rally occurrences are never side-split.
+    """
     base = defaultdict(lambda: [0, 0, 0, 0, 0, 0])
     tabs = {k: defaultdict(lambda: [0, 0, 0, 0, 0, 0]) for k in (2, *DEPTHS)}
+    side_tabs = {k: defaultdict(lambda: [0, 0, 0]) for k in DEPTHS}  # (pl, ctx, side)
     sql = (
-        "SELECT p.match_id, m.player1, m.player2, p.svr, p.first_serve, p.second_serve, "
-        "       p.pt_winner FROM points p JOIN matches m USING (match_id) "
+        "SELECT p.match_id, m.player1, m.player2, p.svr, p.pts, p.first_serve, "
+        "       p.second_serve, p.pt_winner FROM points p JOIN matches m USING (match_id) "
         "WHERE p.svr IN (1,2) AND p.pt_winner IN (1,2) AND m.gender = ?"
     )
     cur = con.execute(sql, [gender])
@@ -68,7 +83,7 @@ def collect(con, gender: str, pool: set):
         batch = cur.fetchmany(100_000)
         if not batch:
             break
-        for mid, p1, p2, svr, fs, ss, win in batch:
+        for mid, p1, p2, svr, pts, fs, ss, win in batch:
             if p1 not in pool and p2 not in pool:
                 continue
             pt = parse_point(fs, ss, svr, win)
@@ -77,6 +92,7 @@ def collect(con, gender: str, pool: set):
             toks = point_tokens(pt)
             names = {1: p1, 2: p2}
             h3 = 3 * (zlib.crc32(str(mid).encode()) & 1)
+            side = serve_side(pts)
             for i in range(2, len(pt.shots)):
                 pl = names[pt.shots[i].hitter]
                 if pl not in pool:
@@ -94,7 +110,15 @@ def collect(con, gender: str, pool: set):
                         c[h3] += 1
                         c[h3 + 1] += att
                         c[h3 + 2] += w
-    return base, tabs
+                if side in ("deuce", "ad"):
+                    for k in DEPTHS:
+                        # window toks[i-k:i] reaches into plies 1-4 (shots 0..3)
+                        if k <= i <= k + 3:
+                            s = side_tabs[k][(pl, tuple(toks[i - k:i]), side)]
+                            s[0] += 1
+                            s[1] += att
+                            s[2] += w
+    return base, tabs, side_tabs
 
 
 def binom_tail(k: int, n: int, p: float) -> float:
@@ -143,6 +167,70 @@ def mine(base, tabs) -> list:
     return out
 
 
+def fisher_two_sided(a: int, b: int, c: int, d: int) -> float:
+    """Two-sided Fisher exact p for the 2x2 table [[a, b], [c, d]]."""
+    r1, r2, c1 = a + b, c + d, a + c
+    n = r1 + r2
+    if min(r1, r2, c1, n - c1) <= 0:
+        return 1.0
+    lo, hi = max(0, c1 - r2), min(r1, c1)
+    denom = comb(n, c1)
+    probs = [comb(r1, x) * comb(r2, c1 - x) / denom for x in range(lo, hi + 1)]
+    p_obs = probs[a - lo]
+    return min(1.0, sum(p for p in probs if p <= p_obs * (1 + 1e-9)))
+
+
+def holm(pvals: list) -> list:
+    """Holm step-down adjusted p-values, returned in the input order."""
+    m = len(pvals)
+    order = sorted(range(m), key=lambda i: pvals[i])
+    adj, running = [1.0] * m, 0.0
+    for rank, i in enumerate(order):
+        running = max(running, min(1.0, (m - rank) * pvals[i]))
+        adj[i] = running
+    return adj
+
+
+def side_heterogeneity(rows: list, side_tabs_by_gender: dict, alpha: float = 0.05):
+    """Annotate gold survivors with a deuce/ad split of their opening occurrences.
+
+    Discovery stays pooled; this is a refinement pass. For each gold pattern the
+    opening-touching occurrences are split by side and two Fisher exact tests ask
+    whether the attempt rate (needs >=HALF_N strokes per side) or the conversion
+    (needs >=MIN_ATT/2 attempts per side) differs between courts. Holm correction
+    runs across every test performed, so a ``side_diff`` flag means the pattern
+    genuinely behaves differently by court; everything else keeps its pooled
+    estimate with evidence that pooling is justified.
+    """
+    tests = []  # (row, field) pairs sharing one Holm family
+    for r in rows:
+        tabs = side_tabs_by_gender[r["gender"]][r["depth"]]
+        nd, ad_, wd = tabs.get((r["player"], r["context"], "deuce"), (0, 0, 0))
+        na, aa, wa = tabs.get((r["player"], r["context"], "ad"), (0, 0, 0))
+        r.update({
+            "n_deuce": nd, "att_deuce": ad_, "win_deuce": wd,
+            "n_ad": na, "att_ad": aa, "win_ad": wa,
+            "att_rate_deuce": ad_ / nd if nd else None,
+            "att_rate_ad": aa / na if na else None,
+            "conv_deuce": wd / ad_ if ad_ else None,
+            "conv_ad": wa / aa if aa else None,
+            "p_att": None, "p_conv": None,
+            "p_att_holm": None, "p_conv_holm": None, "side_diff": "",
+        })
+        if nd >= HALF_N and na >= HALF_N:
+            r["p_att"] = fisher_two_sided(ad_, nd - ad_, aa, na - aa)
+            tests.append((r, "att"))
+        if ad_ >= MIN_ATT // 2 and aa >= MIN_ATT // 2:
+            r["p_conv"] = fisher_two_sided(wd, ad_ - wd, wa, aa - wa)
+            tests.append((r, "conv"))
+    adj = holm([r[f"p_{f}"] for r, f in tests])
+    for (r, f), p in zip(tests, adj):
+        r[f"p_{f}_holm"] = p
+        if p < alpha:
+            r["side_diff"] = (r["side_diff"] + "+" + f).lstrip("+")
+    return len(tests)
+
+
 def _ctx_str(ctx) -> str:
     return " · ".join(pretty(t) for t in ctx)
 
@@ -150,16 +238,19 @@ def _ctx_str(ctx) -> str:
 def main():
     con = connect(read_only=True)
     all_rows = []
+    side_tabs_by_gender = {}
     pool_sizes = {}
     for g in ("M", "W"):
         pool = candidates(con, g)
         pool_sizes[g] = len(pool)
-        base, tabs = collect(con, g, pool)
+        base, tabs, side_tabs = collect(con, g, pool)
+        side_tabs_by_gender[g] = side_tabs
         rows = mine(base, tabs)
         for r in rows:
             r["gender"] = g
         all_rows += rows
     con.close()
+    n_tests = side_heterogeneity(all_rows, side_tabs_by_gender)
     df = pd.DataFrame(all_rows)
 
     # -- figure: how deep-pattern counts scale with coverage -------------------
@@ -222,11 +313,62 @@ def main():
         md.append("**No pattern cleared the gold gates.**")
     md.append("![deep patterns](figures/deep_patterns.png)")
     md.append("")
-    return md, df, pool_sizes
+
+    # -- side heterogeneity pass over the gold survivors -------------------------
+    md.append("## Side heterogeneity (deuce vs ad)")
+    md.append("")
+    md.append("Discovery stays pooled — halving every sample by court before mining "
+              "costs more power than it buys. Instead, each gold pattern's "
+              "occurrences whose K-shot window reaches into the first four plies "
+              "(where the notation is side-relative) are split deuce/ad, and Fisher "
+              "exact tests ask whether the attempt rate or the conversion differs "
+              "between courts, Holm-corrected across the whole family. A flagged "
+              "pattern behaves differently by court and is shown split; the rest "
+              "keep their pooled estimate with evidence that pooling is justified. "
+              "Full per-side rows in `reports/deep_patterns_side.csv`.")
+    md.append("")
+    if len(df):
+        het = df[df.side_diff != ""]
+        md.append(f"{n_tests} tests across {len(df)} gold patterns "
+                  f"({int(df.p_att.notna().sum())} attempt-rate, "
+                  f"{int(df.p_conv.notna().sum())} conversion; the rest lacked "
+                  f"per-side support) → **{len(het)} pattern"
+                  f"{'s' if len(het) != 1 else ''} with a real side difference** "
+                  "at Holm-adjusted p<0.05.")
+        md.append("")
+        diff_name = {"att": "attempt rate", "conv": "conversion",
+                     "att+conv": "attempt rate and conversion"}
+        for r in het.itertuples():
+            kind = "✅" if r.tag == "green" else "⚠️"
+            md.append(f"### {r.player} — `{_ctx_str(r.context)}` {kind}")
+            md.append(f"- differs by court in **{diff_name[r.side_diff]}**: "
+                      f"deuce fires {r.att_rate_deuce:.0%} converting "
+                      f"{(r.conv_deuce if r.conv_deuce is not None else 0):.0%} "
+                      f"(n={r.n_deuce}), ad fires {r.att_rate_ad:.0%} converting "
+                      f"{(r.conv_ad if r.conv_ad is not None else 0):.0%} "
+                      f"(n={r.n_ad})")
+            md.append("")
+        if not len(het):
+            md.append("No pattern shows a court-side difference that survives the "
+                      "correction — every gold pattern's pooled estimate stands.")
+            md.append("")
+
+    scols = ["player", "gender", "depth", "context", "n", "attempts", "tag",
+             "n_deuce", "att_deuce", "win_deuce", "n_ad", "att_ad", "win_ad",
+             "att_rate_deuce", "att_rate_ad", "conv_deuce", "conv_ad",
+             "p_att", "p_conv", "p_att_holm", "p_conv_holm", "side_diff"]
+    scsv = df.copy()
+    if len(scsv):
+        scsv["context"] = scsv.context.map(_ctx_str)
+        scsv = scsv[scols].round(4)
+    else:
+        scsv = pd.DataFrame(columns=scols)
+    scsv.to_csv(PROJECT_ROOT / "reports" / "deep_patterns_side.csv", index=False)
+    return md, df, pool_sizes, n_tests
 
 
 if __name__ == "__main__":
-    md, df, pools = main()
+    md, df, pools, n_tests = main()
     md.append("## Verdict")
     md.append("")
     if len(df) >= 20:
@@ -255,4 +397,7 @@ if __name__ == "__main__":
           f"(pool {pools})")
     if len(df):
         print(df.groupby(['gender', 'depth']).size())
-    print("wrote reports/deep_patterns.md + .csv + figure")
+        print(f"side heterogeneity: {n_tests} tests, "
+              f"{int((df.side_diff != '').sum())} patterns differ by court")
+    print("wrote reports/deep_patterns.md + .csv + figure "
+          "+ deep_patterns_side.csv")
