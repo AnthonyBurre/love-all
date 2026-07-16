@@ -16,6 +16,13 @@ charted often enough (~74% of returns, ~19% of later balls) to condition on.
 That family catches the serve-and-volleyers cold: Edberg's crosscourt backhand
 volley behind a mid-depth return runs at 25x the field, Navratilova's at 75x.
 
+Each pattern also carries its **payoff**: the player's point-win rate after
+playing that response (shrunk toward the field's), next to the field's rate
+playing the same response to the same ball. Choice and execution stay separate
+claims — Djokovic picks the backhand down the line 1.4x as often *and* wins
+52% with it vs the tour's 46%, while an overused pet shot shows up as a lift
+with a negative payoff gap.
+
 ## Why
 
 The site's signature panel conditions on the opponent's full previous token
@@ -64,8 +71,8 @@ patterns" / "off the return" panels render it (drawn by `pairSvg` in
 
 ## Result
 
-Split-half stability r = +0.69 (men) / +0.65 (women) across ~30k
-player-state-response cells. The most-shared headline pattern covers 12% of
+Split-half stability r = +0.73 (men) / +0.69 (women) across ~43k
+player-state-response cells (rally and return families). The most-shared headline pattern covers 12% of
 men's profiles (vs 22% for the old signatures), and it is a genuine style
 trait (choosing the crosscourt slice from the backhand corner) rather than
 forced geometry. The high-volume profiles read as scouting reports: Federer's

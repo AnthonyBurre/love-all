@@ -27,6 +27,12 @@ return depth (short / mid / deep) and cover only the server's shot 3 — the one
 spot where depth is charted often enough (~74% of returns) to condition on:
 what does the server do with a short return versus a deep one?
 
+Each pattern also carries its payoff: how often the point ends up won by the
+player after they play that response, next to how often the field wins it
+playing the same response to the same ball. Choice (lift) and execution
+(payoff) stay separate claims — a pet shot can be overused, underused, or
+simply better in their hands.
+
 A pattern is surfaced only if it clears the gates below, including split-half
 stability: it must show up in both halves of the player's charted matches.
 
@@ -61,6 +67,7 @@ MIN_STATE = 80        # times a player must face a state to be profiled on it
 MIN_CELL = 10         # raw count behind any surfaced response
 MIN_FIELD = 500       # field observations of the state (minus the player's own)
 K_SHRINK = 30         # pseudo-count pull toward the field distribution
+K_CONV = 20           # pseudo-count pull of a pattern's win rate toward the field's
 LIFT_MIN = 1.4        # shrunk lift needed to surface
 HALF_LIFT_MIN = 1.15  # raw lift required in *both* halves of their matches
 HALF_MIN = 4          # raw count required in both halves
@@ -94,14 +101,16 @@ def hand_map(con):
 
 
 def observations(pt, names, hands, funnel):
-    """Yield (name, hand, state, resp) for consecutive rally-shot pairs.
+    """Yield (name, hand, state, resp, won) for consecutive rally-shot pairs.
 
     The incoming ball starts at the return (shot 2), so serve returns are not
     responses here — serve patterns already have their own experiment. States
     are (family, kind, zone, depth): every pair lands in the depth-agnostic
     "rally" family, and the server's shot 3 also lands in the "ret" family when
-    the return's depth was charted.
+    the return's depth was charted. ``won`` is whether the point ended up with
+    the responder — the payoff of the decision, terminal or not.
     """
+    winner = pt.server if pt.server_won else pt.returner
     for prev, cur in zip(pt.shots[1:], pt.shots[2:]):
         funnel["pairs"] += 1
         if cur.side not in ("FH", "BH"):
@@ -117,16 +126,19 @@ def observations(pt, names, hands, funnel):
         ref = d_in if d_in != "2" else WING_LANE[hand][cur.side]
         line = "cc" if d_out == ref else ("dtl" if d_out == MIRROR[ref] else "mid")
         resp = (cur.side, stroke_kind(cur.letter, False), line)
+        won = int(cur.hitter == winner)
         funnel["obs"] += 1
-        yield name, hand, ("rally", kind, zone, ""), resp
+        yield name, hand, ("rally", kind, zone, ""), resp, won
         if cur.idx == 3 and prev.depth in DEPTH_WORD:
             funnel["ret_obs"] += 1
-            yield name, hand, ("ret", kind, zone, prev.depth), resp
+            yield name, hand, ("ret", kind, zone, prev.depth), resp, won
 
 
 def analyze(con, gender, hands):
     field = defaultdict(Counter)   # state -> Counter(resp)
+    fieldw = defaultdict(Counter)  # state -> Counter(resp) of points won
     per = defaultdict(lambda: (defaultdict(Counter), defaultdict(Counter)))
+    perw = defaultdict(lambda: (defaultdict(Counter), defaultdict(Counter)))
     funnel = Counter()
     res = con.execute(
         "SELECT m.player1, m.player2, p.match_id, p.svr, p.first_serve, "
@@ -142,10 +154,12 @@ def analyze(con, gender, hands):
             funnel["parsed"] += 1
             half = zlib.crc32(str(mid).encode()) & 1
             names = {1: p1, 2: p2}
-            for name, hand, state, resp in observations(pt, names, hands, funnel):
+            for name, hand, state, resp, won in observations(pt, names, hands, funnel):
                 field[state][resp] += 1
+                fieldw[state][resp] += won
                 per[name][half][state][resp] += 1
-    return dict(field=field, per=per, funnel=funnel)
+                perw[name][half][state][resp] += won
+    return dict(field=field, fieldw=fieldw, per=per, perw=perw, funnel=funnel)
 
 
 def shrunk_lift(c, n, p_field, k=K_SHRINK):
@@ -153,13 +167,18 @@ def shrunk_lift(c, n, p_field, k=K_SHRINK):
 
 
 def profile(res, name):
-    """A player's surfaced patterns: (ev, lift, state, resp, n_state, c, l0, l1).
+    """A player's surfaced patterns:
+    (ev, lift, state, resp, n_state, c, l0, l1, conv, fconv).
 
     Ranked by evidence = count x log2(lift), the cell's contribution to the
     player's divergence from the field — raw lift alone crowns rare quirks
     (a 5x lift on 60 of 29,000 balls) over bread-and-butter tendencies.
+    ``conv`` is the player's point-win rate playing that response (shrunk
+    toward the field's by K_CONV pseudo-counts); ``fconv`` is the field's,
+    same state and response, the player's own points excluded.
     """
     h0, h1 = res["per"][name]
+    h0w, h1w = res["perw"][name]
     out = []
     for state in set(h0) | set(h1):
         c0, c1 = h0[state], h1[state]
@@ -185,7 +204,11 @@ def profile(res, name):
             l1 = (c1[resp] / c1.total()) / p_field
             if min(l0, l1) < HALF_LIFT_MIN:
                 continue
-            out.append((c * np.log2(lift), lift, state, resp, n, c, l0, l1))
+            wins = h0w[state][resp] + h1w[state][resp]
+            fconv = (res["fieldw"][state].get(resp, 0) - wins) / bf
+            conv = (wins + K_CONV * fconv) / (c + K_CONV)
+            out.append((c * np.log2(lift), lift, state, resp, n, c, l0, l1,
+                        conv, fconv))
     out.sort(reverse=True)
     rally = [p for p in out if p[2][0] == "rally"][:TOP_PER_PLAYER]
     ret = [p for p in out if p[2][0] == "ret"][:TOP_RETURN]
@@ -302,7 +325,7 @@ def main():
         r = results[g]
         for name in r["per"]:
             hand = hands[name]
-            for ev, lift, state, resp, n, c, l0, l1 in profile(r, name):
+            for ev, lift, state, resp, n, c, l0, l1, conv, fconv in profile(r, name):
                 inc, out = physical_codes(state, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family=state[0],
@@ -313,7 +336,8 @@ def main():
                     inc_code=inc, resp_code=out,
                     n_state=n, count=c, lift=round(lift, 2),
                     evidence=round(ev, 1),
-                    lift_h1=round(l0, 2), lift_h2=round(l1, 2)))
+                    lift_h1=round(l0, 2), lift_h2=round(l1, 2),
+                    win_rate=round(conv, 3), tour_win_rate=round(fconv, 3)))
     with open(REPORTS / "court_response_players.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
         w.writeheader()
@@ -332,7 +356,11 @@ def main():
               f"and raw lift≥{HALF_LIFT_MIN} in both halves of the player's charted "
               "matches. Patterns are ranked by evidence (count x log2 lift), so a "
               "bread-and-butter tendency outranks a rare quirk with a flashier lift. "
-              "Uncharted directions and unknown wings are excluded outright.*")
+              "Uncharted directions and unknown wings are excluded outright. Each "
+              "pattern carries its payoff: the player's point-win rate after playing "
+              f"that response (shrunk toward the field's by {K_CONV} pseudo-counts) "
+              "next to the field's own rate playing the same response to the same "
+              "ball — lift is the choice, payoff is what it earns.*")
     md.append("")
 
     old = old_signature_sharing()
@@ -370,8 +398,9 @@ def main():
         md.append("")
         for name in vol[:8]:
             parts = [f"{state_name(st)} → **{resp_name(st, rp)}** "
-                     f"({lift:.1f}x, n={c}/{n}, halves {l0:.1f}/{l1:.1f})"
-                     for _ev, lift, st, rp, n, c, l0, l1 in prof[name]
+                     f"({lift:.1f}x, n={c}/{n}, halves {l0:.1f}/{l1:.1f}, "
+                     f"wins {cv:.0%} vs {fc:.0%})"
+                     for _ev, lift, st, rp, n, c, l0, l1, cv, fc in prof[name]
                      if st[0] == "rally"]
             md.append(f"- **{name}** ({hands[name]}): " + "; ".join(parts))
         md.append("")
@@ -382,12 +411,13 @@ def main():
                   "depth — strongest evidence first, one per player):")
         md.append("")
         seen = set()
-        for (ev, lift, st, rp, n, c, l0, l1), name in rets:
+        for (ev, lift, st, rp, n, c, l0, l1, cv, fc), name in rets:
             if name in seen:
                 continue
             seen.add(name)
             md.append(f"- **{name}**: {state_name(st)} → **{resp_name(st, rp)}** "
-                      f"({lift:.1f}x, n={c}/{n}, halves {l0:.1f}/{l1:.1f})")
+                      f"({lift:.1f}x, n={c}/{n}, halves {l0:.1f}/{l1:.1f}, "
+                      f"wins {cv:.0%} vs {fc:.0%})")
             if len(seen) >= 6:
                 break
         md.append("")

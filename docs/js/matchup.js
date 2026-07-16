@@ -22,7 +22,8 @@ async function playerData(name, gender) {
   let patterns = [];
   try {
     patterns = await query(
-      "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state " +
+      "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
+      "win_rate, tour_win_rate " +
       "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
       [name, gender]);
   } catch (e) { /* stale insights db: show the card without patterns */ }
@@ -99,8 +100,17 @@ function rateStat(label, rate, avg) {
 function patternLine(p) {
   const court = `<details class="rally"><summary>ball path</summary>
     <div class="court">${pairSvg(p.inc_code, p.resp_code, p.state_depth)}</div></details>`;
+  // Payoff: their point-win rate playing this response vs the tour's playing the
+  // same response to the same ball — the choice is the lift, this is what it earns.
+  let payoff = "";
+  if (p.win_rate != null && p.tour_win_rate != null) {
+    const d = Math.round((p.win_rate - p.tour_win_rate) * 100);
+    const arrow = d === 0 ? "" :
+      ` <span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} vs tour</span>`;
+    payoff = ` · wins ${Math.round(p.win_rate * 100)}%${arrow}`;
+  }
   return `<div class="sig-item"><code>${esc(p.state)} → <b>${esc(p.response)}</b></code>
-    <span class="lift">(${Number(p.lift).toFixed(1)}× the tour, n=${Number(p.count).toLocaleString()})</span>${court}</div>`;
+    <span class="lift">(${Number(p.lift).toFixed(1)}× the tour, n=${Number(p.count).toLocaleString()}${payoff})</span>${court}</div>`;
 }
 
 function patterns(d) {
@@ -238,9 +248,14 @@ function notationHelp() {
       <div>Court patterns name zones by the player's own hands (a lefty's FH corner
         is a righty's BH corner), so <code>drive into the BH corner → crosscourt BH
         slice (1.6×)</code> means they answer that ball with the crosscourt slice
-        1.6× as often as the tour does from the same spot. <code>A · B</code> in
-        triggers: their shot A, then the opponent's reply B, then the stroke being
-        measured.</div>
+        1.6× as often as the tour does from the same spot. <code>wins 52% ▲6</code>
+        is the payoff: how often the point ends up theirs after that response, vs
+        the tour playing the same ball.</div>
+      <div>Triggers group a player's winners and unforced errors as one decision —
+        an <em>attempt</em> at a finishing shot. <code>A · B</code> is the cue:
+        their shot A, then the opponent's reply B. "Goes for it" is the attempt
+        rate that cue provokes; "converts" is winners per attempt. A cue that
+        raises attempts but sinks conversion is a trap — they take the bait.</div>
     </div>
   </details>`;
 }

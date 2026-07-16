@@ -89,7 +89,8 @@ def build() -> int:
     # geometry and handedness artifacts — see experiments/court_response.
     patterns = pd.read_csv(REPORTS / "court_response_players.csv")[
         ["player", "gender", "family", "state", "response", "state_depth",
-         "inc_code", "resp_code", "lift", "count", "n_state", "evidence"]]
+         "inc_code", "resp_code", "lift", "count", "n_state", "evidence",
+         "win_rate", "tour_win_rate"]]
     for col in ("inc_code", "resp_code"):
         patterns[col] = patterns[col].astype(str)
     patterns["state_depth"] = patterns["state_depth"].fillna("")

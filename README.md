@@ -58,9 +58,11 @@ A pattern is the player's answer to one incoming ball: the state (the ball's cha
 the zone it lands in) and the response (wing, shot type, and line). The multiplier compares
 how often the player picks that response to how often the tour picks it **from the same
 spot** — so `1.6×` on a crosscourt slice means a genuine preference, not just that slices
-happen. Two families appear: rally patterns, and **off the return** — what the server does
-with their first ball after the serve, split by the charted depth of the return (short /
-mid / deep).
+happen. The payoff (`wins 52% ▲5 vs tour`) is a separate claim: how often the point ends
+up theirs after that response, next to the tour's rate playing the same ball — the
+multiplier is the choice, the payoff is what it earns. Two families appear: rally
+patterns, and **off the return** — what the server does with their first ball after the
+serve, split by the charted depth of the return (short / mid / deep).
 
 Zones in a pattern are named by the **player's own hands**: "the BH corner" is that
 player's backhand corner whether they are left- or right-handed. Run-around shots get
@@ -81,8 +83,11 @@ Each stroke is one token:
   charted.
 - **Serves.** A serve is written as its target: `serve wide`, `serve body`, or `serve T`.
 
-A trigger reads as a lead-up (the player's shot, then the opponent's reply) and then what
-the player tends to do next, with how often they go for it and how often it pays off.
+A trigger reads as a lead-up — the player's shot, then the opponent's reply — and asks what
+that cue provokes. The framework groups winners and unforced errors as one behavioral unit,
+the **attempt**: both mean the player went for a finishing shot, and only the execution
+differed. "Goes for it" is the attempt rate the cue provokes; "converts" is winners per
+attempt; a cue that raises attempts but sinks conversion is a trap — they take the bait.
 
 ### The court diagram
 
