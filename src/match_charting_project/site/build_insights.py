@@ -10,17 +10,21 @@ insights workflow runs them first). Run: ``match-charting-project site build-ins
 """
 
 import re
+from datetime import date
 
 import duckdb
 import pandas as pd
 
-from match_charting_project.live.players import coverage
+from match_charting_project.live.players import coverage, normalize, tourn_key
 from match_charting_project.paths import DB_PATH, PROJECT_ROOT
 from match_charting_project.winprob_match import current_strength
 
 REPORTS = PROJECT_ROOT / "reports"
 OUT = PROJECT_ROOT / "data" / "insights.duckdb"
 _ERA_RE = re.compile(r"^(?P<base>.+) \((?P<y0>\d{4})[–-](?P<y1>\d{4})\)$")
+# Only recent slam/1000 identities ship: the site archives completed events going forward,
+# never older ones, so their per-match charting status is all the fast path can ever need.
+_CHARTED_SINCE = date.today().year - 2
 
 
 def _base(entity: str) -> "tuple[str, int]":
@@ -38,11 +42,31 @@ def _collapse(df: pd.DataFrame) -> pd.DataFrame:
         columns="_y1")
 
 
+def _charted_matches(con) -> pd.DataFrame:
+    """Recent slam/1000 charted matches, keyed so the fast path can flag per-match charting.
+
+    Names/tournaments are normalized here (via the shared ``players`` helpers) so the join
+    in ``build_brackets`` is a plain dict lookup — no fuzzy matching on the hot path.
+    """
+    rows = con.execute(
+        "SELECT match_id, gender, year, tournament, player1, player2, charted_by "
+        "FROM matches WHERE is_qualifying = false AND year >= ? "
+        "AND tier IN ('Grand Slam', 'Masters / WTA 1000')",
+        [_CHARTED_SINCE]).fetchall()
+    df = pd.DataFrame(rows, columns=["match_id", "gender", "year", "tournament",
+                                     "player1", "player2", "charted_by"])
+    df["tourn_key"] = df["tournament"].map(tourn_key)
+    df["p1_norm"] = df["player1"].map(normalize)
+    df["p2_norm"] = df["player2"].map(normalize)
+    return df[["gender", "year", "tourn_key", "p1_norm", "p2_norm", "match_id", "charted_by"]]
+
+
 def build() -> int:
     """(Re)create ``insights.duckdb`` from the DB + experiment CSVs. Returns player count."""
     con = duckdb.connect(str(DB_PATH), read_only=True)
     strength, mu = current_strength(con)
     cov = coverage(con)
+    charted = _charted_matches(con)
     con.close()
 
     summary = pd.DataFrame([
@@ -98,7 +122,7 @@ def build() -> int:
     OUT.unlink(missing_ok=True)     # fresh file: dropped tables must not ship forever
     out = duckdb.connect(str(OUT))
     for name, df in (("player_summary", summary), ("player_triggers", triggers),
-                     ("meta", meta)):
+                     ("meta", meta), ("charted_matches", charted)):
         out.register(f"_{name}", df)
         out.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _{name}")
     out.close()

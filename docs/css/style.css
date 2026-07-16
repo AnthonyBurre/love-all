@@ -54,6 +54,17 @@ a { color: var(--acc-d); }
 .seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; }
 .seg button.on { background: var(--acc); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 
+/* tournament picker: a dropdown (scales as events accumulate, native on mobile) */
+.tourselect {
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: #ffffffb0 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2361706a'/%3E%3C/svg%3E") no-repeat right 15px center;
+  padding: 9px 36px 9px 16px; font-size: 14px; font-weight: 700; color: var(--ink);
+  cursor: pointer; max-width: 100%;
+}
+.tourselect:hover { border-color: var(--acc); }
+.tourselect:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+
 /* match-tier legend */
 .legend { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; }
 .legend .chip { font-size: 11px; font-weight: 600; color: var(--muted); padding: 3px 9px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); border-left-width: 4px; }
@@ -64,16 +75,20 @@ a { color: var(--acc-d); }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
-/* section furniture for the quarters layout */
-.secthead { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 20px 0 2px; }
-
 /* business-end cascade: final -> semifinals -> quarter selectors, top-down */
-.cascade { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 34px; column-gap: 10px; padding: 12px 0 20px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.cascade { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 8px; column-gap: 10px; padding: 12px 0 20px; }
+.cascade-label { grid-column: 1 / 5; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 20px; }
+.cascade-label:first-child { margin-top: 0; }
 .cslot { display: flex; justify-content: center; align-items: flex-end; min-width: 0; }
 .cslot .match { width: min(250px, 100%); position: relative; z-index: 2; }
 .cslot.slot-final { grid-column: 1 / 5; }
 .cslot.slot-sf { grid-column: span 2; }
-.cslot.slot-q { grid-column: span 1; }
+.cslot.slot-qf { grid-column: span 1; flex-direction: column; align-items: center; gap: 8px; }
+.cslot.slot-qf.qf-on .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
+/* per-quarterfinal selector: pick one and the fan flows down from it */
+.qsel { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 13px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.qsel:hover { border-color: var(--acc); color: var(--ink); }
+.qsel.on { background: var(--acc); border-color: var(--acc); color: #fff; }
 .qchip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; position: relative; z-index: 2; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qchip:hover { border-color: var(--acc); color: var(--ink); }
 .qchip.on { background: var(--acc); border-color: var(--acc); color: #fff; }
@@ -81,10 +96,30 @@ a { color: var(--acc-d); }
 
 /* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
 .bracket { display: flex; gap: 34px; overflow-x: auto; padding: 14px 0 30px; align-items: flex-start; position: relative; }
+#quarterTop { padding-top: 0; }
 .round { flex: 0 0 auto; width: 232px; }
 .round h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); position: sticky; top: 0; background: var(--bg); padding: 4px 0; z-index: 3; }
 .round-list { position: relative; }
 .round-list .match { position: absolute; left: 0; right: 0; }
+
+/* "by quarter" drill-down: the chosen quarter fanning straight down (R16 → R32), each round a
+   row of absolutely-placed cards, wired top-down. Always narrow enough to fit its container,
+   so no horizontal scrolling; overflow stays visible so a selector's wire (see .fan-cell) can
+   bleed down past this block's own box into the pinned block that follows it. */
+.bracket.asfan { display: block; overflow: visible; }
+.fan { position: relative; margin: 2px auto 12px; }
+.fan-label { text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 10px; }
+.fan-label.flush { text-align: left; }
+.fan-label:first-child { margin-top: 0; }
+.fan-row { position: relative; margin-bottom: 46px; }
+.fan-row:last-of-type { margin-bottom: 0; }
+.fan-row .match { position: absolute; top: 0; }
+
+/* Round-of-32 selector: pick one and its own earlier rounds (round of 64 down to round 1
+   within that match's slot of the draw) fan out in the block below, same idea as the
+   cascade's quarterfinal selectors. */
+.fan-cell { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.fan-cell.picked .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
 
 .wires { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
 .wires path { fill: none; stroke: color-mix(in srgb, var(--acc) 38%, var(--line)); stroke-width: 1.75; }
@@ -106,6 +141,15 @@ a { color: var(--acc-d); }
 .match .side.lose { color: var(--muted); }
 .nm { flex: 1; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sets { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); letter-spacing: 1px; }
+
+/* wide layout (cascade + by-quarter fan): groups by column instead of by player — both
+   names on one line, both scores on the line below — so a match reads in one row. */
+.match .namesrow, .match .scoresrow { display: flex; justify-content: space-between; gap: 8px; }
+.match .scoresrow { margin-top: 3px; }
+.match .namesrow .nm { flex: 0 1 auto; min-width: 0; }
+.match .namesrow .nm.win { font-weight: 700; }
+.match .namesrow .nm.lose { color: var(--muted); }
+
 .match .detail { margin-top: 4px; font-size: 11px; color: var(--muted); }
 .match .detail.live { color: var(--warn); font-weight: 700; }
 
@@ -118,6 +162,12 @@ a { color: var(--acc-d); }
 .mh .score { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 15px; font-weight: 600; }
 .mstate { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
 .mstate .live { color: var(--warn); font-weight: 700; }
+
+/* finished-match charting call-to-action: link to the chart, or invite one */
+.chartcta { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; border: 1px solid var(--line); }
+.chartcta a { font-weight: 700; white-space: nowrap; }
+.chartcta.charted { background: color-mix(in srgb, var(--acc) 8%, var(--card)); border-color: color-mix(in srgb, var(--acc) 30%, var(--line)); }
+.chartcta.uncharted { background: color-mix(in srgb, var(--warn) 7%, var(--card)); border-color: color-mix(in srgb, var(--warn) 26%, var(--line)); }
 
 /* collapsed notation key: mini courts + text legend */
 .notekey { margin: 14px 0 0; font-size: 12px; color: var(--muted); }

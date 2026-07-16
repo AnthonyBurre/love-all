@@ -56,6 +56,55 @@ def _live() -> None:
             print(f"  {r['label']:<18} {len(r['matches']):>3} matches")
 
 
+def _history_seed() -> None:
+    """One-time: archive the most recent *finished* slam, so a freshly-deployed site has a
+    past draw to show. Idempotent — does nothing once the archive holds anything, and always
+    leaves data/history.json written so CI never re-runs the seed."""
+    from match_charting_project.live import history
+
+    store = history.load()
+    if store:
+        print(f"  history already has {len(store)} draws — nothing to seed.")
+        return
+    # Newest first; skip any still-ongoing or not-yet-in-ESPN slam. Runs once ever, so
+    # walking back through ~two years of slams is cheap insurance if the newest is missing.
+    for event, year in history.recent_slams()[:8]:
+        tours = [t for t in history.harvest(event, year) if history.is_complete(t["rounds"])]
+        if tours:
+            store.extend(tours)
+            history.prune(store)
+            history.save(store)
+            for t in tours:
+                n = sum(len(r["matches"]) for r in t["rounds"])
+                print(f"  seeded {t['name']} {t['season']} {t['gender']}: {n} matches")
+            print(f"  archive now holds {len(store)} draws -> {history.HISTORY}")
+            return
+    history.save(store)                                  # empty file: the seed won't retry
+    print("  no finished slam found in ESPN's feed to seed — archive left empty.")
+
+
+def _history_harvest(event: str, year: int) -> None:
+    from match_charting_project.live import history
+
+    tours = history.harvest(event, year)
+    if not tours:
+        print(f"No {event} {year} draw found in ESPN's feed for that window.")
+        return
+    store = history.load()
+    have = {(e["id"], e["gender"]) for e in store}
+    added = [t for t in tours if (t["id"], t["gender"]) not in have]
+    store.extend(added)
+    history.prune(store)
+    history.save(store)
+    for t in tours:
+        n = sum(len(r["matches"]) for r in t["rounds"])
+        kept = (t["id"], t["gender"]) in {(e["id"], e["gender"]) for e in store}
+        note = "added" if t in added else "already archived"
+        print(f"  {t['name']} {t['gender']}: {n} matches ({note}"
+              f"{'' if kept else ', pruned by retention'})")
+    print(f"  archive now holds {len(store)} draws -> {history.HISTORY}")
+
+
 def _ingest(what: str, force: bool, provenance: bool) -> None:
     from match_charting_project.ingest import build as build_mod
     from match_charting_project.ingest import download as download_mod
@@ -174,6 +223,12 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("shots", help="decode point notation into the points_parsed table")
     sub.add_parser("eras", help="build the optional player_eras table (split evolving careers)")
     sub.add_parser("live", help="fetch current tournament brackets from ESPN (smoke test)")
+    hist = sub.add_parser("history", help="manage the completed-draw archive (data/history.json)")
+    hsub = hist.add_subparsers(dest="history_cmd", required=True)
+    hv = hsub.add_parser("harvest", help="seed one past slam by merging ESPN's dated feed")
+    hv.add_argument("--event", required=True, help='slam name, e.g. "Wimbledon"')
+    hv.add_argument("--year", type=int, required=True)
+    hsub.add_parser("seed", help="one-time: archive the most recent finished slam (auto-picked)")
     site = sub.add_parser("site", help="build site data artifacts")
     site.add_argument("what", choices=["build-insights", "build-brackets"])
     sub.add_parser("validate", help="print the data-quality report")
@@ -197,6 +252,11 @@ def main(argv: list[str] | None = None) -> None:
         _eras()
     elif args.cmd == "live":
         _live()
+    elif args.cmd == "history":
+        if args.history_cmd == "harvest":
+            _history_harvest(args.event, args.year)
+        elif args.history_cmd == "seed":
+            _history_seed()
     elif args.cmd == "site":
         if args.what == "build-insights":
             from match_charting_project.site import build_insights

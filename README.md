@@ -11,30 +11,38 @@ and publishes an interactive site to GitHub Pages.
 
 ## The site — Love All
 
-`docs/` is a GitHub Pages site showing live **Grand Slam and Masters/WTA-1000
-brackets** from ESPN's public feed, drawn as a linked tree with each winner wired
-to the next-round match it feeds. ESPN exposes no draw slots, so that linkage is
-inferred from names as the draw resolves. The page themes and titles itself to
-whichever tournament you're looking at.
+`docs/` is a GitHub Pages site showing **Grand Slam and Masters/WTA-1000 brackets**
+from ESPN's public feed, drawn as a linked tree with each winner wired to the
+next-round match it feeds. ESPN exposes no draw slots, so that linkage is inferred
+from names as the draw resolves. The page themes and titles itself to whichever
+tournament you're looking at.
 
-Every match box is shaded by how charted its pairing is, taken as the min of the
-two players — a match is only as analyzable as its lesser-charted side. Click one
-and a drawer opens with, for each player: a style archetype, serve and return
-rates against the tour average, signature shot sequences, finishing and breakdown
-patterns, shot quality relative to that archetype, and an **experimental pre-match
-win probability**. All of it is queried in the browser with **DuckDB-WASM** —
-there is no backend.
+Live draws show while play is on. Once an event finishes, its draw is frozen into an
+archive (`data/history.json`) so it stays in the dropdown to look back on — the site
+keeps the last two years of slams plus the most recent event. On a live or upcoming
+match, each box is shaded by how charted its pairing is, taken as the min of the two
+players. On a finished draw the shading turns per-match — charted or not — and the
+drawer links straight to that match's full chart on Tennis Abstract, or invites you to
+be the one who charts it. Click any match and a drawer opens with, for each player: a
+style archetype, serve and return rates against the tour average, signature shot
+sequences, finishing and breakdown patterns, shot quality relative to that archetype,
+and an **experimental pre-match win probability**. All of it is queried in the browser
+with **DuckDB-WASM** — there is no backend.
 
 Two workflows keep it current, and nothing they generate is committed:
 
 - **`.github/workflows/insights.yml`** (weekly, or manual) rebuilds the compact
-  `insights.duckdb` — one row per charted player — and publishes it as a Release asset.
-- **`.github/workflows/live.yml`** (hourly) fetches the current draws, reuses that
-  insights DB, and deploys `docs/` to Pages.
+  `insights.duckdb` — one row per charted player, plus the recent charted-match index
+  the site flags finished matches against — and publishes it as a Release asset.
+- **`.github/workflows/live.yml`** (hourly) fetches the current draws, folds any
+  newly-finished event into the draw-history asset, reuses the insights DB, and deploys
+  `docs/` to Pages.
 
 To run it locally: `match-charting-project site build-insights`, then `... site
-build-brackets`, then serve `docs/`. The win-prob model, ESPN adapter, and insights
-builder live under `src/match_charting_project/{winprob_match,live,site}`.
+build-brackets`, then serve `docs/`. To seed a past event that finished before the site
+was watching it, `... history harvest --event Wimbledon --year 2025` (future events are
+captured automatically as they finish). The win-prob model, ESPN adapter, history
+archive, and insights builder live under `src/match_charting_project/{winprob_match,live,site}`.
 
 ## Stack
 
