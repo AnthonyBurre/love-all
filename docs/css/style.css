@@ -53,6 +53,8 @@ a { color: var(--acc-d); }
 .seg { display: inline-flex; background: #ffffffb0; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
 .seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; }
 .seg button.on { background: var(--acc); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg .ico { display: block; line-height: 0; }
+.seg svg { display: block; fill: currentColor; }
 
 /* tournament picker: a dropdown (scales as events accumulate, native on mobile) */
 .tourselect {
@@ -75,51 +77,36 @@ a { color: var(--acc-d); }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
-/* business-end cascade: final -> semifinals -> quarter selectors, top-down */
-.cascade { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 8px; column-gap: 10px; padding: 12px 0 20px; }
-.cascade-label { grid-column: 1 / 5; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 20px; }
-.cascade-label:first-child { margin-top: 0; }
-.cslot { display: flex; justify-content: center; align-items: flex-end; min-width: 0; }
-.cslot .match { width: min(250px, 100%); position: relative; z-index: 2; }
-.cslot.slot-final { grid-column: 1 / 5; }
-.cslot.slot-sf { grid-column: span 2; }
-.cslot.slot-qf { grid-column: span 1; flex-direction: column; align-items: center; gap: 8px; }
-.cslot.slot-qf.qf-on .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
-/* per-quarterfinal selector: pick one and the fan flows down from it */
-.qsel { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 13px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+/* by-quarter view: one 4-column grid read top-down — final over semifinals over
+   quarterfinals (selector chip under each), then the picked quarter's rounds; on
+   slams the round-of-32 row gets its own chips and the picked slot's rounds finish
+   the stack. Column spans center each match over its feeders; the wires are one
+   SVG overlay, hot along the picked path. */
+.quarters { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 8px; column-gap: 10px; padding: 12px 0 30px; }
+.qlabel { grid-column: 1 / -1; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 20px; }
+.qlabel:first-child { margin-top: 0; }
+.qcell { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.qcell.span2 { grid-column: span 2; }
+.qcell.span4 { grid-column: span 4; }
+.qcell .match { width: min(250px, 100%); }
+.qcell.picked .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
+.quarters .wires .hot { stroke: var(--acc); stroke-width: 2.25; }
+/* textless selector chip under a quarterfinal or round-of-32 match: pick one and
+   its earlier rounds render below; the seed-leader label lives in the tooltip */
+.qsel { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 10px; color: var(--muted); cursor: pointer; line-height: 0; }
+.qsel svg { display: block; fill: currentColor; }
 .qsel:hover { border-color: var(--acc); color: var(--ink); }
 .qsel.on { background: var(--acc); border-color: var(--acc); color: #fff; }
 .qchip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; position: relative; z-index: 2; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qchip:hover { border-color: var(--acc); color: var(--ink); }
 .qchip.on { background: var(--acc); border-color: var(--acc); color: #fff; }
-.cascade .wires .hot { stroke: var(--acc); stroke-width: 2.25; }
 
 /* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
 .bracket { display: flex; gap: 34px; overflow-x: auto; padding: 14px 0 30px; align-items: flex-start; position: relative; }
-#quarterTop { padding-top: 0; }
 .round { flex: 0 0 auto; width: 232px; }
 .round h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); position: sticky; top: 0; background: var(--bg); padding: 4px 0; z-index: 3; }
 .round-list { position: relative; }
 .round-list .match { position: absolute; left: 0; right: 0; }
-
-/* "by quarter" drill-down: the chosen quarter fanning straight down (R16 → R32), each round a
-   row of absolutely-placed cards, wired top-down. Always narrow enough to fit its container,
-   so no horizontal scrolling; overflow stays visible so a selector's wire (see .fan-cell) can
-   bleed down past this block's own box into the pinned block that follows it. */
-.bracket.asfan { display: block; overflow: visible; }
-.fan { position: relative; margin: 2px auto 12px; }
-.fan-label { text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 10px; }
-.fan-label.flush { text-align: left; }
-.fan-label:first-child { margin-top: 0; }
-.fan-row { position: relative; margin-bottom: 46px; }
-.fan-row:last-of-type { margin-bottom: 0; }
-.fan-row .match { position: absolute; top: 0; }
-
-/* Round-of-32 selector: pick one and its own earlier rounds (round of 64 down to round 1
-   within that match's slot of the draw) fan out in the block below, same idea as the
-   cascade's quarterfinal selectors. */
-.fan-cell { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.fan-cell.picked .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
 
 .wires { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
 .wires path { fill: none; stroke: color-mix(in srgb, var(--acc) 38%, var(--line)); stroke-width: 1.75; }
@@ -142,7 +129,7 @@ a { color: var(--acc-d); }
 .nm { flex: 1; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sets { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); letter-spacing: 1px; }
 
-/* wide layout (cascade + by-quarter fan): groups by column instead of by player — both
+/* wide layout (by-quarter view): groups by column instead of by player — both
    names on one line, both scores on the line below — so a match reads in one row. */
 .match .namesrow, .match .scoresrow { display: flex; justify-content: space-between; gap: 8px; }
 .match .scoresrow { margin-top: 3px; }
