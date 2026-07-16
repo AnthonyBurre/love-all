@@ -80,9 +80,19 @@ def build() -> int:
                          [["player", "gender", "archetype"]])
     summary = summary.merge(clusters, on=["player", "gender"], how="left")
 
-    lang = pd.read_csv(REPORTS / "shot_language_players.csv")[
-        ["player", "gender", "bits", "signatures"]]
+    lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
     summary = summary.merge(lang, on=["player", "gender"], how="left")
+
+    # Court-state response profiles (court_response experiment): the player's stable,
+    # hand-normalized answers to a given incoming ball, plus the return-depth family.
+    # These replaced the old signature pairs, which mostly surfaced generic rally
+    # geometry and handedness artifacts — see experiments/court_response.
+    patterns = pd.read_csv(REPORTS / "court_response_players.csv")[
+        ["player", "gender", "family", "state", "response", "state_depth",
+         "inc_code", "resp_code", "lift", "count", "n_state", "evidence"]]
+    for col in ("inc_code", "resp_code"):
+        patterns[col] = patterns[col].astype(str)
+    patterns["state_depth"] = patterns["state_depth"].fillna("")
 
     crw = _collapse(pd.read_csv(REPORTS / "class_relative_wpa.csv")
                     [["player", "gender", "class_rel_z", "accuracy", "avg_wpa_lost"]])
@@ -122,7 +132,8 @@ def build() -> int:
     OUT.unlink(missing_ok=True)     # fresh file: dropped tables must not ship forever
     out = duckdb.connect(str(OUT))
     for name, df in (("player_summary", summary), ("player_triggers", triggers),
-                     ("meta", meta), ("charted_matches", charted)):
+                     ("player_patterns", patterns), ("meta", meta),
+                     ("charted_matches", charted)):
         out.register(f"_{name}", df)
         out.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _{name}")
     out.close()

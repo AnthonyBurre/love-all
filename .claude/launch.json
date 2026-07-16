@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8137", "--directory", "docs"],
       "port": 8137
+    },
+    {
+      "name": "site-check",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8153", "--directory", "docs"],
+      "port": 8153
     }
   ]
 }

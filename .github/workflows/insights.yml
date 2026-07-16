@@ -35,6 +35,7 @@ jobs:
           uv run python experiments/shot_triggers/run.py
           uv run python experiments/deep_patterns/run.py
           uv run python experiments/class_relative_wpa/run.py
+          uv run python experiments/court_response/run.py
 
       - name: Build insights.duckdb
         run: uv run match-charting-project site build-insights

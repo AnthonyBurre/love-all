@@ -24,10 +24,10 @@ match, each box is shaded by how charted its pairing is, taken as the min of the
 players. On a finished draw the shading turns per-match — charted or not — and the
 drawer links straight to that match's full chart on Tennis Abstract, or invites you to
 be the one who charts it. Click any match and a drawer opens with, for each player: a
-style archetype, serve and return rates against the tour average, signature shot
-sequences, finishing and breakdown patterns, shot quality relative to that archetype,
-and an **experimental pre-match win probability**. All of it is queried in the browser
-with **DuckDB-WASM** — there is no backend.
+style archetype, serve and return rates against the tour average, court patterns (their
+stable answers to a given incoming ball, drawn on a court), shot-making triggers, shot
+quality relative to that archetype, and an **experimental pre-match win probability**.
+All of it is queried in the browser with **DuckDB-WASM** — there is no backend.
 
 Two workflows keep it current, and nothing they generate is committed:
 
@@ -43,6 +43,92 @@ build-brackets`, then serve `docs/`. To seed a past event that finished before t
 was watching it, `... history harvest --event Wimbledon --year 2025` (future events are
 captured automatically as they finish). The win-prob model, ESPN adapter, history
 archive, and insights builder live under `src/match_charting_project/{winprob_match,live,site}`.
+
+## Reading the patterns and court diagrams
+
+Open a matchup and each player's card leads with **court patterns**, written in plain
+English: `drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
+**shot-making triggers** are written in shot tokens: `serve wide · BH slice→3`. Click the
+**ball path** toggle under either to see it drawn on a small court. The drawer also carries
+a short "How to read the shot notation" key of its own.
+
+### Court patterns
+
+A pattern is the player's answer to one incoming ball: the state (the ball's character and
+the zone it lands in) and the response (wing, shot type, and line). The multiplier compares
+how often the player picks that response to how often the tour picks it **from the same
+spot** — so `1.6×` on a crosscourt slice means a genuine preference, not just that slices
+happen. Two families appear: rally patterns, and **off the return** — what the server does
+with their first ball after the serve, split by the charted depth of the return (short /
+mid / deep).
+
+Zones in a pattern are named by the **player's own hands**: "the BH corner" is that
+player's backhand corner whether they are left- or right-handed. Run-around shots get
+their tennis names — a forehand played from the backhand corner is `inside-out` on the
+diagonal, `inside-in` down the line. Every pattern shown repeated in both halves of the
+player's charted matches; one-off quirks are filtered out.
+
+### The trigger tokens
+
+Each stroke is one token:
+
+- **Wing and type.** `FH` / `BH` is the forehand or backhand wing the player actually hit
+  with. The type is `drive` (flat or topspin), `slice` (slice or chip), `net` (volley,
+  overhead, or half-volley), or `shot` when the type was not charted. These group a finer
+  set in the raw notation, which also records drop shots, lobs, overheads, and so on.
+- **Direction.** `→1` / `→2` / `→3` is the third of the court the ball was sent to, as
+  fixed thirds named by the right-hander convention. `→·` means the direction was not
+  charted.
+- **Serves.** A serve is written as its target: `serve wide`, `serve body`, or `serve T`.
+
+A trigger reads as a lead-up (the player's shot, then the opponent's reply) and then what
+the player tends to do next, with how often they go for it and how often it pays off.
+
+### The court diagram
+
+The diagram is a **placement map**, not a flight path: it marks where each ball landed and
+joins the points in order, faint first and bold last. It comes in two flavors:
+
+- **A pattern** draws the incoming ball landing on the near half — the player's side, so
+  "into the BH corner" points where you'd expect — and the response, bold, landing up top.
+  For return patterns the incoming bounce sits short, mid-court, or deep to match the
+  charted return depth.
+- **A trigger sequence** plays out from the near baseline, bounces alternating ends, with
+  the small dot anchoring the first stroke (the server's contact when it starts with a
+  serve). The notation does not record deuce or ad court, so serves assume the deuce court.
+
+### Zones and how fine the charting really is
+
+The placement is **coarse on purpose**, and the diagram shows only what was charted:
+
+- **Three lateral zones.** Direction is recorded as one of three thirds, not a continuous
+  spot, so two shots into different parts of the same third are the same zone. Within a
+  third the diagram cannot separate, say, a sharp crosscourt from a safer one.
+- **Lines come from zone pairs.** A single zone code never says crosscourt or down the
+  line, but a pattern knows both ends — the zone the ball arrived in fixes where the player
+  stood, so zone-to-zone geometry names the line. The two ends face each other, which is why
+  a reply into the *same-numbered* third travels the diagonal.
+- **Depth is thin.** The raw notation carries a coarse depth (shallow / mid / deep) on
+  about three-quarters of returns but few later balls, so only the off-the-return patterns
+  use it. Trigger drawings put every rally bounce at one mid-court depth.
+- **Three serve targets.** Wide, body, or T, placed in the service box the serve crosses
+  into.
+
+### Does handedness matter?
+
+The **wing** is always right: `FH` / `BH` is the stroke the player actually made, taken
+straight from the notation, so it holds for left-handers and right-handers alike.
+
+For **court patterns**, handedness is already folded in: the zones are flipped for
+left-handers before anything is counted or compared, so "drive into the BH corner" means
+the same tennis problem for Nadal as for Federer, and the comparison against the tour is
+apples to apples. (This matters — without the flip, a lefty answering his forehand corner
+with a forehand posts a huge, meaningless lift against a mostly right-handed tour.)
+
+The **trigger tokens** keep the raw convention: `→1` / `→2` / `→3` are fixed thirds named
+by a right-hander's wings (`1` = a righty's forehand corner). The ball is drawn where it
+physically went, so the diagram itself never needs adjusting — just remember that for a
+left-hander, `→3` is their forehand side.
 
 ## Stack
 

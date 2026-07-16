@@ -2,6 +2,7 @@
 // all queried from insights.duckdb via DuckDB-WASM.
 import { query, leagueMu } from "./db.js";
 import { preMatchWP } from "./winprob.js";
+import { patternSvg, pairSvg } from "./court.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -18,7 +19,14 @@ async function playerData(name, gender) {
       "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, depth " +
       "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
   } catch (e) { /* stale insights db: show the card without tendencies */ }
-  return { s: s[0], triggers };
+  let patterns = [];
+  try {
+    patterns = await query(
+      "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state " +
+      "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
+      [name, gender]);
+  } catch (e) { /* stale insights db: show the card without patterns */ }
+  return { s: s[0], triggers, patterns };
 }
 
 function predictabilityLabel(bits) {
@@ -35,10 +43,20 @@ function ratingLabel(z) {
   return `typical for their style (z ${z.toFixed(1)})`;
 }
 
+// A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
+// drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
+// pattern has no chartable direction, so there's nothing to draw.
+function rallyDrawer(pattern) {
+  const svg = patternSvg(pattern);
+  return svg ? `<details class="rally"><summary>ball path</summary>
+    <div class="court">${svg}</div></details>` : "";
+}
+
 // One decision, two outcomes: a green light converts, a trap is taken bait.
 function trigLine(t) {
   const ctx = `after <code>${esc(t.context)}</code>`;
   const lift = `${Number(t.att_lift).toFixed(1)}×`;
+  const court = rallyDrawer(t.context);
   if (Number(t.depth) > 2) {
     // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates
     // across halves of the player's data — only the hugely-charted earn these.
@@ -47,14 +65,14 @@ function trigLine(t) {
       : `and converts ${Math.round(t.conversion * 100)}%`;
     return `<div class="pat gold" title="deep pattern: only visible with this player's huge charted history">${ctx}
       — goes for it ${Math.round(t.att_rate * 100)}% (${lift} the shorter pattern) ${kind}
-      <span class="lift">(n=${Number(t.n)})</span></div>`;
+      <span class="lift">(n=${Number(t.n)})</span>${court}</div>`;
   }
   if (t.tag === "green") {
     return `<div class="pat green">${ctx} — goes for it ${Math.round(t.att_rate * 100)}% (${lift})
-      and converts ${Math.round(t.conversion * 100)}% <span class="lift">(n=${Number(t.n)})</span></div>`;
+      and converts ${Math.round(t.conversion * 100)}% <span class="lift">(n=${Number(t.n)})</span>${court}</div>`;
   }
   return `<div class="pat bait">${ctx} — takes the bait (${lift} their attempts) but converts
-    only ${Math.round(t.conversion * 100)}% <span class="lift">(${Math.round(t.conv_delta * 100)} vs their norm, n=${Number(t.n)})</span></div>`;
+    only ${Math.round(t.conversion * 100)}% <span class="lift">(${Math.round(t.conv_delta * 100)} vs their norm, n=${Number(t.n)})</span>${court}</div>`;
 }
 
 // How context-driven is the go-for-it decision (σ from the shot_triggers experiment)?
@@ -74,11 +92,33 @@ function rateStat(label, rate, avg) {
   return `<div class="stat"><span class="k">${label}:</span> ${pct(rate)} ${arrow}</div>`;
 }
 
-function signatures(s) {
-  if (!s.signatures) return "";
-  const sigs = String(s.signatures).split("; ").slice(0, 2)
-    .map((x) => `<code>${esc(x)}</code>`).join(" ");
-  return `<div class="phead">signature sequences</div><div class="sig">${sigs}</div>`;
+// Court-state patterns (court_response experiment): how the player answers a given
+// incoming ball, vs the field's answers to the same ball. Zones are named relative to
+// the player's own hands, run-arounds get their tennis names, and every pattern
+// repeated in both halves of the player's charted matches to earn its place here.
+function patternLine(p) {
+  const court = `<details class="rally"><summary>ball path</summary>
+    <div class="court">${pairSvg(p.inc_code, p.resp_code, p.state_depth)}</div></details>`;
+  return `<div class="sig-item"><code>${esc(p.state)} → <b>${esc(p.response)}</b></code>
+    <span class="lift">(${Number(p.lift).toFixed(1)}× the tour, n=${Number(p.count).toLocaleString()})</span>${court}</div>`;
+}
+
+function patterns(d) {
+  if (!d.patterns.length) return "";
+  const rally = d.patterns.filter((p) => p.family === "rally").slice(0, 3);
+  const ret = d.patterns.filter((p) => p.family === "ret").slice(0, 2);
+  let html = "";
+  if (rally.length) {
+    html += `<div class="phead">court patterns <span class="phead-note">their answer to
+      an incoming ball, × how often the tour plays it from the same spot</span></div>
+      <div class="sig">${rally.map(patternLine).join("")}</div>`;
+  }
+  if (ret.length) {
+    html += `<div class="phead">off the return <span class="phead-note">what they do
+      with the returns they serve up, by return depth</span></div>
+      <div class="sig">${ret.map(patternLine).join("")}</div>`;
+  }
+  return html;
 }
 
 function playerCard(side, d, mu, gender) {
@@ -115,7 +155,7 @@ function playerCard(side, d, mu, gender) {
   return `<div class="pcard">
     <h4>${esc(side.name)}</h4>${flag}
     ${s.archetype ? `<div class="arch">${esc(s.archetype)}</div>` : ""}
-    ${signatures(s)}
+    ${patterns(d)}
     ${tendencies}
     <div class="phead">the numbers</div>
     ${rateStat("serve pts won", s.serve_rate, mu)}
@@ -195,9 +235,12 @@ function notationHelp() {
       <div><code>→1/2/3</code> where it was hit, seen from the hitter: zone 1 is a
         right-hander's forehand side, 3 their backhand side (<code>→·</code> =
         direction not charted).</div>
-      <div><code>A→B (3.6×)</code> in signatures: the player follows shot A with
-        shot B 3.6× as often as the tour; <code>A · B</code> in triggers: their
-        shot A, then the opponent's reply B, then the stroke being measured.</div>
+      <div>Court patterns name zones by the player's own hands (a lefty's FH corner
+        is a righty's BH corner), so <code>drive into the BH corner → crosscourt BH
+        slice (1.6×)</code> means they answer that ball with the crosscourt slice
+        1.6× as often as the tour does from the same spot. <code>A · B</code> in
+        triggers: their shot A, then the opponent's reply B, then the stroke being
+        measured.</div>
     </div>
   </details>`;
 }
