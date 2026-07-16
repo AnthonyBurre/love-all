@@ -77,22 +77,30 @@ a { color: var(--acc-d); }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
-/* by-quarter view: one 4-column grid read top-down — final over semifinals over
-   quarterfinals (selector chip under each), then the picked quarter's rounds; on
-   slams the round-of-32 row gets its own chips and the picked slot's rounds finish
-   the stack. Column spans center each match over its feeders; the wires are one
-   SVG overlay, hot along the picked path. */
-.quarters { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 8px; column-gap: 10px; padding: 12px 0 30px; }
+/* by-quarter view: one 8-column grid read top-down — final over semifinals over
+   quarterfinals over the whole round of 16 (8 across, stacked-name cards, a
+   selector chip under each); the picked sixteenth's rounds finish the stack.
+   Column spans center each match over its feeders; the wires are one SVG
+   overlay, hot along the picked path. */
+.quarters { position: relative; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); row-gap: 8px; column-gap: 8px; padding: 12px 0 30px; }
 .qlabel { grid-column: 1 / -1; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 20px; }
 .qlabel:first-child { margin-top: 0; }
 .qcell { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
 .qcell.span2 { grid-column: span 2; }
 .qcell.span4 { grid-column: span 4; }
+.qcell.span8 { grid-column: span 8; }
 .qcell .match { width: min(250px, 100%); }
+/* 8-across rows (round of 16, round of 128) run narrow and tall: each player gets
+   two lines — name left, sets right beneath — so names keep the full card width
+   as the window narrows */
+.qcell.span1 .match { width: 100%; padding: 6px 8px; }
+.qcell.span1 .side { flex-direction: column; align-items: stretch; gap: 0; }
+.qcell.span1 .nm { font-size: 12px; }
+.qcell.span1 .sets { font-size: 11px; text-align: right; }
 .qcell.picked .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
 .quarters .wires .hot { stroke: var(--acc); stroke-width: 2.25; }
-/* textless selector chip under a quarterfinal or round-of-32 match: pick one and
-   its earlier rounds render below; the seed-leader label lives in the tooltip */
+/* textless selector chip under each round-of-16 match: pick one and its earlier
+   rounds render below; the seed-leader label lives in the tooltip */
 .qsel { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 10px; color: var(--muted); cursor: pointer; line-height: 0; }
 .qsel svg { display: block; fill: currentColor; }
 .qsel:hover { border-color: var(--acc); color: var(--ink); }

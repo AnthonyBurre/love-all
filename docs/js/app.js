@@ -8,7 +8,8 @@ import { query } from "./db.js";
 let data = null;
 const cov = {};                 // "G|player" -> charted match count
 // view: null = auto — full draw early in an event, by-quarter from the round of 16 on.
-const sel = { key: null, gender: null, view: null, quarter: 0, slot: 0, round: null };
+// section: which sixteenth of the draw (0-7) is unfolded below the round of 16.
+const sel = { key: null, gender: null, view: null, section: 0, round: null };
 
 const $ = (id) => document.getElementById(id);
 
@@ -82,14 +83,15 @@ function pick() {
   );
 }
 
-// A draw can be sliced into quarters only when its bracket ordering is trustworthy — a live
+// A draw can be sliced this way only when its bracket ordering is trustworthy — a live
 // fixture-backed draw or a finished one (both fully linked) — and its shape is a clean
-// power-of-two down to the quarterfinal. Odd-sized 1000 draws fall back to the full draw.
+// power of two (each round half the size of the one before, down to a 1-match final,
+// so the round of 16 is truly 8 matches). Odd-sized 1000 draws fall back to the full draw.
 function quarterable(t) {
   if (!(t.slotted || t.completed)) return false;
   const r = t.rounds;
   if (r.length < 4 || r[r.length - 1].matches.length !== 1) return false;
-  return r.slice(0, r.length - 2).every((rd) => rd.matches.length % 4 === 0);
+  return r.every((rd, i) => i === 0 || r[i - 1].matches.length === rd.matches.length * 2);
 }
 
 function seg(container, items, active, onPick) {
@@ -216,8 +218,7 @@ function render() {
     });
   } else if (quarters) {
     renderQuarters(t, $("bracket"), cov, openMatchup,
-      { selected: sel.quarter, onPick: (q) => { sel.quarter = q; sel.slot = 0; render(); } },
-      { selected: sel.slot, onPick: (s) => { sel.slot = s; render(); } });
+      { selected: sel.section, onPick: (s) => { sel.section = s; render(); } });
   } else {
     renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
   }

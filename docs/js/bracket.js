@@ -233,16 +233,16 @@ export function currentRound(rounds) {
 
 // --- the by-quarter view (valid only for slot-true, power-of-two draws: t.slotted) ---
 
-// Slice a round's matches into 4 equal groups, keeping group i.
-const slice4 = (matches, i) => matches.slice((i * matches.length) / 4, ((i + 1) * matches.length) / 4);
+// Slice a round's matches into n equal groups, keeping group i.
+const sliceN = (matches, i, n) => matches.slice((i * matches.length) / n, ((i + 1) * matches.length) / n);
 
-// Label each of a round's 4 equal slices by its best-seeded (or first-named) entrant,
-// e.g. "Sinner ¼" — falling back to an ordinal ("Quarter 2") when nobody's decided yet.
-function bestSeedLabels(matches, suffix, fallbackPrefix) {
+// Label each of a round's n equal slices by its best-seeded (or first-named) entrant,
+// e.g. "Sinner" — falling back to an ordinal ("Section 2") when nobody's decided yet.
+function bestSeedLabels(matches, n, fallbackPrefix) {
   const labels = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < n; i++) {
     let best = null;                       // {seed, name}
-    for (const m of slice4(matches, i)) {
+    for (const m of sliceN(matches, i, n)) {
       for (const s of [m.a, m.b]) {
         const seed = parseInt(s.seed, 10);
         if (!s.name || s.name === "TBD" || isNaN(seed)) continue;
@@ -250,7 +250,7 @@ function bestSeedLabels(matches, suffix, fallbackPrefix) {
       }
     }
     const surname = best && best.name.split(" ").slice(-1)[0];
-    labels.push(surname ? `${surname}${suffix}` : `${fallbackPrefix} ${i + 1}`);
+    labels.push(surname || `${fallbackPrefix} ${i + 1}`);
   }
   return labels;
 }
@@ -260,42 +260,35 @@ const CHIP_ICON = `<svg viewBox="0 0 14 10" width="14" height="10" aria-hidden="
   <rect x="1" y="1" width="12" height="2.6" rx="1.3"/>
   <rect x="1" y="6.4" width="12" height="2.6" rx="1.3"/></svg>`;
 
-// The by-quarter view is one 4-column grid read top-down: the final (1 card, spanning
-// all 4 columns) over the semifinals (2 cards, 2 columns each) over the quarterfinals
-// (4 cards, a selector chip under each). The picked quarter's rounds follow, sliced to
-// that quarter — round of 16 (2 cards), round of 32 (4). A slam's deeper rounds are too
-// wide even quartered, so the round-of-32 row gets its own chips — same idea one level
-// down — and the picked slot's round of 64 (2) and round of 128 (4) finish the stack.
-// Every row is 1, 2, or 4 matches wide, so grid column spans center each match over its
-// feeders; one SVG overlay draws all the wires, hot along the picked path.
-export function renderQuarters(t, root, cov, onClick, quarter, slot) {
+// The by-quarter view is one 8-column grid read top-down: the final (1 card,
+// spanning all 8 columns) over the semifinals (2) over the quarterfinals (4) over
+// the whole round of 16 (8 across — those cards flip to the stacked two-line
+// layout to fit). Deeper rounds don't fit whole, so a single selector chip under
+// each round-of-16 match picks the sixteenth of the draw to unfold beneath it:
+// round of 32 (2 cards), round of 64 (4), round of 128 (8, stacked again). Grid
+// column spans center each match over its feeders; one SVG overlay draws all the
+// wires, hot along the picked path.
+export function renderQuarters(t, root, cov, onClick, section) {
   root.innerHTML = "";
   root.className = "quarters";
   const rs = t.rounds;
-
-  // Rounds below the quarterfinal, latest first, sliced to the picked quarter. Labels
-  // reflect the full round's size ("Round of 16"), not the slice's.
-  const below = rs.slice(0, rs.length - 3).reverse().map((r) => ({
-    label: `Round of ${r.matches.length * 2}`,
-    matches: slice4(r.matches, quarter.selected),
-  }));
-  const cut = below.findIndex((r) => r.matches.length > 4);
-  const shown = cut === -1 ? below : below.slice(0, cut);
-  const overflow = cut === -1 ? [] : below.slice(cut);
+  const n = rs.length;
 
   const rows = [
-    { label: "Final", matches: rs[rs.length - 1].matches },
-    { label: "Semifinals", matches: rs[rs.length - 2].matches },
-    { label: "Quarterfinals", matches: rs[rs.length - 3].matches,
-      pick: { ...quarter, labels: bestSeedLabels(rs[0].matches, " ¼", "Quarter") } },
-    ...shown,
-    ...overflow.map((r) => ({ ...r, matches: slice4(r.matches, slot.selected) })),
+    { label: "Final", matches: rs[n - 1].matches },
+    { label: "Semifinals", matches: rs[n - 2].matches },
+    { label: "Quarterfinals", matches: rs[n - 3].matches },
+    { label: "Round of 16", matches: rs[n - 4].matches },
   ];
-  if (overflow.length) {
-    // The slot chips sit under the last fully-shown round; label them by the widest
-    // overflow round (the earliest — `below` runs latest-first, so it's the last).
-    rows[2 + shown.length].pick =
-      { ...slot, labels: bestSeedLabels(overflow[overflow.length - 1].matches, "", "Section") };
+  // Rounds below the sixteen, latest first, sliced to the picked sixteenth. Labels
+  // reflect the full round's size ("Round of 32"), not the slice's.
+  const below = rs.slice(0, n - 4).reverse();
+  if (below.length) {
+    rows[3].pick = { ...section, labels: bestSeedLabels(rs[0].matches, 8, "Section") };
+    for (const r of below) {
+      rows.push({ label: `Round of ${r.matches.length * 2}`,
+                  matches: sliceN(r.matches, section.selected, 8) });
+    }
   }
 
   const cards = [];               // per row: card elements, for wiring
@@ -303,10 +296,10 @@ export function renderQuarters(t, root, cov, onClick, quarter, slot) {
   rows.forEach((row, i) => {
     root.append(el("div", "qlabel", row.label));
     cards[i] = []; chips[i] = [];
-    const span = 4 / row.matches.length;
+    const span = 8 / row.matches.length;
     row.matches.forEach((m, j) => {
       const cell = el("div", "qcell span" + span);
-      const card = matchCard(m, t, cov, onClick, true);
+      const card = matchCard(m, t, cov, onClick, span > 1);   // 8-across rows stack the names
       cell.append(card);
       if (row.pick) {
         // The chip itself is wordless; the seed-leader label lives in the tooltip.
@@ -343,10 +336,11 @@ export function renderQuarters(t, root, cov, onClick, quarter, slot) {
     if (!next) return;
     if (next.matches.length === row.matches.length * 2) {
       // A tree step: the next row's matches 2j and 2j+1 feed this row's match j.
-      // Above the quarterfinals, the picked quarter's path up to the final is hot.
+      // Above the chips, the picked sixteenth's path up to the final is hot.
       row.matches.forEach((_, j) => {
         for (const k of [2 * j, 2 * j + 1]) {
-          const hot = i < 2 && k === Math.floor((quarter.selected * next.matches.length) / 4);
+          const hot = below.length > 0 && i < 3 &&
+                      k === Math.floor((section.selected * next.matches.length) / 8);
           wire(cards[i][j], cards[i + 1][k], hot);
         }
       });
