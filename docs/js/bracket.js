@@ -42,11 +42,34 @@ function sideRow(s) {
   return row;
 }
 
-function matchCard(m, t, cov, onClick) {
+// The wide layout groups by column instead of by player — both names on one line, both
+// scores on the line below — so a match reads in one row instead of two. Used in the by-
+// quarter view (cascade + pinned/scrolling fan), where cards run wide enough for it.
+function nameSpan(s) {
+  const named = s.name && s.name !== "TBD";
+  const span = el("span", "nm " + (s.winner ? "win" : named ? "lose" : ""));
+  if (s.seed) span.append(el("span", "seed", s.seed));
+  span.append(document.createTextNode(s.name || "TBD"));
+  return span;
+}
+
+function setsSpan(s) {
+  return el("span", "sets", (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" "));
+}
+
+function matchCard(m, t, cov, onClick, wide) {
   const tier = matchTier(m, t.gender, cov);
-  const card = el("div", "match " + tier.cls + (m.placeholder ? " ghost" : ""));
+  const card = el("div", "match " + tier.cls + (wide ? " wide" : "") + (m.placeholder ? " ghost" : ""));
   card.title = tier.note;
-  card.append(sideRow(m.a), sideRow(m.b));
+  if (wide) {
+    const names = el("div", "namesrow");
+    names.append(nameSpan(m.a), nameSpan(m.b));
+    const scores = el("div", "scoresrow");
+    scores.append(setsSpan(m.a), setsSpan(m.b));
+    card.append(names, scores);
+  } else {
+    card.append(sideRow(m.a), sideRow(m.b));
+  }
   if (m.state === "in") {
     card.append(el("div", "detail live", "● " + (m.detail || "Live")));
   } else if (m.state === "pre" && m.detail && m.detail !== "TBD") {
@@ -182,13 +205,25 @@ export function currentRound(rounds) {
 
 // --- quarter slicing (valid only for slot-true, power-of-two draws: t.slotted) ---
 
+// Slice a set of rounds' matches into n equal groups, keeping group i.
+function sliceGroup(rounds, i, n) {
+  return rounds.map((r) => {
+    const size = r.matches.length / n;
+    return { ...r, matches: r.matches.slice(i * size, (i + 1) * size) };
+  });
+}
+
 // Rounds up to the quarterfinals, sliced to quarter q (0-3): R1 16, …, QF 1.
 export function quarterRounds(t, q) {
   const upToQF = t.rounds.slice(0, t.rounds.length - 2);
-  return upToQF.map((r) => {
-    const size = r.matches.length / 4;
-    return { ...r, matches: r.matches.slice(q * size, (q + 1) * size) };
-  });
+  return sliceGroup(upToQF, q, 4);
+}
+
+// A quarter's round of 32 always has 4 matches — one per quarter of *it*. Slice an
+// already quarter-scoped set of rounds (its round of 64 and, on a slam, round of 128)
+// down to slot s (0-3), one for each of those 4 round-of-32 matches.
+export function slotRounds(rounds, s) {
+  return sliceGroup(rounds, s, 4);
 }
 
 // The "business end" cascade: final on top, the two semifinals below it, and the
@@ -200,25 +235,33 @@ export function renderCascade(t, root, cov, onClick, quarter) {
   const sfs = t.rounds[t.rounds.length - 2].matches;
   const qfs = t.rounds[t.rounds.length - 3].matches;
 
+  const label = (text) => root.append(el("div", "cascade-label", text));
   const cell = (cls, ...nodes) => {
     const c = el("div", "cslot " + cls);
     c.append(...nodes);
     root.append(c);
   };
-  const fc = matchCard(final, t, cov, onClick);
+  label("Final");
+  const fc = matchCard(final, t, cov, onClick, true);
   cell("slot-final", fc);
-  const sf1 = matchCard(sfs[0], t, cov, onClick);
-  const sf2 = matchCard(sfs[1], t, cov, onClick);
+
+  label("Semifinals");
+  const sf1 = matchCard(sfs[0], t, cov, onClick, true);
+  const sf2 = matchCard(sfs[1], t, cov, onClick, true);
   cell("slot-sf", sf1);
   cell("slot-sf", sf2);
+
+  label("Quarterfinals");
   // Each quarterfinal is a real match card with its own selector beneath — pick one and the
   // fan below flows down from it. The card still opens the matchup drawer on click.
+  const qsels = [];
   const qfCards = qfs.map((qf, q) => {
-    const card = matchCard(qf, t, cov, onClick);
+    const card = matchCard(qf, t, cov, onClick, true);
     const sel = el("button", "qsel" + (q === quarter.selected ? " on" : ""), quarter.labels[q]);
     sel.title = `Show ${quarter.labels[q]} — round of 16 down to round 1`;
     sel.onclick = () => quarter.onPick(q);
     cell("slot-qf" + (q === quarter.selected ? " qf-on" : ""), card, sel);
+    qsels.push(sel);
     return card;
   });
 
@@ -245,37 +288,99 @@ export function renderCascade(t, root, cov, onClick, quarter) {
   svg.setAttribute("width", root.scrollWidth);
   svg.setAttribute("height", root.scrollHeight);
   root.appendChild(svg);
+  return { qfCards, qsels };
+}
+
+// A picked fan (round of 16 down through round of 32, or a slot's round of 64 down through
+// round of 128) has no card of its own for the thing that was picked — that's already shown,
+// once, a level up — so this draws the one connector that has to cross containers: the
+// selected chip down to the first row of cards below it. Appended into the upper container's
+// own root so it inherits that container's wire styling and can overflow below its box into
+// the pinned block that follows it. Used both for cascade → quarter fan and quarter fan →
+// slot fan, since the two crossings are structurally identical.
+export function wireQuarterToFan(parentRoot, chip, childCards) {
+  if (!chip || !childCards.length) return;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "wires");
+  const rect = parentRoot.getBoundingClientRect();
+  const anchor = (n, edge) => {
+    const r = n.getBoundingClientRect();
+    return { x: r.left - rect.left + r.width / 2,
+             y: r.top - rect.top + (edge === "top" ? 0 : r.height) };
+  };
+  const a = anchor(chip, "bottom");
+  let bottom = 0;
+  for (const card of childCards) {
+    const b = anchor(card, "top");
+    bottom = Math.max(bottom, anchor(card, "bottom").y);
+    const mid = (a.y + b.y) / 2;
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", `M ${a.x} ${a.y} C ${a.x} ${mid}, ${b.x} ${mid}, ${b.x} ${b.y}`);
+    p.setAttribute("class", "hot");
+    svg.appendChild(p);
+  }
+  svg.setAttribute("width", parentRoot.scrollWidth);
+  svg.setAttribute("height", bottom);
+  parentRoot.appendChild(svg);
 }
 
 // The chosen quarter, flowing straight down from its quarterfinal: rounds stacked as rows
-// (R16 at top → R1 at bottom), each match centered over its two feeders in the row below and
-// wired in one SVG. The block is as wide as its widest row and scrolls sideways inside the
-// container, so cards and wires move together and the page itself never pans.
-export function renderFan(rounds, root, t, cov, onClick) {
+// (R16 at top → R32 at bottom), each match centered over its two feeders in the row below
+// and wired in one SVG. `opts.pick`, when given, plants a selector under every card of the
+// *last* round — one per match, same idea as the cascade's quarterfinal selectors — so a
+// deeper fan (that match's own earlier rounds) can be picked and pinned in below rather than
+// needing to scroll sideways into view.
+export function renderFan(rounds, root, t, cov, onClick, opts = {}) {
+  const { cardWidth = 176, wide = false, pick = null, scale = 8 } = opts;
   root.innerHTML = "";
   root.classList.remove("aslist");
   root.classList.add("asfan");
-  if (!rounds.length) return;
+  if (!rounds.length) return { cards: new Map(), picks: [] };
 
-  const CARD = 176, GAP = 14;
+  const CARD = cardWidth, GAP = 14, U = CARD + GAP;
   const widest = Math.max(...rounds.map((r) => r.matches.length));
-  const W = widest * (CARD + GAP);
+  const W = widest * U;
+  // Every round shown here is small enough (2 or 4 matches wide, at most) to fit under the
+  // wider cascade above, so the fan centers itself in the container; its labels should
+  // instead read flush with the Final/Semifinals/Quarterfinals column to their left, so pull
+  // them back by whatever the centering has inset them by.
+  const fits = W <= root.clientWidth;
+  const inset = fits ? (root.clientWidth - W) / 2 : 0;
 
   const fan = el("div", "fan");
   fan.style.width = W + "px";
   const cards = new Map();
-  for (const round of rounds) {
+  const picks = [];
+  rounds.forEach((round, ri) => {
+    const label = el("div", "fan-label" + (fits ? " flush" : ""), `Round of ${round.matches.length * scale}`);
+    if (inset) label.style.marginLeft = `-${inset}px`;
+    fan.append(label);
     const row = el("div", "fan-row");
     const n = round.matches.length;
+    const isPickRound = pick && ri === rounds.length - 1;
     round.matches.forEach((m, j) => {
-      const card = matchCard(m, t, cov, onClick);
+      const card = matchCard(m, t, cov, onClick, wide);
       card.style.width = CARD + "px";
-      card.style.left = ((j + 0.5) * (W / n) - CARD / 2) + "px";
-      row.append(card);
+      // Center each round at its natural width so narrow rows (the QF apex, R16, R32) stay
+      // put and fully visible.
+      const cx = W / 2 + (j - (n - 1) / 2) * U;
+      let node = card;
+      if (isPickRound) {
+        node = el("div", "fan-cell" + (j === pick.selected ? " picked" : ""));
+        node.style.width = CARD + "px";        // keep the selector's width from skewing centering
+        card.style.position = "static";        // the cell carries the absolute placement now
+        const btn = el("button", "qsel" + (j === pick.selected ? " on" : ""), pick.labels[j]);
+        btn.title = `Show ${pick.labels[j]} — earlier rounds`;
+        btn.onclick = () => pick.onPick(j);
+        node.append(card, btn);
+        picks.push(btn);
+      }
+      node.style.left = (cx - CARD / 2) + "px";
+      row.append(node);
       cards.set(m.id, card);
     });
     fan.append(row);
-  }
+  });
   root.append(fan);
 
   // Rows carry absolutely-placed cards, so give each the measured card height to flow.
@@ -311,25 +416,37 @@ export function renderFan(rounds, root, t, cov, onClick) {
   svg.setAttribute("height", fan.scrollHeight);
   fan.appendChild(svg);
 
-  root.scrollLeft = (W - root.clientWidth) / 2;   // open centered on the quarter
+  return { cards, picks };
 }
 
-// Label each quarter by its best-seeded (or first-named) player, e.g. "Sinner".
-export function quarterLabels(t) {
+// Label each of a round's n equal slices by its best-seeded (or first-named) entrant,
+// e.g. "Sinner" — falling back to an ordinal ("Quarter 2") when nobody's decided yet.
+function bestSeedLabels(round, n, suffix, fallbackPrefix) {
   const labels = [];
-  const r1 = t.rounds[0].matches;
-  const size = r1.length / 4;
-  for (let q = 0; q < 4; q++) {
+  const size = round.matches.length / n;
+  for (let i = 0; i < n; i++) {
     let best = null;                       // {seed, name}
-    for (const m of r1.slice(q * size, (q + 1) * size)) {
+    for (const m of round.matches.slice(i * size, (i + 1) * size)) {
       for (const s of [m.a, m.b]) {
         const seed = parseInt(s.seed, 10);
         if (!s.name || s.name === "TBD" || isNaN(seed)) continue;
         if (!best || seed < best.seed) best = { seed, name: s.name };
       }
     }
-    const surname = best ? best.name.split(" ").slice(-1)[0] : `Quarter ${q + 1}`;
-    labels.push(best ? `${surname} ¼` : surname);
+    const surname = best && best.name.split(" ").slice(-1)[0];
+    labels.push(surname ? `${surname}${suffix}` : `${fallbackPrefix} ${i + 1}`);
   }
   return labels;
+}
+
+export function quarterLabels(t) {
+  return bestSeedLabels(t.rounds[0], 4, " ¼", "Quarter");
+}
+
+// Label each of a quarter's 4 round-of-32 matches by its earliest round's best seed —
+// the same idea as quarterLabels, one level deeper. `overflow` is that quarter's own
+// round of 64 (and, on a slam, round of 128); the earliest of those is the widest.
+export function slotLabels(overflow) {
+  const earliest = overflow.reduce((a, b) => (b.matches.length > a.matches.length ? b : a));
+  return bestSeedLabels(earliest, 4, "", "Section");
 }

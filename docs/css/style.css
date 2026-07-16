@@ -75,11 +75,10 @@ a { color: var(--acc-d); }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
-/* section furniture for the quarters layout */
-.secthead { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 20px 0 2px; }
-
 /* business-end cascade: final -> semifinals -> quarter selectors, top-down */
-.cascade { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 34px; column-gap: 10px; padding: 12px 0 20px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.cascade { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 8px; column-gap: 10px; padding: 12px 0 20px; }
+.cascade-label { grid-column: 1 / 5; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 20px; }
+.cascade-label:first-child { margin-top: 0; }
 .cslot { display: flex; justify-content: center; align-items: flex-end; min-width: 0; }
 .cslot .match { width: min(250px, 100%); position: relative; z-index: 2; }
 .cslot.slot-final { grid-column: 1 / 5; }
@@ -97,19 +96,30 @@ a { color: var(--acc-d); }
 
 /* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
 .bracket { display: flex; gap: 34px; overflow-x: auto; padding: 14px 0 30px; align-items: flex-start; position: relative; }
+#quarterTop { padding-top: 0; }
 .round { flex: 0 0 auto; width: 232px; }
 .round h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); position: sticky; top: 0; background: var(--bg); padding: 4px 0; z-index: 3; }
 .round-list { position: relative; }
 .round-list .match { position: absolute; left: 0; right: 0; }
 
-/* "by quarter" drill-down: the chosen quarter fanning straight down (R16 → R1), each round a
-   row of absolutely-placed cards, wired top-down. As wide as its widest row; scrolls sideways
-   inside #bracket so cards + wires move together and the page body never pans. */
-.bracket.asfan { display: block; }
+/* "by quarter" drill-down: the chosen quarter fanning straight down (R16 → R32), each round a
+   row of absolutely-placed cards, wired top-down. Always narrow enough to fit its container,
+   so no horizontal scrolling; overflow stays visible so a selector's wire (see .fan-cell) can
+   bleed down past this block's own box into the pinned block that follows it. */
+.bracket.asfan { display: block; overflow: visible; }
 .fan { position: relative; margin: 2px auto 12px; }
+.fan-label { text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 10px; }
+.fan-label.flush { text-align: left; }
+.fan-label:first-child { margin-top: 0; }
 .fan-row { position: relative; margin-bottom: 46px; }
 .fan-row:last-of-type { margin-bottom: 0; }
 .fan-row .match { position: absolute; top: 0; }
+
+/* Round-of-32 selector: pick one and its own earlier rounds (round of 64 down to round 1
+   within that match's slot of the draw) fan out in the block below, same idea as the
+   cascade's quarterfinal selectors. */
+.fan-cell { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.fan-cell.picked .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
 
 .wires { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
 .wires path { fill: none; stroke: color-mix(in srgb, var(--acc) 38%, var(--line)); stroke-width: 1.75; }
@@ -131,6 +141,15 @@ a { color: var(--acc-d); }
 .match .side.lose { color: var(--muted); }
 .nm { flex: 1; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sets { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); letter-spacing: 1px; }
+
+/* wide layout (cascade + by-quarter fan): groups by column instead of by player — both
+   names on one line, both scores on the line below — so a match reads in one row. */
+.match .namesrow, .match .scoresrow { display: flex; justify-content: space-between; gap: 8px; }
+.match .scoresrow { margin-top: 3px; }
+.match .namesrow .nm { flex: 0 1 auto; min-width: 0; }
+.match .namesrow .nm.win { font-weight: 700; }
+.match .namesrow .nm.lose { color: var(--muted); }
+
 .match .detail { margin-top: 4px; font-size: 11px; color: var(--muted); }
 .match .detail.live { color: var(--warn); font-weight: 700; }
 

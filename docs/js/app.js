@@ -2,13 +2,13 @@
 // tournament, render the bracket (quarter view by default, full draw on demand),
 // and wire the matchup drawer.
 import { renderTree, renderCascade, renderFan, renderRoundList, currentRound,
-         quarterRounds, quarterLabels } from "./bracket.js";
+         quarterRounds, quarterLabels, slotRounds, slotLabels, wireQuarterToFan } from "./bracket.js";
 import { openMatchup } from "./matchup.js";
 import { query } from "./db.js";
 
 let data = null;
 const cov = {};                 // "G|player" -> charted match count
-const sel = { key: null, gender: null, view: "quarters", quarter: 0, round: null };
+const sel = { key: null, gender: null, view: "quarters", quarter: 0, slot: 0, round: null };
 
 const $ = (id) => document.getElementById(id);
 
@@ -183,6 +183,7 @@ function render() {
   const quarters = !mobile && quarterable(t) && sel.view === "quarters";
   $("cascadeWrap").hidden = !quarters;
   $("viewTabs").style.display = !mobile && quarterable(t) ? "" : "none";
+  $("bracket").hidden = false;
 
   if (mobile) {
     if (sel.round == null || sel.round >= t.rounds.length) sel.round = currentRound(t.rounds);
@@ -192,15 +193,42 @@ function render() {
     });
   } else if (quarters) {
     const labels = quarterLabels(t);
-    renderCascade(t, $("cascade"), cov, openMatchup, {
+    const { qsels } = renderCascade(t, $("cascade"), cov, openMatchup, {
       labels, selected: sel.quarter,
-      onPick: (q) => { sel.quarter = q; render(); },
+      onPick: (q) => { sel.quarter = q; sel.slot = 0; render(); },
     });
-    // The quarterfinal lives up in the cascade; the fan flows down from it: R16 → R1.
-    const qr = quarterRounds(t, sel.quarter);
-    const fanRounds = qr.slice(0, qr.length - 1).reverse();
-    $("quarterTitle").textContent = labels[sel.quarter];
-    renderFan(fanRounds, $("bracket"), t, cov, openMatchup);
+    // The quarterfinal itself already lives in the cascade above — no need to redraw it —
+    // so the pinned block starts one level down: R16 → R32. Neither ever outgrows the SF/QF
+    // row above them (also 2 and 4 wide, since there are always 4 quarters), so they're
+    // pinned in their own non-scrolling block, wired straight up to the selected
+    // quarterfinal's chip. A slam's two deepest rounds within a quarter (R64: 8, R128: 16)
+    // are too wide to show all at once, so — same idea one level down — each round-of-32
+    // match gets its own selector, and only its own earlier rounds (R64 down to R1 within
+    // that match's slot of the draw) get pinned in below.
+    const belowQF = [...quarterRounds(t, sel.quarter)].reverse().slice(1);
+    const overflowAt = belowQF.findIndex((r) => r.matches.length > 4);
+    const pinned = overflowAt === -1 ? belowQF : belowQF.slice(0, overflowAt);
+    const overflow = overflowAt === -1 ? [] : belowQF.slice(overflowAt);
+    const hasDeeper = overflow.length > 0;
+    // R16/R32 match cards match the cascade's own size (250px) since they're pinned in the
+    // same non-scrolling block.
+    const { picks } = renderFan(pinned, $("quarterTop"), t, cov, openMatchup, {
+      cardWidth: 250, wide: true,
+      pick: hasDeeper ? {
+        labels: slotLabels(overflow), selected: sel.slot,
+        onPick: (s) => { sel.slot = s; render(); },
+      } : null,
+    });
+    const r16Row = $("quarterTop").querySelector(".fan-row");
+    wireQuarterToFan($("cascade"), qsels[sel.quarter], r16Row ? [...r16Row.children] : []);
+
+    $("bracket").hidden = !hasDeeper;
+    if (hasDeeper) {
+      const deeper = slotRounds(overflow, sel.slot);
+      renderFan(deeper, $("bracket"), t, cov, openMatchup, { cardWidth: 250, wide: true, scale: 32 });
+      const r64Row = $("bracket").querySelector(".fan-row");
+      wireQuarterToFan($("quarterTop"), picks[sel.slot], r64Row ? [...r64Row.children] : []);
+    }
   } else {
     renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
   }
