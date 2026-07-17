@@ -52,6 +52,7 @@ class Match:
     detail: str         # ESPN shortDetail (time, live score, or "Final")
     a: Side
     b: Side
+    date: str = ""      # ISO scheduled/played datetime, e.g. "2026-07-06T09:05Z"
 
 
 @dataclass
@@ -131,7 +132,7 @@ def parse(raw: dict) -> "list[Tournament]":
                     id=str(c.get("id")), round_rank=rank,
                     round_label=(c.get("round") or {}).get("displayName", ""),
                     state=st.get("state", "pre"), detail=st.get("shortDetail", ""),
-                    a=_side(cs[0]), b=_side(cs[1])))
+                    a=_side(cs[0]), b=_side(cs[1]), date=c.get("date") or ""))
             if matches:
                 out.append(Tournament(id=str(event.get("id")), name=event.get("name", ""),
                                       tier=tier, gender=gender, best_of=best_of,

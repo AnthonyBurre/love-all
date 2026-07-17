@@ -31,15 +31,28 @@ export function matchTier(m, gender, cov) {
   return { cls: "t-none", note: `uncharted matchup — ${note}` };
 }
 
-function sideRow(s) {
+// Per-set score cells: each set is its own span, bold when it's the higher score of
+// the set (that set's winner). The match winner then reads as the row with more bold
+// numbers — no need to hunt for the highlighted name. `theirs` is the opponent's sets.
+function setsEl(mine, theirs) {
+  const sets = el("span", "sets");
+  (mine || []).forEach((x, i) => {
+    if (x == null) return;
+    const t = theirs && theirs[i];
+    const won = t != null && Math.trunc(x) > Math.trunc(t);
+    sets.append(el("span", "set" + (won ? " won" : ""), String(Math.trunc(x))));
+  });
+  return sets;
+}
+
+function sideRow(s, opp) {
   const named = s.name && s.name !== "TBD";
   const row = el("div", "side " + (s.winner ? "win" : named ? "lose" : ""));
-  const sets = el("span", "sets", (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" "));
   const nm = el("span", "nm");
   if (named) nm.dataset.full = s.name;
   if (s.seed) nm.append(el("span", "seed", s.seed));
   nm.append(document.createTextNode(s.name || "TBD"));
-  row.append(nm, sets);
+  row.append(nm, setsEl(s.sets, opp && opp.sets));
   return row;
 }
 
@@ -63,8 +76,11 @@ const abbrevHard = (name) => {
 function fitNames(root) {
   for (const nm of root.querySelectorAll(".nm[data-full]")) {
     if (nm.scrollWidth <= nm.clientWidth) continue;
-    nm.lastChild.textContent = abbrev(nm.dataset.full);
-    if (nm.scrollWidth > nm.clientWidth) nm.lastChild.textContent = abbrevHard(nm.dataset.full);
+    nm.lastChild.textContent = abbrev(nm.dataset.full);        // "F. Auger-Aliassime", seed kept
+    if (nm.scrollWidth <= nm.clientWidth) continue;
+    const seed = nm.querySelector(".seed");                    // the seed badge goes next
+    if (seed) { seed.remove(); if (nm.scrollWidth <= nm.clientWidth) continue; }
+    nm.lastChild.textContent = abbrevHard(nm.dataset.full);    // then middle names, then CSS ellipsis
   }
 }
 
@@ -80,10 +96,6 @@ function nameSpan(s) {
   return span;
 }
 
-function setsSpan(s) {
-  return el("span", "sets", (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" "));
-}
-
 function matchCard(m, t, cov, onClick, wide) {
   const tier = matchTier(m, t.gender, cov);
   const card = el("div", "match " + tier.cls + (wide ? " wide" : "") + (m.placeholder ? " ghost" : ""));
@@ -92,10 +104,10 @@ function matchCard(m, t, cov, onClick, wide) {
     const names = el("div", "namesrow");
     names.append(nameSpan(m.a), nameSpan(m.b));
     const scores = el("div", "scoresrow");
-    scores.append(setsSpan(m.a), setsSpan(m.b));
+    scores.append(setsEl(m.a.sets, m.b.sets), setsEl(m.b.sets, m.a.sets));
     card.append(names, scores);
   } else {
-    card.append(sideRow(m.a), sideRow(m.b));
+    card.append(sideRow(m.a, m.b), sideRow(m.b, m.a));
   }
   if (m.state === "in") {
     card.append(el("div", "detail live", "● " + (m.detail || "Live")));

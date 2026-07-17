@@ -135,7 +135,8 @@ a { color: var(--acc-d); }
 .match .side.win .nm { font-weight: 700; }
 .match .side.lose { color: var(--muted); }
 .nm { flex: 1; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sets { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); letter-spacing: 1px; }
+.sets { display: inline-flex; gap: 5px; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); }
+.set.won { font-weight: 700; color: var(--ink); }   /* set winner's games, bracket + drawer */
 
 /* wide layout (by-quarter view): groups by column instead of by player — both
    names on one line, both scores on the line below — so a match reads in one row. */
@@ -154,7 +155,7 @@ a { color: var(--acc-d); }
 .matchup .close { position: absolute; top: 12px; right: 14px; border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--muted); }
 .mh { margin: 0 6px 2px 0; font-size: 20px; }
 .mh small { color: var(--muted); font-weight: 500; font-size: 13px; }
-.mh .score { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 15px; font-weight: 600; }
+.mh .score { display: inline-flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 15px; font-weight: 600; }
 .mstate { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
 .mstate .live { color: var(--warn); font-weight: 700; }
 
@@ -194,7 +195,8 @@ a { color: var(--acc-d); }
 .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
 .pcard { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
 .pcard h4 { margin: 0 0 2px; font-size: 15px; }
-.pcard .flag { color: var(--muted); font-size: 12px; }
+.pcard h4 .seed { vertical-align: 12%; }
+.pcard .flag { font-size: 14px; color: var(--muted); }
 .pcard .arch { display: inline-block; margin: 8px 0; font-size: 12px; background: color-mix(in srgb, var(--acc) 10%, var(--card)); color: var(--acc-d); padding: 3px 8px; border-radius: 999px; }
 .stat { font-size: 12.5px; margin: 5px 0; color: var(--ink); }
 .stat .k { color: var(--muted); }

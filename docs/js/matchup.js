@@ -9,6 +9,54 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
 const last = (name) => String(name || "").split(" ").slice(-1)[0];
 const pct = (x) => (x * 100).toFixed(1) + "%";
 
+// Country name (ESPN's flag alt text) → ISO 3166-1 alpha-2, so we can show a flag emoji
+// instead of the country name. Covers every nation that turns up in the draws; anything
+// unmapped falls back to the plain name.
+const ISO2 = {
+  Andorra: "AD", Argentina: "AR", Armenia: "AM", Australia: "AU", Austria: "AT",
+  Belarus: "BY", Belgium: "BE", Bolivia: "BO", "Bosnia and Herzegovina": "BA", Brazil: "BR",
+  Bulgaria: "BG", Canada: "CA", Chile: "CL", China: "CN", "Chinese Taipei": "TW",
+  Colombia: "CO", Croatia: "HR", Czechia: "CZ", "Czech Republic": "CZ", Denmark: "DK",
+  Egypt: "EG", Estonia: "EE", Finland: "FI", France: "FR", Georgia: "GE", Germany: "DE",
+  "Great Britain": "GB", Greece: "GR", Hungary: "HU", India: "IN", Indonesia: "ID",
+  Israel: "IL", Italy: "IT", Japan: "JP", Kazakhstan: "KZ", Korea: "KR", "South Korea": "KR",
+  Laos: "LA", Latvia: "LV", Liechtenstein: "LI", Lithuania: "LT", Luxembourg: "LU",
+  Macedonia: "MK", "North Macedonia": "MK", Mexico: "MX", Monaco: "MC", Montenegro: "ME",
+  Netherlands: "NL", "New Zealand": "NZ", Norway: "NO", Paraguay: "PY", Peru: "PE",
+  Philippines: "PH", Poland: "PL", Portugal: "PT", Romania: "RO", Russia: "RU", Serbia: "RS",
+  Slovakia: "SK", Slovenia: "SI", "South Africa": "ZA", Spain: "ES", Sweden: "SE",
+  Switzerland: "CH", Thailand: "TH", Tunisia: "TN", "Türkiye": "TR", Turkey: "TR",
+  USA: "US", "United States": "US", Ukraine: "UA", Uzbekistan: "UZ",
+};
+
+// A country name → its 🇫🇷 flag emoji (a pair of regional-indicator letters), or "" when
+// the name isn't mapped so the caller can fall back to the text.
+function flagEmoji(country) {
+  const cc = ISO2[country];
+  return cc ? String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)) : "";
+}
+
+// Player name line for a card: optional seed badge, name, then the flag (emoji, or the
+// country name kept as a title on the flag / as text when unmapped).
+function playerHead(side) {
+  const seed = side.seed ? `<span class="seed">${esc(String(side.seed))}</span>` : "";
+  const emoji = flagEmoji(side.country);
+  const flag = side.country
+    ? ` <span class="flag"${emoji ? ` title="${esc(side.country)}"` : ""}>${emoji || esc(side.country)}</span>`
+    : "";
+  return `<h4>${seed}${esc(side.name || "TBD")}${flag}</h4>`;
+}
+
+// A finished/scheduled match's date, formatted short ("Jul 13, 2026"). "" when absent
+// (older archived draws carry no per-match date) or unparseable. Read in UTC (ESPN's
+// datetimes are Z): the day a match was played is fixed, not the viewer's timezone.
+function matchDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? "" :
+    d.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 async function playerData(name, gender) {
   if (!name) return null;
   const s = await query("SELECT * FROM player_summary WHERE player = ? AND gender = ?", [name, gender]);
@@ -132,9 +180,8 @@ function patterns(d) {
 }
 
 function playerCard(side, d, mu, gender) {
-  const flag = side.country ? `<span class="flag">${esc(side.country)}</span>` : "";
   if (!d) {
-    return `<div class="pcard"><h4>${esc(side.name || "TBD")}</h4>${flag}
+    return `<div class="pcard">${playerHead(side)}
       <p class="uncharted">No Match Charting history yet.
       <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Chart a match →</a></p></div>`;
   }
@@ -163,7 +210,7 @@ function playerCard(side, d, mu, gender) {
   const trig = s.trig_att_rate != null
     ? `<div class="stat"><span class="k">goes for it:</span> ${pct(s.trig_att_rate)} of strokes · converts ${Math.round(s.trig_conversion * 100)}%</div>` : "";
   return `<div class="pcard">
-    <h4>${esc(side.name)}</h4>${flag}
+    ${playerHead(side)}
     ${s.archetype ? `<div class="arch">${esc(s.archetype)}</div>` : ""}
     ${patterns(d)}
     ${tendencies}
@@ -274,15 +321,27 @@ function chartPanel(m, t) {
        target="_blank" rel="noopener">Chart this match →</a></div>`;
 }
 
+// Per-set cells, the higher score of each set bolded — the match winner reads as the
+// side with more bold games.
+function scoreCells(mine, theirs) {
+  return (mine || []).map((x, i) => {
+    if (x == null) return "";
+    const t = theirs && theirs[i];
+    const won = t != null && Math.trunc(x) > Math.trunc(t);
+    return `<span class="set${won ? " won" : ""}">${Math.trunc(x)}</span>`;
+  }).join("");
+}
+
 function scoreline(m) {
-  const sets = (s) => (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" ");
-  const a = sets(m.a), b = sets(m.b);
-  return a || b ? `<span class="score">${esc(a)} — ${esc(b)}</span>` : "";
+  const a = scoreCells(m.a.sets, m.b.sets), b = scoreCells(m.b.sets, m.a.sets);
+  return a || b ? `<span class="score">${a}<span class="dash">—</span>${b}</span>` : "";
 }
 
 function stateLine(m, t, round) {
   const event = t.completed ? `${t.name} ${t.season}` : t.name;
-  const where = `${esc(event)} · ${t.gender === "M" ? "Men" : "Women"}${round ? " · " + esc(round.label) : ""}`;
+  const day = matchDate(m.date);
+  const where = `${esc(event)} · ${t.gender === "M" ? "Men" : "Women"}` +
+    `${round ? " · " + esc(round.label) : ""}${day ? " · " + esc(day) : ""}`;
   if (m.state === "in") return `${where} · <span class="live">● ${esc(m.detail || "Live")}</span>`;
   // In a completed draw every match is final, so the round already says it — no "· Final".
   if (m.state === "post") return t.completed ? where : `${where} · ${esc(m.detail || "Final")}`;

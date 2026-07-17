@@ -94,6 +94,7 @@ def serialize(tournament, use_fixture: bool = True) -> dict:
             {"rank": r["rank"], "label": r["label"], "matches": [
                 {"id": m.id, "state": m.state, "detail": m.detail, "feeds": m.feeds,
                  "placeholder": getattr(m, "placeholder", False),
+                 "date": getattr(m, "date", None),
                  "a": _side_dict(m.a), "b": _side_dict(m.b)}
                 for m in r["matches"]]}
             for r in rds],
