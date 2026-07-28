@@ -145,8 +145,8 @@ function rateStat(label, rate, avg) {
 // incoming ball, vs the field's answers to the same ball. Zones are named relative to
 // the player's own hands, run-arounds get their tennis names, and every pattern
 // repeated in both halves of the player's charted matches to earn its place here.
-function patternLine(p) {
-  const court = `<details class="rally"><summary>ball path</summary>
+function patternLine(p, open = false) {
+  const court = `<details class="rally"${open ? " open" : ""}><summary>ball path</summary>
     <div class="court">${pairSvg(p.inc_code, p.resp_code, p.state_depth)}</div></details>`;
   // Payoff: their point-win rate playing this response vs the tour's playing the
   // same response to the same ball — the choice is the lift, this is what it earns.
@@ -165,16 +165,20 @@ function patterns(d) {
   if (!d.patterns.length) return "";
   const rally = d.patterns.filter((p) => p.family === "rally").slice(0, 3);
   const ret = d.patterns.filter((p) => p.family === "ret").slice(0, 2);
+  // The first two courts on each card start open: the panel leads with the pictures,
+  // and the rest stay a tap away.
+  let shown = 0;
+  const line = (p) => patternLine(p, shown++ < 2);
   let html = "";
   if (rally.length) {
     html += `<div class="phead">court patterns <span class="phead-note">their answer to
       an incoming ball, × how often the tour plays it from the same spot</span></div>
-      <div class="sig">${rally.map(patternLine).join("")}</div>`;
+      <div class="sig">${rally.map(line).join("")}</div>`;
   }
   if (ret.length) {
     html += `<div class="phead">off the return <span class="phead-note">what they do
       with the returns they serve up, by return depth</span></div>
-      <div class="sig">${ret.map(patternLine).join("")}</div>`;
+      <div class="sig">${ret.map(line).join("")}</div>`;
   }
   return html;
 }
@@ -332,9 +336,20 @@ function scoreCells(mine, theirs) {
   }).join("");
 }
 
-function scoreline(m) {
-  const a = scoreCells(m.a.sets, m.b.sets), b = scoreCells(m.b.sets, m.a.sets);
-  return a || b ? `<span class="score">${a}<span class="dash">—</span>${b}</span>` : "";
+// Scoreboard header: one row per player — flag, name, seed, then that player's set
+// scores right-aligned (winner's rows bold, loser dimmed once the match is decided).
+function headHtml(m, t, round) {
+  const decided = !!(m.a.winner || m.b.winner);
+  const row = (s, o) => {
+    const emoji = flagEmoji(s.country);
+    const flag = `<span class="mflag"${emoji ? ` title="${esc(s.country)}"` : ""}>${emoji}</span>`;
+    const seed = s.seed ? ` <span class="seed">${esc(String(s.seed))}</span>` : "";
+    const cls = "mrow" + (s.winner ? " win" : decided ? " lose" : "");
+    return `<div class="${cls}">${flag}<span class="mname">${esc(s.name || "TBD")}${seed}</span>
+      <span class="msets">${scoreCells(s.sets, o.sets)}</span></div>`;
+  };
+  return row(m.a, m.b) + row(m.b, m.a) +
+    `<div class="mstate">${stateLine(m, t, round)}</div>`;
 }
 
 function stateLine(m, t, round) {
@@ -349,13 +364,15 @@ function stateLine(m, t, round) {
 }
 
 export async function openMatchup(m, t) {
-  document.getElementById("matchup").hidden = false;
+  const panel = document.getElementById("matchup");
+  panel.hidden = false;
+  panel.setAttribute("aria-label", `${m.a.name || "TBD"} vs ${m.b.name || "TBD"}`);
   document.getElementById("scrim").hidden = false;
   const body = document.getElementById("matchupBody");
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
-  body.innerHTML = `<h2 class="mh">${esc(m.a.name)} <small>vs</small> ${esc(m.b.name)} ${scoreline(m)}</h2>
-    <div class="mstate">${stateLine(m, t, round)}</div>
-    ${chartPanel(m, t)}
+  document.getElementById("matchupHead").innerHTML = headHtml(m, t, round);
+  body.scrollTop = 0;
+  body.innerHTML = `${chartPanel(m, t)}
     <div class="cards" id="cardslot">Loading…</div>${notationHelp()}<div id="wpslot"></div>`;
 
   const [pa, pb] = await Promise.all([

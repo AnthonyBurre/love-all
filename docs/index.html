@@ -45,9 +45,11 @@
     <div id="bracket" class="bracket"></div>
   </main>
 
-  <aside id="matchup" class="matchup" hidden>
+  <aside id="matchup" class="matchup" hidden role="dialog" aria-modal="true">
     <button class="close" id="matchupClose" aria-label="Close">×</button>
-    <div id="matchupBody"></div>
+    <div class="mvariants" id="mVariants" role="group" aria-label="Panel style"></div>
+    <header class="mtop" id="matchupHead"></header>
+    <div class="mbody" id="matchupBody"></div>
   </aside>
   <div id="scrim" class="scrim" hidden></div>
 
