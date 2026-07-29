@@ -1,6 +1,6 @@
 # Tennis match charting — analysis and a live bracket site
 
-> **[→ Visit Love All](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam & 1000 draws
+> **[→ Visit Love All](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam, 1000 & 500 draws
 
 The [Match Charting
 Project](https://github.com/JeffSackmann/tennis_MatchChartingProject) is a
@@ -11,15 +11,22 @@ and publishes an interactive site to GitHub Pages.
 
 ## The site — Love All
 
-`docs/` is a GitHub Pages site showing **Grand Slam and Masters/WTA-1000 brackets**
-from ESPN's public feed, drawn as a linked tree with each winner wired to the
+`docs/` is a GitHub Pages site showing **Grand Slam, Masters/WTA-1000 and ATP/WTA-500
+brackets** from ESPN's public feed, drawn as a linked tree with each winner wired to the
 next-round match it feeds. ESPN exposes no draw slots, so that linkage is inferred
 from names as the draw resolves. The page themes and titles itself to whichever
 tournament you're looking at.
 
+The feed carries no tour level — `major` flags the four slams and nothing else, so a 500
+and a 125 arrive looking identical. The 1000s are recognized by name, and the 500s are a
+hand-kept roster of ESPN tournament ids in `live/levels.py`: ids are the only stable
+handle, since sponsor names churn (Queen's arrives as "HSBC Championships") and cities
+collide (a WTA 125 plays Rome too). An event that changes level is a one-line edit there.
+
 Live draws show while play is on. Once an event finishes, its draw is frozen into an
 archive (`data/history.json`) so it stays in the dropdown to look back on — the site
-keeps the last two years of slams plus the most recent event. On a live or upcoming
+keeps the last two years of slams, plus the two most recent finished events of every
+other tier. On a live or upcoming
 match, each box is shaded by how charted its pairing is, taken as the min of the two
 players. On a finished draw the shading turns per-match — charted or not — and the
 drawer links straight to that match's full chart on Tennis Abstract, or invites you to
@@ -221,6 +228,11 @@ free-text tournament name (Grand Slam / Masters-WTA 1000 / Tour Finals / Tour
 deliberately **not** split — even Sackmann's authoritative ATP data collapses
 them into one level. Splitting them (and validating the whole mapping) by
 cross-referencing the `tennis_atp` / `tennis_wta` repos is a documented next step.
+
+The live site does need the split, to know which events to serve, so it keeps its own
+roster of 500s by ESPN tournament id (`live/levels.py`). That roster covers the current
+calendar only and is deliberately kept out of `tiers.py`, so the tier column over 65
+years of charted matches stays as honest — and as stable — as the source data allows.
 
 ### Coverage methodology
 

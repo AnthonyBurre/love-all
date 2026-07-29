@@ -6,7 +6,7 @@ could replace it without touching the site. Free, no key, near-real-time — but
 unofficial, so we cache the last successful raw JSON and fall back to it on failure.
 
 Shape (verified against the live endpoint):
-  events[]            → a tournament (``major`` flags a Grand Slam)
+  events[]            → a tournament (``major`` flags a Grand Slam; ``venue`` gives the city)
     groupings[]       → a draw; ``grouping.slug`` = mens-singles / womens-singles / …
       competitions[]  → a match: ``round.displayName``, ``status.type.state``, competitors[]
         competitors[] → ``athlete.displayName`` / ``flag.alt`` / ``winner`` / ``linescores[]``
@@ -18,12 +18,13 @@ import urllib.request
 from dataclasses import dataclass
 
 from match_charting_project.analysis.tiers import GRAND_SLAM, MASTERS_1000, classify_tier
+from match_charting_project.live import levels
 from match_charting_project.paths import PROJECT_ROOT
 
 _SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/tennis/{league}/scoreboard"
 _CACHE = PROJECT_ROOT / "data" / "live"
 _SINGLES = {"mens-singles": "M", "womens-singles": "W"}
-_TARGET_TIERS = (GRAND_SLAM, MASTERS_1000)
+_TARGET_TIERS = (GRAND_SLAM, MASTERS_1000, levels.TOUR_500)
 # Round display-name -> sortable rank (main draw only; qualifying excluded).
 _ROUND_NAMED = {"final": 100, "semifinal": 99, "semifinals": 99,
                 "quarterfinal": 98, "quarterfinals": 98,
@@ -63,6 +64,7 @@ class Tournament:
     gender: str         # M | W
     best_of: int
     matches: list
+    city: str = ""      # venue city — how the charted db names tournaments, unlike the feed
 
 
 def _fetch(league: str) -> dict:
@@ -94,6 +96,12 @@ def _round_rank(label: str) -> "int | None":
 def _tier(event: dict, gender: str) -> str:
     if event.get("major"):
         return GRAND_SLAM
+    # The rostered 500s are checked before the 1000 heuristics below, which key off city
+    # names and would otherwise over-promote the events that used to be 1000s or whose
+    # other tour still is — ATP Doha, ATP Hamburg, ATP Dubai, ATP Beijing.
+    rostered = levels.level(event.get("id", ""), gender)
+    if rostered:
+        return rostered
     name = event.get("name", "")
     t = classify_tier(name, gender)
     if t == MASTERS_1000:
@@ -134,14 +142,15 @@ def parse(raw: dict) -> "list[Tournament]":
                     state=st.get("state", "pre"), detail=st.get("shortDetail", ""),
                     a=_side(cs[0]), b=_side(cs[1]), date=c.get("date") or ""))
             if matches:
+                venue = (event.get("venue") or {}).get("displayName", "")
                 out.append(Tournament(id=str(event.get("id")), name=event.get("name", ""),
                                       tier=tier, gender=gender, best_of=best_of,
-                                      matches=matches))
+                                      matches=matches, city=levels.city(venue)))
     return out
 
 
 def current_tournaments() -> "list[Tournament]":
-    """Current Slam / 1000 singles draws from both tours (deduped by id+gender)."""
+    """Current Slam / 1000 / 500 singles draws from both tours (deduped by id+gender)."""
     seen, out = set(), []
     for league in ("atp", "wta"):
         for t in parse(_fetch(league)):

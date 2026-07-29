@@ -24,13 +24,23 @@ def normalize(name: str) -> str:
 
 # Tournament name -> stable key, so the charted DB (dirty names like 'Wimbledon ') and the
 # ESPN feed ('Wimbledon', 'French Open') agree. Both build paths must key through this.
+# The Canadian Open alternates cities by tour and year, and the db carries all three
+# spellings ('Canada Masters', 'Montreal', 'Toronto') — collapse them onto one key.
 _TOURN_ALIASES = {"french open": "roland garros",
-                  "us open tennis championships": "us open"}
+                  "us open tennis championships": "us open",
+                  "montreal": "canada", "toronto": "canada"}
 
 
 def tourn_key(name: str) -> str:
-    k = normalize(name)
-    return _TOURN_ALIASES.get(k, k)
+    """Stable key for a tournament name *or* an ESPN venue city.
+
+    The charted db names events by city ('Washington', 'Cincinnati', sometimes with a
+    'Masters' suffix); the live feed names them by sponsor ('Mubadala DC Open'). Callers
+    key through this from both sides — and for the feed, off the venue city rather than
+    the event name, since only the city is a word the db would recognize.
+    """
+    k = re.sub(r"\s+", " ", re.sub(r"\bmasters\b", " ", normalize(name))).strip()
+    return _TOURN_ALIASES.get(k, k or normalize(name))
 
 
 def universe_from_rows(rows) -> dict:

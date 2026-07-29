@@ -19,14 +19,24 @@ const SEP = "␟";
 const gkey = (t) => (t.completed ? `${t.name}${SEP}${t.season}` : t.name);
 const glabel = (t) => (t.completed ? `${t.name} ${t.season}` : t.name);
 
-// Season/tournament theme: slams get their own palette, 1000s follow their surface.
-const CLAY = ["french", "roland", "madrid", "rome", "italian", "monte", "hamburg", "charleston"];
-const AUS = ["australian"];
-function themeFor(name) {
-  const n = (name || "").toLowerCase();
-  if (n.includes("wimbledon")) return "";          // grass = the default palette
-  if (CLAY.some((c) => n.includes(c))) return "clay";
-  if (AUS.some((c) => n.includes(c))) return "aus-hard";
+// Season/tournament theme: slams get their own palette, everything below them follows its
+// surface. Keyed off the venue city, since the feed's event name is a sponsor's ("HSBC
+// Championships" is Queen's, on grass) and often has no city in it at all. Slams are
+// matched on name first — their city is the one that would mislead ("London", "Paris").
+const CLAY = ["madrid", "rome", "monte", "hamburg", "charleston", "barcelona", "munich",
+              "rio de janeiro", "stuttgart", "strasbourg"];
+const GRASS = ["london", "halle", "eastbourne", "bad homburg", "berlin",
+               "'s-hertogenbosch"];
+const AUS = ["melbourne", "brisbane", "adelaide"];
+function themeFor(t) {
+  const name = (t.name || "").toLowerCase();
+  if (name.includes("wimbledon")) return "";       // grass = the default palette
+  if (name.includes("australian open")) return "aus-hard";
+  if (name.includes("roland garros") || name.includes("french open")) return "clay";
+  const c = (t.city || t.name || "").toLowerCase();
+  if (CLAY.some((x) => c.includes(x))) return "clay";
+  if (GRASS.some((x) => c.includes(x))) return "";
+  if (AUS.some((x) => c.includes(x))) return "aus-hard";
   return "us-hard";                                // everything else is a hard court
 }
 
@@ -40,7 +50,7 @@ async function main() {
   $("updated").textContent =
     "Updated " + new Date(data.updated).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
   if (!data.tournaments.length) {
-    $("status").textContent = "No Grand Slam or 1000 draws are live right now. Check back during an event.";
+    $("status").textContent = "No Grand Slam, 1000 or 500 draws are live right now. Check back during an event.";
     return;
   }
   const first = groups()[0];
@@ -86,7 +96,8 @@ function pick() {
 // A draw can be sliced this way only when its bracket ordering is trustworthy — a live
 // fixture-backed draw or a finished one (both fully linked) — and its shape is a clean
 // power of two (each round half the size of the one before, down to a 1-match final,
-// so the round of 16 is truly 8 matches). Odd-sized 1000 draws fall back to the full draw.
+// so the round of 16 is truly 8 matches). Draws with byes — most 1000s, and the 500s whose
+// women's field is 28 or 30 — aren't that shape, and fall back to the full draw.
 function quarterable(t) {
   if (!(t.slotted || t.completed)) return false;
   const r = t.rounds;
@@ -198,7 +209,7 @@ function updateLegend(t) {
 function render() {
   $("status").hidden = true;
   const t = pick();
-  document.body.dataset.theme = themeFor(t.name);
+  document.body.dataset.theme = themeFor(t);
   $("pageTitle").textContent = glabel(t);
   document.title = `${glabel(t)} — Love All`;
   updateLegend(t);

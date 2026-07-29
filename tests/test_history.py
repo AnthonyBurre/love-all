@@ -59,6 +59,62 @@ def test_prune_keeps_recent_slams_plus_newest_event():
     assert kept == {("recent", "M"), ("newest-1000", "W")}   # old slam dropped; 1000 is newest
 
 
+def _archived(id, tier, stamp, gender="M", year=2026):
+    return {"id": id, "gender": gender, "tier": tier, "year": year, "archived_at": stamp}
+
+
+def test_prune_keeps_two_finished_events_per_non_slam_tier():
+    today = date(2026, 8, 20)
+    store = [
+        _archived("slam", "Grand Slam", "2026-07-13T00:00+00:00", year=2026),
+        _archived("500-a", "ATP / WTA 500", "2026-08-17T00:00+00:00"),   # newest 500
+        _archived("500-b", "ATP / WTA 500", "2026-08-10T00:00+00:00"),
+        _archived("500-c", "ATP / WTA 500", "2026-08-03T00:00+00:00"),   # third: aged out
+        _archived("1000-a", "Masters / WTA 1000", "2026-08-16T00:00+00:00"),
+    ]
+    kept = {e["id"] for e in history.prune(store, today)}
+    # Two newest 500s survive; the 1000 is counted in its own tier, so two fresher 500s
+    # can't evict it.
+    assert kept == {"slam", "500-a", "500-b", "1000-a"}
+
+
+def test_prune_retires_a_combined_event_by_both_genders_at_once():
+    today = date(2026, 8, 20)
+    store = [
+        _archived("500-a", "ATP / WTA 500", "2026-08-17T00:00+00:00", gender="M"),
+        _archived("500-a", "ATP / WTA 500", "2026-08-17T00:00+00:00", gender="W"),
+        _archived("500-b", "ATP / WTA 500", "2026-08-10T00:00+00:00", gender="M"),
+        _archived("500-b", "ATP / WTA 500", "2026-08-10T00:00+00:00", gender="W"),
+        _archived("500-c", "ATP / WTA 500", "2026-08-03T00:00+00:00", gender="M"),
+    ]
+    kept = history.prune(store, today)
+    # Retention counts events, not rows: two events = four entries, not two.
+    assert {(e["id"], e["gender"]) for e in kept} == {
+        ("500-a", "M"), ("500-a", "W"), ("500-b", "M"), ("500-b", "W")}
+
+
+def test_annotate_finds_charting_under_the_venue_city():
+    # The db files this one as 'Washington'; the feed calls it 'Mubadala DC Open'.
+    charted = {("M", 2026, "washington", frozenset(("a one", "b two"))): "MID-9"}
+    t = _tour("888-2026", "M", _final("A One", "B Two"), tier="ATP / WTA 500",
+              name="Mubadala DC Open")
+    t["city"] = "Washington"
+    t["completed"], t["year"], t["season"] = True, 2026, 2026
+    build_brackets._annotate(t, {"M": {}, "W": {}}, charted)
+    m = t["rounds"][0]["matches"][0]
+    assert (m["charted"], m["chart_id"]) == (True, "MID-9")
+
+
+def test_annotate_still_finds_slams_by_name_not_city():
+    # A slam's city ('London') is the wrong key — the db knows it as 'Wimbledon'.
+    charted = {("M", 2026, "wimbledon", frozenset(("a one", "b two"))): "MID-1"}
+    t = _tour("188-2026", "M", _final("A One", "B Two"))
+    t["city"] = "London"
+    t["completed"], t["year"], t["season"] = True, 2026, 2026
+    build_brackets._annotate(t, {"M": {}, "W": {}}, charted)
+    assert t["rounds"][0]["matches"][0]["chart_id"] == "MID-1"
+
+
 def test_annotate_charted_gate():
     charted = {("M", 2025, "wimbledon", frozenset(("a one", "b two"))): "MID-1"}
     t = _tour("w", "M", [{"rank": 100, "label": "Final", "matches": [
