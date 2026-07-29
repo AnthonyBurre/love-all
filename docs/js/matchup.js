@@ -2,11 +2,60 @@
 // all queried from insights.duckdb via DuckDB-WASM.
 import { query, leagueMu } from "./db.js";
 import { preMatchWP } from "./winprob.js";
+import { patternSvg, pairSvg } from "./court.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const last = (name) => String(name || "").split(" ").slice(-1)[0];
 const pct = (x) => (x * 100).toFixed(1) + "%";
+
+// Country name (ESPN's flag alt text) → ISO 3166-1 alpha-2, so we can show a flag emoji
+// instead of the country name. Covers every nation that turns up in the draws; anything
+// unmapped falls back to the plain name.
+const ISO2 = {
+  Andorra: "AD", Argentina: "AR", Armenia: "AM", Australia: "AU", Austria: "AT",
+  Belarus: "BY", Belgium: "BE", Bolivia: "BO", "Bosnia and Herzegovina": "BA", Brazil: "BR",
+  Bulgaria: "BG", Canada: "CA", Chile: "CL", China: "CN", "Chinese Taipei": "TW",
+  Colombia: "CO", Croatia: "HR", Czechia: "CZ", "Czech Republic": "CZ", Denmark: "DK",
+  Egypt: "EG", Estonia: "EE", Finland: "FI", France: "FR", Georgia: "GE", Germany: "DE",
+  "Great Britain": "GB", Greece: "GR", Hungary: "HU", India: "IN", Indonesia: "ID",
+  Israel: "IL", Italy: "IT", Japan: "JP", Kazakhstan: "KZ", Korea: "KR", "South Korea": "KR",
+  Laos: "LA", Latvia: "LV", Liechtenstein: "LI", Lithuania: "LT", Luxembourg: "LU",
+  Macedonia: "MK", "North Macedonia": "MK", Mexico: "MX", Monaco: "MC", Montenegro: "ME",
+  Netherlands: "NL", "New Zealand": "NZ", Norway: "NO", Paraguay: "PY", Peru: "PE",
+  Philippines: "PH", Poland: "PL", Portugal: "PT", Romania: "RO", Russia: "RU", Serbia: "RS",
+  Slovakia: "SK", Slovenia: "SI", "South Africa": "ZA", Spain: "ES", Sweden: "SE",
+  Switzerland: "CH", Thailand: "TH", Tunisia: "TN", "Türkiye": "TR", Turkey: "TR",
+  USA: "US", "United States": "US", Ukraine: "UA", Uzbekistan: "UZ",
+};
+
+// A country name → its 🇫🇷 flag emoji (a pair of regional-indicator letters), or "" when
+// the name isn't mapped so the caller can fall back to the text.
+function flagEmoji(country) {
+  const cc = ISO2[country];
+  return cc ? String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)) : "";
+}
+
+// Player name line for a card: optional seed badge, name, then the flag (emoji, or the
+// country name kept as a title on the flag / as text when unmapped).
+function playerHead(side) {
+  const seed = side.seed ? `<span class="seed">${esc(String(side.seed))}</span>` : "";
+  const emoji = flagEmoji(side.country);
+  const flag = side.country
+    ? ` <span class="flag"${emoji ? ` title="${esc(side.country)}"` : ""}>${emoji || esc(side.country)}</span>`
+    : "";
+  return `<h4>${seed}${esc(side.name || "TBD")}${flag}</h4>`;
+}
+
+// A finished/scheduled match's date, formatted short ("Jul 13, 2026"). "" when absent
+// (older archived draws carry no per-match date) or unparseable. Read in UTC (ESPN's
+// datetimes are Z): the day a match was played is fixed, not the viewer's timezone.
+function matchDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? "" :
+    d.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+}
 
 async function playerData(name, gender) {
   if (!name) return null;
@@ -18,7 +67,15 @@ async function playerData(name, gender) {
       "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, depth " +
       "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
   } catch (e) { /* stale insights db: show the card without tendencies */ }
-  return { s: s[0], triggers };
+  let patterns = [];
+  try {
+    patterns = await query(
+      "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
+      "win_rate, tour_win_rate " +
+      "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
+      [name, gender]);
+  } catch (e) { /* stale insights db: show the card without patterns */ }
+  return { s: s[0], triggers, patterns };
 }
 
 function predictabilityLabel(bits) {
@@ -35,10 +92,20 @@ function ratingLabel(z) {
   return `typical for their style (z ${z.toFixed(1)})`;
 }
 
+// A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
+// drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
+// pattern has no chartable direction, so there's nothing to draw.
+function rallyDrawer(pattern) {
+  const svg = patternSvg(pattern);
+  return svg ? `<details class="rally"><summary>ball path</summary>
+    <div class="court">${svg}</div></details>` : "";
+}
+
 // One decision, two outcomes: a green light converts, a trap is taken bait.
 function trigLine(t) {
   const ctx = `after <code>${esc(t.context)}</code>`;
   const lift = `${Number(t.att_lift).toFixed(1)}×`;
+  const court = rallyDrawer(t.context);
   if (Number(t.depth) > 2) {
     // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates
     // across halves of the player's data — only the hugely-charted earn these.
@@ -47,14 +114,14 @@ function trigLine(t) {
       : `and converts ${Math.round(t.conversion * 100)}%`;
     return `<div class="pat gold" title="deep pattern: only visible with this player's huge charted history">${ctx}
       — goes for it ${Math.round(t.att_rate * 100)}% (${lift} the shorter pattern) ${kind}
-      <span class="lift">(n=${Number(t.n)})</span></div>`;
+      <span class="lift">(n=${Number(t.n)})</span>${court}</div>`;
   }
   if (t.tag === "green") {
     return `<div class="pat green">${ctx} — goes for it ${Math.round(t.att_rate * 100)}% (${lift})
-      and converts ${Math.round(t.conversion * 100)}% <span class="lift">(n=${Number(t.n)})</span></div>`;
+      and converts ${Math.round(t.conversion * 100)}% <span class="lift">(n=${Number(t.n)})</span>${court}</div>`;
   }
   return `<div class="pat bait">${ctx} — takes the bait (${lift} their attempts) but converts
-    only ${Math.round(t.conversion * 100)}% <span class="lift">(${Math.round(t.conv_delta * 100)} vs their norm, n=${Number(t.n)})</span></div>`;
+    only ${Math.round(t.conversion * 100)}% <span class="lift">(${Math.round(t.conv_delta * 100)} vs their norm, n=${Number(t.n)})</span>${court}</div>`;
 }
 
 // How context-driven is the go-for-it decision (σ from the shot_triggers experiment)?
@@ -74,17 +141,51 @@ function rateStat(label, rate, avg) {
   return `<div class="stat"><span class="k">${label}:</span> ${pct(rate)} ${arrow}</div>`;
 }
 
-function signatures(s) {
-  if (!s.signatures) return "";
-  const sigs = String(s.signatures).split("; ").slice(0, 2)
-    .map((x) => `<code>${esc(x)}</code>`).join(" ");
-  return `<div class="phead">signature sequences</div><div class="sig">${sigs}</div>`;
+// Court-state patterns (court_response experiment): how the player answers a given
+// incoming ball, vs the field's answers to the same ball. Zones are named relative to
+// the player's own hands, run-arounds get their tennis names, and every pattern
+// repeated in both halves of the player's charted matches to earn its place here.
+function patternLine(p, open = false) {
+  const court = `<details class="rally"${open ? " open" : ""}><summary>ball path</summary>
+    <div class="court">${pairSvg(p.inc_code, p.resp_code, p.state_depth)}</div></details>`;
+  // Payoff: their point-win rate playing this response vs the tour's playing the
+  // same response to the same ball — the choice is the lift, this is what it earns.
+  let payoff = "";
+  if (p.win_rate != null && p.tour_win_rate != null) {
+    const d = Math.round((p.win_rate - p.tour_win_rate) * 100);
+    const arrow = d === 0 ? "" :
+      ` <span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} vs tour</span>`;
+    payoff = ` · wins ${Math.round(p.win_rate * 100)}%${arrow}`;
+  }
+  return `<div class="sig-item"><code>${esc(p.state)} → <b>${esc(p.response)}</b></code>
+    <span class="lift">(${Number(p.lift).toFixed(1)}× the tour, n=${Number(p.count).toLocaleString()}${payoff})</span>${court}</div>`;
+}
+
+function patterns(d) {
+  if (!d.patterns.length) return "";
+  const rally = d.patterns.filter((p) => p.family === "rally").slice(0, 3);
+  const ret = d.patterns.filter((p) => p.family === "ret").slice(0, 2);
+  // The first two courts on each card start open: the panel leads with the pictures,
+  // and the rest stay a tap away.
+  let shown = 0;
+  const line = (p) => patternLine(p, shown++ < 2);
+  let html = "";
+  if (rally.length) {
+    html += `<div class="phead">court patterns <span class="phead-note">their answer to
+      an incoming ball, × how often the tour plays it from the same spot</span></div>
+      <div class="sig">${rally.map(line).join("")}</div>`;
+  }
+  if (ret.length) {
+    html += `<div class="phead">off the return <span class="phead-note">what they do
+      with the returns they serve up, by return depth</span></div>
+      <div class="sig">${ret.map(line).join("")}</div>`;
+  }
+  return html;
 }
 
 function playerCard(side, d, mu, gender) {
-  const flag = side.country ? `<span class="flag">${esc(side.country)}</span>` : "";
   if (!d) {
-    return `<div class="pcard"><h4>${esc(side.name || "TBD")}</h4>${flag}
+    return `<div class="pcard">${playerHead(side)}
       <p class="uncharted">No Match Charting history yet.
       <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Chart a match →</a></p></div>`;
   }
@@ -113,9 +214,9 @@ function playerCard(side, d, mu, gender) {
   const trig = s.trig_att_rate != null
     ? `<div class="stat"><span class="k">goes for it:</span> ${pct(s.trig_att_rate)} of strokes · converts ${Math.round(s.trig_conversion * 100)}%</div>` : "";
   return `<div class="pcard">
-    <h4>${esc(side.name)}</h4>${flag}
+    ${playerHead(side)}
     ${s.archetype ? `<div class="arch">${esc(s.archetype)}</div>` : ""}
-    ${signatures(s)}
+    ${patterns(d)}
     ${tendencies}
     <div class="phead">the numbers</div>
     ${rateStat("serve pts won", s.serve_rate, mu)}
@@ -195,9 +296,17 @@ function notationHelp() {
       <div><code>→1/2/3</code> where it was hit, seen from the hitter: zone 1 is a
         right-hander's forehand side, 3 their backhand side (<code>→·</code> =
         direction not charted).</div>
-      <div><code>A→B (3.6×)</code> in signatures: the player follows shot A with
-        shot B 3.6× as often as the tour; <code>A · B</code> in triggers: their
-        shot A, then the opponent's reply B, then the stroke being measured.</div>
+      <div>Court patterns name zones by the player's own hands (a lefty's FH corner
+        is a righty's BH corner), so <code>drive into the BH corner → crosscourt BH
+        slice (1.6×)</code> means they answer that ball with the crosscourt slice
+        1.6× as often as the tour does from the same spot. <code>wins 52% ▲6</code>
+        is the payoff: how often the point ends up theirs after that response, vs
+        the tour playing the same ball.</div>
+      <div>Triggers group a player's winners and unforced errors as one decision —
+        an <em>attempt</em> at a finishing shot. <code>A · B</code> is the cue:
+        their shot A, then the opponent's reply B. "Goes for it" is the attempt
+        rate that cue provokes; "converts" is winners per attempt. A cue that
+        raises attempts but sinks conversion is a trap — they take the bait.</div>
     </div>
   </details>`;
 }
@@ -216,15 +325,38 @@ function chartPanel(m, t) {
        target="_blank" rel="noopener">Chart this match →</a></div>`;
 }
 
-function scoreline(m) {
-  const sets = (s) => (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" ");
-  const a = sets(m.a), b = sets(m.b);
-  return a || b ? `<span class="score">${esc(a)} — ${esc(b)}</span>` : "";
+// Per-set cells, the higher score of each set bolded — the match winner reads as the
+// side with more bold games.
+function scoreCells(mine, theirs) {
+  return (mine || []).map((x, i) => {
+    if (x == null) return "";
+    const t = theirs && theirs[i];
+    const won = t != null && Math.trunc(x) > Math.trunc(t);
+    return `<span class="set${won ? " won" : ""}">${Math.trunc(x)}</span>`;
+  }).join("");
+}
+
+// Scoreboard header: one row per player — flag, name, seed, then that player's set
+// scores right-aligned (winner's rows bold, loser dimmed once the match is decided).
+function headHtml(m, t, round) {
+  const decided = !!(m.a.winner || m.b.winner);
+  const row = (s, o) => {
+    const emoji = flagEmoji(s.country);
+    const flag = `<span class="mflag"${emoji ? ` title="${esc(s.country)}"` : ""}>${emoji}</span>`;
+    const seed = s.seed ? ` <span class="seed">${esc(String(s.seed))}</span>` : "";
+    const cls = "mrow" + (s.winner ? " win" : decided ? " lose" : "");
+    return `<div class="${cls}">${flag}<span class="mname">${esc(s.name || "TBD")}${seed}</span>
+      <span class="msets">${scoreCells(s.sets, o.sets)}</span></div>`;
+  };
+  return row(m.a, m.b) + row(m.b, m.a) +
+    `<div class="mstate">${stateLine(m, t, round)}</div>`;
 }
 
 function stateLine(m, t, round) {
   const event = t.completed ? `${t.name} ${t.season}` : t.name;
-  const where = `${esc(event)} · ${t.gender === "M" ? "Men" : "Women"}${round ? " · " + esc(round.label) : ""}`;
+  const day = matchDate(m.date);
+  const where = `${esc(event)} · ${t.gender === "M" ? "Men" : "Women"}` +
+    `${round ? " · " + esc(round.label) : ""}${day ? " · " + esc(day) : ""}`;
   if (m.state === "in") return `${where} · <span class="live">● ${esc(m.detail || "Live")}</span>`;
   // In a completed draw every match is final, so the round already says it — no "· Final".
   if (m.state === "post") return t.completed ? where : `${where} · ${esc(m.detail || "Final")}`;
@@ -232,13 +364,15 @@ function stateLine(m, t, round) {
 }
 
 export async function openMatchup(m, t) {
-  document.getElementById("matchup").hidden = false;
+  const panel = document.getElementById("matchup");
+  panel.hidden = false;
+  panel.setAttribute("aria-label", `${m.a.name || "TBD"} vs ${m.b.name || "TBD"}`);
   document.getElementById("scrim").hidden = false;
   const body = document.getElementById("matchupBody");
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
-  body.innerHTML = `<h2 class="mh">${esc(m.a.name)} <small>vs</small> ${esc(m.b.name)} ${scoreline(m)}</h2>
-    <div class="mstate">${stateLine(m, t, round)}</div>
-    ${chartPanel(m, t)}
+  document.getElementById("matchupHead").innerHTML = headHtml(m, t, round);
+  body.scrollTop = 0;
+  body.innerHTML = `${chartPanel(m, t)}
     <div class="cards" id="cardslot">Loading…</div>${notationHelp()}<div id="wpslot"></div>`;
 
   const [pa, pb] = await Promise.all([

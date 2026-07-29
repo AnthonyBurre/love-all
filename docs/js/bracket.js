@@ -1,6 +1,6 @@
 // Bracket rendering: a reusable tree renderer (columns per round, cards centered
-// between their feeders, SVG wires) plus quarter-slicing helpers. app.js decides
-// which slice of the draw goes into which container.
+// between their feeders, SVG wires), a phone round-list, and the by-quarter view
+// (one top-down grid of the draw, sliced by selector chips).
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -31,30 +31,69 @@ export function matchTier(m, gender, cov) {
   return { cls: "t-none", note: `uncharted matchup — ${note}` };
 }
 
-function sideRow(s) {
+// Per-set score cells: each set is its own span, bold when it's the higher score of
+// the set (that set's winner). The match winner then reads as the row with more bold
+// numbers — no need to hunt for the highlighted name. `theirs` is the opponent's sets.
+function setsEl(mine, theirs) {
+  const sets = el("span", "sets");
+  (mine || []).forEach((x, i) => {
+    if (x == null) return;
+    const t = theirs && theirs[i];
+    const won = t != null && Math.trunc(x) > Math.trunc(t);
+    sets.append(el("span", "set" + (won ? " won" : ""), String(Math.trunc(x))));
+  });
+  return sets;
+}
+
+function sideRow(s, opp) {
   const named = s.name && s.name !== "TBD";
   const row = el("div", "side " + (s.winner ? "win" : named ? "lose" : ""));
-  const sets = el("span", "sets", (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" "));
   const nm = el("span", "nm");
+  if (named) nm.dataset.full = s.name;
   if (s.seed) nm.append(el("span", "seed", s.seed));
   nm.append(document.createTextNode(s.name || "TBD"));
-  row.append(nm, sets);
+  row.append(nm, setsEl(s.sets, opp && opp.sets));
   return row;
 }
 
+// Names render in full; one that overflows its card is abbreviated to first initial
+// + surname ("F. Auger-Aliassime"). If that still overflows, capitalized middle
+// names go too ("R. Andres Burruchaga" → "R. Burruchaga") — but lowercase surname
+// particles stay ("A. de Minaur") — and only then does the CSS ellipsis kick in.
+// Run after the cards are in the laid-out DOM — it measures them.
+const abbrev = (name) => {
+  const cut = name.indexOf(" ");
+  return cut > 0 ? `${name[0]}. ${name.slice(cut + 1)}` : name;
+};
+const abbrevHard = (name) => {
+  const parts = name.split(" ");
+  if (parts.length < 2) return name;
+  const rest = parts.slice(1);
+  let i = 0;
+  while (i < rest.length - 1 && /^[A-Z]/.test(rest[i])) i++;
+  return `${parts[0][0]}. ${rest.slice(i).join(" ")}`;
+};
+function fitNames(root) {
+  for (const nm of root.querySelectorAll(".nm[data-full]")) {
+    if (nm.scrollWidth <= nm.clientWidth) continue;
+    nm.lastChild.textContent = abbrev(nm.dataset.full);        // "F. Auger-Aliassime", seed kept
+    if (nm.scrollWidth <= nm.clientWidth) continue;
+    const seed = nm.querySelector(".seed");                    // the seed badge goes next
+    if (seed) { seed.remove(); if (nm.scrollWidth <= nm.clientWidth) continue; }
+    nm.lastChild.textContent = abbrevHard(nm.dataset.full);    // then middle names, then CSS ellipsis
+  }
+}
+
 // The wide layout groups by column instead of by player — both names on one line, both
-// scores on the line below — so a match reads in one row instead of two. Used in the by-
-// quarter view (cascade + pinned/scrolling fan), where cards run wide enough for it.
+// scores on the line below — so a match reads in one row instead of two. Used in the
+// by-quarter view, where cards run wide enough for it.
 function nameSpan(s) {
   const named = s.name && s.name !== "TBD";
   const span = el("span", "nm " + (s.winner ? "win" : named ? "lose" : ""));
+  if (named) span.dataset.full = s.name;
   if (s.seed) span.append(el("span", "seed", s.seed));
   span.append(document.createTextNode(s.name || "TBD"));
   return span;
-}
-
-function setsSpan(s) {
-  return el("span", "sets", (s.sets || []).map((x) => (x == null ? "" : Math.trunc(x))).join(" "));
 }
 
 function matchCard(m, t, cov, onClick, wide) {
@@ -65,10 +104,10 @@ function matchCard(m, t, cov, onClick, wide) {
     const names = el("div", "namesrow");
     names.append(nameSpan(m.a), nameSpan(m.b));
     const scores = el("div", "scoresrow");
-    scores.append(setsSpan(m.a), setsSpan(m.b));
+    scores.append(setsEl(m.a.sets, m.b.sets), setsEl(m.b.sets, m.a.sets));
     card.append(names, scores);
   } else {
-    card.append(sideRow(m.a), sideRow(m.b));
+    card.append(sideRow(m.a, m.b), sideRow(m.b, m.a));
   }
   if (m.state === "in") {
     card.append(el("div", "detail live", "● " + (m.detail || "Live")));
@@ -129,7 +168,7 @@ function drawConnectors(rounds, root, cards) {
 // Render a set of rounds as a linked tree into `root` (any .bracket-styled container).
 export function renderTree(rounds, root, t, cov, onClick) {
   root.innerHTML = "";
-  root.classList.remove("aslist", "asfan");
+  root.className = "bracket";
   const cards = new Map();
   for (const round of rounds) {
     const col = el("div", "round");
@@ -143,6 +182,7 @@ export function renderTree(rounds, root, t, cov, onClick) {
     col.append(list);
     root.append(col);
   }
+  fitNames(root);
   const gap = 8;
   const centers = new Map();
   let maxBottom = 0;
@@ -168,8 +208,7 @@ const shortLabel = (label) => {
 
 export function renderRoundList(rounds, root, t, cov, onClick, roundSel) {
   root.innerHTML = "";
-  root.classList.add("aslist");
-  root.classList.remove("asfan");
+  root.className = "bracket aslist";
 
   const chips = el("div", "roundchips");
   rounds.forEach((r, i) => {
@@ -195,6 +234,7 @@ export function renderRoundList(rounds, root, t, cov, onClick, roundSel) {
     for (const m of ms) list.append(matchCard(m, t, cov, onClick));
   }
   root.append(list);
+  fitNames(root);
 }
 
 // Default round to open on: the earliest with something still to play.
@@ -203,230 +243,18 @@ export function currentRound(rounds) {
   return i === -1 ? rounds.length - 1 : i;
 }
 
-// --- quarter slicing (valid only for slot-true, power-of-two draws: t.slotted) ---
+// --- the by-quarter view (valid only for slot-true, power-of-two draws: t.slotted) ---
 
-// Slice a set of rounds' matches into n equal groups, keeping group i.
-function sliceGroup(rounds, i, n) {
-  return rounds.map((r) => {
-    const size = r.matches.length / n;
-    return { ...r, matches: r.matches.slice(i * size, (i + 1) * size) };
-  });
-}
-
-// Rounds up to the quarterfinals, sliced to quarter q (0-3): R1 16, …, QF 1.
-export function quarterRounds(t, q) {
-  const upToQF = t.rounds.slice(0, t.rounds.length - 2);
-  return sliceGroup(upToQF, q, 4);
-}
-
-// A quarter's round of 32 always has 4 matches — one per quarter of *it*. Slice an
-// already quarter-scoped set of rounds (its round of 64 and, on a slam, round of 128)
-// down to slot s (0-3), one for each of those 4 round-of-32 matches.
-export function slotRounds(rounds, s) {
-  return sliceGroup(rounds, s, 4);
-}
-
-// The "business end" cascade: final on top, the two semifinals below it, and the
-// four quarter selectors below those — each chip under the semifinal its winner
-// feeds, wired with the same SVG connectors, so the structure reads top-down.
-export function renderCascade(t, root, cov, onClick, quarter) {
-  root.innerHTML = "";
-  const final = t.rounds[t.rounds.length - 1].matches[0];
-  const sfs = t.rounds[t.rounds.length - 2].matches;
-  const qfs = t.rounds[t.rounds.length - 3].matches;
-
-  const label = (text) => root.append(el("div", "cascade-label", text));
-  const cell = (cls, ...nodes) => {
-    const c = el("div", "cslot " + cls);
-    c.append(...nodes);
-    root.append(c);
-  };
-  label("Final");
-  const fc = matchCard(final, t, cov, onClick, true);
-  cell("slot-final", fc);
-
-  label("Semifinals");
-  const sf1 = matchCard(sfs[0], t, cov, onClick, true);
-  const sf2 = matchCard(sfs[1], t, cov, onClick, true);
-  cell("slot-sf", sf1);
-  cell("slot-sf", sf2);
-
-  label("Quarterfinals");
-  // Each quarterfinal is a real match card with its own selector beneath — pick one and the
-  // fan below flows down from it. The card still opens the matchup drawer on click.
-  const qsels = [];
-  const qfCards = qfs.map((qf, q) => {
-    const card = matchCard(qf, t, cov, onClick, true);
-    const sel = el("button", "qsel" + (q === quarter.selected ? " on" : ""), quarter.labels[q]);
-    sel.title = `Show ${quarter.labels[q]} — round of 16 down to round 1`;
-    sel.onclick = () => quarter.onPick(q);
-    cell("slot-qf" + (q === quarter.selected ? " qf-on" : ""), card, sel);
-    qsels.push(sel);
-    return card;
-  });
-
-  // Vertical wires: final ← each SF ← its two quarterfinals (the selected path is hot).
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "wires");
-  const rect = root.getBoundingClientRect();
-  const anchor = (n, edge) => {
-    const r = n.getBoundingClientRect();
-    return { x: r.left - rect.left + r.width / 2,
-             y: r.top - rect.top + (edge === "top" ? 0 : r.height) };
-  };
-  const wire = (from, to, hot) => {
-    const a = anchor(from, "top"), b = anchor(to, "bottom");
-    const mid = (a.y + b.y) / 2;
-    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("d", `M ${a.x} ${a.y} C ${a.x} ${mid}, ${b.x} ${mid}, ${b.x} ${b.y}`);
-    if (hot) p.setAttribute("class", "hot");
-    svg.appendChild(p);
-  };
-  wire(sf1, fc, quarter.selected < 2);
-  wire(sf2, fc, quarter.selected >= 2);
-  qfCards.forEach((qf, q) => wire(qf, q < 2 ? sf1 : sf2, q === quarter.selected));
-  svg.setAttribute("width", root.scrollWidth);
-  svg.setAttribute("height", root.scrollHeight);
-  root.appendChild(svg);
-  return { qfCards, qsels };
-}
-
-// A picked fan (round of 16 down through round of 32, or a slot's round of 64 down through
-// round of 128) has no card of its own for the thing that was picked — that's already shown,
-// once, a level up — so this draws the one connector that has to cross containers: the
-// selected chip down to the first row of cards below it. Appended into the upper container's
-// own root so it inherits that container's wire styling and can overflow below its box into
-// the pinned block that follows it. Used both for cascade → quarter fan and quarter fan →
-// slot fan, since the two crossings are structurally identical.
-export function wireQuarterToFan(parentRoot, chip, childCards) {
-  if (!chip || !childCards.length) return;
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "wires");
-  const rect = parentRoot.getBoundingClientRect();
-  const anchor = (n, edge) => {
-    const r = n.getBoundingClientRect();
-    return { x: r.left - rect.left + r.width / 2,
-             y: r.top - rect.top + (edge === "top" ? 0 : r.height) };
-  };
-  const a = anchor(chip, "bottom");
-  let bottom = 0;
-  for (const card of childCards) {
-    const b = anchor(card, "top");
-    bottom = Math.max(bottom, anchor(card, "bottom").y);
-    const mid = (a.y + b.y) / 2;
-    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("d", `M ${a.x} ${a.y} C ${a.x} ${mid}, ${b.x} ${mid}, ${b.x} ${b.y}`);
-    p.setAttribute("class", "hot");
-    svg.appendChild(p);
-  }
-  svg.setAttribute("width", parentRoot.scrollWidth);
-  svg.setAttribute("height", bottom);
-  parentRoot.appendChild(svg);
-}
-
-// The chosen quarter, flowing straight down from its quarterfinal: rounds stacked as rows
-// (R16 at top → R32 at bottom), each match centered over its two feeders in the row below
-// and wired in one SVG. `opts.pick`, when given, plants a selector under every card of the
-// *last* round — one per match, same idea as the cascade's quarterfinal selectors — so a
-// deeper fan (that match's own earlier rounds) can be picked and pinned in below rather than
-// needing to scroll sideways into view.
-export function renderFan(rounds, root, t, cov, onClick, opts = {}) {
-  const { cardWidth = 176, wide = false, pick = null, scale = 8 } = opts;
-  root.innerHTML = "";
-  root.classList.remove("aslist");
-  root.classList.add("asfan");
-  if (!rounds.length) return { cards: new Map(), picks: [] };
-
-  const CARD = cardWidth, GAP = 14, U = CARD + GAP;
-  const widest = Math.max(...rounds.map((r) => r.matches.length));
-  const W = widest * U;
-  // Every round shown here is small enough (2 or 4 matches wide, at most) to fit under the
-  // wider cascade above, so the fan centers itself in the container; its labels should
-  // instead read flush with the Final/Semifinals/Quarterfinals column to their left, so pull
-  // them back by whatever the centering has inset them by.
-  const fits = W <= root.clientWidth;
-  const inset = fits ? (root.clientWidth - W) / 2 : 0;
-
-  const fan = el("div", "fan");
-  fan.style.width = W + "px";
-  const cards = new Map();
-  const picks = [];
-  rounds.forEach((round, ri) => {
-    const label = el("div", "fan-label" + (fits ? " flush" : ""), `Round of ${round.matches.length * scale}`);
-    if (inset) label.style.marginLeft = `-${inset}px`;
-    fan.append(label);
-    const row = el("div", "fan-row");
-    const n = round.matches.length;
-    const isPickRound = pick && ri === rounds.length - 1;
-    round.matches.forEach((m, j) => {
-      const card = matchCard(m, t, cov, onClick, wide);
-      card.style.width = CARD + "px";
-      // Center each round at its natural width so narrow rows (the QF apex, R16, R32) stay
-      // put and fully visible.
-      const cx = W / 2 + (j - (n - 1) / 2) * U;
-      let node = card;
-      if (isPickRound) {
-        node = el("div", "fan-cell" + (j === pick.selected ? " picked" : ""));
-        node.style.width = CARD + "px";        // keep the selector's width from skewing centering
-        card.style.position = "static";        // the cell carries the absolute placement now
-        const btn = el("button", "qsel" + (j === pick.selected ? " on" : ""), pick.labels[j]);
-        btn.title = `Show ${pick.labels[j]} — earlier rounds`;
-        btn.onclick = () => pick.onPick(j);
-        node.append(card, btn);
-        picks.push(btn);
-      }
-      node.style.left = (cx - CARD / 2) + "px";
-      row.append(node);
-      cards.set(m.id, card);
-    });
-    fan.append(row);
-  });
-  root.append(fan);
-
-  // Rows carry absolutely-placed cards, so give each the measured card height to flow.
-  for (const row of fan.querySelectorAll(".fan-row")) {
-    let h = 0;
-    for (const c of row.children) h = Math.max(h, c.offsetHeight);
-    row.style.height = h + "px";
-  }
-
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "wires");
-  const rect = fan.getBoundingClientRect();
-  const port = (node, edge) => {
-    const r = node.getBoundingClientRect();
-    return { x: r.left - rect.left + r.width / 2,
-             y: r.top - rect.top + (edge === "top" ? 0 : r.height) };
-  };
-  for (let r = 0; r < rounds.length - 1; r++) {
-    const kids = rounds[r + 1].matches;
-    rounds[r].matches.forEach((m, j) => {
-      const a = port(cards.get(m.id), "bottom");
-      for (const kid of [kids[2 * j], kids[2 * j + 1]]) {
-        if (!kid) continue;
-        const b = port(cards.get(kid.id), "top");
-        const mid = (a.y + b.y) / 2;
-        const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        p.setAttribute("d", `M ${a.x} ${a.y} C ${a.x} ${mid}, ${b.x} ${mid}, ${b.x} ${b.y}`);
-        svg.appendChild(p);
-      }
-    });
-  }
-  svg.setAttribute("width", W);
-  svg.setAttribute("height", fan.scrollHeight);
-  fan.appendChild(svg);
-
-  return { cards, picks };
-}
+// Slice a round's matches into n equal groups, keeping group i.
+const sliceN = (matches, i, n) => matches.slice((i * matches.length) / n, ((i + 1) * matches.length) / n);
 
 // Label each of a round's n equal slices by its best-seeded (or first-named) entrant,
-// e.g. "Sinner" — falling back to an ordinal ("Quarter 2") when nobody's decided yet.
-function bestSeedLabels(round, n, suffix, fallbackPrefix) {
+// e.g. "Sinner" — falling back to an ordinal ("Section 2") when nobody's decided yet.
+function bestSeedLabels(matches, n, fallbackPrefix) {
   const labels = [];
-  const size = round.matches.length / n;
   for (let i = 0; i < n; i++) {
     let best = null;                       // {seed, name}
-    for (const m of round.matches.slice(i * size, (i + 1) * size)) {
+    for (const m of sliceN(matches, i, n)) {
       for (const s of [m.a, m.b]) {
         const seed = parseInt(s.seed, 10);
         if (!s.name || s.name === "TBD" || isNaN(seed)) continue;
@@ -434,19 +262,106 @@ function bestSeedLabels(round, n, suffix, fallbackPrefix) {
       }
     }
     const surname = best && best.name.split(" ").slice(-1)[0];
-    labels.push(surname ? `${surname}${suffix}` : `${fallbackPrefix} ${i + 1}`);
+    labels.push(surname || `${fallbackPrefix} ${i + 1}`);
   }
   return labels;
 }
 
-export function quarterLabels(t) {
-  return bestSeedLabels(t.rounds[0], 4, " ¼", "Quarter");
-}
+// Textless selector chip glyph: two horizontal lines, echoing a match card's two rows.
+const CHIP_ICON = `<svg viewBox="0 0 14 10" width="14" height="10" aria-hidden="true">
+  <rect x="1" y="1" width="12" height="2.6" rx="1.3"/>
+  <rect x="1" y="6.4" width="12" height="2.6" rx="1.3"/></svg>`;
 
-// Label each of a quarter's 4 round-of-32 matches by its earliest round's best seed —
-// the same idea as quarterLabels, one level deeper. `overflow` is that quarter's own
-// round of 64 (and, on a slam, round of 128); the earliest of those is the widest.
-export function slotLabels(overflow) {
-  const earliest = overflow.reduce((a, b) => (b.matches.length > a.matches.length ? b : a));
-  return bestSeedLabels(earliest, 4, "", "Section");
+// The by-quarter view is one 8-column grid read top-down: the final (1 card,
+// spanning all 8 columns) over the semifinals (2) over the quarterfinals (4) over
+// the whole round of 16 (8 across — those cards flip to the stacked two-line
+// layout to fit). Deeper rounds don't fit whole, so a single selector chip under
+// each round-of-16 match picks the sixteenth of the draw to unfold beneath it:
+// round of 32 (2 cards), round of 64 (4), round of 128 (8, stacked again). Grid
+// column spans center each match over its feeders; one SVG overlay draws all the
+// wires, hot along the picked path.
+export function renderQuarters(t, root, cov, onClick, section) {
+  root.innerHTML = "";
+  root.className = "quarters";
+  const rs = t.rounds;
+  const n = rs.length;
+
+  const rows = [
+    { label: "Final", matches: rs[n - 1].matches },
+    { label: "Semifinals", matches: rs[n - 2].matches },
+    { label: "Quarterfinals", matches: rs[n - 3].matches },
+    { label: "Round of 16", matches: rs[n - 4].matches },
+  ];
+  // Rounds below the sixteen, latest first, sliced to the picked sixteenth. Labels
+  // reflect the full round's size ("Round of 32"), not the slice's.
+  const below = rs.slice(0, n - 4).reverse();
+  if (below.length) {
+    rows[3].pick = { ...section, labels: bestSeedLabels(rs[0].matches, 8, "Section") };
+    for (const r of below) {
+      rows.push({ label: `Round of ${r.matches.length * 2}`,
+                  matches: sliceN(r.matches, section.selected, 8) });
+    }
+  }
+
+  const cards = [];               // per row: card elements, for wiring
+  const chips = [];               // per row: selector chips (pick rows only)
+  rows.forEach((row, i) => {
+    root.append(el("div", "qlabel", row.label));
+    cards[i] = []; chips[i] = [];
+    const span = 8 / row.matches.length;
+    row.matches.forEach((m, j) => {
+      const cell = el("div", "qcell span" + span);
+      const card = matchCard(m, t, cov, onClick, span > 1);   // 8-across rows stack the names
+      cell.append(card);
+      if (row.pick) {
+        // The chip itself is wordless; the seed-leader label lives in the tooltip.
+        const btn = el("button", "qsel" + (j === row.pick.selected ? " on" : ""));
+        btn.innerHTML = CHIP_ICON;
+        btn.title = `Show ${row.pick.labels[j]} — earlier rounds`;
+        btn.setAttribute("aria-label", btn.title);
+        btn.onclick = () => row.pick.onPick(j);
+        cell.append(btn);
+        if (j === row.pick.selected) cell.classList.add("picked");
+        chips[i].push(btn);
+      }
+      cards[i].push(card);
+      root.append(cell);
+    });
+  });
+  fitNames(root);
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "wires");
+  const rect = root.getBoundingClientRect();
+  const wire = (from, to, hot) => {
+    const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+    const x1 = a.left - rect.left + a.width / 2, y1 = a.bottom - rect.top;
+    const x2 = b.left - rect.left + b.width / 2, y2 = b.top - rect.top;
+    const mid = (y1 + y2) / 2;
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`);
+    if (hot) p.setAttribute("class", "hot");
+    svg.appendChild(p);
+  };
+  rows.forEach((row, i) => {
+    const next = rows[i + 1];
+    if (!next) return;
+    if (next.matches.length === row.matches.length * 2) {
+      // A tree step: the next row's matches 2j and 2j+1 feed this row's match j.
+      // Above the chips, the picked sixteenth's path up to the final is hot.
+      row.matches.forEach((_, j) => {
+        for (const k of [2 * j, 2 * j + 1]) {
+          const hot = below.length > 0 && i < 3 &&
+                      k === Math.floor((section.selected * next.matches.length) / 8);
+          wire(cards[i][j], cards[i + 1][k], hot);
+        }
+      });
+    } else if (row.pick) {
+      // A chip step: the picked chip fans out to every match of the row below.
+      for (const kid of cards[i + 1]) wire(chips[i][row.pick.selected], kid, true);
+    }
+  });
+  svg.setAttribute("width", root.scrollWidth);
+  svg.setAttribute("height", root.scrollHeight);
+  root.appendChild(svg);
 }

@@ -13,12 +13,13 @@
     <div class="wrap">
       <p class="brand">Love All</p>
       <h1 id="pageTitle">Live draws</h1>
-      <p class="tag">Grand Slam and Masters/1000 draws: live while play is on, plus recent
+      <p class="tag">Grand Slam, 1000 and 500 draws: live while play is on, plus recent
         finished draws to look back on. Each match box shows how much shot-by-shot charting the
         <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Match
           Charting Project</a>
-        has for it. Open one for each player's signature shot sequences. On a finished match you
-        can jump straight to its full chart, or chart it yourself if no one has.
+        has for it. Open one for each player's court patterns — what they do with a given
+        incoming ball, drawn on a court. On a finished match you can jump straight to its full
+        chart, or chart it yourself if no one has.
       </p>
       <p class="meta"><span id="updated">loading…</span> ·
         <a href="https://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/"
@@ -41,16 +42,14 @@
 
   <main class="wrap">
     <div id="status" class="status">Loading current draws…</div>
-    <section id="cascadeWrap" hidden>
-      <div id="cascade" class="cascade"></div>
-      <div id="quarterTop" class="bracket"></div>
-    </section>
     <div id="bracket" class="bracket"></div>
   </main>
 
-  <aside id="matchup" class="matchup" hidden>
+  <aside id="matchup" class="matchup" hidden role="dialog" aria-modal="true">
     <button class="close" id="matchupClose" aria-label="Close">×</button>
-    <div id="matchupBody"></div>
+    <div class="mvariants" id="mVariants" role="group" aria-label="Panel style"></div>
+    <header class="mtop" id="matchupHead"></header>
+    <div class="mbody" id="matchupBody"></div>
   </aside>
   <div id="scrim" class="scrim" hidden></div>
 

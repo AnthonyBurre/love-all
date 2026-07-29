@@ -44,12 +44,28 @@ def _insights() -> "tuple[dict, dict]":
     return universe, charted
 
 
-def _chart_id(m: dict, gender: str, year: int, tk: str, charted: dict) -> "str | None":
+def _tourn_keys(t: dict) -> "list[str]":
+    """The db keys this tournament might be filed under: its venue city and its feed name.
+
+    The charted db names events by city; the feed names them by sponsor, and the two only
+    coincide for the slams ('Wimbledon') — where the city is the *wrong* answer ('London').
+    Rather than branch on tier, try both: the rest of the lookup key is gender + year +
+    both players, so a spurious second key can't collide with anything real.
+    """
+    return list(dict.fromkeys(
+        players.tourn_key(v) for v in (t.get("city"), t.get("name")) if v))
+
+
+def _chart_id(m: dict, gender: str, year: int, tks: "list[str]", charted: dict) -> "str | None":
     a, b = m["a"]["name"], m["b"]["name"]
     if not a or not b or a == "TBD" or b == "TBD":
         return None
-    key = (gender, year, tk, frozenset((players.normalize(a), players.normalize(b))))
-    return charted.get(key)
+    pair = frozenset((players.normalize(a), players.normalize(b)))
+    for tk in tks:
+        found = charted.get((gender, year, tk, pair))
+        if found:
+            return found
+    return None
 
 
 def _annotate(t: dict, universe: dict, charted: dict) -> None:
@@ -65,8 +81,8 @@ def _annotate(t: dict, universe: dict, charted: dict) -> None:
 
     if not t.get("completed"):
         return
-    tk = players.tourn_key(t["name"])
-    ids = {m["id"]: _chart_id(m, t["gender"], t["year"], tk, charted)
+    tks = _tourn_keys(t)
+    ids = {m["id"]: _chart_id(m, t["gender"], t["year"], tks, charted)
            for r in t["rounds"] for m in r["matches"]}
     if not any(ids.values()):             # nothing charted yet → per-player shading
         return

@@ -12,7 +12,7 @@ The store (``data/history.json``) holds serialized tournament payloads (``bracke
 shape) plus ``year``/``season``/``completed``/``archived_at``. It is structural only — the
 DB-derived ``matched``/``charted`` annotation is re-applied fresh by ``build_brackets`` each
 run, so charting that lands after archival still shows up. Retention (``prune``) keeps the
-last two years of slams plus the single most-recent event of any tier.
+last two years of slams, plus the two most recent finished events of every other tier.
 """
 
 import copy
@@ -83,18 +83,42 @@ def archive(live_payloads: list, store: list, today: "date | None" = None) -> in
     return added
 
 
+# How many finished events to keep per non-slam tier. Below the slams these turn over
+# weekly, so they age out by count rather than by year: enough to look back over the last
+# fortnight of the tour without the dropdown growing all season.
+_KEEP_PER_TIER = 2
+
+
 def prune(store: list, today: "date | None" = None) -> list:
-    """Keep slams from the last two years plus the single most-recently-archived event;
-    drop the rest. Mutates and returns ``store``."""
+    """Keep slams from the last two years, the ``_KEEP_PER_TIER`` most recently archived
+    events of every other tier, and the single most-recent archive whatever its tier.
+
+    Retention counts *events*, not entries: a combined event like Washington archives one
+    row per gender, and both are kept or dropped together. Mutates and returns ``store``.
+    """
     today = today or date.today()
-    keep_ids = set()
+    keep = set()                              # (id, gender) entries that survive
+    by_tier: dict = {}                        # tier -> event id -> newest archived_at
+
     for e in store:
-        if "grand slam" in (e.get("tier") or "").lower() and e.get("year", 0) >= today.year - 2:
-            keep_ids.add((e["id"], e["gender"]))
+        tier = (e.get("tier") or "").lower()
+        if "grand slam" in tier:
+            if e.get("year", 0) >= today.year - 2:
+                keep.add((e["id"], e["gender"]))
+            continue
+        stamps = by_tier.setdefault(tier, {})
+        stamps[e["id"]] = max(stamps.get(e["id"], ""), e.get("archived_at", ""))
+
+    recent = set()
+    for stamps in by_tier.values():
+        ranked = sorted(stamps, key=lambda i: stamps[i], reverse=True)
+        recent.update(ranked[:_KEEP_PER_TIER])
+    keep.update((e["id"], e["gender"]) for e in store if e["id"] in recent)
+
     if store:
         newest = max(store, key=lambda e: e.get("archived_at", ""))
-        keep_ids.add((newest["id"], newest["gender"]))
-    store[:] = [e for e in store if (e["id"], e["gender"]) in keep_ids]
+        keep.add((newest["id"], newest["gender"]))
+    store[:] = [e for e in store if (e["id"], e["gender"]) in keep]
     return store
 
 

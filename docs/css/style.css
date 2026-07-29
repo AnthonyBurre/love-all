@@ -53,6 +53,8 @@ a { color: var(--acc-d); }
 .seg { display: inline-flex; background: #ffffffb0; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
 .seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; }
 .seg button.on { background: var(--acc); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg .ico { display: block; line-height: 0; }
+.seg svg { display: block; fill: currentColor; }
 
 /* tournament picker: a dropdown (scales as events accumulate, native on mobile) */
 .tourselect {
@@ -75,51 +77,44 @@ a { color: var(--acc-d); }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
-/* business-end cascade: final -> semifinals -> quarter selectors, top-down */
-.cascade { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 8px; column-gap: 10px; padding: 12px 0 20px; }
-.cascade-label { grid-column: 1 / 5; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 20px; }
-.cascade-label:first-child { margin-top: 0; }
-.cslot { display: flex; justify-content: center; align-items: flex-end; min-width: 0; }
-.cslot .match { width: min(250px, 100%); position: relative; z-index: 2; }
-.cslot.slot-final { grid-column: 1 / 5; }
-.cslot.slot-sf { grid-column: span 2; }
-.cslot.slot-qf { grid-column: span 1; flex-direction: column; align-items: center; gap: 8px; }
-.cslot.slot-qf.qf-on .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
-/* per-quarterfinal selector: pick one and the fan flows down from it */
-.qsel { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 13px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+/* by-quarter view: one 8-column grid read top-down — final over semifinals over
+   quarterfinals over the whole round of 16 (8 across, stacked-name cards, a
+   selector chip under each); the picked sixteenth's rounds finish the stack.
+   Column spans center each match over its feeders; the wires are one SVG
+   overlay, hot along the picked path. */
+.quarters { position: relative; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); row-gap: 8px; column-gap: 8px; padding: 12px 0 30px; }
+.qlabel { grid-column: 1 / -1; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 20px; }
+.qlabel:first-child { margin-top: 0; }
+.qcell { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.qcell.span2 { grid-column: span 2; }
+.qcell.span4 { grid-column: span 4; }
+.qcell.span8 { grid-column: span 8; }
+.qcell .match { width: min(250px, 100%); }
+/* 8-across rows (round of 16, round of 128) run narrow and tall: each player gets
+   two lines — name left, sets right beneath — so names keep the full card width
+   as the window narrows */
+.qcell.span1 .match { width: 100%; padding: 6px 8px; }
+.qcell.span1 .side { flex-direction: column; align-items: stretch; gap: 0; }
+.qcell.span1 .nm { font-size: 12px; }
+.qcell.span1 .sets { font-size: 11px; text-align: right; }
+.qcell.picked .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
+.quarters .wires .hot { stroke: var(--acc); stroke-width: 2.25; }
+/* textless selector chip under each round-of-16 match: pick one and its earlier
+   rounds render below; the seed-leader label lives in the tooltip */
+.qsel { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 10px; color: var(--muted); cursor: pointer; line-height: 0; }
+.qsel svg { display: block; fill: currentColor; }
 .qsel:hover { border-color: var(--acc); color: var(--ink); }
 .qsel.on { background: var(--acc); border-color: var(--acc); color: #fff; }
 .qchip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; position: relative; z-index: 2; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qchip:hover { border-color: var(--acc); color: var(--ink); }
 .qchip.on { background: var(--acc); border-color: var(--acc); color: #fff; }
-.cascade .wires .hot { stroke: var(--acc); stroke-width: 2.25; }
 
 /* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
 .bracket { display: flex; gap: 34px; overflow-x: auto; padding: 14px 0 30px; align-items: flex-start; position: relative; }
-#quarterTop { padding-top: 0; }
 .round { flex: 0 0 auto; width: 232px; }
 .round h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); position: sticky; top: 0; background: var(--bg); padding: 4px 0; z-index: 3; }
 .round-list { position: relative; }
 .round-list .match { position: absolute; left: 0; right: 0; }
-
-/* "by quarter" drill-down: the chosen quarter fanning straight down (R16 → R32), each round a
-   row of absolutely-placed cards, wired top-down. Always narrow enough to fit its container,
-   so no horizontal scrolling; overflow stays visible so a selector's wire (see .fan-cell) can
-   bleed down past this block's own box into the pinned block that follows it. */
-.bracket.asfan { display: block; overflow: visible; }
-.fan { position: relative; margin: 2px auto 12px; }
-.fan-label { text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 10px; }
-.fan-label.flush { text-align: left; }
-.fan-label:first-child { margin-top: 0; }
-.fan-row { position: relative; margin-bottom: 46px; }
-.fan-row:last-of-type { margin-bottom: 0; }
-.fan-row .match { position: absolute; top: 0; }
-
-/* Round-of-32 selector: pick one and its own earlier rounds (round of 64 down to round 1
-   within that match's slot of the draw) fan out in the block below, same idea as the
-   cascade's quarterfinal selectors. */
-.fan-cell { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.fan-cell.picked .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
 
 .wires { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
 .wires path { fill: none; stroke: color-mix(in srgb, var(--acc) 38%, var(--line)); stroke-width: 1.75; }
@@ -140,9 +135,10 @@ a { color: var(--acc-d); }
 .match .side.win .nm { font-weight: 700; }
 .match .side.lose { color: var(--muted); }
 .nm { flex: 1; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sets { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); letter-spacing: 1px; }
+.sets { display: inline-flex; gap: 5px; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); }
+.set.won { font-weight: 700; color: var(--ink); }   /* set winner's games, bracket + drawer */
 
-/* wide layout (cascade + by-quarter fan): groups by column instead of by player — both
+/* wide layout (by-quarter view): groups by column instead of by player — both
    names on one line, both scores on the line below — so a match reads in one row. */
 .match .namesrow, .match .scoresrow { display: flex; justify-content: space-between; gap: 8px; }
 .match .scoresrow { margin-top: 3px; }
@@ -153,15 +149,54 @@ a { color: var(--acc-d); }
 .match .detail { margin-top: 4px; font-size: 11px; color: var(--muted); }
 .match .detail.live { color: var(--warn); font-weight: 700; }
 
-/* matchup drawer */
-.scrim { position: fixed; inset: 0; background: rgba(20,30,25,.4); z-index: 20; }
-.matchup { position: fixed; top: 0; right: 0; height: 100%; width: min(540px, 94vw); background: var(--card); z-index: 21; box-shadow: -8px 0 30px rgba(0,0,0,.18); overflow-y: auto; padding: 22px; }
-.matchup .close { position: absolute; top: 12px; right: 14px; border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--muted); }
-.mh { margin: 0 6px 2px 0; font-size: 20px; }
-.mh small { color: var(--muted); font-weight: 500; font-size: 13px; }
-.mh .score { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 15px; font-weight: 600; }
-.mstate { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
+/* matchup panel: a centered dialog over a blurred scrim (bottom sheet on phones).
+   data-variant picks the look while the styles are auditioned:
+   paper = quiet card · hero = tournament-gradient header · board = score tiles */
+.scrim { position: fixed; inset: 0; background: rgba(12,18,15,.45); backdrop-filter: blur(2.5px); z-index: 20; }
+.matchup { position: fixed; z-index: 21; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(880px, 94vw); max-height: min(88vh, 860px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.35); animation: pop .16s ease-out; }
+.matchup[hidden] { display: none; }
+@keyframes pop { from { opacity: 0; transform: translate(-50%, -47.5%) scale(.97); } }
+.matchup .close { position: absolute; top: 8px; right: 10px; z-index: 3; border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; }
+
+/* temporary picker while the panel styles are auditioned: floats bottom-left */
+.mvariants { position: absolute; bottom: 12px; left: 14px; z-index: 3; display: inline-flex; gap: 3px; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--card) 82%, transparent); border: 1px solid var(--line); backdrop-filter: blur(6px); box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.mvariants button { border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; }
+.mvariants button.on { background: var(--acc); color: #fff; }
+
+/* scoreboard header (non-scrolling): a row per player, set scores right-aligned */
+.mtop { flex: none; padding: 16px 46px 12px 20px; border-bottom: 1px solid var(--line); }
+.mrow { display: flex; align-items: baseline; gap: 9px; font-size: 19px; padding: 2px 0; }
+.mflag { flex: none; min-width: 20px; font-size: 16px; }
+.mrow .mname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.mrow.win .mname { font-weight: 800; }
+.mrow.lose { color: var(--muted); }
+.msets { flex: none; margin-left: auto; display: inline-flex; gap: 8px; font-variant-numeric: tabular-nums; font-size: 15px; color: var(--muted); }
+.mstate { font-size: 12.5px; color: var(--muted); margin: 6px 0 0 29px; }
 .mstate .live { color: var(--warn); font-weight: 700; }
+.mbody { overflow-y: auto; overscroll-behavior: contain; padding: 14px 20px 20px; }
+
+/* hero: the header band wears the tournament's colours, like the site head */
+.matchup[data-variant="hero"] { border: 0; }
+.matchup[data-variant="hero"] .mtop { background: linear-gradient(160deg, var(--acc), var(--acc-d)); border-bottom: 3px solid var(--trim); color: #fff; padding-top: 18px; }
+.matchup[data-variant="hero"] .mrow.lose { color: var(--head-meta); }
+.matchup[data-variant="hero"] .mtop .seed { color: var(--head-meta); }
+.matchup[data-variant="hero"] .msets { color: var(--head-meta); }
+.matchup[data-variant="hero"] .mtop .set.won { color: #fff; }
+.matchup[data-variant="hero"] .mstate { color: var(--head-meta); }
+.matchup[data-variant="hero"] .mstate .live { color: #ffd9b0; }
+.matchup[data-variant="hero"] .close { color: #fff; }
+
+/* board: tinted header, each set score in its own tile, winner's tiles filled */
+.matchup[data-variant="board"] { border-top: 4px solid var(--acc); }
+.matchup[data-variant="board"] .mtop { background: color-mix(in srgb, var(--acc) 7%, var(--card)); border-bottom: 1px solid color-mix(in srgb, var(--acc) 22%, var(--line)); }
+.matchup[data-variant="board"] .mrow { padding: 3px 0; }
+.matchup[data-variant="board"] .msets { gap: 5px; }
+.matchup[data-variant="board"] .mtop .set { min-width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: 13.5px; }
+.matchup[data-variant="board"] .mtop .set.won { background: var(--acc); border-color: var(--acc); color: #fff; }
 
 /* finished-match charting call-to-action: link to the chart, or invite one */
 .chartcta { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; border: 1px solid var(--line); }
@@ -176,7 +211,7 @@ a { color: var(--acc-d); }
 .notekey .courts svg { flex: 0 1 150px; max-width: 46%; height: auto; }
 .notekey .keytext div { margin: 6px 0; line-height: 1.5; }
 .notekey code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
-.ct-line { stroke: var(--muted); stroke-width: 1.4; }
+.ct-line { stroke: var(--muted); stroke-width: 1.4; fill: none; }
 .ct-line-thin { stroke: var(--muted); stroke-width: 0.9; }
 .ct-net { stroke: var(--ink); stroke-width: 2.2; }
 .ct-dash { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 4 3; }
@@ -196,10 +231,11 @@ a { color: var(--acc-d); }
 .wp-line .pa { height: 100%; background: color-mix(in srgb, var(--a) 65%, var(--card)); }
 .wp-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 
-.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-.pcard { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.pcard { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
 .pcard h4 { margin: 0 0 2px; font-size: 15px; }
-.pcard .flag { color: var(--muted); font-size: 12px; }
+.pcard h4 .seed { vertical-align: 12%; }
+.pcard .flag { font-size: 14px; color: var(--muted); }
 .pcard .arch { display: inline-block; margin: 8px 0; font-size: 12px; background: color-mix(in srgb, var(--acc) 10%, var(--card)); color: var(--acc-d); padding: 3px 8px; border-radius: 999px; }
 .stat { font-size: 12.5px; margin: 5px 0; color: var(--ink); }
 .stat .k { color: var(--muted); }
@@ -217,6 +253,17 @@ a { color: var(--acc-d); }
 .pat.gold { background: color-mix(in srgb, #d7b53d 12%, var(--card)); border-radius: 6px; padding: 3px 6px; }
 .phead-note { text-transform: none; letter-spacing: 0; font-weight: 500; }
 .pat code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+/* Expandable ball-path court under a signature or trigger pattern. Collapsed by default;
+   the summary is a small tap target, the SVG reuses the ct-* court styles above. */
+.sig-item { margin: 3px 0; }
+.rally { margin: 2px 0 4px; }
+.rally > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--acc-d); }
+.rally > summary::-webkit-details-marker { display: none; }
+.rally > summary::before { content: "▸"; font-size: 9px; transition: transform .12s ease; }
+.rally[open] > summary::before { transform: rotate(90deg); }
+.rally .court { margin: 4px 0 2px; }
+.rally .court svg { width: 148px; height: auto; display: block; }
 .phead { margin: 10px 0 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .uncharted { font-size: 12.5px; color: var(--warn); }
 .uncharted a { font-weight: 700; }
@@ -239,5 +286,9 @@ a { color: var(--acc-d); }
 @media (max-width: 700px) {
   .site-head h1 { font-size: 26px; }
   .nm { font-size: 13px; }
+  /* the dialog becomes a bottom sheet: full width, rounded top, slides up */
+  .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; border-radius: 16px 16px 0 0; animation: sheet .2s ease-out; }
+  .mrow { font-size: 17px; }
 }
+@keyframes sheet { from { opacity: 0; transform: translateY(28px); } }
 @media (max-width: 560px) { .cards { grid-template-columns: 1fr; } .legend { margin-left: 0; } }

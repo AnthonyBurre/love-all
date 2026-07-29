@@ -89,11 +89,13 @@ def serialize(tournament, use_fixture: bool = True) -> dict:
     slotted = all(getattr(m, "slot", 0) for r in rds for m in r["matches"])
     return {
         "id": tournament.id, "name": tournament.name, "tier": tournament.tier,
+        "city": getattr(tournament, "city", ""),
         "gender": tournament.gender, "best_of": tournament.best_of, "slotted": slotted,
         "rounds": [
             {"rank": r["rank"], "label": r["label"], "matches": [
                 {"id": m.id, "state": m.state, "detail": m.detail, "feeds": m.feeds,
                  "placeholder": getattr(m, "placeholder", False),
+                 "date": getattr(m, "date", None),
                  "a": _side_dict(m.a), "b": _side_dict(m.b)}
                 for m in r["matches"]]}
             for r in rds],
