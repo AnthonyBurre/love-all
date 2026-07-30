@@ -130,7 +130,8 @@ def test_one_city_can_straddle_levels_by_tour():
 
 
 def test_parse_carries_the_venue_city():
-    t = espn.parse({"events": [_event("888-2026", "Mubadala DC Open", "Washington, USA")]})[0]
+    t = espn.parse({"events": [_event("888-2026", "Mubadala DC Open", "Washington, USA")]},
+                   cal=CAL_2026)[0]
     assert t.city == "Washington"               # not the sponsor's name for it
     assert brackets.serialize(t)["city"] == "Washington"
 
