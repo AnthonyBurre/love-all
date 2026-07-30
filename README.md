@@ -1,15 +1,14 @@
 # Tennis match charting — analysis and a live bracket site
 
-> **[→ Visit Love All](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam, 1000 & 500 draws
+> **[→ Visit Tournament Analyzer](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam, 1000 & 500 draws
 
-The [Match Charting
-Project](https://github.com/JeffSackmann/tennis_MatchChartingProject) is a
+The [Match Charting Project](https://github.com/JeffSackmann/tennis_MatchChartingProject) is a
 crowdsourced dataset of **shot-by-shot** records for 5,000+ professional tennis
-matches — every rally typed out as point strings. This repo decodes that
+matches typed out as point strings. This repo decodes that
 notation into queryable tables, derives point/rally/stroke analytics from it,
 and publishes an interactive site to GitHub Pages.
 
-## The site — Love All
+## The site
 
 `docs/` is a GitHub Pages site showing **Grand Slam, Masters/WTA-1000 and ATP/WTA-500
 brackets**, drawn as a linked tree with each winner wired to the next-round match it feeds.
