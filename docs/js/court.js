@@ -9,6 +9,12 @@
 // markers. That's all a stored pattern string ("serve wide · BH slice→3") ever encodes —
 // the lead-up shots of a trigger, never a winner/error. Keep the geometry below in sync
 // with court.py; that module stays the canonical renderer for reports.
+//
+// Presentation has deliberately diverged, though: these draw at ~96px in a panel, where
+// court.py's reports draw at full size. So this file adds a terminal arrowhead, a dashed
+// neutral treatment for a ball the profiled player received, and a tinted half marking
+// whose side is whose — cues that earn their place only at thumbnail scale. Geometry is
+// shared; styling is not, and nothing here needs porting back.
 
 // --- court geometry (viewBox 150 x 190; matches court.py and the notation-key courts) ---
 const W = 150, H = 190;
@@ -25,6 +31,11 @@ const TIP_BACK = 3.4;                        // how far the wings trail behind t
 const TIP_HALF = 2.5;                        // half-width of the V
 const TIP_MIN = 9;                           // shorter than this, no room for a tip
 const TIP_TWO_MIN = 20;                      // shorter than this, one centred tip
+
+// Terminal arrowhead: marks where a drawn ball finished, so the last stroke of a
+// sequence reads as an endpoint rather than as one more segment.
+const HEAD_LEN = 6.5;
+const HEAD_HALF = 3.2;
 
 const f = (v) => String(Math.round(v * 10) / 10);
 
@@ -43,13 +54,35 @@ function tips(x1, y1, x2, y2, cls) {
   });
 }
 
-// One drawn ball: the line plus its wingtips. Exported so the notation-key courts in
-// matchup.js draw their example shots the same way as a real ball path.
-export function shotLine(x1, y1, x2, y2, { faint = false, shot = null } = {}) {
-  const dim = faint ? " faint" : "";
+// A filled triangle at (x2,y2), pointing along the segment. Used on the stroke that
+// finishes a drawing — one head reads faster than a trail of chevrons, and it puts the
+// emphasis where the ball landed.
+function head(x1, y1, x2, y2, cls) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+  if (len < HEAD_LEN + 2) return "";
+  const ux = dx / len, uy = dy / len;
+  const nx = -uy, ny = ux;
+  const bx = x2 - HEAD_LEN * ux, by = y2 - HEAD_LEN * uy;
+  return `<path d="M${f(x2)} ${f(y2)}L${f(bx + HEAD_HALF * nx)} ${f(by + HEAD_HALF * ny)}` +
+    `L${f(bx - HEAD_HALF * nx)} ${f(by - HEAD_HALF * ny)}Z" class="${cls}"/>`;
+}
+
+// One drawn ball: the line plus its direction marks. Exported so the notation-key courts
+// in matchup.js draw their example shots the same way as a real ball path.
+// `arrow` swaps the mid-line chevrons for a single head at the far end (the last stroke);
+// `incoming` marks a ball the profiled player received rather than hit, which the CSS
+// draws dashed and neutral so the two roles never have to be told apart by weight alone.
+export function shotLine(x1, y1, x2, y2,
+  { faint = false, shot = null, arrow = false, incoming = false } = {}) {
+  const mods = (faint ? " faint" : "") + (incoming ? " incoming" : "");
   const idx = shot == null ? "" : ` data-shot="${shot}"`;
-  return `<line${idx} x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" class="ct-shot${dim}" fill="none"/>`
-    + tips(x1, y1, x2, y2, "ct-tip" + dim).join("");
+  const line = `<line${idx} x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" class="ct-shot${mods}" fill="none"/>`;
+  // An incoming ball runs from the opponent's marker to the bounce ring, so its direction
+  // is already fixed by its endpoints — chevrons would only add noise to the dashes.
+  if (incoming) return line;
+  return line + (arrow
+    ? head(x1, y1, x2, y2, "ct-head" + mods)
+    : tips(x1, y1, x2, y2, "ct-tip" + mods).join(""));
 }
 
 const depthY = (frac, top) => (top ? NET - frac * HALF : NET + frac * HALF);
@@ -105,8 +138,9 @@ export function rallySvg(tokens, court = "deuce") {
   let px = serveOriginX(court), py = BOTTOM - 4;         // server's contact, anchors stroke 1
   const els = [`<circle cx="${f(px)}" cy="${f(py)}" r="2.3" fill="none" class="ct-player"/>`];
   bs.forEach((b, i) => {
-    // The final stroke is drawn bold, the lead-up faint.
-    els.push(shotLine(px, py, b.x, b.y, { faint: i !== bs.length - 1, shot: i + 1 }));
+    // The final stroke is drawn bold and arrow-headed, the lead-up faint and chevroned.
+    const last = i === bs.length - 1;
+    els.push(shotLine(px, py, b.x, b.y, { faint: !last, arrow: last, shot: i + 1 }));
     px = b.x; py = b.y;
   });
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${COURT}${els.join("")}</svg>`;
@@ -138,9 +172,16 @@ export function patternSvg(pattern) {
 
 // --- court-state patterns (player_patterns table) ----------------------------------------
 // One incoming ball, one response. The incoming ball lands on the near half — the profiled
-// player's side, matching the "into the BH corner" wording — and the response lands up top,
-// drawn bold. Return-depth states move the incoming bounce short or deep; every other
-// bounce sits at the default rally depth, like the token drawings.
+// player's side, matching the "into the BH corner" wording — and the response lands up top.
+// Return-depth states move the incoming bounce short or deep; every other bounce sits at
+// the default rally depth, like the token drawings.
+//
+// These render at thumbnail size, where a viewer has to know instantly which half is whose
+// and which of the two balls came first. Three cues carry that, so no one of them has to
+// survive alone: the profiled player's half is tinted, the ball they *receive* is dashed
+// and neutral while the one they *hit* is solid and in their colour, and only the response
+// gets an arrowhead. A hollow ring sits where the incoming ball bounced — the pivot the
+// answer is played from.
 const PAIR_DEPTH = { short: 0.33, "mid-depth": DEPTH_DEFAULT, deep: 0.86 };
 
 export function pairSvg(incCode, respCode, depth = "") {
@@ -150,10 +191,13 @@ export function pairSvg(incCode, respCode, depth = "") {
   };
   const out = { x: laneX(String(respCode), true), y: depthY(DEPTH_DEFAULT, true) };
   const ox = LANE_MID, oy = TOP + 4;      // opponent's contact, anchors the incoming ball
+  // Tint goes under the court lines; the balls go over them.
+  const mine = `<rect x="${LEFT}" y="${NET}" width="${RIGHT - LEFT}" height="${BOTTOM - NET}" class="ct-mine"/>`;
   const els = [
-    `<circle cx="${f(ox)}" cy="${f(oy)}" r="2.3" fill="none" class="ct-player"/>`,
-    shotLine(ox, oy, inc.x, inc.y, { faint: true, shot: 1 }),
-    shotLine(inc.x, inc.y, out.x, out.y, { shot: 2 }),
+    `<circle cx="${f(ox)}" cy="${f(oy)}" r="2.6" class="ct-them"/>`,
+    shotLine(ox, oy, inc.x, inc.y, { incoming: true, shot: 1 }),
+    `<circle cx="${f(inc.x)}" cy="${f(inc.y)}" r="3" class="ct-bounce"/>`,
+    shotLine(inc.x, inc.y, out.x, out.y, { arrow: true, shot: 2 }),
   ];
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${COURT}${els.join("")}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${mine}${COURT}${els.join("")}</svg>`;
 }
