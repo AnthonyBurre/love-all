@@ -14,6 +14,7 @@ const el = (tag, cls, text) => {
 // which is the signal that matters once the result is in (`m.charted` is a bool then,
 // null otherwise). A finished draw with nothing charted yet falls back to the coverage view.
 export function matchTier(m, gender, cov) {
+  if (m.bye) return { cls: "t-tbd", note: "bye — through to the next round unplayed" };
   if (m.placeholder) return { cls: "t-tbd", note: "path to this match — not decided yet" };
   if (m.charted != null) {
     return m.charted
@@ -45,9 +46,15 @@ function setsEl(mine, theirs) {
   return sets;
 }
 
+// "Bye" and "TBD" are slot markers rather than entrants: they print, but they never take
+// the winner/loser styling, and they're never measured for name abbreviation.
+const BYE = "Bye";
+const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== BYE;
+
 function sideRow(s, opp) {
-  const named = s.name && s.name !== "TBD";
-  const row = el("div", "side " + (s.winner ? "win" : named ? "lose" : ""));
+  const named = isEntrant(s);
+  const row = el("div", "side " + (s.winner ? "win" : named ? "lose" : "") +
+              (s.name === BYE ? " byeside" : ""));
   const nm = el("span", "nm");
   if (named) nm.dataset.full = s.name;
   if (s.seed) nm.append(el("span", "seed", s.seed));
@@ -88,7 +95,7 @@ function fitNames(root) {
 // scores on the line below — so a match reads in one row instead of two. Used in the
 // by-quarter view, where cards run wide enough for it.
 function nameSpan(s) {
-  const named = s.name && s.name !== "TBD";
+  const named = isEntrant(s);
   const span = el("span", "nm " + (s.winner ? "win" : named ? "lose" : ""));
   if (named) span.dataset.full = s.name;
   if (s.seed) span.append(el("span", "seed", s.seed));
@@ -98,7 +105,8 @@ function nameSpan(s) {
 
 function matchCard(m, t, cov, onClick, wide) {
   const tier = matchTier(m, t.gender, cov);
-  const card = el("div", "match " + tier.cls + (wide ? " wide" : "") + (m.placeholder ? " ghost" : ""));
+  const card = el("div", "match " + tier.cls + (wide ? " wide" : "") +
+                 (m.bye ? " bye" : m.placeholder ? " ghost" : ""));
   card.title = tier.note;
   if (wide) {
     const names = el("div", "namesrow");
@@ -272,34 +280,49 @@ const CHIP_ICON = `<svg viewBox="0 0 14 10" width="14" height="10" aria-hidden="
   <rect x="1" y="1" width="12" height="2.6" rx="1.3"/>
   <rect x="1" y="6.4" width="12" height="2.6" rx="1.3"/></svg>`;
 
-// The by-quarter view is one 8-column grid read top-down: the final (1 card,
-// spanning all 8 columns) over the semifinals (2) over the quarterfinals (4) over
-// the whole round of 16 (8 across — those cards flip to the stacked two-line
-// layout to fit). Deeper rounds don't fit whole, so a single selector chip under
-// each round-of-16 match picks the sixteenth of the draw to unfold beneath it:
-// round of 32 (2 cards), round of 64 (4), round of 128 (8, stacked again). Grid
-// column spans center each match over its feeders; one SVG overlay draws all the
-// wires, hot along the picked path.
+// The by-quarter view is one 8-column grid read top-down: the final (1 card, spanning all
+// 8 columns) over the semifinals (2) over the quarterfinals (4), and on a big enough draw
+// the whole round of 16 (8 across — those cards flip to the stacked two-line layout to
+// fit). Rounds deeper than that don't fit whole, so a selector chip under each match of the
+// last full row picks the section of the draw to unfold beneath it: on a slam, a sixteenth
+// (round of 32, then 64, then 128); on a 32-draw, a quarter. Grid column spans center each
+// match over its feeders; one SVG overlay draws all the wires, hot along the picked path.
+const HEAD_LABELS = ["Final", "Semifinals", "Quarterfinals", "Round of 16"];
+
+// How many rounds to show in full, chips on the last of them. Normally four, down to the
+// quarterfinals when showing four would leave just one round to unfold — a 5-round 32-draw
+// with chips on the round of 16 gives eight chips that each open two matches, where chips on
+// the quarterfinals give four that each open a real sub-tree.
+function headRows(n) {
+  const head = Math.min(HEAD_LABELS.length, n);
+  return n - head === 1 ? head - 1 : head;
+}
+
 export function renderQuarters(t, root, cov, onClick, section) {
   root.innerHTML = "";
   root.className = "quarters";
   const rs = t.rounds;
   const n = rs.length;
+  const head = headRows(n);
 
-  const rows = [
-    { label: "Final", matches: rs[n - 1].matches },
-    { label: "Semifinals", matches: rs[n - 2].matches },
-    { label: "Quarterfinals", matches: rs[n - 3].matches },
-    { label: "Round of 16", matches: rs[n - 4].matches },
-  ];
-  // Rounds below the sixteen, latest first, sliced to the picked sixteenth. Labels
-  // reflect the full round's size ("Round of 32"), not the slice's.
-  const below = rs.slice(0, n - 4).reverse();
+  const rows = HEAD_LABELS.slice(0, head).map((label, i) => ({
+    label, matches: rs[n - 1 - i].matches,
+  }));
+  // Rounds below the chip row, latest first, sliced to the picked section. One section per
+  // match of the chip row. Labels reflect the full round's size ("Round of 32"), not the
+  // slice's.
+  const below = rs.slice(0, n - head).reverse();
+  const sections = rows[head - 1].matches.length;
+  const selected = Math.min(Math.max(section.selected | 0, 0), sections - 1);
   if (below.length) {
-    rows[3].pick = { ...section, labels: bestSeedLabels(rs[0].matches, 8, "Section") };
+    rows[head - 1].pick = {
+      ...section, selected,
+      labels: bestSeedLabels(rs[0].matches, sections,
+                             sections === 4 ? "Quarter" : "Section"),
+    };
     for (const r of below) {
       rows.push({ label: `Round of ${r.matches.length * 2}`,
-                  matches: sliceN(r.matches, section.selected, 8) });
+                  matches: sliceN(r.matches, selected, sections) });
     }
   }
 
@@ -348,11 +371,11 @@ export function renderQuarters(t, root, cov, onClick, section) {
     if (!next) return;
     if (next.matches.length === row.matches.length * 2) {
       // A tree step: the next row's matches 2j and 2j+1 feed this row's match j.
-      // Above the chips, the picked sixteenth's path up to the final is hot.
+      // Above the chips, the picked section's path up to the final is hot.
       row.matches.forEach((_, j) => {
         for (const k of [2 * j, 2 * j + 1]) {
-          const hot = below.length > 0 && i < 3 &&
-                      k === Math.floor((section.selected * next.matches.length) / 8);
+          const hot = below.length > 0 && i < head - 1 &&
+                      k === Math.floor((selected * next.matches.length) / sections);
           wire(cards[i][j], cards[i + 1][k], hot);
         }
       });

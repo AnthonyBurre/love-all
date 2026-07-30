@@ -12,16 +12,51 @@ and publishes an interactive site to GitHub Pages.
 ## The site — Love All
 
 `docs/` is a GitHub Pages site showing **Grand Slam, Masters/WTA-1000 and ATP/WTA-500
-brackets** from ESPN's public feed, drawn as a linked tree with each winner wired to the
-next-round match it feeds. ESPN exposes no draw slots, so that linkage is inferred
-from names as the draw resolves. The page themes and titles itself to whichever
-tournament you're looking at.
+brackets**, drawn as a linked tree with each winner wired to the next-round match it feeds.
+The page themes and titles itself to whichever tournament you're looking at.
 
-The feed carries no tour level — `major` flags the four slams and nothing else, so a 500
-and a 125 arrive looking identical. The 1000s are recognized by name, and the 500s are a
-hand-kept roster of ESPN tournament ids in `live/levels.py`: ids are the only stable
-handle, since sponsor names churn (Queen's arrives as "HSBC Championships") and cities
-collide (a WTA 125 plays Rome too). An event that changes level is a one-line edit there.
+### The four feeds
+
+| feed | source | what it gives | refresh |
+| --- | --- | --- | --- |
+| scores | ESPN scoreboard | matches, rounds, live scores | hourly |
+| calendar | Wikipedia season pages | which events exist, tour level, surface | once a season |
+| draws | Wikipedia per-event draw pages | round-1 slot order, seeds, byes | once per event |
+| insights | Match Charting Project | per-player charted history | weekly |
+
+ESPN is the only free source for scores, and it carries **no tour level and no draw
+structure** — `major` flags the four slams and nothing else, so a 500 and a 125 arrive
+looking identical, and there are no draw slots, seeds, or bracket endpoints anywhere in its
+API. Everything structural therefore comes from Wikipedia: the season pages state each
+event's level and surface, and the per-event draw pages hold real draw sheets as positional
+`{{TeamBracket}}` templates — slot order, seeds with entry tags, and byes.
+
+Both Wikipedia feeds are cached under `data/` (gitignored, carried by CI as Release assets),
+so **no draw sheet is committed to the repo**. A cached draw sheet is never re-fetched and
+the calendar is read once a season, so the hourly build normally makes zero Wikipedia
+requests.
+
+Wikipedia is crowdsourced, so neither feed is trusted blindly:
+
+- **A draw sheet is adopted only once it agrees with the live feed about who plays whom**
+  (`wiki.feed_agreement`). This matters more than it sounds: a draw for the wrong event, the
+  wrong gender, or last year's edition all parse into perfectly well-formed slots, and
+  comparing the *set of players* doesn't separate them either — tour fields overlap so
+  heavily that a slam's draw contains ~84% of a 500's entrants. Pairings do: two players
+  share a slot in exactly one draw, so the right sheet scores 1.0 and the nearest wrong
+  answers score ≤0.06. A rejected sheet falls back to name inference — degraded, not wrong.
+- **The calendar joins to ESPN on venue city *and* week.** City alone is too loose: the WTA
+  125 played in Rome matches the Rome 1000 exactly, and the calendar doesn't cover 125s, so
+  city-only matching would put a 125 on the site as a 1000. Different week, different
+  tournament.
+
+This replaced a hand-kept roster of 500s. Checked against the calendar, that roster had
+Eastbourne, Hong Kong and Seoul at 500 when all three are 250s, and was missing Dallas,
+Queen's WTA and Singapore — six errors in a list days old, which is what hand-maintained
+tour metadata does. Draw sheets were likewise committed by hand, harvested from a browser
+because the one source that had them (Sofascore) TLS-fingerprints every non-browser client.
+
+The footer names Wikipedia as the source, so a reader who spots an error can fix it there.
 
 Live draws show while play is on. Once an event finishes, its draw is frozen into an
 archive (`data/history.json`) so it stays in the dropdown to look back on — the site
@@ -41,14 +76,17 @@ Two workflows keep it current, and nothing they generate is committed:
 - **`.github/workflows/insights.yml`** (weekly, or manual) rebuilds the compact
   `insights.duckdb` — one row per charted player, plus the recent charted-match index
   the site flags finished matches against — and publishes it as a Release asset.
-- **`.github/workflows/live.yml`** (hourly) fetches the current draws, folds any
+- **`.github/workflows/live.yml`** (hourly) fetches the current scores, picks up any
+  newly-published draw sheet, refreshes the tour calendar when the season turns, folds any
   newly-finished event into the draw-history asset, reuses the insights DB, and deploys
-  `docs/` to Pages.
+  `docs/` to Pages. The calendar and draw caches persist as a `feeds-cache` Release asset.
 
-To run it locally: `match-charting-project site build-insights`, then `... site
-build-brackets`, then serve `docs/`. To seed a past event that finished before the site
-was watching it, `... history harvest --event Wimbledon --year 2025` (future events are
-captured automatically as they finish). The win-prob model, ESPN adapter, history
+To run it locally: `match-charting-project feeds calendar` (once — without it the site can't
+tell a 500 from a 250 and serves only slams and 1000s), then `... site build-insights`, then
+`... site build-brackets`, then serve `docs/`. `... feeds draws` fetches draw sheets by hand
+if you want to check them; the site build does it anyway. To seed a past event that finished
+before the site was watching it, `... history harvest --event Wimbledon --year 2025` (future
+events are captured automatically as they finish). The win-prob model, ESPN adapter, history
 archive, and insights builder live under `src/match_charting_project/{winprob_match,live,site}`.
 
 ## Reading the patterns and court diagrams
@@ -229,10 +267,10 @@ deliberately **not** split — even Sackmann's authoritative ATP data collapses
 them into one level. Splitting them (and validating the whole mapping) by
 cross-referencing the `tennis_atp` / `tennis_wta` repos is a documented next step.
 
-The live site does need the split, to know which events to serve, so it keeps its own
-roster of 500s by ESPN tournament id (`live/levels.py`). That roster covers the current
-calendar only and is deliberately kept out of `tiers.py`, so the tier column over 65
-years of charted matches stays as honest — and as stable — as the source data allows.
+The live site does need the split, to know which events to serve, so it takes levels from
+the Wikipedia calendar feed (`live/feeds.py`) instead. That feed covers the current season
+only and is deliberately kept out of `tiers.py`, so the tier column over 65 years of charted
+matches stays as honest — and as stable — as the source data allows.
 
 ### Coverage methodology
 

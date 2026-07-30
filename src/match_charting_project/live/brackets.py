@@ -46,18 +46,19 @@ def rounds(tournament, use_fixture: bool = True) -> list:
     Each match gains a ``feeds`` attribute: the id of the next-round match its winner
     advances to, or ``None`` while unresolved (or on the final).
 
-    When a committed draw fixture exists for this tournament (``data/draws/``), the
-    bracket is instead assembled on the fixture's slot scaffold — every slot of every
-    round present (placeholders where undecided), the full path to the final known
-    from day one. Name inference below is the fallback for uncovered tournaments, and
-    the only path for ``use_fixture=False`` (harvested past draws, whose slot order the
-    current-season fixture would misrepresent — a fully resolved draw links cleanly by
-    name anyway).
+    When a draw sheet is cached for this tournament (``live.feeds``, sourced from Wikipedia
+    and only adopted once it agrees with the feed about first-round pairings), the bracket is
+    instead assembled on its slot scaffold — every slot of every round present (placeholders
+    where undecided, byes where the field is short of a power of two), the full path to the
+    final known from day one. Name inference below is the fallback for a tournament whose
+    draw isn't published or didn't validate, and the only path for ``use_fixture=False``
+    (harvested past draws, whose slot order the current-season sheet would misrepresent — a
+    fully resolved draw links cleanly by name anyway).
     """
     if use_fixture:
-        from match_charting_project.live import draws
+        from match_charting_project.live import draws, feeds
 
-        fx = draws.find_fixture(tournament.name, tournament.gender)
+        fx = feeds.fixture_for(tournament)
         if fx:
             out = draws.slot_rounds(tournament, fx)
             if out:
@@ -95,6 +96,7 @@ def serialize(tournament, use_fixture: bool = True) -> dict:
             {"rank": r["rank"], "label": r["label"], "matches": [
                 {"id": m.id, "state": m.state, "detail": m.detail, "feeds": m.feeds,
                  "placeholder": getattr(m, "placeholder", False),
+                 "bye": getattr(m, "bye", False),
                  "date": getattr(m, "date", None),
                  "a": _side_dict(m.a), "b": _side_dict(m.b)}
                 for m in r["matches"]]}

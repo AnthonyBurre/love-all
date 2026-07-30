@@ -66,6 +66,34 @@ jobs:
         if: ${{ steps.history.outputs.seed_needed == 'true' }}
         run: uv run match-charting-project history seed
 
+      # The Wikipedia-sourced feeds: the tour calendar (which events exist, and at what
+      # level) and the draw sheets (slot order, seeds, byes). Both are caches, not committed
+      # data — the calendar is re-read once a season, and a draw sheet is fetched once and
+      # never again, so the steady-state hourly run makes no Wikipedia requests at all.
+      - name: Fetch feed caches (from the Release)
+        id: feeds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          gh release download feeds-cache --pattern calendar.json --dir data --clobber || true
+          gh release download feeds-cache --pattern draws.json --dir data --clobber || true
+          season="$(date -u +%Y)"
+          have="$(python -c "import json,sys;print(json.load(open('data/calendar.json'))['season'])" 2>/dev/null || echo none)"
+          if [ "$have" != "$season" ]; then
+            echo "calendar cache is '$have', want $season — will refresh"
+            echo "refresh_calendar=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "calendar cache is current ($have)"
+            echo "refresh_calendar=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Without this the site can't tell a 500 from a 250 and serves only slams and 1000s,
+      # so it runs whenever the cache is missing or from a previous season.
+      - name: Refresh the tour calendar (once a season)
+        if: ${{ steps.feeds.outputs.refresh_calendar == 'true' }}
+        run: uv run match-charting-project feeds calendar
+
       - name: Build brackets + assemble docs/data
         run: |
           uv run match-charting-project site build-brackets
@@ -79,6 +107,17 @@ jobs:
           gh release create brackets-history --title "Draw history" \
             --notes "Completed draws, accumulated as events finish" 2>/dev/null || true
           gh release upload brackets-history data/history.json --clobber
+
+      - name: Persist feed caches (to the Release)
+        if: ${{ hashFiles('data/calendar.json', 'data/draws.json') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create feeds-cache --title "Feed caches" \
+            --notes "Tour calendar and draw sheets, read from Wikipedia" 2>/dev/null || true
+          for f in calendar.json draws.json; do
+            [ -f "data/$f" ] && gh release upload feeds-cache "data/$f" --clobber
+          done
 
       - uses: actions/upload-pages-artifact@v3
         with:

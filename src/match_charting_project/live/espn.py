@@ -18,7 +18,7 @@ import urllib.request
 from dataclasses import dataclass
 
 from match_charting_project.analysis.tiers import GRAND_SLAM, MASTERS_1000, classify_tier
-from match_charting_project.live import levels
+from match_charting_project.live import feeds, levels
 from match_charting_project.paths import PROJECT_ROOT
 
 _SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/tennis/{league}/scoreboard"
@@ -93,16 +93,28 @@ def _round_rank(label: str) -> "int | None":
     return int(m.group(1)) if m else 50
 
 
-def _tier(event: dict, gender: str) -> str:
+# Wikipedia's tier strings -> ours. The calendar feed is the first authority on level; the
+# name heuristics below are the fallback for an event it doesn't cover (a brand-new stop, or
+# a season page not yet refreshed).
+_WIKI_TIERS = {"Grand Slam": GRAND_SLAM,
+               "ATP 1000": MASTERS_1000, "WTA 1000": MASTERS_1000,
+               "ATP 500": levels.TOUR_500, "WTA 500": levels.TOUR_500}
+
+
+def _tier(event: dict, gender: str, cal: "dict | None" = None) -> str:
     if event.get("major"):
         return GRAND_SLAM
-    # The rostered 500s are checked before the 1000 heuristics below, which key off city
-    # names and would otherwise over-promote the events that used to be 1000s or whose
-    # other tour still is — ATP Doha, ATP Hamburg, ATP Dubai, ATP Beijing.
-    rostered = levels.level(event.get("id", ""), gender)
-    if rostered:
-        return rostered
     name = event.get("name", "")
+    city = levels.city((event.get("venue") or {}).get("displayName", ""))
+    month = int((event.get("date") or "0000-00")[5:7] or 0) or None
+    entry = feeds.lookup(city, name, gender, month, cal)
+    if entry and entry.get("tier") in _WIKI_TIERS:
+        return _WIKI_TIERS[entry["tier"]]
+    if entry:
+        return classify_tier(name, gender)  # covered, and below the levels we serve
+    # Not in the calendar — a brand-new stop, or no calendar cached yet. Fall back to the
+    # name heuristics, which read 1000s well but cannot see a 500 at all: without the
+    # calendar feed the site serves slams and 1000s only, and says so rather than guessing.
     t = classify_tier(name, gender)
     if t == MASTERS_1000:
         return t
@@ -118,14 +130,17 @@ def _side(comp: dict) -> Side:
                 sets=[ls.get("value") for ls in comp.get("linescores", [])])
 
 
-def parse(raw: dict) -> "list[Tournament]":
+def parse(raw: dict, cal: "dict | None" = None) -> "list[Tournament]":
+    """Scoreboard JSON -> the singles draws we serve. ``cal`` is the calendar feed used to
+    decide tour level; it's read from the cache when not supplied."""
     out = []
+    cal = feeds.load_calendar() if cal is None else cal
     for event in raw.get("events", []):
         for grouping in event.get("groupings", []):
             gender = _SINGLES.get((grouping.get("grouping") or {}).get("slug"))
             if not gender:
                 continue
-            tier = _tier(event, gender)
+            tier = _tier(event, gender, cal)
             if tier not in _TARGET_TIERS:
                 continue
             best_of = 5 if (gender == "M" and tier == GRAND_SLAM) else 3
