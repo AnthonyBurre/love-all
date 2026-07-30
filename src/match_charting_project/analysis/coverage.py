@@ -4,11 +4,25 @@ Every function takes a DuckDB connection and returns a tidy pandas DataFrame, so
 they compose cleanly into notebooks, figures, or a future web API.
 
 "Coverage" here means charted / *played*, not a raw charted count, so every
-metric needs a denominator we can pin down exactly without external results
-data. A Grand Slam singles main draw is always 128 players = 127 matches (64 in
-R128, 32 in R64, ... 1 final); Masters 1000 draws vary in size but always share
-the same late rounds (R16=8 ... F=1). Both structures have held continuously
-since 1990, which is why that is the floor year.
+metric needs a denominator. The two used here are structural, and hold without
+any external results data: a Grand Slam singles main draw is always 128 players
+= 127 matches (64 in R128, 32 in R64, ... 1 final), and Masters 1000 draws vary
+in size but always share the same late rounds (R16=8 ... F=1). Both structures
+have held continuously since 1990, which is why that is the floor year.
+
+There is now a second source that could supply denominators: the Wikipedia calendar feed
+(``live.feeds``) carries a draw size per event, and a single-elimination draw of N players
+is exactly N-1 matches. It is not used here because it covers the current season only,
+because the sizes it reports are advisory (one 2026 row claims a 48-player field for a draw
+of 32), and because the guard that makes the feed safe on the live path compares a draw
+against ESPN, which no historical season has. Backfilling it would extend true coverage to
+the 250/500 tiers and replace the late-round compromise below with full-draw denominators.
+
+Two limits worth knowing when reading the output. Denominators count only the events
+*present in the charted data*, so a 1000-level event nobody charted is absent from the
+figures rather than showing as 0%. And the tier column comes from name heuristics that
+carry no year (see ``analysis.tiers``), so a handful of events sit in the 1000 bucket for
+seasons in which they were a 500.
 """
 
 import re
