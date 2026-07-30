@@ -2,7 +2,7 @@
 // all queried from insights.duckdb via DuckDB-WASM.
 import { query, leagueMu } from "./db.js";
 import { preMatchWP } from "./winprob.js";
-import { patternSvg, pairSvg } from "./court.js";
+import { patternSvg, pairSvg, shotLine } from "./court.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -268,9 +268,9 @@ function notationHelp() {
     <text x="75" y="60" class="ct-sub">middle</text>
     <text x="112" y="60" class="ct-sub">BH side</text>
     <circle cx="75" cy="172" r="4" class="ct-player"/>
-    <line x1="75" y1="166" x2="40" y2="66" class="ct-shot"/>
-    <line x1="75" y1="166" x2="75" y2="66" class="ct-shot faint"/>
-    <line x1="75" y1="166" x2="110" y2="66" class="ct-shot faint"/>
+    ${shotLine(75, 166, 40, 66)}
+    ${shotLine(75, 166, 75, 66, { faint: true })}
+    ${shotLine(75, 166, 110, 66, { faint: true })}
     <text x="75" y="189" class="ct-cap">rally direction →1 / →2 / →3</text>`);
   const serves = court(`
     <line x1="20" y1="52.5" x2="130" y2="52.5" class="ct-line-thin"/>
@@ -283,7 +283,7 @@ function notationHelp() {
     <circle cx="70" cy="60" r="3.4" class="ct-target"/>
     <text x="66" y="49" class="ct-sub">T</text>
     <circle cx="112" cy="172" r="4" class="ct-player"/>
-    <line x1="108" y1="167" x2="30" y2="64" class="ct-shot faint"/>
+    ${shotLine(108, 167, 30, 64, { faint: true })}
     <text x="75" y="189" class="ct-cap">serve wide / body / T</text>`);
   return `<details class="notekey">
     <summary>How to read the shot notation</summary>

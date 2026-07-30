@@ -5,6 +5,8 @@ the lines, errors break outside them, the zone-to-lane mirroring across the net)
 without asserting exact pixel coordinates, which are free to be retuned.
 """
 
+import re
+
 from match_charting_project.shots.notation import parse_point
 from match_charting_project.viz.court import (
     _LANE_MID,
@@ -12,6 +14,7 @@ from match_charting_project.viz.court import (
     _bounces_from_shots,
     _lane_x,
     _serve_origin_x,
+    _tip_elems,
     point_rally_svg,
     rally_svg,
 )
@@ -20,6 +23,12 @@ from match_charting_project.viz.court import (
 def _segments(svg: str) -> int:
     """Ball-path segments carry a data-shot index; court lines and the × don't."""
     return svg.count("data-shot=")
+
+
+def _tip_points(el: str) -> "list[tuple[float, float]]":
+    """The three points of a wingtip chevron: wing, apex, wing."""
+    nums = [float(v) for v in re.findall(r"-?\d+(?:\.\d+)?", el.split('d="')[1].split('"')[0])]
+    return list(zip(nums[::2], nums[1::2]))
 
 
 def test_returns_svg_document():
@@ -94,9 +103,33 @@ def test_accepts_raw_string_shots_and_tokens_alike():
     assert _segments(rally_svg(["svW", "Fd1", "Bs3", "Fd1"])) == 4
 
 
+def test_each_segment_carries_direction_wingtips():
+    # Two chevrons per stroke, so a zig-zag can't be read backwards. They're the
+    # only <path> elements in the drawing, and they point along the segment.
+    svg = rally_svg("4f1f3*", server=1)                 # three full-length strokes
+    assert svg.count("<path") == 2 * _segments(svg) == 6
+
+    # Cramped segments thin out rather than smear arrowheads on top of each other:
+    # one tip when there's room for one, none when there isn't.
+    assert len(_tip_elems(75, 100, 75, 88, "")) == 1
+    assert len(_tip_elems(75, 100, 75, 96, "")) == 0
+
+
+def test_wingtips_point_the_way_the_ball_travelled():
+    # Each chevron is wing / apex / wing; the apex leads, the wings trail behind.
+    for (x1, y1, x2, y2) in [(75, 176, 75, 60), (75, 60, 75, 176), (20, 95, 130, 95)]:
+        for (wa, apex, wb) in map(_tip_points, _tip_elems(x1, y1, x2, y2, "")):
+            # The apex is further along the travel direction than either wing.
+            along = lambda p: (p[0] - x1) * (x2 - x1) + (p[1] - y1) * (y2 - y1)
+            assert along(apex) > along(wa) and along(apex) > along(wb)
+            # And it sits on the segment, between the endpoints.
+            assert min(x1, x2) <= apex[0] <= max(x1, x2)
+            assert min(y1, y2) <= apex[1] <= max(y1, y2)
+
+
 def test_css_class_mode_uses_site_classes_not_inline_colours():
     css = rally_svg("4f1f3*", server=1, css_classes=True)
-    assert "ct-net" in css and "ct-shot" in css
+    assert "ct-net" in css and "ct-shot" in css and "ct-tip" in css
     assert _THEME["line"] not in css                   # court colour comes from CSS vars
 
 

@@ -4,8 +4,9 @@ A charted point tells us, per stroke, three spatial things: lateral placement
 (zone 1/2/3 — a right-hander's forehand corner / middle / backhand corner of the
 end it lands in), depth (7/8/9 — shallow / mid / deep) for rally shots, and the
 serve target (4/5/6 — wide / body / T). This turns that into a court diagram: a
-zig-zag of bounce points crossing the net once per stroke, with the final stroke
-drawn as a landed winner or a marked miss (into the net / long / wide).
+zig-zag of bounce points crossing the net once per stroke, each segment wearing a
+pair of small chevrons so the direction of travel reads at a glance, and the final
+stroke drawn as a landed winner or a marked miss (into the net / long / wide).
 
 The court geometry and CSS-class names mirror the mini-courts the Pages site
 already draws in ``docs/js/matchup.js`` (viewBox 150×190, net at y=95, the
@@ -46,6 +47,13 @@ _LANE_L, _LANE_MID, _LANE_R = 40.0, 75.0, 110.0
 _DEPTH_F = {"7": 0.34, "8": 0.60, "9": 0.86}
 _DEPTH_DEFAULT = 0.62                # typical rally ball when depth isn't charted
 _SERVE_DEPTH_F = 0.42                # serve lands a touch inside the service line
+
+# Direction wingtips: two small chevrons per segment, at these fractions along it.
+_TIP_AT = (0.38, 0.72)
+_TIP_BACK = 3.4                      # how far the wings trail behind the apex
+_TIP_HALF = 2.5                      # half-width of the V
+_TIP_MIN = 9.0                       # shorter than this, no room for a tip at all
+_TIP_TWO_MIN = 20.0                  # shorter than this, one centred tip, not two
 
 # Self-contained palette (theme-neutral). Overridable via the `theme` argument;
 # ignored when css_classes=True (the page's ct-* classes drive colour instead).
@@ -196,6 +204,31 @@ def _f(v: float) -> str:
     return f"{v:.1f}".rstrip("0").rstrip(".")
 
 
+def _tip_elems(x1: float, y1: float, x2: float, y2: float, attrs: str) -> "list[str]":
+    """Small chevrons along a segment, pointing from (x1,y1) toward (x2,y2).
+
+    A zig-zag of bounces is ambiguous on its own — the same shape reads either
+    way round — so each segment carries two wingtips showing which way the ball
+    went. Short segments get one, and a hair-thin one none, rather than a
+    cluttered smear of arrowheads.
+    """
+    dx, dy = x2 - x1, y2 - y1
+    length = (dx * dx + dy * dy) ** 0.5
+    if length < _TIP_MIN:
+        return []
+    ux, uy = dx / length, dy / length
+    nx, ny = -uy, ux                                   # unit normal: the wings' spread
+    els: list[str] = []
+    for t in (_TIP_AT if length >= _TIP_TWO_MIN else (0.5,)):
+        ax, ay = x1 + dx * t, y1 + dy * t              # apex, on the line
+        bx, by = ax - _TIP_BACK * ux, ay - _TIP_BACK * uy   # the wings trail behind it
+        els.append(f'<path d="M{_f(bx + _TIP_HALF * nx)} {_f(by + _TIP_HALF * ny)} '
+                   f'L{_f(ax)} {_f(ay)} '
+                   f'L{_f(bx - _TIP_HALF * nx)} {_f(by - _TIP_HALF * ny)}" fill="none" '
+                   f'stroke-linecap="round" stroke-linejoin="round" {attrs}/>')
+    return els
+
+
 def _court_elems(css: bool, th: dict) -> "list[str]":
     """The static court: sidelines, net, service boxes, centre marks."""
     ln = 'class="ct-line"' if css else f'stroke="{th["line"]}" stroke-width="1.2" fill="none"'
@@ -214,7 +247,8 @@ def _court_elems(css: bool, th: dict) -> "list[str]":
 
 def _path_elems(start: "tuple[float, float]", bounces: "list[_Bounce]",
                 css: bool, th: dict, numbered: bool) -> "list[str]":
-    """The ball path: one segment per stroke, faint→bold, with a terminal marker."""
+    """The ball path: one segment per stroke, faint→bold, wingtipped for direction,
+    with a terminal marker on the last bounce."""
     els: list[str] = []
     n = len(bounces)
     px, py = start
@@ -229,11 +263,16 @@ def _path_elems(start: "tuple[float, float]", bounces: "list[_Bounce]",
         if css:
             cls = "ct-shot" + ("" if last else " faint")
             stroke = f'class="{cls}"' + (f' stroke="{th["miss"]}"' if miss else "")
+            # Tips stay solid on a dashed miss, and never inherit its dash pattern.
+            tip = 'class="ct-tip' + ("" if last else " faint") + '"' \
+                  + (f' stroke="{th["miss"]}"' if miss else "")
         else:
             stroke = f'stroke="{col}" stroke-width="{1.9 if last else 1.4}" ' \
                      f'opacity="{op:.2f}"' + (' stroke-dasharray="3 2"' if miss else "")
+            tip = f'stroke="{col}" stroke-width="{1.4 if last else 1.1}" opacity="{op:.2f}"'
         els.append(f'<line data-shot="{i + 1}" x1="{_f(px)}" y1="{_f(py)}" '
                    f'x2="{_f(b.x)}" y2="{_f(b.y)}" {stroke} fill="none"/>')
+        els += _tip_elems(px, py, b.x, b.y, tip)
         if numbered:
             els.append(f'<text x="{_f(b.x)}" y="{_f(b.y - 3)}" font-size="7" '
                        f'text-anchor="middle" fill="{th["ink"]}">{i + 1}</text>')

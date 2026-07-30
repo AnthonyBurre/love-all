@@ -19,7 +19,38 @@ const DEPTH_DEFAULT = 0.62;                  // rally bounce depth (tokens carry
 const SERVE_DEPTH_F = 0.42;                  // serve lands a touch inside the service line
 const SERVE_TOKEN_DIR = { W: "4", B: "5", T: "6" };
 
+// Direction wingtips: two small chevrons per segment, at these fractions along it.
+const TIP_AT = [0.38, 0.72];
+const TIP_BACK = 3.4;                        // how far the wings trail behind the apex
+const TIP_HALF = 2.5;                        // half-width of the V
+const TIP_MIN = 9;                           // shorter than this, no room for a tip
+const TIP_TWO_MIN = 20;                      // shorter than this, one centred tip
+
 const f = (v) => String(Math.round(v * 10) / 10);
+
+// Small chevrons pointing from (x1,y1) toward (x2,y2). A zig-zag of bounces reads the
+// same either way round without them; short segments get one, hair-thin ones none.
+function tips(x1, y1, x2, y2, cls) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+  if (len < TIP_MIN) return [];
+  const ux = dx / len, uy = dy / len;
+  const nx = -uy, ny = ux;                   // unit normal: the wings' spread
+  const ats = len >= TIP_TWO_MIN ? TIP_AT : [0.5];
+  return ats.map((t) => {
+    const ax = x1 + dx * t, ay = y1 + dy * t;              // apex, on the line
+    const bx = ax - TIP_BACK * ux, by = ay - TIP_BACK * uy; // wings trail behind it
+    return `<path d="M${f(bx + TIP_HALF * nx)} ${f(by + TIP_HALF * ny)} L${f(ax)} ${f(ay)} L${f(bx - TIP_HALF * nx)} ${f(by - TIP_HALF * ny)}" fill="none" stroke-linecap="round" stroke-linejoin="round" class="${cls}"/>`;
+  });
+}
+
+// One drawn ball: the line plus its wingtips. Exported so the notation-key courts in
+// matchup.js draw their example shots the same way as a real ball path.
+export function shotLine(x1, y1, x2, y2, { faint = false, shot = null } = {}) {
+  const dim = faint ? " faint" : "";
+  const idx = shot == null ? "" : ` data-shot="${shot}"`;
+  return `<line${idx} x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" class="ct-shot${dim}" fill="none"/>`
+    + tips(x1, y1, x2, y2, "ct-tip" + dim).join("");
+}
 
 const depthY = (frac, top) => (top ? NET - frac * HALF : NET + frac * HALF);
 
@@ -74,8 +105,8 @@ export function rallySvg(tokens, court = "deuce") {
   let px = serveOriginX(court), py = BOTTOM - 4;         // server's contact, anchors stroke 1
   const els = [`<circle cx="${f(px)}" cy="${f(py)}" r="2.3" fill="none" class="ct-player"/>`];
   bs.forEach((b, i) => {
-    const cls = "ct-shot" + (i === bs.length - 1 ? "" : " faint");   // bold the final stroke
-    els.push(`<line data-shot="${i + 1}" x1="${f(px)}" y1="${f(py)}" x2="${f(b.x)}" y2="${f(b.y)}" class="${cls}" fill="none"/>`);
+    // The final stroke is drawn bold, the lead-up faint.
+    els.push(shotLine(px, py, b.x, b.y, { faint: i !== bs.length - 1, shot: i + 1 }));
     px = b.x; py = b.y;
   });
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${COURT}${els.join("")}</svg>`;
@@ -121,8 +152,8 @@ export function pairSvg(incCode, respCode, depth = "") {
   const ox = LANE_MID, oy = TOP + 4;      // opponent's contact, anchors the incoming ball
   const els = [
     `<circle cx="${f(ox)}" cy="${f(oy)}" r="2.3" fill="none" class="ct-player"/>`,
-    `<line data-shot="1" x1="${f(ox)}" y1="${f(oy)}" x2="${f(inc.x)}" y2="${f(inc.y)}" class="ct-shot faint" fill="none"/>`,
-    `<line data-shot="2" x1="${f(inc.x)}" y1="${f(inc.y)}" x2="${f(out.x)}" y2="${f(out.y)}" class="ct-shot" fill="none"/>`,
+    shotLine(ox, oy, inc.x, inc.y, { faint: true, shot: 1 }),
+    shotLine(inc.x, inc.y, out.x, out.y, { shot: 2 }),
   ];
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${COURT}${els.join("")}</svg>`;
 }
