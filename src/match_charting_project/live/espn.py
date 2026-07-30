@@ -17,7 +17,12 @@ import re
 import urllib.request
 from dataclasses import dataclass
 
-from match_charting_project.analysis.tiers import GRAND_SLAM, MASTERS_1000, classify_tier
+from match_charting_project.analysis.tiers import (
+    CITIES_1000,
+    GRAND_SLAM,
+    MASTERS_1000,
+    classify_tier,
+)
 from match_charting_project.live import feeds, levels
 from match_charting_project.paths import PROJECT_ROOT
 
@@ -29,11 +34,6 @@ _TARGET_TIERS = (GRAND_SLAM, MASTERS_1000, levels.TOUR_500)
 _ROUND_NAMED = {"final": 100, "semifinal": 99, "semifinals": 99,
                 "quarterfinal": 98, "quarterfinals": 98,
                 "round of 16": 4, "round of 32": 3, "round of 64": 2, "round of 128": 1}
-# Combined 1000-level cities (ESPN doesn't flag 1000s; `major` only marks slams).
-_M1000_CITIES = {"indian wells", "miami", "madrid", "rome", "monte", "cincinnati",
-                 "shanghai", "canada", "montreal", "toronto", "paris masters", "dubai",
-                 "doha", "beijing", "wuhan", "guadalajara", "cancun", "tokyo",
-                 "charleston", "hamburg"}
 
 
 @dataclass
@@ -118,8 +118,11 @@ def _tier(event: dict, gender: str, cal: "dict | None" = None) -> str:
     t = classify_tier(name, gender)
     if t == MASTERS_1000:
         return t
-    low = name.lower()
-    return MASTERS_1000 if any(c in low for c in _M1000_CITIES) else t
+    # `classify_tier` matches a whole normalized name; an ESPN name is the sponsor's
+    # ("Rolex Monte-Carlo Masters"), so the city has to be found inside it. Hyphens are
+    # flattened for the same reason.
+    low = name.lower().replace("-", " ")
+    return MASTERS_1000 if any(c in low for c in CITIES_1000) else t
 
 
 def _side(comp: dict) -> Side:
