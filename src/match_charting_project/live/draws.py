@@ -1,13 +1,10 @@
-"""Draw-slot fixtures: the committed bracket structure no live feed will hand us.
+"""Overlay the live feed onto a draw's slot scaffold.
 
-ESPN's feed has no draw positions (see brackets.py), and every source that does —
-ESPN's bracket pages, Sofascore's cup trees, even the slams' own per-draw feeds —
-sits behind bot protection that CI can't pass. But a draw's structure is *static
-once made*: the round-1 slot order determines every future pairing (winners of
-slots 2k-1 and 2k meet at slot k of the next round). So the structure is committed
-as a tiny fixture file per tournament in ``data/draws/`` (~64 ordered R1 pairs +
-seeds, harvested once per event from a browser), and this module overlays the live
-ESPN matches onto that scaffold by player name.
+ESPN's feed has no draw positions (see brackets.py). A draw's structure is *static once
+made*, though: the round-1 slot order determines every future pairing (winners of slots
+2k-1 and 2k meet at slot k of the next round), so one ordered list of round-1 slots is all
+the structure a bracket ever needs. ``live.feeds`` sources that list from Wikipedia and
+caches it; this module overlays the live matches onto it by player name.
 
 Output mirrors ``brackets.rounds()``: every slot of every round is present — live
 matches where they're known, synthetic placeholders (id ``slot-<round>-<k>``)
@@ -15,15 +12,13 @@ where they're not — with ``feeds``/``slot``/``seed`` filled in structurally, s
 the site can draw the complete path to the final from day one.
 """
 
-import json
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 
 from match_charting_project.live.espn import Side
 from match_charting_project.live.players import normalize
-from match_charting_project.paths import PROJECT_ROOT
 
-DRAWS_DIR = PROJECT_ROOT / "data" / "draws"
+BYE = "Bye"
 
 
 @dataclass
@@ -40,28 +35,7 @@ class Placeholder:
     feeds: "str | None" = None
     slot: int = 0
     placeholder: bool = field(default=True)
-
-
-def load_fixtures() -> list:
-    """All committed draw fixtures, flattened to one entry per (tournament, gender)."""
-    out = []
-    if not DRAWS_DIR.is_dir():
-        return out
-    for path in sorted(DRAWS_DIR.glob("*.json")):
-        doc = json.loads(path.read_text())
-        out.extend(doc.get("draws", []))
-    return out
-
-
-def find_fixture(name: str, gender: str, fixtures: "list | None" = None) -> "dict | None":
-    """The fixture whose tournament name appears in (or contains) the feed's name."""
-    for fx in load_fixtures() if fixtures is None else fixtures:
-        if fx.get("gender") != gender:
-            continue
-        a, b = fx.get("tournament", "").lower(), (name or "").lower()
-        if a and (a in b or b in a):
-            return fx
-    return None
+    bye: bool = field(default=False)
 
 
 def _name_tables(fixture) -> "tuple[dict, dict]":
@@ -75,6 +49,22 @@ def _name_tables(fixture) -> "tuple[dict, dict]":
                 if entry.get(seed):
                     seeds[n] = entry[seed]
     return slots, seeds
+
+
+def _bye_slots(fixture) -> dict:
+    """R1 slot -> the entrant who sits the round out, for a field short of a power of two.
+
+    A 28- or 48-player draw gives its top seeds a bye, which the fixture records as a slot
+    with one named side. No match is ever played in those slots, so the feed has nothing to
+    map there — without this they'd read as an undecided TBD rather than a seed already
+    through to the next round.
+    """
+    out = {}
+    for entry in fixture["r1"]:
+        named = [entry[k] for k in ("a", "b") if entry.get(k)]
+        if len(named) == 1:
+            out[entry["slot"]] = named[0]
+    return out
 
 
 def _lookup(norm: str, table: dict, cutoff: float = 0.85):
@@ -133,20 +123,25 @@ def slot_rounds(tournament, fixture) -> "list | None":
         if len(leftover) == 1 and len(empty) == 1:
             placed[(round_no, empty[0])] = leftover[0]
 
-    # Assemble the full scaffold: live match or placeholder at every slot.
+    # Assemble the full scaffold: live match, bye, or placeholder at every slot.
+    byes = _bye_slots(fixture)
     out = []
     for round_no, rank in enumerate(ranks, start=1):
         matches = []
         for slot in range(1, n // (2 ** (round_no - 1)) + 1):
             m = placed.get((round_no, slot))
             if m is None:
+                through = byes.get(slot) if round_no == 1 else None
                 m = Placeholder(id=f"slot-{round_no}-{slot}", round_rank=rank,
                                 round_label=label[rank],
-                                a=Side("TBD", None, False, []), b=Side("TBD", None, False, []))
+                                a=Side(through or "TBD", None, False, []),
+                                b=Side(BYE if through else "TBD", None, False, []),
+                                bye=bool(through))
             m.slot = slot
             m.feeds = f"slot-{round_no + 1}-{(slot - 1) // 2 + 1}" if round_no < n_rounds else None
             for s in (m.a, m.b):
-                s.seed = _lookup(normalize(s.name), seeds_tbl) if s.name and s.name != "TBD" else None
+                anonymous = not s.name or s.name in ("TBD", BYE)
+                s.seed = None if anonymous else _lookup(normalize(s.name), seeds_tbl)
             matches.append(m)
         out.append({"rank": rank, "label": label[rank], "matches": matches})
 

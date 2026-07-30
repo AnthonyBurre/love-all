@@ -129,6 +129,11 @@ a { color: var(--acc-d); }
 .match.t-tbd { border-left-color: var(--line); border-style: dashed; background: transparent; }
 .match.ghost { cursor: default; }
 .match.ghost:hover { border-color: var(--line); box-shadow: none; }
+/* A bye holds a real entrant already through, so it reads solid rather than as a dashed
+   undecided slot — but no match is played there, so it doesn't invite a click. */
+.match.bye { cursor: default; border-style: solid; }
+.match.bye:hover { border-color: var(--line); box-shadow: none; }
+.match .side.byeside .nm { color: var(--muted); font-style: italic; }
 .seed { color: var(--muted); font-size: 10.5px; font-weight: 600; margin-right: 5px; vertical-align: 8%; }
 
 .match .side { display: flex; align-items: center; gap: 7px; padding: 3px 0; }

@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 import duckdb
 
-from match_charting_project.live import brackets, espn, history, players
+from match_charting_project.live import brackets, draws, espn, feeds, history, players
 from match_charting_project.paths import PROJECT_ROOT
 
 DOCS_DATA = PROJECT_ROOT / "docs" / "data"
@@ -75,8 +75,11 @@ def _annotate(t: dict, universe: dict, charted: dict) -> None:
     for r in t["rounds"]:
         for m in r["matches"]:
             for s in (m["a"], m["b"]):
+                # "Bye" is a slot marker, not an entrant — never send it through the fuzzy
+                # player match, which would happily find a near-namesake for it.
+                named = s["name"] and s["name"] not in ("TBD", draws.BYE)
                 s["matched"] = (players.match_player(s["name"], t["gender"], universe)
-                                if s["name"] and s["name"] != "TBD" else None)
+                                if named else None)
             m["charted"], m["chart_id"] = None, None
 
     if not t.get("completed"):
@@ -95,7 +98,15 @@ def _annotate(t: dict, universe: dict, charted: dict) -> None:
 
 
 def payload() -> dict:
-    live = [brackets.serialize(t, use_fixture=True) for t in espn.current_tournaments()]
+    # Pick up any newly-published draw sheet before serializing, so a draw released since the
+    # last run is scaffolded on this one. Adopted sheets are never re-fetched, so the steady
+    # state costs no Wikipedia calls.
+    tours = espn.current_tournaments()
+    try:
+        feeds.refresh_draws(tours)
+    except Exception:
+        pass                              # a draw feed outage degrades to name inference
+    live = [brackets.serialize(t, use_fixture=True) for t in tours]
 
     store = history.load()
     history.archive(live, store)          # freeze any just-finished live draw

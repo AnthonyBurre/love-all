@@ -8,7 +8,9 @@ import { query } from "./db.js";
 let data = null;
 const cov = {};                 // "G|player" -> charted match count
 // view: null = auto — full draw early in an event, by-quarter from the round of 16 on.
-// section: which sixteenth of the draw (0-7) is unfolded below the round of 16.
+// section: which slice of the draw is unfolded below the quarter view's chip row. How many
+// there are depends on the draw — eight sixteenths on a slam, four quarters on a 32 — so it
+// resets when you change event or tour rather than carrying an out-of-range index across.
 const sel = { key: null, gender: null, view: null, section: 0, round: null };
 
 const $ = (id) => document.getElementById(id);
@@ -164,6 +166,7 @@ function buildTabs() {
     sel.key = selEl.value;
     if (!gendersFor(sel.key).includes(sel.gender)) sel.gender = gendersFor(sel.key)[0];
     sel.round = null;
+    sel.section = 0;
     sel.view = null;            // back to the per-event default
     buildTabs();
     render();
@@ -173,6 +176,7 @@ function buildTabs() {
   seg($("genderTabs"), g.map((x) => [x, x === "M" ? "Men" : "Women"]), sel.gender, (x) => {
     sel.gender = x;
     sel.round = null;
+    sel.section = 0;            // the two draws can differ in size, so in section count
     buildTabs();
     render();
   });

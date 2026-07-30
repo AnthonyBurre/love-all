@@ -56,6 +56,38 @@ def _live() -> None:
             print(f"  {r['label']:<18} {len(r['matches']):>3} matches")
 
 
+def _feeds_calendar(season: "int | None") -> None:
+    """Re-read the season pages. Run once when the tours publish a calendar, and again if an
+    event changes level mid-season."""
+    from collections import Counter
+
+    from match_charting_project.live import feeds
+
+    doc = feeds.refresh_calendar(season)
+    by_tier = Counter(e["tier"] for e in doc["events"])
+    print(f"  calendar {doc['season']}: {len(doc['events'])} events -> {feeds.CALENDAR}")
+    for tier, n in sorted(by_tier.items()):
+        print(f"    {tier:<12} {n}")
+
+
+def _feeds_draws() -> None:
+    """Fetch any draw sheet not already cached for a live event. The hourly site build does
+    this too; this is for checking it by hand."""
+    from match_charting_project.live import espn, feeds
+
+    tours = espn.current_tournaments()
+    if not tours:
+        print("  no live draws to look up.")
+        return
+    before = len((feeds.load_draws().get("draws") or {}))
+    store = feeds.refresh_draws(tours)
+    got = store.get("draws") or {}
+    print(f"  draws cached: {len(got)} ({len(got) - before} new) -> {feeds.DRAWS}")
+    for key, rec in got.items():
+        print(f"    {key:<18} {len(rec['r1']):>3} slots  "
+              f"agreement {rec['agreement']:.0%}  {rec['source_page']}")
+
+
 def _history_seed() -> None:
     """One-time: archive the most recent *finished* slam, so a freshly-deployed site has a
     past draw to show. Idempotent — does nothing once the archive holds anything, and always
@@ -229,6 +261,11 @@ def main(argv: list[str] | None = None) -> None:
     hv.add_argument("--event", required=True, help='slam name, e.g. "Wimbledon"')
     hv.add_argument("--year", type=int, required=True)
     hsub.add_parser("seed", help="one-time: archive the most recent finished slam (auto-picked)")
+    fd = sub.add_parser("feeds", help="refresh the Wikipedia-sourced feeds (calendar, draws)")
+    fdsub = fd.add_subparsers(dest="feeds_cmd", required=True)
+    fc = fdsub.add_parser("calendar", help="re-read both tours' season pages (tier + surface)")
+    fc.add_argument("--season", type=int, default=None, help="defaults to the current year")
+    fdsub.add_parser("draws", help="fetch any newly-published draw sheet for live events")
     site = sub.add_parser("site", help="build site data artifacts")
     site.add_argument("what", choices=["build-insights", "build-brackets"])
     sub.add_parser("validate", help="print the data-quality report")
@@ -257,6 +294,11 @@ def main(argv: list[str] | None = None) -> None:
             _history_harvest(args.event, args.year)
         elif args.history_cmd == "seed":
             _history_seed()
+    elif args.cmd == "feeds":
+        if args.feeds_cmd == "calendar":
+            _feeds_calendar(args.season)
+        elif args.feeds_cmd == "draws":
+            _feeds_draws()
     elif args.cmd == "site":
         if args.what == "build-insights":
             from match_charting_project.site import build_insights

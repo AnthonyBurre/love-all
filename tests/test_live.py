@@ -51,9 +51,14 @@ def test_parse_singles_maindraw_only():
 
 # --- tour level: the 500 roster vs. the name heuristics --------------------------------
 
-def _event(id, name, venue, slug="mens-singles", major=False):
-    """A minimal one-match scoreboard event, enough to reach espn.parse's tier decision."""
-    return {"id": id, "name": name, "major": major, "venue": {"displayName": venue},
+def _event(id, name, venue, slug="mens-singles", major=False, date="2026-07-27T14:00Z"):
+    """A minimal one-match scoreboard event, enough to reach espn.parse's tier decision.
+
+    The date matters: the calendar feed joins on venue city *and* week, because a city can
+    host two events a season at different levels.
+    """
+    return {"id": id, "name": name, "major": major, "date": date,
+            "venue": {"displayName": venue},
             "groupings": [{"grouping": {"slug": slug}, "competitions": [
                 {"id": f"{id}-c", "round": {"displayName": "Final"},
                  "status": {"type": {"state": "pre", "shortDetail": "1:00 PM"}},
@@ -61,36 +66,65 @@ def _event(id, name, venue, slug="mens-singles", major=False):
                                  {"athlete": {"displayName": "B Two"}}]}]}]}
 
 
-def _tiers(*events):
-    return {(t.gender, t.name): t.tier for t in espn.parse({"events": list(events)})}
+def _cal(*entries):
+    """A stand-in calendar feed: (gender, city, tier, month) tuples."""
+    return {"season": 2026,
+            "events": [{"gender": g, "city": c, "tier": t, "month": m,
+                        "event": c + " Open", "surface": "Hard", "indoor": False,
+                        "draw_size": None, "singles_pages": []}
+                       for g, c, t, m in entries]}
 
 
-def test_parse_serves_rostered_500s_and_drops_the_rest_of_the_tour():
+def _tiers(*events, cal=None):
+    return {(t.gender, t.name): t.tier
+            for t in espn.parse({"events": list(events)}, cal=cal or _cal())}
+
+
+CAL_2026 = _cal(("M", "Washington", "ATP 500", 7), ("W", "Washington DC", "WTA 500", 7),
+                ("M", "Los Cabos", "ATP 250", 7), ("W", "Rome", "WTA 1000", 5),
+                ("M", "Doha", "ATP 500", 2), ("M", "Hamburg", "ATP 500", 5),
+                ("M", "Dubai", "ATP 500", 2), ("W", "Dubai", "WTA 1000", 2))
+
+
+def test_parse_serves_500s_and_drops_the_rest_of_the_tour():
     got = _tiers(
         _event("888-2026", "Mubadala DC Open", "Washington, USA"),            # ATP 500
         _event("888-2026", "Mubadala DC Open", "Washington, USA", "womens-singles"),
         _event("424-2026", "Mifel Tennis Open by Telcel Oppo", "Los Cabos, Mexico"),  # 250
         _event("1017-2026", "ATV Bancomat Tennis Open", "Rome, Italy", "womens-singles"),
-    )
+        cal=CAL_2026)
     assert got == {("M", "Mubadala DC Open"): levels.TOUR_500,
                    ("W", "Mubadala DC Open"): levels.TOUR_500}
-    # The 250 and the WTA 125 are filtered out entirely — and note the 125 plays *Rome*,
-    # so a city-keyed roster would have promoted it to a 1000.
 
 
-def test_roster_beats_the_1000_city_heuristics():
-    # Doha, Dubai and Hamburg all trip the 1000 city lists — as an old Masters stop, or
-    # because the women's event at the same city really is a 1000. The roster wins.
-    got = _tiers(_event("119-2026", "Qatar ExxonMobil Open", "Doha, Qatar"),
-                 _event("942-2026", "Bitpanda Hamburg Open", "Hamburg, Germany"))
+def test_a_125_sharing_a_city_with_a_1000_is_not_promoted():
+    # The calendar covers 250 and up, so a WTA 125 is absent from it — and the Rome 125
+    # matches the Rome 1000 on city exactly. Only the week separates them: May vs July.
+    in_july = _tiers(_event("1017-2026", "ATV Bancomat Tennis Open", "Rome, Italy",
+                            "womens-singles", date="2026-07-20T10:00Z"), cal=CAL_2026)
+    assert in_july == {}                            # dropped, not served as a 1000
+
+    in_may = _tiers(_event("414-2026", "Internazionali BNL d'Italia", "Rome, Italy",
+                           "womens-singles", date="2026-05-06T10:00Z"), cal=CAL_2026)
+    assert list(in_may.values()) == ["Masters / WTA 1000"]
+
+
+def test_calendar_beats_the_1000_city_heuristics():
+    # Doha and Hamburg both trip the 1000 city lists — as an old Masters stop, or because
+    # the women's event in the same city really is a 1000. The calendar wins.
+    got = _tiers(_event("119-2026", "Qatar ExxonMobil Open", "Doha, Qatar",
+                        date="2026-02-16T10:00Z"),
+                 _event("942-2026", "Bitpanda Hamburg Open", "Hamburg, Germany",
+                        date="2026-05-18T10:00Z"), cal=CAL_2026)
     assert set(got.values()) == {levels.TOUR_500}
 
 
-def test_one_event_id_can_straddle_levels_by_tour():
-    # Dubai is ATP 500 but WTA 1000, under a single shared ESPN event id.
-    got = _tiers(_event("25-2026", "Dubai Duty Free Tennis Championships", "Dubai, UAE"),
+def test_one_city_can_straddle_levels_by_tour():
+    # Dubai is ATP 500 but WTA 1000, in the same city in the same week.
+    got = _tiers(_event("25-2026", "Dubai Duty Free Tennis Championships", "Dubai, UAE",
+                        date="2026-02-23T10:00Z"),
                  _event("25-2026", "Dubai Duty Free Tennis Championships", "Dubai, UAE",
-                        "womens-singles"))
+                        "womens-singles", date="2026-02-23T10:00Z"), cal=CAL_2026)
     assert got[("M", "Dubai Duty Free Tennis Championships")] == levels.TOUR_500
     assert got[("W", "Dubai Duty Free Tennis Championships")] == "Masters / WTA 1000"
 
