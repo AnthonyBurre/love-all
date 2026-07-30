@@ -261,10 +261,10 @@ function tapeRow(r, sa, sb) {
 
 // What the charted numbers below rest on: the player's style label and how much of them
 // exists in the data. No name and no flag — the scroll-locked match header above carries
-// those, and this side of the panel is the same player in the same position, bound to it
-// by the colour dot. The two player colours (--a / --b) are theme-independent and run
-// from that dot through the strip, the column rules and the ball paths, so a column never
-// has to be identified by its position alone once the panel has scrolled.
+// those, and this side of the panel is the same player in the same position. The two
+// player colours (--a / --b) are theme-independent and are declared once, by the split
+// rule under that header: its left half is player A, its right half player B, and those
+// colours then run through the strip's bars, the column rules and the ball paths.
 function tapeWho(d, tag) {
   // "charted:" is stated rather than implied: these counts are how much of the player
   // exists in the data, not how much tennis they have played, and every number in the
@@ -277,11 +277,10 @@ function tapeWho(d, tag) {
        ${Number(d.s.points_charted).toLocaleString()} points</span>`
     : `<span class="tcharted">not charted yet —
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">chart a match →</a></span>`;
-  return `<div class="twho ${tag}"><span class="tdot ${tag}"></span>
-    <p class="tmeta">${meta}</p></div>`;
+  return `<div class="twho ${tag}"><p class="tmeta">${meta}</p></div>`;
 }
 
-function tape(a, b, da, db, mu) {
+function tape(da, db, mu) {
   const sa = da && da.s, sb = db && db.s;
   if (!sa && !sb) return "";
   return `<section class="tape">
@@ -421,10 +420,14 @@ function chartPanel(m, t) {
     <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart this match →</a></div>`;
 }
 
-// The scoreline as a centred column between the two names: one row per set, the two
-// players' games side by side, the higher of each bolded — so the result reads as a
-// column of bold on the winner's side. Stacked rather than run along each name because
-// the names now sit at opposite ends of the header, and a score belongs between them.
+// The scoreline that sits between the two names, the higher of each set bolded — so the
+// result reads as a run of bold on the winner's side.
+//
+// One flat list of cells, ordered A,B per set, laid out two ways by CSS alone: a wide
+// header flows it down columns, giving each player a horizontal scoreline level with
+// their own name, and a narrow one flows it across rows, giving one row per set stacked
+// between the names. Either way a set is a pair and the pairs stay in order, so neither
+// layout needs its own markup.
 function scoreStack(a, b) {
   const n = Math.max((a.sets || []).length, (b.sets || []).length);
   if (!n) return `<div class="mscore none">vs</div>`;
@@ -433,13 +436,13 @@ function scoreStack(a, b) {
     const won = o != null && Math.trunc(v) > Math.trunc(o);
     return `<span class="sg${won ? " won" : ""}">${Math.trunc(v)}</span>`;
   };
-  let rows = "";
+  let cells = "";
   for (let i = 0; i < n; i++) {
     const x = a.sets && a.sets[i], y = b.sets && b.sets[i];
-    if (x == null && y == null) continue;
-    rows += `<div class="srow">${cell(x, y)}${cell(y, x)}</div>`;
+    if (x == null && y == null) continue;    // drop the pair, never half of one
+    cells += cell(x, y) + cell(y, x);
   }
-  return `<div class="mscore">${rows}</div>`;
+  return `<div class="mscore">${cells}</div>`;
 }
 
 // A player's name in both renderings the header needs: the full name, and a
@@ -493,7 +496,7 @@ function headHtml(m, t, round) {
     // The winner's caret points into their name from the score side. The two names are
     // on one row now, so nothing has to line up underneath and the slot can simply be
     // absent on the other side.
-    return `<div class="${cls}"><span class="tdot ${tag}"></span>${flag}
+    return `<div class="${cls}">${flag}
       ${s.winner ? `<span class="mwin"></span>` : ""}${nameHtml(s.name)}${seed}</div>`;
   };
   // Older archived draws carry no per-match date and nothing else to say, so the when
@@ -513,7 +516,7 @@ function bodyHtml(m, pa, pb, mu) {
   const none = !pa && !pb
     ? `<p class="nochart">Neither player has Match Charting history yet.
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
-  return tape(a, b, pa, pb, mu) + none +
+  return tape(pa, pb, mu) + none +
     section("court patterns", `their answer to an incoming ball, × how often the tour
       plays it from the same spot${COURT_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3)) +
