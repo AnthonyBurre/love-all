@@ -286,13 +286,9 @@ function tape(da, db, mu) {
   return `<section class="tape">
     <div class="tapehead">${tapeWho(da, "a")}${tapeWho(db, "b")}</div>
     ${tapeRows(mu).map((r) => tapeRow(r, sa, sb)).join("")}
-    <p class="tapenote">The hairline <span class="tickkey"></span> on the serve and return
-      bars is this draw's tour average, so a bar reaching past it is above the field. The
-      winners + unforced errors bar splits where the shot came off:
-      <span class="segkey"></span> landed, <span class="segkey miss"></span> missed. A
-      rally stroke is anything from the third ball of the point on, so serves and returns
-      aren't in that denominator — and forced errors sit outside the split, because being
-      beaten isn't a shot they chose.</p>
+    <p class="tapenote"><span class="tickkey"></span> this draw's tour average ·
+      <span class="segkey"></span> landed <span class="segkey miss"></span> missed, on the
+      winners + errors bar</p>
   </section>`;
 }
 
@@ -300,14 +296,41 @@ function tape(da, db, mu) {
 // One topic, one header, two columns. Giving each player their own full card lets the
 // sections slide out of step the moment one player has more patterns than the other —
 // and once they have, no two comparable numbers are ever on screen together.
-function section(title, note, a, b, aHtml, bHtml) {
+//
+// The topic sits on its own line and sticks to the top of the scroll while its cards are
+// passing, because the panel is four or five screens tall: without it, a column of
+// drawings halfway down says nothing about which question it answers. The note under it
+// scrolls away, being the sort of thing you read once.
+//
+// `kind` is how the columns behave once they are phone-narrow: "cards" keeps them
+// side by side (a court thumbnail survives a 160px column, and the comparison is the
+// whole point of the section), "text" stacks them (a shot sequence does not).
+// How many items a column is about to render, read off its own markup: every card in
+// either family opens with a known class, and an empty column still costs one line.
+const countCards = (html) =>
+  Math.max(1, (String(html || "").match(/class="(?:pcard2|trig )/g) || []).length);
+
+function section(title, note, a, b, aHtml, bHtml, kind = "cards") {
   if (!aHtml && !bHtml) return "";
   const col = (html, side, tag) => `<div class="seccol" data-side="${tag}">
     <p class="colwho"><span class="tdot ${tag}"></span>${esc(last(side.name) || "TBD")}</p>
     ${html || `<p class="colnone">nothing at this player's coverage</p>`}</div>`;
-  return `<section class="msec">
-    <h3 class="sechead">${title}${note ? ` <span class="phead-note">${note}</span>` : ""}</h3>
-    <div class="seccols">${col(aHtml, a, "a")}${col(bHtml, b, "b")}</div>
+  // How many rows the two columns share, so the CSS can run them on one set of tracks
+  // and keep each player's first finding level with the other's. Without it the columns
+  // are two independent stacks, and one extra line of wrap in a description slides
+  // everything below it out of step with the thing it is supposed to be read against.
+  const rows = 1 + Math.max(countCards(aHtml), countCards(bHtml));
+  // Two ways to say whose column is whose, one per layout. Side by side, the names ride
+  // in the sticky bar over the columns they head, because a line inside the columns
+  // scrolls under that bar and is gone by the second card. Stacked, they can't — one bar
+  // can't head two columns that aren't there — so each column carries its own.
+  const who = (side, tag) =>
+    `<span class="sw ${tag}"><span class="tdot ${tag}"></span>${esc(last(side.name) || "TBD")}</span>`;
+  return `<section class="msec ${kind}">
+    <h3 class="sechead">${title}
+      <span class="secwho">${who(a, "a")}${who(b, "b")}</span></h3>
+    ${note ? `<p class="secnote">${note}</p>` : ""}
+    <div class="seccols" style="--rows:${rows}">${col(aHtml, a, "a")}${col(bHtml, b, "b")}</div>
   </section>`;
 }
 
@@ -403,6 +426,10 @@ function notationHelp() {
         raises attempts but sinks conversion is a trap — they take the bait.
         It's the same pair of numbers the strip up top splits into one bar, read
         per cue instead of over all their rally balls.</div>
+      <div>On that strip, a rally stroke is anything from the third ball of the point
+        on, so serves and returns aren't in the winners + unforced errors denominator.
+        Forced errors sit outside the split as well, because being beaten isn't a shot
+        they chose.</div>
     </div>
   </details>`;
 }
@@ -459,12 +486,14 @@ function nameHtml(name) {
     `<span class="mabbr">${abbr}</span></span>`;
 }
 
-// Where this match sits: event, draw, round. An eyebrow above the names rather than a
-// link in a chain — it is the context you read once on opening and then stop looking at.
+// Where this match sits: event and round. It rides in the top corner beside the close
+// button rather than over the names, because it is the context you read once on opening
+// and then stop looking at, and the scoreboard is what the header is for. No draw here:
+// the tabs behind the panel are already set to one, and a men's and a women's match never
+// share a screen.
 function eyebrow(t, round) {
   const event = t.completed ? `${t.name} ${t.season}` : t.name;
-  return [esc(event), t.gender === "M" ? "Men" : "Women", round ? esc(round.label) : ""]
-    .filter(Boolean).join(" · ");
+  return [esc(event), round ? esc(round.label) : ""].filter(Boolean).join(" · ");
 }
 
 // When. A match that hasn't been played carries its date and start time inside ESPN's
@@ -502,8 +531,14 @@ function headHtml(m, t, round) {
   // Older archived draws carry no per-match date and nothing else to say, so the when
   // line drops out entirely rather than leaving an empty row under the names.
   const when = whenLine(m, t);
+  // A hairline on the boundary between the two staggered rows, reaching name to name: the
+  // one thing that says the run of games above it belongs to the player above it. Only
+  // where there are two scorelines to divide — no scoreline, nothing to separate, and a
+  // rule through a bare "vs" is just a rule.
+  const played = (m.a.sets || []).length || (m.b.sets || []).length;
+  const rule = played ? `<i class="mrule"></i>` : "";
   return `<p class="mevent">${eyebrow(t, round)}</p>
-    <div class="mgrid">${side(m.a, "a")}${scoreStack(m.a, m.b)}${side(m.b, "b")}</div>
+    <div class="mgrid">${side(m.a, "a")}${scoreStack(m.a, m.b)}${side(m.b, "b")}${rule}</div>
     ${when ? `<p class="mstate">${when}</p>` : ""}`;
 }
 
@@ -519,26 +554,93 @@ function bodyHtml(m, pa, pb, mu) {
   return tape(pa, pb, mu) + none +
     section("court patterns", `their answer to an incoming ball, × how often the tour
       plays it from the same spot${COURT_LEGEND}`, a, b,
-      familyCards(pa, "rally", 3), familyCards(pb, "rally", 3)) +
+      familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("off the return", `what they do with the returns they serve up, by return
-      depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2)) +
+      depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
     section("shot-making triggers", `a lead-up that shifts how often they go for a
-      finishing shot — and whether it pays`, a, b, ta.main, tb.main) +
+      finishing shot — and whether it pays`, a, b, ta.main, tb.main, "text") +
     section("deep patterns ⭐", `3–4 shot sequences only chartable at this player's
-      coverage`, a, b, ta.gold, tb.gold);
+      coverage`, a, b, ta.gold, tb.gold, "text");
+}
+
+// --- the panel as a dialog ----------------------------------------------------------
+// It claims aria-modal, so it has to behave like one: focus moves in, Tab stays in, the
+// draw behind stops scrolling, and closing hands focus back to the match tile you opened
+// from — otherwise a keyboard lands back at the top of the page each time.
+const FOCUSABLE = "a[href], button:not([disabled]), summary, [tabindex]:not([tabindex='-1'])";
+let opener = null;          // the element that opened the panel, to hand focus back to
+let wired = false;
+
+function lockPage(on) {
+  // <html> is the scroller here, so that is where the lock has to go; body alone does
+  // nothing. Hiding the scrollbar widens the page, and the padding it leaves in its
+  // place is what keeps the draw behind from jumping sideways as the panel opens.
+  const gap = window.innerWidth - document.documentElement.clientWidth;
+  document.documentElement.style.overflow = on ? "hidden" : "";
+  document.body.style.paddingRight = on && gap ? `${gap}px` : "";
+}
+
+export function closeMatchup() {
+  const panel = document.getElementById("matchup");
+  if (panel.hidden) return;
+  panel.hidden = true;
+  document.getElementById("scrim").hidden = true;
+  lockPage(false);
+  if (opener && document.contains(opener)) opener.focus();
+  opener = null;
+}
+
+function onPanelKey(e) {
+  if (e.key !== "Tab") return;
+  const panel = document.getElementById("matchup");
+  const items = [...panel.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent);
+  if (!items.length) return e.preventDefault();
+  const first = items[0], last_ = items[items.length - 1];
+  // The panel itself holds focus on open, so a first Tab has to land somewhere sensible
+  // whichever direction it goes.
+  if (!panel.contains(document.activeElement) || document.activeElement === panel) {
+    e.preventDefault();
+    (e.shiftKey ? last_ : first).focus();
+  } else if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault(); last_.focus();
+  } else if (!e.shiftKey && document.activeElement === last_) {
+    e.preventDefault(); first.focus();
+  }
+}
+
+// The header is the panel's one fixed cost — four screens of profile scroll past it, and
+// on a phone a five-set scoreline holds a quarter of the sheet to say what you tapped.
+// So once the body starts moving it condenses to the names and the score, and comes back
+// when you return to the top. The two thresholds are hysteresis: one value would flicker
+// as the collapse itself changes what is under the fold.
+function onBodyScroll() {
+  const panel = document.getElementById("matchup");
+  const t = document.getElementById("matchupBody").scrollTop;
+  if (t > 24) panel.classList.add("cond");
+  else if (t < 8) panel.classList.remove("cond");
 }
 
 export async function openMatchup(m, t) {
   const panel = document.getElementById("matchup");
+  const body = document.getElementById("matchupBody");
+  if (panel.hidden) opener = document.activeElement;
   panel.hidden = false;
   panel.setAttribute("aria-label", `${m.a.name || "TBD"} vs ${m.b.name || "TBD"}`);
   document.getElementById("scrim").hidden = false;
-  const body = document.getElementById("matchupBody");
+  lockPage(true);
+  if (!wired) {
+    panel.addEventListener("keydown", onPanelKey);
+    body.addEventListener("scroll", onBodyScroll, { passive: true });
+    wired = true;
+  }
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
   document.getElementById("matchupHead").innerHTML = headHtml(m, t, round);
   body.scrollTop = 0;
+  panel.classList.remove("cond");
+  panel.focus();
   body.innerHTML = `${chartPanel(m, t)}
-    <div id="cardslot" class="loading">Loading…</div>${notationHelp()}<div id="wpslot"></div>`;
+    <div id="cardslot" class="loading">Loading…</div>
+    <div id="wpslot"></div>${notationHelp()}`;
 
   const [pa, pb] = await Promise.all([
     playerData(m.a.matched, t.gender),

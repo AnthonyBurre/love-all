@@ -122,7 +122,19 @@ function matchCard(m, t, cov, onClick, wide) {
   } else if (m.state === "pre" && m.detail && m.detail !== "TBD") {
     card.append(el("div", "detail", m.detail));
   }
-  if (!m.placeholder) card.onclick = () => onClick(m, t);
+  // A tile that opens the panel is a button, whatever element it is made of: reachable by
+  // Tab, activated by Enter or Space. It is also where focus goes back to when the panel
+  // closes, so without this a keyboard is returned to the top of the page each time.
+  if (!m.placeholder) {
+    card.onclick = () => onClick(m, t);
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.onkeydown = (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      onClick(m, t);
+    };
+  }
   return card;
 }
 

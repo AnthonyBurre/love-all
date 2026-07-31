@@ -131,6 +131,7 @@ a { color: var(--acc-d); }
 /* match card, shaded by how charted the *pairing* is (min of both players) */
 .match { background: var(--card); border: 1px solid var(--line); border-left: 4px solid #d0d7d3; border-radius: var(--radius); padding: 8px 10px; cursor: pointer; transition: border-color .15s, box-shadow .15s; z-index: 2; }
 .match:hover { border-color: var(--acc); box-shadow: 0 3px 12px rgba(0,0,0,.14); }
+.match:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 .match.t-rich { border-left-color: var(--acc); background: color-mix(in srgb, var(--acc) 7%, var(--card)); }
 .match.t-some { border-left-color: var(--some); background: color-mix(in srgb, var(--some) 7%, var(--card)); }
 .match.t-thin { border-left-color: #d6cfa8; }
@@ -176,8 +177,13 @@ a { color: var(--acc-d); }
   background: var(--card); border: 0; border-radius: 16px;
   box-shadow: 0 24px 80px rgba(0,0,0,.35); animation: pop .16s ease-out; }
 .matchup[hidden] { display: none; }
+.matchup:focus { outline: none; }   /* it takes focus on open; the pop is the cue */
 @keyframes pop { from { opacity: 0; transform: translate(-50%, -47.5%) scale(.97); } }
-.matchup .close { position: absolute; top: 8px; right: 10px; z-index: 3; border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--hd-mut); padding: 4px 8px; }
+/* a full 44px target: this is the one control on the panel, and on a phone it sits in
+   the corner a thumb reaches worst */
+.matchup .close { position: absolute; top: 4px; right: 6px; z-index: 3; border: 0; background: none;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  padding: 0; font-size: 26px; line-height: 1; cursor: pointer; color: var(--hd-mut); }
 .matchup .close:hover { color: var(--hd-ink); }
 
 /* scoreboard header (non-scrolling), read top-down: event/draw/round, then the two
@@ -188,19 +194,51 @@ a { color: var(--acc-d); }
    between the two, which is the one place the colours can be declared without a dot
    having to be parked next to something. */
 .mtop { flex: none; position: relative; padding: 15px 20px 17px;
-  color: var(--hd-ink); background: var(--hd-bg); }
+  color: var(--hd-ink); background: var(--hd-bg); transition: padding .18s ease; }
 .mtop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
   background: linear-gradient(90deg, var(--a) 0 50%, var(--b) 50% 100%); }
-/* only this line runs alongside the close button, so only this line keeps clear of it —
-   the rows below can use the full width, which is what centres the score under it */
-.mevent { margin: 0 0 9px; padding-right: 30px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--hd-mut); }
+/* The two corners of chrome — which event this is, and when it was played — are the only
+   things in the panel that belong to the tournament rather than to the two players, so
+   they are the only things that wear its colour. Boxed and kept to the corners, the trace
+   of green or clay-red frames the scoreboard without competing with the violet and red
+   inside it, which still have the middle to themselves. */
+.mevent, .mstate { width: fit-content; padding: 3px 8px; border-radius: 6px;
+  color: var(--acc-d); background: color-mix(in srgb, var(--acc) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc) 22%, transparent); }
+/* The one line that shares the close button's row, so it is the one line that keeps clear
+   of it — and it sits over there with it, in the corner, leaving the full width below for
+   the scoreboard, which is what centres the score. */
+.mevent { margin: 0 34px 9px auto;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+
+/* Condensed header, once the body has scrolled: the four or five screens below it are
+   the panel, and a fixed band naming the two players you just tapped shouldn't hold a
+   quarter of the sheet while you read them. What survives is the pairing and the score —
+   the key to every colour below. The where and the when come back at the top. */
+.mevent, .mstate { max-height: 3em; overflow: hidden;
+  transition: max-height .18s ease, opacity .14s ease, margin .18s ease, padding .18s ease; }
+.matchup.cond .mtop { padding-top: 8px; padding-bottom: 10px; }
+/* max-height alone can't close a box that has padding and a border — those floor it at
+   8px of tinted sliver — so the box gives those up on the way out too */
+.matchup.cond .mevent, .matchup.cond .mstate { max-height: 0; opacity: 0; margin: 0;
+  padding-top: 0; padding-bottom: 0; border-width: 0; }
+.matchup.cond .mp { font-size: 15px; }
+/* condensed, the names come up level with the close button, so the right-hand one keeps
+   clear of it — the event line that used to do that job is the thing that just left */
+.matchup.cond .mp.b { padding-right: 36px; }
+.matchup.cond .sg { font-size: 13px; }
+.matchup.cond .mflag { font-size: 13px; }
+@media (prefers-reduced-motion: reduce) {
+  .mtop, .mevent, .mstate, .mp { transition: none; }
+}
 /* Two staggered lines, each a player: their name at their own end and their games run
    along it, with both scorelines sharing the middle column so a set still reads down a
    column. The stagger is what ties a scoreline to its name across the gap between them.
    (Narrow screens have no room for that and use one row — see the 620px block.) */
 .mgrid { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto;
   align-items: center; column-gap: 14px; row-gap: 2px; }
-.mp { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 19px; }
+.mp { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 19px;
+  transition: font-size .18s ease, padding .18s ease; }
 .mp.a { grid-column: 1; grid-row: 1; }
 .mp.b { grid-column: 3; grid-row: 2; flex-direction: row-reverse; }   /* the right end */
 .mp .mname { min-width: 0; font-weight: 600; line-height: 1.2; overflow-wrap: break-word; }
@@ -227,9 +265,20 @@ a { color: var(--acc-d); }
 /* nothing played yet: the gap between the names still needs to say what it is */
 .mscore.none { display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--hd-mut); }
-.mstate { font-size: 12px; color: var(--hd-mut); margin: 9px 0 0; }
+/* The line between the two scorelines. It spans the grid, so it runs from the left name
+   to the right one and stops there rather than at the panel's edge, and centring it in
+   the two rows it spans puts it on their shared boundary without anyone having to know
+   how tall a row came out. Gone on narrow screens, where both players share one row and
+   the sets read across instead of down — there is no boundary left to draw. */
+.mrule { grid-column: 1 / -1; grid-row: 1 / span 2; align-self: center;
+  height: 1px; background: color-mix(in srgb, var(--hd-mut) 28%, transparent); }
+.mstate { font-size: 12px; margin: 9px 0 0; }
+/* a live match answers "when" with itself, and that beats the event's colour to it */
 .mstate .live { color: var(--warn); font-weight: 700; }
-.mbody { overflow-y: auto; overscroll-behavior: contain; padding: 14px 20px 22px; }
+/* --pad-t is the sticky section headings' business as much as this box's: they pin
+   against the content edge, not the panel edge, so they have to pull back by exactly
+   this much to sit flush under the scoreboard. Kept in one place so the two can't drift. */
+.mbody { --pad-t: 14px; overflow-y: auto; overscroll-behavior: contain; padding: var(--pad-t) 20px 22px; }
 .mbody .loading { padding: 30px 0; color: var(--muted); font-size: 13px; }
 
 /* finished-match charting call-to-action: link to the chart, or invite one */
@@ -275,6 +324,9 @@ a { color: var(--acc-d); }
 
 /* the win probability is deliberately small print below the tendencies */
 .wp-slim { margin: 18px 0 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+/* it borrows the section heading's type, but it heads a footnote, not a run of cards —
+   nothing scrolls under it long enough to need pinning */
+.wp .sechead { position: static; margin: 0 0 6px; padding: 0; border-bottom: 0; }
 .wp-line { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 .wp-line .wp-bar { flex: 1; height: 7px; border-radius: 4px; overflow: hidden; background: color-mix(in srgb, var(--b) 30%, var(--card)); }
 .wp-line .pa { height: 100%; background: color-mix(in srgb, var(--a) 65%, var(--card)); }
@@ -324,11 +376,27 @@ a { color: var(--acc-d); }
 .segkey.miss { opacity: .38; }
 .tickkey { display: inline-block; width: 2px; height: 11px; background: var(--ink); opacity: .5; vertical-align: -2px; margin: 0 1px; }
 
-/* --- a topic, one header, two columns ------------------------------------------- */
-.msec { margin-top: 20px; }
-.sechead { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.seccols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.seccol { min-width: 0; padding-left: 11px; border-left: 2px solid color-mix(in srgb, var(--shot) 40%, transparent); }
+/* --- a topic, one header, two columns -------------------------------------------
+   The topic sticks to the top of the scroll while its own cards pass under it: the
+   panel runs four or five screens, and a column of court drawings halfway down gives
+   no clue which question it is answering. It bleeds to the panel edges so the content
+   passes behind it rather than through the gutters. */
+.msec { margin-top: 14px; }
+.sechead { position: sticky; top: calc(-1 * var(--pad-t, 0px)); z-index: 2; background: var(--card);
+  margin: 0 -20px 7px; padding: 6px 20px 5px; border-bottom: 1px solid var(--line);
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+/* read once, then out of the way — unlike the topic, it doesn't stick */
+.secnote { margin: 0 0 9px; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+/* Both columns run on the same rows, so each player's first finding sits level with the
+   other's — two independent stacks drift apart the moment one description wraps a line
+   further than its opposite number, and a comparison you have to scroll between isn't
+   one. Browsers without subgrid drop the rule and get the old stacks. */
+.seccols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 0;
+  grid-template-rows: repeat(var(--rows, 1), auto); }
+/* the sticky bar's other half on a phone: the two column owners, over their columns */
+.secwho { display: none; }
+.seccol { min-width: 0; padding-left: 11px; border-left: 2px solid color-mix(in srgb, var(--shot) 40%, transparent);
+  display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; align-items: start; }
 .seccol[data-side="a"] { --shot: var(--a); }
 .seccol[data-side="b"] { --shot: var(--b); }
 /* the column's owner: redundant beside the strip on a wide panel, essential once the
@@ -355,6 +423,9 @@ a { color: var(--acc-d); }
 .pdesc b { display: block; color: var(--ink); }
 .pfoot { margin: 3px 0 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pfoot b { color: var(--ink); }
+/* the comparison to the tour is one phrase — a narrow column mustn't break "▲5 vs tour"
+   across two lines and leave "tour" sitting alone */
+.up, .down, .lvl { white-space: nowrap; }
 .up { color: var(--up); font-weight: 700; }
 .down { color: var(--b); font-weight: 700; }
 .lvl { color: var(--muted); }
@@ -375,7 +446,6 @@ a { color: var(--acc-d); }
 .trig .lift { color: var(--muted); font-size: 11px; }
 .warnmark { color: var(--warn); }
 .trig code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
-.phead-note { text-transform: none; letter-spacing: 0; font-weight: 500; }
 
 /* the court glyph's key, stated where the glyph is first used */
 .courtkey { margin: 5px 0 0; display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 10.5px; }
@@ -427,6 +497,10 @@ a { color: var(--acc-d); }
   .mp .mabbr { display: inline; }
   .mflag { font-size: 14px; }
   .sg { font-size: 14px; min-width: 13px; }
+  /* here the header itself already holds a lane open for the close button, so the
+     condensed right-hand name must not reserve it a second time — 36px it can't spare
+     is the difference between one line and two */
+  .matchup.cond .mp.b { padding-right: 0; }
 }
 @keyframes sheet { from { opacity: 0; transform: translateY(28px); } }
 
@@ -439,14 +513,34 @@ a { color: var(--acc-d); }
      flowed across rows instead of down columns. */
   .mgrid { grid-template-rows: auto; row-gap: 0; }
   .mp.a, .mp.b { grid-row: 1; }
+  .mrule { display: none; }
   .mscore { grid-row: 1; align-self: center;
     grid-auto-flow: row; grid-template-rows: none; grid-template-columns: auto auto;
     row-gap: 1px; column-gap: 8px; }
-  .mbody { padding: 12px 14px 20px; }
+  .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
+  .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
   .tape { padding: 11px 12px 12px; }
   .tbars { grid-template-columns: minmax(58px, 1fr) 2fr 2fr minmax(58px, 1fr); gap: 5px; }
   .tval { font-size: 12px; }
-  .seccols { grid-template-columns: 1fr; gap: 16px; }
-  .colwho { display: flex; }
+  /* The court sections stay two-up. Stacking them puts a player's three drawings a
+     screen and a half from the three they are meant to be read against, which is the
+     section — so the card gives up its side-by-side layout instead, and the comparison
+     survives the phone. The sequence sections have no drawing to trade and do stack. */
+  .seccols { grid-template-columns: 1fr 1fr; column-gap: 10px; }
+  /* stacked, there is nothing left to align across, so the shared rows come off —
+     left on, both columns would claim the same single cell and sit on top of each other */
+  .msec.text .seccols { grid-template-columns: 1fr; grid-template-rows: none; row-gap: 16px; }
+  .msec.text .seccol { display: block; grid-row: auto; }
+  .seccol { padding-left: 8px; }
+  .msec.text .colwho { display: flex; }
+  .msec.cards .secwho { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px;
+    margin-top: 3px; text-transform: none; letter-spacing: 0; font-size: 11px; }
+  .msec.cards .sw { display: flex; align-items: center; gap: 5px; min-width: 0;
+    padding-left: 10px; color: var(--ink); }
+  .msec.cards .pcard2 { display: block; margin-bottom: 14px; }
+  .msec.cards .pcourt { width: 92px; margin-bottom: 3px; }
+  .msec.cards .pcourt svg { width: 92px; }
+  .msec.cards .plift { font-size: 15px; }
+  .msec.cards .pdesc { font-size: 12px; }
 }
 @media (max-width: 560px) { .legend { margin-left: 0; } }

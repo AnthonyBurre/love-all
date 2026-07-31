@@ -2,7 +2,7 @@
 // selected tournament, render the bracket into #bracket (quarter view by default,
 // full draw on demand, round list on phones), and wire the matchup drawer.
 import { renderTree, renderQuarters, renderRoundList, currentRound } from "./bracket.js";
-import { openMatchup } from "./matchup.js";
+import { openMatchup, closeMatchup } from "./matchup.js";
 import { query } from "./db.js";
 
 let data = null;
@@ -250,13 +250,11 @@ async function loadCoverage() {
 }
 
 function wireDrawer() {
-  const close = () => {
-    $("matchup").hidden = true;
-    $("scrim").hidden = true;
-  };
-  $("matchupClose").onclick = close;
-  $("scrim").onclick = close;
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  // closeMatchup owns the rest of it — the page scroll lock and handing focus back to
+  // the match tile that opened the panel.
+  $("matchupClose").onclick = closeMatchup;
+  $("scrim").onclick = closeMatchup;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMatchup(); });
 }
 
 main();
