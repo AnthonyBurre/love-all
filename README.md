@@ -8,19 +8,13 @@ matches typed out as point strings. This repo decodes that notation into queryab
 (1.85M points), derives point/rally/stroke analytics from it, and publishes an interactive
 site to GitHub Pages.
 
-There are two halves. **[The experiments](#the-experiments)** are where the findings live,
-one folder each, self-contained. **[The site](#the-site)** is what the good ones graduate
-into. To look around, start with the experiments and follow whichever question sounds
-interesting.
 
 ## The experiments
 
 Every folder under `experiments/` has a `README.md` stating its question, the code that
-answers it, and what it found. They write their output to `reports/`. Four are **negative
-results**, kept deliberately: they are the reason the production model stays as simple as it
-is, and a repo that only shows its wins hides how the decisions actually got made.
+answers it, and what it found. They write their output to `reports/`.
 
-### Reading the rally
+### Player / Rally Analysis 
 
 | experiment | the question | what it found |
 | --- | --- | --- |
@@ -32,11 +26,6 @@ is, and a repo that only shows its wins hides how the decisions actually got mad
 | [`context_length`](experiments/context_length/) | How many shots of history does charted data actually support? | **Two. The third actively hurts** held-out log-loss. And a player's top-5 signature list overlaps only J≈0.22 between halves of their own data, so much of any specific list is sampling luck. |
 | [`deep_patterns`](experiments/deep_patterns/) | For the most heavily charted players, do 3–4 shot patterns survive anyway? | 66 do, across 31 players, through a triple gate: beat your own parent pattern, replicate in both halves, clear a binomial test. Shipped as a gold-star tier. |
 | [`serve_side`](experiments/serve_side/) | Does deuce vs ad court hide structure? | Yes, and nothing else here conditioned on it. The direction codes mean **opposite wings** on the two sides, so serve analysis that ignores side is averaging two different shots together. |
-
-### Who the player is
-
-| experiment | the question | what it found |
-| --- | --- | --- |
 | [`player_styles`](experiments/player_styles/) | What style archetypes are there? | Four per tour, matching how fans talk: net-rusher (Sampras, McEnroe), baseline grinder (Djokovic, Nadal), slice & variety (Wawrinka, Federer), big-serving baseliner (Medvedev, Zverev). |
 | [`career_splits`](experiments/career_splits/) | Should a long career split into eras, or is that just two noisier samples of one player? | Split **selectively**. Most careers are stable; 34 genuinely evolved, and those detections are face-valid (Sabalenka's serve yips, Clijsters' comeback). Justifies `player_eras`, 358 → 392 entities. |
 | [`blind_reid`](experiments/blind_reid/) | Hide every name. Can you tell who is across the net purely from the shots coming back? | Yes, and **the serve is the weakest way to do it**. Response strokes alone reach AUC 0.685 on held-out players against the serve block's 0.643. Identity also fades measurably across years. |

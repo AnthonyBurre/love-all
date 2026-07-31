@@ -2,7 +2,7 @@
 // selected tournament, render the bracket into #bracket (quarter view by default,
 // full draw on demand, round list on phones), and wire the matchup drawer.
 import { renderTree, renderQuarters, renderRoundList, currentRound } from "./bracket.js";
-import { openMatchup } from "./matchup.js";
+import { openMatchup, closeMatchup } from "./matchup.js";
 import { query } from "./db.js";
 
 let data = null;
@@ -249,40 +249,12 @@ async function loadCoverage() {
   }
 }
 
-// Temporary while the new panel styles are auditioned: A/B/C switches the dialog's
-// look live (data-variant drives the CSS), and the pick sticks across opens.
-const PANEL_VARIANTS = [
-  ["paper", "A", "Paper — quiet card"],
-  ["hero", "B", "Hero — tournament colours"],
-  ["board", "C", "Scoreboard — score tiles"],
-];
-
 function wireDrawer() {
-  const close = () => {
-    $("matchup").hidden = true;
-    $("scrim").hidden = true;
-  };
-  $("matchupClose").onclick = close;
-  $("scrim").onclick = close;
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
-
-  const box = $("mVariants");
-  const apply = (v) => {
-    $("matchup").dataset.variant = v;
-    localStorage.setItem("panelVariant", v);
-    for (const b of box.children) b.classList.toggle("on", b.dataset.v === v);
-  };
-  for (const [val, label, title] of PANEL_VARIANTS) {
-    const b = document.createElement("button");
-    b.dataset.v = val;
-    b.textContent = label;
-    b.title = title;
-    b.setAttribute("aria-label", title);
-    b.onclick = () => apply(val);
-    box.appendChild(b);
-  }
-  const stored = localStorage.getItem("panelVariant");
-  apply(PANEL_VARIANTS.some(([v]) => v === stored) ? stored : "hero");
+  // closeMatchup owns the rest of it — the page scroll lock and handing focus back to
+  // the match tile that opened the panel.
+  $("matchupClose").onclick = closeMatchup;
+  $("scrim").onclick = closeMatchup;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMatchup(); });
 }
 
 main();

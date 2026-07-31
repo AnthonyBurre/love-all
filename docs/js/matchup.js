@@ -2,10 +2,12 @@
 // all queried from insights.duckdb via DuckDB-WASM.
 import { query, leagueMu } from "./db.js";
 import { preMatchWP } from "./winprob.js";
-import { patternSvg, pairSvg } from "./court.js";
+import { patternSvg, pairSvg, shotLine } from "./court.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const CHART_GUIDE =
+  "https://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/";
 const last = (name) => String(name || "").split(" ").slice(-1)[0];
 const pct = (x) => (x * 100).toFixed(1) + "%";
 
@@ -34,17 +36,6 @@ const ISO2 = {
 function flagEmoji(country) {
   const cc = ISO2[country];
   return cc ? String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)) : "";
-}
-
-// Player name line for a card: optional seed badge, name, then the flag (emoji, or the
-// country name kept as a title on the flag / as text when unmapped).
-function playerHead(side) {
-  const seed = side.seed ? `<span class="seed">${esc(String(side.seed))}</span>` : "";
-  const emoji = flagEmoji(side.country);
-  const flag = side.country
-    ? ` <span class="flag"${emoji ? ` title="${esc(side.country)}"` : ""}>${emoji || esc(side.country)}</span>`
-    : "";
-  return `<h4>${seed}${esc(side.name || "TBD")}${flag}</h4>`;
 }
 
 // A finished/scheduled match's date, formatted short ("Jul 13, 2026"). "" when absent
@@ -78,6 +69,8 @@ async function playerData(name, gender) {
   return { s: s[0], triggers, patterns };
 }
 
+// The qualitative reading of a number the comparison strip already prints, so each of
+// these is the word only — the strip supplies the digits next to it.
 function predictabilityLabel(bits) {
   if (bits == null) return "";
   if (bits >= 3.6) return "unusually varied";
@@ -86,10 +79,10 @@ function predictabilityLabel(bits) {
 }
 
 function ratingLabel(z) {
-  if (z == null) return "not enough charted shots";
-  if (z <= -0.5) return `beats their archetype (z ${z.toFixed(1)})`;
-  if (z >= 0.5) return `below their archetype (z +${z.toFixed(1)})`;
-  return `typical for their style (z ${z.toFixed(1)})`;
+  if (z == null) return "";
+  if (z <= -0.5) return "beats their archetype";
+  if (z >= 0.5) return "below their archetype";
+  return "typical for their style";
 }
 
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
@@ -101,133 +94,254 @@ function rallyDrawer(pattern) {
     <div class="court">${svg}</div></details>` : "";
 }
 
-// One decision, two outcomes: a green light converts, a trap is taken bait.
+// One decision, two outcomes: a green light converts, a trap is taken bait. The cue is
+// the lead-up sequence; the two numbers are how often it provokes a go-for-it shot and
+// how often that shot pays. Courts stay collapsed here — a trigger is a 2–4 stroke
+// sequence, and a column of full sequence drawings would bury the court patterns above,
+// which are what the panel leads with.
 function trigLine(t) {
-  const ctx = `after <code>${esc(t.context)}</code>`;
-  const lift = `${Number(t.att_lift).toFixed(1)}×`;
-  const court = rallyDrawer(t.context);
-  if (Number(t.depth) > 2) {
-    // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates
-    // across halves of the player's data — only the hugely-charted earn these.
-    const kind = t.tag === "trap"
-      ? `but converts only ${Math.round(t.conversion * 100)}% ⚠`
-      : `and converts ${Math.round(t.conversion * 100)}%`;
-    return `<div class="pat gold" title="deep pattern: only visible with this player's huge charted history">${ctx}
-      — goes for it ${Math.round(t.att_rate * 100)}% (${lift} the shorter pattern) ${kind}
-      <span class="lift">(n=${Number(t.n)})</span>${court}</div>`;
-  }
-  if (t.tag === "green") {
-    return `<div class="pat green">${ctx} — goes for it ${Math.round(t.att_rate * 100)}% (${lift})
-      and converts ${Math.round(t.conversion * 100)}% <span class="lift">(n=${Number(t.n)})</span>${court}</div>`;
-  }
-  return `<div class="pat bait">${ctx} — takes the bait (${lift} their attempts) but converts
-    only ${Math.round(t.conversion * 100)}% <span class="lift">(${Math.round(t.conv_delta * 100)} vs their norm, n=${Number(t.n)})</span>${court}</div>`;
+  // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates across
+  // halves of the player's data — only the hugely-charted earn these.
+  const deep = Number(t.depth) > 2;
+  const trap = t.tag === "trap";
+  const cls = deep ? "gold" : trap ? "bait" : "green";
+  const conv = Math.round(t.conversion * 100);
+  // A deep pattern already claims the ⭐, so a deep *trap* would otherwise lose its
+  // warning entirely — it keeps a ⚠ on the number that makes it one.
+  const payoff = trap
+    ? `converts only <b>${conv}%</b>${deep ? ' <span class="warnmark">⚠</span>' : ""}
+       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs their norm</span>`
+    : `converts <b>${conv}%</b>`;
+  const against = deep ? "the shorter pattern" : "their norm";
+  return `<div class="trig ${cls}"${deep
+    ? ` title="deep pattern: only visible with this player's huge charted history"` : ""}>
+    <p class="tcue">after <code>${esc(t.context)}</code></p>
+    <p class="tnum">goes for it <b>${Math.round(t.att_rate * 100)}%</b>
+      <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
+      ${payoff} <span class="lift">n=${Number(t.n)}</span></p>
+    ${rallyDrawer(t.context)}</div>`;
 }
 
 // How context-driven is the go-for-it decision (σ from the shot_triggers experiment)?
 function selectionLabel(sigma) {
-  if (sigma == null) return null;
-  if (sigma >= 0.06) return `highly cue-driven (σ ${(sigma * 100).toFixed(1)}pp)`;
-  if (sigma <= 0.025) return `pattern-immune (σ ${(sigma * 100).toFixed(1)}pp)`;
-  return `selective (σ ${(sigma * 100).toFixed(1)}pp)`;
-}
-
-// serve/return rate with a ▲/▼ against the tour average (mu = mean serve-win rate).
-function rateStat(label, rate, avg) {
-  if (rate == null) return "";
-  const d = rate - avg;
-  const arrow = Math.abs(d) < 0.005 ? "" :
-    `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"} ${(Math.abs(d) * 100).toFixed(1)}</span>`;
-  return `<div class="stat"><span class="k">${label}:</span> ${pct(rate)} ${arrow}</div>`;
+  if (sigma == null) return "";
+  if (sigma >= 0.06) return "highly cue-driven";
+  if (sigma <= 0.025) return "pattern-immune";
+  return "selective";
 }
 
 // Court-state patterns (court_response experiment): how the player answers a given
 // incoming ball, vs the field's answers to the same ball. Zones are named relative to
 // the player's own hands, run-arounds get their tennis names, and every pattern
 // repeated in both halves of the player's charted matches to earn its place here.
-function patternLine(p, open = false) {
-  const court = `<details class="rally"${open ? " open" : ""}><summary>ball path</summary>
-    <div class="court">${pairSvg(p.inc_code, p.resp_code, p.state_depth)}</div></details>`;
-  // Payoff: their point-win rate playing this response vs the tour's playing the
-  // same response to the same ball — the choice is the lift, this is what it earns.
+//
+// The court is the point of the card, so it sits in the card rather than behind a
+// disclosure, with the lift — the finding — promoted out of the parenthetical it used
+// to share with three other numbers.
+function patternCard(p) {
+  // Payoff: their point-win rate playing this response vs the tour's playing the same
+  // response to the same ball — the choice is the lift, this is what it earns. Level
+  // with the tour is stated rather than left blank, so a missing arrow always means
+  // the comparison is genuinely unavailable and never that the gap rounded to zero.
   let payoff = "";
-  if (p.win_rate != null && p.tour_win_rate != null) {
-    const d = Math.round((p.win_rate - p.tour_win_rate) * 100);
-    const arrow = d === 0 ? "" :
-      ` <span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} vs tour</span>`;
-    payoff = ` · wins ${Math.round(p.win_rate * 100)}%${arrow}`;
+  if (p.win_rate != null) {
+    const w = `wins <b>${Math.round(p.win_rate * 100)}%</b>`;
+    if (p.tour_win_rate == null) {
+      payoff = ` · ${w}`;
+    } else {
+      const d = Math.round((p.win_rate - p.tour_win_rate) * 100);
+      payoff = ` · ${w} ` + (d === 0 ? `<span class="lvl">level with tour</span>`
+        : `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} vs tour</span>`);
+    }
   }
-  return `<div class="sig-item"><code>${esc(p.state)} → <b>${esc(p.response)}</b></code>
-    <span class="lift">(${Number(p.lift).toFixed(1)}× the tour, n=${Number(p.count).toLocaleString()}${payoff})</span>${court}</div>`;
-}
-
-function patterns(d) {
-  if (!d.patterns.length) return "";
-  const rally = d.patterns.filter((p) => p.family === "rally").slice(0, 3);
-  const ret = d.patterns.filter((p) => p.family === "ret").slice(0, 2);
-  // The first two courts on each card start open: the panel leads with the pictures,
-  // and the rest stay a tap away.
-  let shown = 0;
-  const line = (p) => patternLine(p, shown++ < 2);
-  let html = "";
-  if (rally.length) {
-    html += `<div class="phead">court patterns <span class="phead-note">their answer to
-      an incoming ball, × how often the tour plays it from the same spot</span></div>
-      <div class="sig">${rally.map(line).join("")}</div>`;
-  }
-  if (ret.length) {
-    html += `<div class="phead">off the return <span class="phead-note">what they do
-      with the returns they serve up, by return depth</span></div>
-      <div class="sig">${ret.map(line).join("")}</div>`;
-  }
-  return html;
-}
-
-function playerCard(side, d, mu, gender) {
-  if (!d) {
-    return `<div class="pcard">${playerHead(side)}
-      <p class="uncharted">No Match Charting history yet.
-      <a href="https://github.com/JeffSackmann/tennis_MatchChartingProject" target="_blank" rel="noopener">Chart a match →</a></p></div>`;
-  }
-  const s = d.s;
-  let tendencies = "";
-  if (d.triggers.length) {
-    const shallow = d.triggers.filter((t) => !(Number(t.depth) > 2));
-    const greens = shallow.filter((t) => t.tag === "green")
-      .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
-    const traps = shallow.filter((t) => t.tag === "trap")
-      .sort((a, b) => a.conv_delta - b.conv_delta).slice(0, 2);
-    const gold = d.triggers.filter((t) => Number(t.depth) > 2)
-      .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
-    const unbaitable = s.n_traps != null && Number(s.n_traps) === 0
-      ? `<div class="pat immune">no trap sequences — every lead-up that raises their
-         aggression also meets their usual conversion</div>` : "";
-    tendencies = `<div class="phead">shot-making triggers</div>` +
-      [...greens, ...traps].map(trigLine).join("") + unbaitable +
-      (gold.length
-        ? `<div class="phead">deep patterns ⭐ <span class="phead-note">3–4 shot
-           sequences only chartable at this player's coverage</span></div>` +
-        gold.map(trigLine).join("")
-        : "");
-  }
-  const sel = selectionLabel(s.sigma);
-  const trig = s.trig_att_rate != null
-    ? `<div class="stat"><span class="k">goes for it:</span> ${pct(s.trig_att_rate)} of strokes · converts ${Math.round(s.trig_conversion * 100)}%</div>` : "";
-  return `<div class="pcard">
-    ${playerHead(side)}
-    ${s.archetype ? `<div class="arch">${esc(s.archetype)}</div>` : ""}
-    ${patterns(d)}
-    ${tendencies}
-    <div class="phead">the numbers</div>
-    ${rateStat("serve pts won", s.serve_rate, mu)}
-    ${rateStat("return pts won", s.return_rate, 1 - mu)}
-    ${trig}
-    ${sel ? `<div class="stat"><span class="k">shot selection:</span> ${sel}</div>` : ""}
-    <div class="stat"><span class="k">shot quality:</span> ${ratingLabel(s.class_rel_z)}${s.accuracy != null ? ` · ${Number(s.accuracy).toFixed(0)}/100` : ""}</div>
-    <div class="stat"><span class="k">style:</span> ${s.bits != null ? predictabilityLabel(s.bits) + ` (${s.bits.toFixed(1)} bits)` : "—"}</div>
-    <div class="stat"><span class="k">charted:</span> ${s.matches_charted} matches · ${Number(s.points_charted).toLocaleString()} points</div>
+  return `<div class="pcard2">
+    <div class="pcourt">${pairSvg(p.inc_code, p.resp_code, p.state_depth)}</div>
+    <div class="pmeta">
+      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span></p>
+      <p class="pdesc">${esc(p.state)}<b>→ ${esc(p.response)}</b></p>
+      <p class="pfoot">n=${Number(p.count).toLocaleString()}${payoff}</p>
+    </div>
   </div>`;
 }
+
+const familyCards = (d, fam, n) => !d ? "" :
+  d.patterns.filter((p) => p.family === fam).slice(0, n).map(patternCard).join("");
+
+// A player's triggers, split the way the panel shows them: the shallow green lights and
+// traps together, then the deep sequences, then the note that earns its place by absence.
+function trigSets(d) {
+  if (!d || !d.triggers.length) return { main: "", gold: "" };
+  const shallow = d.triggers.filter((t) => !(Number(t.depth) > 2));
+  const greens = shallow.filter((t) => t.tag === "green")
+    .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
+  const traps = shallow.filter((t) => t.tag === "trap")
+    .sort((a, b) => a.conv_delta - b.conv_delta).slice(0, 2);
+  const gold = d.triggers.filter((t) => Number(t.depth) > 2)
+    .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
+  const immune = d.s.n_traps != null && Number(d.s.n_traps) === 0
+    ? `<div class="trig immune">no trap sequences — every lead-up that raises their
+       aggression also meets their usual conversion</div>` : "";
+  return {
+    main: [...greens, ...traps].map(trigLine).join("") + immune,
+    gold: gold.map(trigLine).join(""),
+  };
+}
+
+// --- the comparison strip -----------------------------------------------------------
+// Both players' headline numbers on one shared axis, bars growing outward from a centre
+// line, so a difference reads as a shape instead of as arithmetic between two columns
+// that have drifted a screen apart.
+//
+// `lo`/`hi` is a *drawing* domain — a scale picked to spread tour-realistic values across
+// the bar, not a claim that the metric is bounded there; anything outside is clamped.
+// `avg` puts a tick on the bar at the tour reference where one exists. `better` says which
+// direction wins, and is deliberately absent where neither does: variety and
+// cue-sensitivity are styles, not scores, so neither player "leads" them.
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const num = (v) => (v == null ? null : Number(v));
+
+function tapeRows(mu) {
+  return [
+    { k: "serve_rate", label: "serve points won", lo: 0.50, hi: 0.80, better: "hi",
+      avg: mu, fmt: pct },
+    { k: "return_rate", label: "return points won", lo: 0.18, hi: 0.48, better: "hi",
+      avg: 1 - mu, fmt: pct },
+    // The two halves of one decision, drawn as one bar: its length is how often they
+    // finish a rally ball themselves, and where it changes colour is how that turned
+    // out. "Goes for it" is the right phrase next to a cue that provokes it, but as a
+    // bare statistic it names the framing rather than the measurement, so up here the
+    // row says what it counts.
+    // The denominator rides in the shared key rather than in both subs: it is the same
+    // sentence for each player, and repeated per side it wraps a phone column to four
+    // lines and buries the one number that actually differs.
+    { k: "trig_att_rate", label: "winners + unforced errors, per rally stroke",
+      lo: 0.05, hi: 0.32, better: null, fmt: pct,
+      sub: (s) => s.trig_conversion == null ? ""
+        : `${Math.round(s.trig_conversion * 100)}% winners`,
+      parts: (s) => s.trig_conversion == null ? null
+        : [{ f: s.trig_conversion }, { f: 1 - s.trig_conversion, cls: "miss" }] },
+    { k: "accuracy", label: "shot quality", lo: 30, hi: 90, better: "hi",
+      fmt: (v) => `${v.toFixed(0)}/100`, sub: (s) => ratingLabel(s.class_rel_z) },
+    { k: "sigma", label: "shot selection", lo: 0, hi: 0.09, better: null,
+      fmt: (v) => `σ ${(v * 100).toFixed(1)}pp`, sub: (s) => selectionLabel(s.sigma) },
+    { k: "bits", label: "variety", lo: 2.2, hi: 4.4, better: null,
+      fmt: (v) => `${v.toFixed(1)} bits`, sub: (s) => predictabilityLabel(s.bits) },
+  ];
+}
+
+function tapeRow(r, sa, sb) {
+  const va = sa ? num(sa[r.k]) : null;
+  const vb = sb ? num(sb[r.k]) : null;
+  if (va == null && vb == null) return "";
+  const lead = r.better && va != null && vb != null && va !== vb
+    ? ((va > vb) === (r.better === "hi") ? "a" : "b") : "";
+  const at = (v) => (clamp01((v - r.lo) / (r.hi - r.lo)) * 100).toFixed(1) + "%";
+  // A bar is one block unless the metric splits it: then the segments are shares of the
+  // bar's own length, ordered outward from the centre line so both players' first
+  // segments meet in the middle and stay directly comparable.
+  const bar = (v, s, side) => {
+    if (v == null) return `<div class="tbar ${side}"></div>`;
+    const tick = r.avg == null ? "" :
+      `<u style="${side === "a" ? "right" : "left"}:${at(r.avg)}" title="tour average"></u>`;
+    const segs = (r.parts && s ? r.parts(s) : null) || [{ f: 1 }];
+    const fill = segs.map((g) =>
+      `<span class="${g.cls || ""}" style="flex:${g.f}"></span>`).join("");
+    return `<div class="tbar ${side}"><i style="width:${at(v)}">${fill}</i>${tick}</div>`;
+  };
+  const val = (v, s, side) => {
+    if (v == null) return `<div class="tval ${side}">—</div>`;
+    const sub = r.sub ? r.sub(s) : "";
+    return `<div class="tval ${side}${lead === side ? " lead" : ""}">${r.fmt(v)}` +
+      (sub ? `<span class="tsub">${esc(sub)}</span>` : "") + `</div>`;
+  };
+  return `<div class="taperow"><p class="tkey">${esc(r.label)}</p>
+    <div class="tbars">${val(va, sa, "a")}${bar(va, sa, "a")}${bar(vb, sb, "b")}${val(vb, sb, "b")}</div>
+  </div>`;
+}
+
+// What the charted numbers below rest on: the player's style label and how much of them
+// exists in the data. No name and no flag — the scroll-locked match header above carries
+// those, and this side of the panel is the same player in the same position. The two
+// player colours (--a / --b) are theme-independent and are declared once, by the split
+// rule under that header: its left half is player A, its right half player B, and those
+// colours then run through the strip's bars, the column rules and the ball paths.
+function tapeWho(d, tag) {
+  // "charted:" is stated rather than implied: these counts are how much of the player
+  // exists in the data, not how much tennis they have played, and every number in the
+  // strip below rests on them.
+  // An uncharted player is the site's whole invitation, so the ask sits at the top of
+  // their side rather than only in the empty column below it.
+  const meta = d
+    ? (d.s.archetype ? `<span class="tarch">${esc(d.s.archetype)}</span>` : "") +
+      `<span class="tcharted">charted: ${d.s.matches_charted} matches ·
+       ${Number(d.s.points_charted).toLocaleString()} points</span>`
+    : `<span class="tcharted">not charted yet —
+       <a href="${CHART_GUIDE}" target="_blank" rel="noopener">chart a match →</a></span>`;
+  return `<div class="twho ${tag}"><p class="tmeta">${meta}</p></div>`;
+}
+
+function tape(da, db, mu) {
+  const sa = da && da.s, sb = db && db.s;
+  if (!sa && !sb) return "";
+  return `<section class="tape">
+    <div class="tapehead">${tapeWho(da, "a")}${tapeWho(db, "b")}</div>
+    ${tapeRows(mu).map((r) => tapeRow(r, sa, sb)).join("")}
+    <p class="tapenote"><span class="tickkey"></span> this draw's tour average ·
+      <span class="segkey"></span> landed <span class="segkey miss"></span> missed, on the
+      winners + errors bar</p>
+  </section>`;
+}
+
+// --- shared-header sections ---------------------------------------------------------
+// One topic, one header, two columns. Giving each player their own full card lets the
+// sections slide out of step the moment one player has more patterns than the other —
+// and once they have, no two comparable numbers are ever on screen together.
+//
+// The topic sits on its own line and sticks to the top of the scroll while its cards are
+// passing, because the panel is four or five screens tall: without it, a column of
+// drawings halfway down says nothing about which question it answers. The note under it
+// scrolls away, being the sort of thing you read once.
+//
+// `kind` is how the columns behave once they are phone-narrow: "cards" keeps them
+// side by side (a court thumbnail survives a 160px column, and the comparison is the
+// whole point of the section), "text" stacks them (a shot sequence does not).
+// How many items a column is about to render, read off its own markup: every card in
+// either family opens with a known class, and an empty column still costs one line.
+const countCards = (html) =>
+  Math.max(1, (String(html || "").match(/class="(?:pcard2|trig )/g) || []).length);
+
+function section(title, note, a, b, aHtml, bHtml, kind = "cards") {
+  if (!aHtml && !bHtml) return "";
+  const col = (html, side, tag) => `<div class="seccol" data-side="${tag}">
+    <p class="colwho"><span class="tdot ${tag}"></span>${esc(last(side.name) || "TBD")}</p>
+    ${html || `<p class="colnone">nothing at this player's coverage</p>`}</div>`;
+  // How many rows the two columns share, so the CSS can run them on one set of tracks
+  // and keep each player's first finding level with the other's. Without it the columns
+  // are two independent stacks, and one extra line of wrap in a description slides
+  // everything below it out of step with the thing it is supposed to be read against.
+  const rows = 1 + Math.max(countCards(aHtml), countCards(bHtml));
+  // Two ways to say whose column is whose, one per layout. Side by side, the names ride
+  // in the sticky bar over the columns they head, because a line inside the columns
+  // scrolls under that bar and is gone by the second card. Stacked, they can't — one bar
+  // can't head two columns that aren't there — so each column carries its own.
+  const who = (side, tag) =>
+    `<span class="sw ${tag}"><span class="tdot ${tag}"></span>${esc(last(side.name) || "TBD")}</span>`;
+  return `<section class="msec ${kind}">
+    <h3 class="sechead">${title}
+      <span class="secwho">${who(a, "a")}${who(b, "b")}</span></h3>
+    ${note ? `<p class="secnote">${note}</p>` : ""}
+    <div class="seccols" style="--rows:${rows}">${col(aHtml, a, "a")}${col(bHtml, b, "b")}</div>
+  </section>`;
+}
+
+// The court glyph explained where it is first used, rather than only inside the collapsed
+// notation key — three cues is two more than a reader should have to go looking for.
+// A span, not a paragraph: this rides inside the section's <h3>, where a block element
+// would be invalid nesting.
+const COURT_LEGEND = `<span class="courtkey">
+  <span class="ck in">dashed</span> the ball they get ·
+  <span class="ck out">solid</span> their answer ·
+  <span class="ck half">tinted half</span> their side of the net</span>`;
 
 function confidence(pa, pb) {
   const minPts = Math.min(Number(pa.s.points_charted) || 0, Number(pb.s.points_charted) || 0);
@@ -241,7 +355,7 @@ function confidence(pa, pb) {
 function wpBar(a, b, wpA, conf) {
   const pa = Math.round(wpA * 100);
   return `<div class="wp wp-slim">
-    <div class="phead">rough pre-match number</div>
+    <h3 class="sechead">rough pre-match number</h3>
     <div class="wp-line"><span>${esc(last(a))} ${pa}%</span>
       <div class="wp-bar"><div class="pa" style="width:${wpA * 100}%"></div></div>
       <span>${100 - pa}% ${esc(last(b))}</span></div>
@@ -268,9 +382,9 @@ function notationHelp() {
     <text x="75" y="60" class="ct-sub">middle</text>
     <text x="112" y="60" class="ct-sub">BH side</text>
     <circle cx="75" cy="172" r="4" class="ct-player"/>
-    <line x1="75" y1="166" x2="40" y2="66" class="ct-shot"/>
-    <line x1="75" y1="166" x2="75" y2="66" class="ct-shot faint"/>
-    <line x1="75" y1="166" x2="110" y2="66" class="ct-shot faint"/>
+    ${shotLine(75, 166, 40, 66)}
+    ${shotLine(75, 166, 75, 66, { faint: true })}
+    ${shotLine(75, 166, 110, 66, { faint: true })}
     <text x="75" y="189" class="ct-cap">rally direction →1 / →2 / →3</text>`);
   const serves = court(`
     <line x1="20" y1="52.5" x2="130" y2="52.5" class="ct-line-thin"/>
@@ -283,7 +397,7 @@ function notationHelp() {
     <circle cx="70" cy="60" r="3.4" class="ct-target"/>
     <text x="66" y="49" class="ct-sub">T</text>
     <circle cx="112" cy="172" r="4" class="ct-player"/>
-    <line x1="108" y1="167" x2="30" y2="64" class="ct-shot faint"/>
+    ${shotLine(108, 167, 30, 64, { faint: true })}
     <text x="75" y="189" class="ct-cap">serve wide / body / T</text>`);
   return `<details class="notekey">
     <summary>How to read the shot notation</summary>
@@ -296,17 +410,26 @@ function notationHelp() {
       <div><code>→1/2/3</code> where it was hit, seen from the hitter: zone 1 is a
         right-hander's forehand side, 3 their backhand side (<code>→·</code> =
         direction not charted).</div>
+      <div>On a court-pattern drawing the tinted half is the profiled player's side.
+        The dashed neutral line is the ball arriving at them, the ring is where it
+        bounced, and the solid arrow in their colour is the answer they play.</div>
       <div>Court patterns name zones by the player's own hands (a lefty's FH corner
-        is a righty's BH corner), so <code>drive into the BH corner → crosscourt BH
-        slice (1.6×)</code> means they answer that ball with the crosscourt slice
-        1.6× as often as the tour does from the same spot. <code>wins 52% ▲6</code>
-        is the payoff: how often the point ends up theirs after that response, vs
-        the tour playing the same ball.</div>
+        is a righty's BH corner), so "drive into the BH corner → crosscourt BH slice"
+        at <b>1.6×</b> means they answer that ball with the crosscourt slice 1.6× as
+        often as the tour does from the same spot. <b>wins 52% ▲6</b> is the payoff:
+        how often the point ends up theirs after that response, vs the tour playing
+        the same ball.</div>
       <div>Triggers group a player's winners and unforced errors as one decision —
         an <em>attempt</em> at a finishing shot. <code>A · B</code> is the cue:
         their shot A, then the opponent's reply B. "Goes for it" is the attempt
         rate that cue provokes; "converts" is winners per attempt. A cue that
-        raises attempts but sinks conversion is a trap — they take the bait.</div>
+        raises attempts but sinks conversion is a trap — they take the bait.
+        It's the same pair of numbers the strip up top splits into one bar, read
+        per cue instead of over all their rally balls.</div>
+      <div>On that strip, a rally stroke is anything from the third ball of the point
+        on, so serves and returns aren't in the winners + unforced errors denominator.
+        Forced errors sit outside the split as well, because being beaten isn't a shot
+        they chose.</div>
     </div>
   </details>`;
 }
@@ -321,59 +444,210 @@ function chartPanel(m, t) {
       <a href="${url}" target="_blank" rel="noopener">View the full chart →</a></div>`;
   }
   return `<div class="chartcta uncharted">This match isn't charted yet — a good one to pick up.
-    <a href="https://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/"
-       target="_blank" rel="noopener">Chart this match →</a></div>`;
+    <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart this match →</a></div>`;
 }
 
-// Per-set cells, the higher score of each set bolded — the match winner reads as the
-// side with more bold games.
-function scoreCells(mine, theirs) {
-  return (mine || []).map((x, i) => {
-    if (x == null) return "";
-    const t = theirs && theirs[i];
-    const won = t != null && Math.trunc(x) > Math.trunc(t);
-    return `<span class="set${won ? " won" : ""}">${Math.trunc(x)}</span>`;
-  }).join("");
+// The scoreline that sits between the two names, the higher of each set bolded — so the
+// result reads as a run of bold on the winner's side.
+//
+// One flat list of cells, ordered A,B per set, laid out two ways by CSS alone: a wide
+// header flows it down columns, giving each player a horizontal scoreline level with
+// their own name, and a narrow one flows it across rows, giving one row per set stacked
+// between the names. Either way a set is a pair and the pairs stay in order, so neither
+// layout needs its own markup.
+function scoreStack(a, b) {
+  const n = Math.max((a.sets || []).length, (b.sets || []).length);
+  if (!n) return `<div class="mscore none">vs</div>`;
+  const cell = (v, o) => {
+    if (v == null) return `<span class="sg"></span>`;
+    const won = o != null && Math.trunc(v) > Math.trunc(o);
+    return `<span class="sg${won ? " won" : ""}">${Math.trunc(v)}</span>`;
+  };
+  let cells = "";
+  for (let i = 0; i < n; i++) {
+    const x = a.sets && a.sets[i], y = b.sets && b.sets[i];
+    if (x == null && y == null) continue;    // drop the pair, never half of one
+    cells += cell(x, y) + cell(y, x);
+  }
+  return `<div class="mscore">${cells}</div>`;
 }
 
-// Scoreboard header: one row per player — flag, name, seed, then that player's set
-// scores right-aligned (winner's rows bold, loser dimmed once the match is decided).
+// A player's name in both renderings the header needs: the full name, and a
+// first-initial form the phone layout swaps in — a narrow three-column header runs out
+// of room for "Stefanos Tsitsipas" long before it runs out of room for "S. Tsitsipas",
+// and shortening the part that carries least beats wrapping or clipping the part that
+// carries most.
+function nameHtml(name) {
+  const full = esc(name || "TBD");
+  const parts = String(name || "").trim().split(/\s+/);
+  const abbr = parts.length > 1
+    ? esc(`${parts[0][0].toUpperCase()}. ${parts.slice(1).join(" ")}`) : full;
+  return `<span class="mname"><span class="mfull">${full}</span>` +
+    `<span class="mabbr">${abbr}</span></span>`;
+}
+
+// Where this match sits: event and round. It rides in the top corner beside the close
+// button rather than over the names, because it is the context you read once on opening
+// and then stop looking at, and the scoreboard is what the header is for. No draw here:
+// the tabs behind the panel are already set to one, and a men's and a women's match never
+// share a screen.
+function eyebrow(t, round) {
+  const event = t.completed ? `${t.name} ${t.season}` : t.name;
+  return [esc(event), round ? esc(round.label) : ""].filter(Boolean).join(" · ");
+}
+
+// When. A match that hasn't been played carries its date and start time inside ESPN's
+// detail string already, so printing the long date beside it just says the day twice —
+// which is what the old single line did. A finished one gets the long date, plus its
+// detail only when that says more than "Final" (a retirement, say); in a completed draw
+// even that word is noise, because every match in it is final.
+function whenLine(m, t) {
+  if (m.state === "in") return `<span class="live">● ${esc(m.detail || "Live")}</span>`;
+  const day = matchDate(m.date);
+  if (m.state !== "post") return esc(m.detail || day || "");
+  const plainFinal = !m.detail || /^final$/i.test(m.detail.trim());
+  const detail = plainFinal && t.completed ? "" : esc(m.detail || "Final");
+  return [day && esc(day), detail].filter(Boolean).join(" · ");
+}
+
+// Scoreboard header, read top-down like a broadcast graphic: where we are, then the two
+// players facing each other across their score, then when. Each player takes an end —
+// flag, name, seed, and the colour dot that marks them as this side of everything below.
+// Because it never scrolls away, it is also the header for the charted profile beneath
+// it, which is why no name or flag is repeated down there.
 function headHtml(m, t, round) {
   const decided = !!(m.a.winner || m.b.winner);
-  const row = (s, o) => {
+  const side = (s, tag) => {
     const emoji = flagEmoji(s.country);
     const flag = `<span class="mflag"${emoji ? ` title="${esc(s.country)}"` : ""}>${emoji}</span>`;
-    const seed = s.seed ? ` <span class="seed">${esc(String(s.seed))}</span>` : "";
-    const cls = "mrow" + (s.winner ? " win" : decided ? " lose" : "");
-    return `<div class="${cls}">${flag}<span class="mname">${esc(s.name || "TBD")}${seed}</span>
-      <span class="msets">${scoreCells(s.sets, o.sets)}</span></div>`;
+    const seed = s.seed ? `<span class="mseed">${esc(String(s.seed))}</span>` : "";
+    const cls = "mp " + tag + (s.winner ? " win" : decided ? " lose" : "");
+    // The winner's caret points into their name from the score side. The two names are
+    // on one row now, so nothing has to line up underneath and the slot can simply be
+    // absent on the other side.
+    return `<div class="${cls}">${flag}${nameHtml(s.name)}${seed}
+      ${s.winner ? `<span class="mwin"></span>` : ""}</div>`;
   };
-  return row(m.a, m.b) + row(m.b, m.a) +
-    `<div class="mstate">${stateLine(m, t, round)}</div>`;
+  // Older archived draws carry no per-match date and nothing else to say, so the when
+  // line drops out entirely rather than leaving an empty row under the names.
+  const when = whenLine(m, t);
+  // A hairline on the boundary between the two staggered rows, reaching name to name: the
+  // one thing that says the run of games above it belongs to the player above it. Only
+  // where there are two scorelines to divide — no scoreline, nothing to separate, and a
+  // rule through a bare "vs" is just a rule.
+  //
+  // The stagger goes with it. It exists to tie each scoreline to the name it belongs to
+  // across the gap between them; with no games to tie, it drops one name half a line below
+  // the other for no reason a reader can recover, and two players about to play each other
+  // should meet level. So an unplayed match says so in the markup and both names share a
+  // row — see .mgrid.noscore.
+  const played = (m.a.sets || []).length || (m.b.sets || []).length;
+  const rule = played ? `<i class="mrule"></i>` : "";
+  return `<p class="mevent">${eyebrow(t, round)}</p>
+    <div class="mgrid${played ? "" : " noscore"}">
+      ${side(m.a, "a")}${scoreStack(m.a, m.b)}${side(m.b, "b")}${rule}</div>
+    ${when ? `<p class="mstate">${when}</p>` : ""}`;
 }
 
-function stateLine(m, t, round) {
-  const event = t.completed ? `${t.name} ${t.season}` : t.name;
-  const day = matchDate(m.date);
-  const where = `${esc(event)} · ${t.gender === "M" ? "Men" : "Women"}` +
-    `${round ? " · " + esc(round.label) : ""}${day ? " · " + esc(day) : ""}`;
-  if (m.state === "in") return `${where} · <span class="live">● ${esc(m.detail || "Live")}</span>`;
-  // In a completed draw every match is final, so the round already says it — no "· Final".
-  if (m.state === "post") return t.completed ? where : `${where} · ${esc(m.detail || "Final")}`;
-  return m.detail ? `${where} · ${esc(m.detail)}` : where;
+// The body, in reading order: the headline numbers side by side, then the pictures, then
+// the sequences, then the small print. Every section below the strip shares one header
+// across both columns, so the two players stay level however unevenly charted they are.
+function bodyHtml(m, pa, pb, mu) {
+  const a = m.a, b = m.b;
+  const ta = trigSets(pa), tb = trigSets(pb);
+  const none = !pa && !pb
+    ? `<p class="nochart">Neither player has Match Charting history yet.
+       <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
+  return tape(pa, pb, mu) + none +
+    section("court patterns", `their answer to an incoming ball, × how often the tour
+      plays it from the same spot${COURT_LEGEND}`, a, b,
+      familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
+    section("off the return", `what they do with the returns they serve up, by return
+      depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
+    section("shot-making triggers", `a lead-up that shifts how often they go for a
+      finishing shot — and whether it pays`, a, b, ta.main, tb.main, "text") +
+    section("deep patterns ⭐", `3–4 shot sequences only chartable at this player's
+      coverage`, a, b, ta.gold, tb.gold, "text");
+}
+
+// --- the panel as a dialog ----------------------------------------------------------
+// It claims aria-modal, so it has to behave like one: focus moves in, Tab stays in, the
+// draw behind stops scrolling, and closing hands focus back to the match tile you opened
+// from — otherwise a keyboard lands back at the top of the page each time.
+const FOCUSABLE = "a[href], button:not([disabled]), summary, [tabindex]:not([tabindex='-1'])";
+let opener = null;          // the element that opened the panel, to hand focus back to
+let wired = false;
+
+function lockPage(on) {
+  // <html> is the scroller here, so that is where the lock has to go; body alone does
+  // nothing. Hiding the scrollbar widens the page, and the padding it leaves in its
+  // place is what keeps the draw behind from jumping sideways as the panel opens.
+  const gap = window.innerWidth - document.documentElement.clientWidth;
+  document.documentElement.style.overflow = on ? "hidden" : "";
+  document.body.style.paddingRight = on && gap ? `${gap}px` : "";
+}
+
+export function closeMatchup() {
+  const panel = document.getElementById("matchup");
+  if (panel.hidden) return;
+  panel.hidden = true;
+  document.getElementById("scrim").hidden = true;
+  lockPage(false);
+  if (opener && document.contains(opener)) opener.focus();
+  opener = null;
+}
+
+function onPanelKey(e) {
+  if (e.key !== "Tab") return;
+  const panel = document.getElementById("matchup");
+  const items = [...panel.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent);
+  if (!items.length) return e.preventDefault();
+  const first = items[0], last_ = items[items.length - 1];
+  // The panel itself holds focus on open, so a first Tab has to land somewhere sensible
+  // whichever direction it goes.
+  if (!panel.contains(document.activeElement) || document.activeElement === panel) {
+    e.preventDefault();
+    (e.shiftKey ? last_ : first).focus();
+  } else if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault(); last_.focus();
+  } else if (!e.shiftKey && document.activeElement === last_) {
+    e.preventDefault(); first.focus();
+  }
+}
+
+// The header is the panel's one fixed cost — four screens of profile scroll past it, and
+// on a phone a five-set scoreline holds a quarter of the sheet to say what you tapped.
+// So once the body starts moving it condenses to the names and the score, and comes back
+// when you return to the top. The two thresholds are hysteresis: one value would flicker
+// as the collapse itself changes what is under the fold.
+function onBodyScroll() {
+  const panel = document.getElementById("matchup");
+  const t = document.getElementById("matchupBody").scrollTop;
+  if (t > 24) panel.classList.add("cond");
+  else if (t < 8) panel.classList.remove("cond");
 }
 
 export async function openMatchup(m, t) {
   const panel = document.getElementById("matchup");
+  const body = document.getElementById("matchupBody");
+  if (panel.hidden) opener = document.activeElement;
   panel.hidden = false;
   panel.setAttribute("aria-label", `${m.a.name || "TBD"} vs ${m.b.name || "TBD"}`);
   document.getElementById("scrim").hidden = false;
-  const body = document.getElementById("matchupBody");
+  lockPage(true);
+  if (!wired) {
+    panel.addEventListener("keydown", onPanelKey);
+    body.addEventListener("scroll", onBodyScroll, { passive: true });
+    wired = true;
+  }
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
   document.getElementById("matchupHead").innerHTML = headHtml(m, t, round);
   body.scrollTop = 0;
+  panel.classList.remove("cond");
+  panel.focus();
   body.innerHTML = `${chartPanel(m, t)}
-    <div class="cards" id="cardslot">Loading…</div>${notationHelp()}<div id="wpslot"></div>`;
+    <div id="cardslot" class="loading">Loading…</div>
+    <div id="wpslot"></div>${notationHelp()}`;
 
   const [pa, pb] = await Promise.all([
     playerData(m.a.matched, t.gender),
@@ -392,6 +666,7 @@ export async function openMatchup(m, t) {
   } else {
     wpslot.innerHTML = `<p class="wp-note">A win probability needs charting history for both players.</p>`;
   }
-  document.getElementById("cardslot").innerHTML =
-    playerCard(m.a, pa, mu, t.gender) + playerCard(m.b, pb, mu, t.gender);
+  const slot = document.getElementById("cardslot");
+  slot.classList.remove("loading");
+  slot.innerHTML = bodyHtml(m, pa, pb, mu);
 }
