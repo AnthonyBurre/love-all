@@ -525,8 +525,8 @@ function headHtml(m, t, round) {
     // The winner's caret points into their name from the score side. The two names are
     // on one row now, so nothing has to line up underneath and the slot can simply be
     // absent on the other side.
-    return `<div class="${cls}">${flag}
-      ${s.winner ? `<span class="mwin"></span>` : ""}${nameHtml(s.name)}${seed}</div>`;
+    return `<div class="${cls}">${flag}${nameHtml(s.name)}${seed}
+      ${s.winner ? `<span class="mwin"></span>` : ""}</div>`;
   };
   // Older archived draws carry no per-match date and nothing else to say, so the when
   // line drops out entirely rather than leaving an empty row under the names.
@@ -535,10 +535,17 @@ function headHtml(m, t, round) {
   // one thing that says the run of games above it belongs to the player above it. Only
   // where there are two scorelines to divide — no scoreline, nothing to separate, and a
   // rule through a bare "vs" is just a rule.
+  //
+  // The stagger goes with it. It exists to tie each scoreline to the name it belongs to
+  // across the gap between them; with no games to tie, it drops one name half a line below
+  // the other for no reason a reader can recover, and two players about to play each other
+  // should meet level. So an unplayed match says so in the markup and both names share a
+  // row — see .mgrid.noscore.
   const played = (m.a.sets || []).length || (m.b.sets || []).length;
   const rule = played ? `<i class="mrule"></i>` : "";
   return `<p class="mevent">${eyebrow(t, round)}</p>
-    <div class="mgrid">${side(m.a, "a")}${scoreStack(m.a, m.b)}${side(m.b, "b")}${rule}</div>
+    <div class="mgrid${played ? "" : " noscore"}">
+      ${side(m.a, "a")}${scoreStack(m.a, m.b)}${side(m.b, "b")}${rule}</div>
     ${when ? `<p class="mstate">${when}</p>` : ""}`;
 }
 
