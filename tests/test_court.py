@@ -120,7 +120,9 @@ def test_wingtips_point_the_way_the_ball_travelled():
     for (x1, y1, x2, y2) in [(75, 176, 75, 60), (75, 60, 75, 176), (20, 95, 130, 95)]:
         for (wa, apex, wb) in map(_tip_points, _tip_elems(x1, y1, x2, y2, "")):
             # The apex is further along the travel direction than either wing.
-            along = lambda p: (p[0] - x1) * (x2 - x1) + (p[1] - y1) * (y2 - y1)
+            def along(p):
+                return (p[0] - x1) * (x2 - x1) + (p[1] - y1) * (y2 - y1)
+
             assert along(apex) > along(wa) and along(apex) > along(wb)
             # And it sits on the segment, between the endpoints.
             assert min(x1, x2) <= apex[0] <= max(x1, x2)
