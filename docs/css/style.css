@@ -17,6 +17,12 @@
      --warn rather than following the event's palette. A ▲ that is brown at Roland Garros
      and blue in New York is saying something about the tournament, which it isn't. */
   --up: #1a7f4b;
+  /* the winner's caret — gold, and fixed for the same reason --up is. It is also the one
+     mark in the header that is not owned by a side: in each player's own colour it read as
+     part of that name's styling, one more thing violet or red was doing, when what it says
+     is about the match. Deep enough to clear 3:1 on the header band, which a bright gold
+     does not. */
+  --win: #b8860b;
   /* the two player colours. Theme-independent: they identify a side of the matchup
      panel, so they must never be mistaken for a tournament's own colour — which is why
      player A is violet rather than blue, with two hard-court themes in the palette.
@@ -184,8 +190,11 @@ a { color: var(--acc-d); }
    the thumb; the glyph only has to be found, and at 26px it was the largest thing in a
    corner whose job is to stay out of the way. The circle that comes up under it on hover
    is drawn at the size the mark reads, not the size of the box. */
-.matchup .close { position: absolute; top: 4px; right: 6px; z-index: 3; border: 0; background: none;
-  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+.matchup { --close-size: 44px; --close-inset: 6px; }
+.matchup .close { position: absolute; top: 4px; right: var(--close-inset); z-index: 3;
+  border: 0; background: none;
+  width: var(--close-size); height: var(--close-size);
+  display: flex; align-items: center; justify-content: center;
   padding: 0; font-size: 19px; line-height: 1; cursor: pointer; color: var(--hd-mut); }
 .matchup .close::before { content: ""; position: absolute; width: 30px; height: 30px;
   border-radius: 50%; transition: background .12s ease; }
@@ -201,26 +210,49 @@ a { color: var(--acc-d); }
    having to be parked next to something. The band itself stays flat and neutral: the rule
    is the statement, and a surface tinted underneath it only made the same point twice,
    more weakly. */
-.mtop { flex: none; position: relative; padding: 14px 20px 15px;
+/* --close-lane is how far the close button's box reaches past the content edge, plus a
+   gap: anything sharing the button's row keeps out of it, and nothing else has to know
+   the button's size or inset. It was three hand-tuned numbers before — 38px here, 36px on
+   the condensed name, 34px of padding on the phone — which is three chances to move the
+   button and leave one of them behind. */
+.mtop { flex: none; position: relative;
+  --pad-r: 20px;
+  --close-lane: calc(var(--close-inset) + var(--close-size) - var(--pad-r) + 8px);
+  padding: 14px var(--pad-r) 15px 20px;
   color: var(--hd-ink); background: var(--hd-bg); transition: padding .18s ease; }
 .mtop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
   background: linear-gradient(90deg, var(--a) 0 50%, var(--b) 50% 100%); }
-/* The two corners of chrome — which event this is, and when it was played — are the only
-   things in the panel that belong to the tournament rather than to the two players, so
-   they are the only things that wear its colour. Boxed and small, the trace of green or
+/* The upper-right corner of chrome — which event this is, and when it was played — is the
+   only chrome in the panel that belongs to the tournament rather than to the two players,
+   so it's the only thing that wears its colour. Boxed and small, the trace of green or
    clay-red frames the scoreboard without competing with the violet and red inside it,
-   which still have the width to themselves.
+   which still have the width to themselves. The two lines stack rather than bracketing
+   the score from opposite corners, freeing the lower-left for the chart button — the one
+   thing there is to *do* about this match, as opposed to chrome describing it.
    Pill-shaped, because that is the shape chrome takes everywhere else on the site — the
-   tabs, the round chips, the coverage legend — and these two are the panel's only pieces
-   of it. */
-.mevent, .mstate { width: fit-content; padding: 3px 10px; border-radius: 999px;
+   tabs, the round chips, the coverage legend — and these are the panel's only pieces of it. */
+/* margin:0 because these are <p>, and a paragraph's default 1em top and bottom does not
+   collapse inside a flex line — it is measured into the line's height. So a 22px pill was
+   claiming 46px of corner, and the padding that shapes the pill was not the number setting
+   the space around it. The condensed state was already zeroing these on its way out, which
+   is the only reason it ever closed all the way. */
+.mevent, .mstate { width: fit-content; margin: 0; padding: 2px 9px; border-radius: 999px;
   color: var(--acc-d); background: color-mix(in srgb, var(--acc) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--acc) 20%, transparent); }
-/* The one line that shares the close button's row, so it is the one line that keeps clear
-   of it — and it sits over there with it, in the corner, leaving the full width below for
-   the scoreboard, which is what centres the score. */
-.mevent { margin: 0 38px 8px auto;
-  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+/* Top left, which is where you start reading — the event and round say which match this is
+   before the names say who is in it. It leaves the top right to the close button alone, so
+   this row no longer has to keep out of --close-lane; the lane is still what the condensed
+   right-hand name uses, since that one does come up level with the button.
+   The two pills run along the row rather than stacking down it. Stacked, they were two
+   boxes of different widths with nothing to line up on but their outer ends, which is the
+   shape a ragged edge takes; and the second one cost the header 21px that a scheduled match
+   paid and a finished one didn't, so the same panel came out two heights. Side by side they
+   read as one line of chrome and the header is one height. They still wrap when a long event
+   name and a start time won't share a phone's width, left-aligned to the same edge. */
+.mcorner { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start;
+  gap: 6px; width: fit-content; margin: 0 auto 2px 0;
+  transition: gap .18s ease, margin-bottom .18s ease; }
+.mevent { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
 
 /* Condensed header, once the body has scrolled: the four or five screens below it are
    the panel, and a fixed band naming the two players you just tapped shouldn't hold a
@@ -233,14 +265,18 @@ a { color: var(--acc-d); }
    8px of tinted sliver — so the box gives those up on the way out too */
 .matchup.cond .mevent, .matchup.cond .mstate { max-height: 0; opacity: 0; margin: 0;
   padding-top: 0; padding-bottom: 0; border-width: 0; }
+/* the gap closes between the pills, and the margin below closes under them — an empty
+   corner should not still be holding the 8px that separated it from the names */
+.matchup.cond .mcorner { gap: 0; margin-bottom: 0; }
 .matchup.cond .mp { font-size: 17px; }
 /* condensed, the names come up level with the close button, so the right-hand one keeps
-   clear of it — the event line that used to do that job is the thing that just left */
-.matchup.cond .mp.b { padding-right: 36px; }
+   clear of it — the event line that used to do that job is the thing that just left. Same
+   lane the corner keeps, because it is the same button being kept clear of. */
+.matchup.cond .mp.b { padding-right: var(--close-lane); }
 .matchup.cond .sg { font-size: 14px; }
 .matchup.cond .mflag { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) {
-  .mtop, .mevent, .mstate, .mp { transition: none; }
+  .mtop, .mcorner, .mevent, .mstate, .mp { transition: none; }
 }
 /* Two staggered lines, each a player: their name at their own end and their games run
    along it, with both scorelines sharing the middle column so a set still reads down a
@@ -253,35 +289,57 @@ a { color: var(--acc-d); }
    edges rather than at the score. */
 .mgrid { display: grid; grid-template-columns: 1fr auto 1fr;
   grid-template-rows: auto auto; align-items: center; column-gap: 24px; row-gap: 2px; }
-.mp { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 22px;
+/* The names are the header. Everything else in the band — the event, the date, the button —
+   is chrome describing the match, and sits a size or two below them so the ranking is read
+   before it is parsed. */
+.mp { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 24px;
   justify-content: flex-end; transition: font-size .18s ease, padding .18s ease; }
-.mp.a { grid-column: 1; grid-row: 1; }
-.mp.b { grid-column: 3; grid-row: 2; flex-direction: row-reverse; }   /* the right end */
+/* The stagger runs up, not down: the left player takes the lower line and the right player
+   the upper one. Whichever way round it goes, the pairing is the same — what matters is
+   only that each name and its scoreline share a line, and that the score cells follow the
+   names rather than the markup order (see .mscore). */
+.mp.a { grid-column: 1; grid-row: 2; }
+.mp.b { grid-column: 3; grid-row: 1; flex-direction: row-reverse; }   /* the right end */
 /* Nothing played: the stagger has no scorelines to tie to their names, so both players
    share one row and meet level either side of the "vs". */
 .mgrid.noscore { grid-template-rows: auto; }
-.mgrid.noscore .mp.b { grid-row: 1; }
+.mgrid.noscore .mp.a, .mgrid.noscore .mp.b { grid-row: 1; }
 .mp .mname { min-width: 0; font-weight: 600; line-height: 1.2; overflow-wrap: break-word; }
 .mp.win .mname { font-weight: 800; }
 .mp.lose { color: var(--hd-mut); }
 .mabbr { display: none; }                     /* the phone layout swaps these two over */
-/* The winner's caret, pointing into their name from the score side — in that player's own
-   colour, which is what makes it read as a marker. Dark and 12px it was the same weight as
-   a full stop sitting at the end of the name, and that is what it looked like. */
-.mwin { flex: none; font-size: 13px; line-height: 1; color: var(--a); margin-left: -2px; }
+/* The winner's caret, pointing into their name from the score side. Dark and 12px it was
+   the same weight as a full stop sitting at the end of the name, and that is what it looked
+   like. It is now the only thing in the header saying the match is over — the word that used
+   to say so beside the date is gone — so it is sized to be found rather than merely noticed.
+   Still short of the 24px names: a caret that matches them competes with the thing it is
+   marking, and this one only has to be seen once. One gold both sides — see --win. */
+.mwin { flex: none; font-size: 18px; line-height: 1; color: var(--win); margin-left: -2px; }
 .mp.a .mwin::before { content: "\25C2"; }
-/* mirrored: the name is on its other side, and so is the colour */
-.mp.b .mwin { color: var(--b); margin: 0 -2px 0 0; }
+/* mirrored: the name is on its other side, so the caret turns and the nudge flips with it.
+   The colour does not — it is the same gold whoever won, which is the point of it. */
+.mp.b .mwin { margin: 0 -2px 0 0; }
 .mp.b .mwin::before { content: "\25B8"; }
 .mflag { flex: none; font-size: 16px; line-height: 1; }
 .mseed { flex: none; font-size: 10px; font-weight: 700; color: var(--hd-mut); line-height: 1.6;
   border: 1px solid var(--hd-line); border-radius: 4px; padding: 0 4px; }
 /* the cells flow down columns, so the flat A,B,A,B list becomes a row per player. It
    stretches over both name rows and splits them evenly, which is what puts each
-   scoreline level with the name it belongs to. */
+   scoreline level with the name it belongs to.
+   A is emitted first but sits on the lower line, so the two are pinned to rows explicitly
+   rather than left to fall in source order — otherwise A's games would ride the row above
+   A's name. Set here rather than by reversing the pair in the markup, because the phone
+   layout flows these same cells across rows into two columns, where source order is
+   left-to-right and A does come first. */
 .mscore { grid-column: 2; grid-row: 1 / span 2; align-self: stretch;
-  display: grid; grid-auto-flow: column; grid-template-rows: 1fr 1fr;
+  display: grid; grid-auto-flow: column dense; grid-template-rows: 1fr 1fr;
   row-gap: 2px; column-gap: 11px; font-variant-numeric: tabular-nums; }
+/* dense, because pinning the rows is only half of it: the sparse cursor never goes back a
+   column, so a pinned cell pushes the next one a column along and a set's two games come
+   out on a diagonal instead of stacked. Dense restarts the search each time, which fills
+   each column with its own set. */
+.mscore .sg:nth-child(odd) { grid-row: 2; }    /* A — the lower line */
+.mscore .sg:nth-child(even) { grid-row: 1; }   /* B — the upper line */
 .sg { display: flex; align-items: center; justify-content: center;
   min-width: 16px; font-size: 16px; font-weight: 600; line-height: 1.3; color: var(--hd-mut); }
 .sg.won { color: var(--hd-ink); font-weight: 800; }
@@ -295,9 +353,7 @@ a { color: var(--acc-d); }
    instead of down — there is no boundary left to draw. */
 .mrule { grid-column: 1 / -1; grid-row: 1 / span 2; align-self: center;
   height: 1px; background: color-mix(in srgb, var(--hd-mut) 28%, transparent); }
-/* Lower-left, mirroring the event/round pill's upper-right corner — the two pieces of
-   tournament chrome bracket the scoreboard diagonally instead of both sitting dead centre. */
-.mstate { font-size: 12px; margin: 10px auto 0 0; }
+.mstate { font-size: 10.5px; }
 /* a live match answers "when" with itself, and that beats the event's colour to it */
 .mstate .live { color: var(--warn); font-weight: 700; }
 /* --pad-t is the sticky section headings' business as much as this box's: they pin
@@ -306,11 +362,34 @@ a { color: var(--acc-d); }
 .mbody { --pad-t: 14px; overflow-y: auto; overscroll-behavior: contain; padding: var(--pad-t) 20px 22px; }
 .mbody .loading { padding: 30px 0; color: var(--muted); font-size: 13px; }
 
-/* finished-match charting call-to-action: link to the chart, or invite one */
-.chartcta { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; border: 1px solid var(--line); }
-.chartcta a { font-weight: 700; white-space: nowrap; }
-.chartcta.charted { background: color-mix(in srgb, var(--acc) 8%, var(--card)); border-color: color-mix(in srgb, var(--acc) 30%, var(--line)); }
-.chartcta.uncharted { background: color-mix(in srgb, var(--warn) 7%, var(--card)); border-color: color-mix(in srgb, var(--warn) 26%, var(--line)); }
+/* Lower right, diagonally opposite the event and date — chrome describing the match starts
+   the band, the one thing there is to *do* about it ends it, and the scoreboard has the
+   width between them to itself. Only a completed match reaches this state, so an
+   in-progress or scheduled one simply leaves the corner empty rather than holding a
+   placeholder. */
+/* flex, not inline-flex: an inline-level box sits on a line box, and a line box is at least
+   one line of leading tall whether or not the box on it has any height. Collapsed to
+   max-height:0 for the condensed header this one still left ~19px of blank line behind it —
+   the header shrank around a gap the button was no longer in. Block-level it takes exactly
+   its own height, which when collapsed is none. width:fit-content still shrink-wraps it. */
+.mchartbtn { display: flex; width: fit-content; margin: 2px 0 0 auto;
+  padding: 3px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+  text-decoration: none; white-space: nowrap; border: 1px solid transparent;
+  max-height: 3em; overflow: hidden;
+  transition: background .12s ease, border-color .12s ease, max-height .18s ease,
+    opacity .14s ease, margin .18s ease, padding .18s ease; }
+.mchartbtn.charted { color: var(--acc-d); background: color-mix(in srgb, var(--acc) 9%, transparent);
+  border-color: color-mix(in srgb, var(--acc) 20%, transparent); }
+.mchartbtn.charted:hover { background: color-mix(in srgb, var(--acc) 17%, transparent); }
+.mchartbtn.uncharted { color: color-mix(in srgb, var(--warn) 65%, var(--hd-ink));
+  background: color-mix(in srgb, var(--warn) 9%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 26%, transparent); }
+.mchartbtn.uncharted:hover { background: color-mix(in srgb, var(--warn) 17%, transparent); }
+.matchup.cond .mchartbtn { max-height: 0; opacity: 0; margin: 0;
+  padding-top: 0; padding-bottom: 0; border-width: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .mchartbtn { transition: none; }
+}
 
 /* collapsed notation key: mini courts + text legend */
 .notekey { margin: 14px 0 0; font-size: 12px; color: var(--muted); }
@@ -362,6 +441,13 @@ a { color: var(--acc-d); }
    so a gap reads as a shape rather than as arithmetic between two distant columns. The
    hairline on each bar is the tour average, where the metric has one. */
 .tape { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 14px; margin-top: 14px; }
+/* The strip is the first thing in the scroll, right under a header that just named this
+   match — so without a label of its own, its numbers default to reading as this match's.
+   They're the opposite: a player's whole charted history, which is what the "not this
+   match" half says outright rather than trusting "charted: N matches" below to imply it. */
+.tapetitle { margin: 0 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); }
+.tapetitle span { font-weight: 500; text-transform: none; letter-spacing: normal; opacity: .82; }
 .tapehead { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
 /* no name here: the header above names this side and never scrolls away, and the rule
    closing it says in colour which side is which. */
@@ -515,22 +601,18 @@ a { color: var(--acc-d); }
   .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; border-radius: 16px 16px 0 0; animation: sheet .2s ease-out; }
   /* three columns in a phone's width: the first name goes to an initial before any name
      has to wrap, and the seed badge drops — it is in the draw behind the panel anyway */
-  .mtop { padding: 13px 34px 12px 14px; }
+  .mtop { --pad-r: 34px; padding: 13px var(--pad-r) 12px 14px; }
   /* Names back to the outer ends instead of pulled in toward the score. Pulling them in
      is a wide-panel move — it buys a scoreboard out of width the header was wasting. At
      this size there is no spare width to buy it with: the names already meet in the
      middle, and pulling them in only crowds them against the scoreline while the two
      edges sit empty. */
   .mgrid { column-gap: 10px; }
-  .mp { font-size: 16px; gap: 5px; justify-content: flex-start; }
+  .mp { font-size: 17px; gap: 5px; justify-content: flex-start; }
   .mp .mfull, .mp .mseed { display: none; }
   .mp .mabbr { display: inline; }
   .mflag { font-size: 14px; }
   .sg { font-size: 14px; min-width: 13px; }
-  /* here the header itself already holds a lane open for the close button, so the
-     condensed right-hand name must not reserve it a second time — 36px it can't spare
-     is the difference between one line and two */
-  .matchup.cond .mp.b { padding-right: 0; }
 }
 @keyframes sheet { from { opacity: 0; transform: translateY(28px); } }
 
@@ -547,6 +629,9 @@ a { color: var(--acc-d); }
   .mscore { grid-row: 1; align-self: center;
     grid-auto-flow: row; grid-template-rows: none; grid-template-columns: auto auto;
     row-gap: 1px; column-gap: 8px; }
+  /* the wide layout pins each cell to a row so A's games sit under A's name; here there is
+     one row per set and the pair reads left to right in source order, so the pins come off */
+  .mscore .sg:nth-child(odd), .mscore .sg:nth-child(even) { grid-row: auto; }
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
   .tape { padding: 11px 12px 12px; }

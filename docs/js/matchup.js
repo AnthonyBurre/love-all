@@ -283,7 +283,10 @@ function tapeWho(d, tag) {
 function tape(da, db, mu) {
   const sa = da && da.s, sb = db && db.s;
   if (!sa && !sb) return "";
+  // The header above never says "this match" — it can't, the strip below is career-wide —
+  // so the strip has to say what it is itself, first thing, before its own numbers do.
   return `<section class="tape">
+    <p class="tapetitle">Charted history <span>— career totals, not this match</span></p>
     <div class="tapehead">${tapeWho(da, "a")}${tapeWho(db, "b")}</div>
     ${tapeRows(mu).map((r) => tapeRow(r, sa, sb)).join("")}
     <p class="tapenote"><span class="tickkey"></span> this draw's tour average ·
@@ -434,17 +437,20 @@ function notationHelp() {
   </details>`;
 }
 
-// On a finished match, the drawer's job shifts from "what might happen" to charting: link
-// straight to the chart if it exists, or invite the viewer to be the one who charts it.
-function chartPanel(m, t) {
-  if (!t.completed) return "";
+// Every decided pairing gets one of these: link straight to the chart if it exists, or
+// invite the viewer to be the one who charts it — live, if the match hasn't been played
+// yet, since that's exactly when Match Charting Project volunteers sign up to chart one.
+// Only a slot still waiting on an opponent has nothing to invite: there's no pairing yet
+// for anyone to sign up for.
+function chartButton(m) {
+  if (m.a.name === "TBD" || m.b.name === "TBD") return "";
   if (m.chart_id) {
     const url = `https://www.tennisabstract.com/charting/${encodeURIComponent(m.chart_id)}.html`;
-    return `<div class="chartcta charted">✓ This match is charted.
-      <a href="${url}" target="_blank" rel="noopener">View the full chart →</a></div>`;
+    return `<a class="mchartbtn charted" href="${url}" target="_blank" rel="noopener">
+      ✓ View the chart →</a>`;
   }
-  return `<div class="chartcta uncharted">This match isn't charted yet — a good one to pick up.
-    <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart this match →</a></div>`;
+  return `<a class="mchartbtn uncharted" href="${CHART_GUIDE}" target="_blank" rel="noopener">
+    Chart this match →</a>`;
 }
 
 // The scoreline that sits between the two names, the higher of each set bolded — so the
@@ -498,16 +504,15 @@ function eyebrow(t, round) {
 
 // When. A match that hasn't been played carries its date and start time inside ESPN's
 // detail string already, so printing the long date beside it just says the day twice —
-// which is what the old single line did. A finished one gets the long date, plus its
-// detail only when that says more than "Final" (a retirement, say); in a completed draw
-// even that word is noise, because every match in it is final.
-function whenLine(m, t) {
+// which is what the old single line did. A finished one says only the day: the state it
+// is in is already on the scoreboard, in the caret against the winner's name, and a word
+// for it beside the date was the same fact a second time in weaker type. ESPN's detail
+// here is only ever "Final" or "Retired", so nothing else is being dropped with it.
+function whenLine(m) {
   if (m.state === "in") return `<span class="live">● ${esc(m.detail || "Live")}</span>`;
   const day = matchDate(m.date);
   if (m.state !== "post") return esc(m.detail || day || "");
-  const plainFinal = !m.detail || /^final$/i.test(m.detail.trim());
-  const detail = plainFinal && t.completed ? "" : esc(m.detail || "Final");
-  return [day && esc(day), detail].filter(Boolean).join(" · ");
+  return day ? esc(day) : "";
 }
 
 // Scoreboard header, read top-down like a broadcast graphic: where we are, then the two
@@ -530,7 +535,7 @@ function headHtml(m, t, round) {
   };
   // Older archived draws carry no per-match date and nothing else to say, so the when
   // line drops out entirely rather than leaving an empty row under the names.
-  const when = whenLine(m, t);
+  const when = whenLine(m);
   // A hairline on the boundary between the two staggered rows, reaching name to name: the
   // one thing that says the run of games above it belongs to the player above it. Only
   // where there are two scorelines to divide — no scoreline, nothing to separate, and a
@@ -543,10 +548,17 @@ function headHtml(m, t, round) {
   // row — see .mgrid.noscore.
   const played = (m.a.sets || []).length || (m.b.sets || []).length;
   const rule = played ? `<i class="mrule"></i>` : "";
-  return `<p class="mevent">${eyebrow(t, round)}</p>
+  // Event/round and when both belong to the tournament, not to either player, so they
+  // share one corner instead of bracketing the scoreboard from opposite ends — freeing
+  // the other corner for the one thing there is to *do* about this match: chart it, or
+  // read the chart that's already there.
+  return `<div class="mcorner">
+      <p class="mevent">${eyebrow(t, round)}</p>
+      ${when ? `<p class="mstate">${when}</p>` : ""}
+    </div>
     <div class="mgrid${played ? "" : " noscore"}">
       ${side(m.a, "a")}${scoreStack(m.a, m.b)}${side(m.b, "b")}${rule}</div>
-    ${when ? `<p class="mstate">${when}</p>` : ""}`;
+    ${chartButton(m)}`;
 }
 
 // The body, in reading order: the headline numbers side by side, then the pictures, then
@@ -645,8 +657,7 @@ export async function openMatchup(m, t) {
   body.scrollTop = 0;
   panel.classList.remove("cond");
   panel.focus();
-  body.innerHTML = `${chartPanel(m, t)}
-    <div id="cardslot" class="loading">Loading…</div>
+  body.innerHTML = `<div id="cardslot" class="loading">Loading…</div>
     <div id="wpslot"></div>${notationHelp()}`;
 
   const [pa, pb] = await Promise.all([
