@@ -107,7 +107,12 @@ function matchCard(m, t, cov, onClick, wide) {
   const tier = matchTier(m, t.gender, cov);
   const card = el("div", "match " + tier.cls + (wide ? " wide" : "") +
                  (m.bye ? " bye" : m.placeholder ? " ghost" : ""));
-  card.title = tier.note;
+  // An undecided slot has nothing to say about charting depth, and a tooltip on a box
+  // reading "TBD" only restates the box. That covers both ways a slot can be undecided —
+  // a placeholder round with no entrants yet, and a real player waiting on an opponent.
+  // A bye keeps its note: it is a t-tbd tier but names a live entrant, so the tooltip is
+  // the only thing saying why there is no match to play. The other tiers keep theirs.
+  if (m.bye || tier.cls !== "t-tbd") card.title = tier.note;
   if (wide) {
     const names = el("div", "namesrow");
     names.append(nameSpan(m.a), nameSpan(m.b));
@@ -160,6 +165,34 @@ function placeColumn(matches, cards, centers, gap) {
   return bottom;
 }
 
+// A wire between two cards, in the site's mitred idiom: it leaves the feeder square, turns
+// once onto a 45° diagonal, then squares up again to arrive at the target — the flat-topped
+// hexagonal shape a pair of them makes where two feeders converge. The old S-curve was the
+// only curve left on the page once the cards, the chips and the tier marks went angular, and
+// a lone curve reads as a leftover rather than a choice.
+//
+// The straight ends are a fixed length rather than whatever a 45° diagonal leaves over.
+// Holding the angle at 45° only works when the two cards are further apart along the axis
+// than across it, which is true in the full draw and false in the by-quarter view — there
+// the rounds are ~50px apart vertically and up to 290px apart horizontally, so the diagonal
+// ate the whole span and every wire collapsed to a bare line. Fixing the stub instead lets
+// the angle be whatever each view needs, and both views draw the same shape.
+//
+// `axis` is which way the tree grows: "x" for the left-to-right bracket, "y" for the
+// by-quarter view, which stacks its rounds bottom-to-top. The two differ only in which
+// pair of coordinates leads.
+const WIRE_STUB = 12;
+function mitre(x1, y1, x2, y2, axis) {
+  const [a1, b1, a2, b2] = axis === "y" ? [y1, x1, y2, x2] : [x1, y1, x2, y2];
+  const r = (v) => Math.round(v * 10) / 10;
+  const at = (a, b) => (axis === "y" ? `${r(b)} ${r(a)}` : `${r(a)} ${r(b)}`);
+  if (Math.abs(b2 - b1) < 0.6) return `M ${at(a1, b1)} L ${at(a2, b2)}`;
+  const run = Math.abs(a2 - a1), dir = a2 > a1 ? 1 : -1;
+  const stub = Math.min(WIRE_STUB, run * 0.4);   // short runs keep a diagonal in the middle
+  return `M ${at(a1, b1)} L ${at(a1 + dir * stub, b1)} ` +
+         `L ${at(a2 - dir * stub, b2)} L ${at(a2, b2)}`;
+}
+
 function drawConnectors(rounds, root, cards) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "wires");
@@ -174,9 +207,8 @@ function drawConnectors(rounds, root, cards) {
     for (const m of round.matches) {
       if (!m.feeds || !cards.has(m.feeds)) continue;    // target outside this slice
       const a = pos(m.id), b = pos(m.feeds);
-      const mid = (a.r + b.l) / 2;
       const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      p.setAttribute("d", `M ${a.r} ${a.y} C ${mid} ${a.y}, ${mid} ${b.y}, ${b.l} ${b.y}`);
+      p.setAttribute("d", mitre(a.r, a.y, b.l, b.y, "x"));
       svg.appendChild(p);
     }
   }
@@ -289,8 +321,8 @@ function bestSeedLabels(matches, n, fallbackPrefix) {
 
 // Textless selector chip glyph: two horizontal lines, echoing a match card's two rows.
 const CHIP_ICON = `<svg viewBox="0 0 14 10" width="14" height="10" aria-hidden="true">
-  <rect x="1" y="1" width="12" height="2.6" rx="1.3"/>
-  <rect x="1" y="6.4" width="12" height="2.6" rx="1.3"/></svg>`;
+  <rect x="1" y="1" width="12" height="2.6"/>
+  <rect x="1" y="6.4" width="12" height="2.6"/></svg>`;
 
 // The by-quarter view is one 8-column grid read top-down: the final (1 card, spanning all
 // 8 columns) over the semifinals (2) over the quarterfinals (4), and on a big enough draw
@@ -299,14 +331,13 @@ const CHIP_ICON = `<svg viewBox="0 0 14 10" width="14" height="10" aria-hidden="
 // last full row picks the section of the draw to unfold beneath it: on a slam, a sixteenth
 // (round of 32, then 64, then 128); on a 32-draw, a quarter. Grid column spans center each
 // match over its feeders; one SVG overlay draws all the wires, hot along the picked path.
-const HEAD_LABELS = ["Final", "Semifinals", "Quarterfinals", "Round of 16"];
-
 // How many rounds to show in full, chips on the last of them. Normally four, down to the
 // quarterfinals when showing four would leave just one round to unfold — a 5-round 32-draw
 // with chips on the round of 16 gives eight chips that each open two matches, where chips on
 // the quarterfinals give four that each open a real sub-tree.
+const HEAD_MAX = 4;
 function headRows(n) {
-  const head = Math.min(HEAD_LABELS.length, n);
+  const head = Math.min(HEAD_MAX, n);
   return n - head === 1 ? head - 1 : head;
 }
 
@@ -317,12 +348,15 @@ export function renderQuarters(t, root, cov, onClick, section) {
   const n = rs.length;
   const head = headRows(n);
 
-  const rows = HEAD_LABELS.slice(0, head).map((label, i) => ({
-    label, matches: rs[n - 1 - i].matches,
+  // Round names come from the feed ("Round 1"…"Round 4", "Quarterfinal", "Semifinal",
+  // "Final") — the same ones the full draw prints. This view used to carry its own list
+  // and name the early rounds by size instead ("Round of 32"), so the two views called
+  // the same round two different things.
+  const rows = rs.slice(n - head).reverse().map((r) => ({
+    label: r.label, matches: r.matches,
   }));
   // Rounds below the chip row, latest first, sliced to the picked section. One section per
-  // match of the chip row. Labels reflect the full round's size ("Round of 32"), not the
-  // slice's.
+  // match of the chip row. The label is the whole round's, not the slice's.
   const below = rs.slice(0, n - head).reverse();
   const sections = rows[head - 1].matches.length;
   const selected = Math.min(Math.max(section.selected | 0, 0), sections - 1);
@@ -333,7 +367,7 @@ export function renderQuarters(t, root, cov, onClick, section) {
                              sections === 4 ? "Quarter" : "Section"),
     };
     for (const r of below) {
-      rows.push({ label: `Round of ${r.matches.length * 2}`,
+      rows.push({ label: r.label,
                   matches: sliceN(r.matches, selected, sections) });
     }
   }
@@ -372,9 +406,8 @@ export function renderQuarters(t, root, cov, onClick, section) {
     const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
     const x1 = a.left - rect.left + a.width / 2, y1 = a.bottom - rect.top;
     const x2 = b.left - rect.left + b.width / 2, y2 = b.top - rect.top;
-    const mid = (y1 + y2) / 2;
     const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("d", `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`);
+    p.setAttribute("d", mitre(x1, y1, x2, y2, "y"));
     if (hot) p.setAttribute("class", "hot");
     svg.appendChild(p);
   };

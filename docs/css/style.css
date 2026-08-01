@@ -1,22 +1,21 @@
 :root {
   /* theme hooks — [data-theme] swaps these; default = grass (Wimbledon) */
-  --acc: #1a7f4b;          /* accent: header, links, rich-tier */
-  --acc-d: #135c37;        /* darker accent for gradients/links */
-  --trim: #4b2e83;         /* secondary trim (Wimbledon purple) */
-  --head-ink: #eafaf1;     /* header body text */
-  --head-meta: #cdeede;
-  --bg: #f7faf8;
+  --acc: #1c6b45;          /* accent: header, links, rich-tier */
+  --acc-d: #0e4a2d;        /* darker accent for gradients/links */
+  --trim: #cdf24a;         /* the wedge closing the header band */
+  --head-ink: #ffffff;     /* header body text */
+  --bg: #eef1f6;
 
-  --ink: #182420;
-  --muted: #61706a;
-  --line: #e3e8e5;
+  --ink: #0d141d;
+  --muted: #5c6a7c;
+  --line: #d8dee8;
   --card: #ffffff;
   --warn: #c2410c;
-  --some: #c99a2e;         /* mid-coverage amber */
+  --some: #d9a21f;         /* mid-coverage amber */
   /* "better than the tour" — a reading of a number, not decoration, so it is fixed like
      --warn rather than following the event's palette. A ▲ that is brown at Roland Garros
      and blue in New York is saying something about the tournament, which it isn't. */
-  --up: #1a7f4b;
+  --up: #0f7a52;
   /* the winner's caret — gold, and fixed for the same reason --up is. It is also the one
      mark in the header that is not owned by a side: in each player's own colour it read as
      part of that name's styling, one more thing violet or red was doing, when what it says
@@ -27,68 +26,108 @@
      panel, so they must never be mistaken for a tournament's own colour — which is why
      player A is violet rather than blue, with two hard-court themes in the palette.
      Pitched light enough to hold its own edge against the darkest of those header
-     bands, since the split rule that declares it is drawn on one. */
-  --a: #7d55b3;
-  --b: #d1495b;
-  --radius: 10px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+     bands, since the split rule that declares it is drawn on one.
+     The one place this pair is still tight is B against the clay accent: crimson on
+     terracotta measures ΔE 0.088 in OKLab, the closest any two "must not be confused"
+     colours come anywhere in the palette. A magenta B opens it to 0.141, and is the
+     change to make if that pairing ever reads wrong on a Roland Garros panel. */
+  --a: #6a3fd6;
+  --b: #e0453e;
+
+  /* Facet geometry. Nothing is rounded: the corner is either square or cut on the
+     diagonal, and the cut is always the same 8px so chrome reads as one family.
+     --chip-clip is the small parallelogram every pill-shaped control now wears. */
+  --radius: 0;
+  --chip-clip: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  --tier-wedge: 9px;       /* the corner triangle that replaced the tier's left rule */
+  font-family: "Avenir Next", "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Tournament / season themes (picked by app.js from the selected event) */
+/* Tournament / season themes (picked by app.js from the selected event).
+   Only the three colours the event actually owns change; ink, bg, line and the meta
+   tint are shared, so a theme can no longer drift its own contrast. */
 [data-theme="clay"] {
-  --acc: #b0512e; --acc-d: #8a3a1f; --trim: #35543f;
-  --head-ink: #fdeee6; --head-meta: #f3cdb8; --bg: #faf6f2;
-  --ink: #2a201b; --muted: #77655c; --line: #ece2da; --bg2: #f4e9e1;
+  --acc: #b4552f; --acc-d: #7d3319; --trim: #f0c65a;
 }
 [data-theme="us-hard"] {
-  --acc: #2064af; --acc-d: #163f75; --trim: #f2c33d;
-  --head-ink: #e8f1fc; --head-meta: #bcd6f2; --bg: #f5f8fb;
-  --ink: #17212e; --muted: #5d6b7c; --line: #dfe6ee;
+  --acc: #16357f; --acc-d: #0b2159; --trim: #cdf24a;
 }
+/* Darker than the tournament's own bright cyan: at #1487c8 the white segmented-control
+   label measured 3.94:1 and the band's meta line 3.27:1, both under 4.5. */
 [data-theme="aus-hard"] {
-  --acc: #1487c8; --acc-d: #0e5f8e; --trim: #ffd24a;
-  --head-ink: #e6f4fc; --head-meta: #b9e0f4; --bg: #f4f9fc;
-  --ink: #14232c; --muted: #5b6e79; --line: #dde8ee;
+  --acc: #0b6189; --acc-d: #064054; --trim: #f5d24a;
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); }
+/* The meta line is a tint of the event's own accent rather than a hand-picked colour per
+   theme — four hand-picked tints is four chances to get one wrong, and one of them was:
+   the old aus-hard pair measured 3.27:1 on its band, under the 4.5 small text needs.
+   At 28% it measures 6.19:1 at Roland Garros and 9.04:1 at the US Open, against the
+   colour actually under the text. That last part matters: the band is a 112° gradient, so
+   "on the band" is not one number. This row sits at ~0.60 along the gradient line — past
+   the mid stop, in the dark end — which is why a tint this light is safe here and would
+   not be up beside the title. Anything moved into this band wants re-measuring where it
+   lands, not where the gradient starts.
+   It is declared here and not with the other tokens in :root because a custom property
+   substitutes var() against the element it is *declared* on. app.js puts the theme on
+   <body>, so a --head-meta written in :root would resolve --acc to the grass default and
+   stay green at Roland Garros. Declared on body, it resolves against the themed value. */
+body { --head-meta: color-mix(in srgb, var(--acc) 28%, #ffffff); }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
 a { color: var(--acc-d); }
 
-.site-head { background: linear-gradient(160deg, var(--acc), var(--acc-d)); color: #fff; padding: 24px 0 22px; border-bottom: 4px solid var(--trim); }
-.site-head .brand { margin: 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--head-meta); }
-.site-head h1 { margin: 2px 0 6px; font-size: 34px; letter-spacing: -0.02em; }
-.site-head .tag { margin: 0; max-width: 760px; line-height: 1.5; color: var(--head-ink); font-size: 15px; }
+/* The band runs on the diagonal, and a facet of slightly lighter ground cuts across its
+   closing third — the same 102°-ish angle the wedge and the split rule use, so the whole
+   page is lit from one direction. */
+.site-head { position: relative; overflow: hidden; color: #fff; padding: 26px 0 24px;
+  background: linear-gradient(112deg, var(--acc) 0%, var(--acc-d) 55%, color-mix(in srgb, var(--acc-d) 82%, #000) 100%); }
+.site-head > .wrap { position: relative; z-index: 2; }
+.site-head::before { content: ""; position: absolute; inset: 0 0 0 auto; width: 40%;
+  background: linear-gradient(102deg, transparent 50%, rgba(255,255,255,.05) 50%); }
+/* The trim used to be a 4px rule the full width of the band. As a rule it had to be a
+   colour that could hold its own across the whole edge, and the clay one couldn't — dark
+   green on terracotta measured 1.30:1, which is to say it wasn't there. As a short wedge
+   it only has to be seen once, so it can be the bright accent the event actually wants. */
+.site-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
+  background: var(--trim); clip-path: polygon(0 0, 34% 0, 30% 100%, 0 100%); }
+.site-head .brand { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: var(--head-meta); }
+.site-head h1 { margin: 4px 0 8px; font-size: 40px; font-weight: 800; line-height: 1.05; letter-spacing: -0.035em; }
+.site-head .tag { margin: 0; max-width: 760px; line-height: 1.55; color: var(--head-ink); font-size: 14.5px; opacity: .92; }
 .site-head a { color: #fff; text-decoration: underline; }
-.meta { margin: 12px 0 0; font-size: 13px; color: var(--head-meta); }
+.meta { margin: 12px 0 0; font-size: 12.5px; color: var(--head-meta); }
 .contribute { font-weight: 600; }
 
 .controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; padding-top: 18px; padding-bottom: 6px; }
-.seg { display: inline-flex; background: #ffffffb0; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
-.seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; }
-.seg button.on { background: var(--acc); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg { display: inline-flex; background: #ffffffb0; border: 1px solid var(--line); clip-path: var(--chip-clip); padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 7px 14px; cursor: pointer; font-size: 12.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+.seg button.on { background: var(--acc); color: #fff; }
 .seg .ico { display: block; line-height: 0; }
 .seg svg { display: block; fill: currentColor; }
 
 /* tournament picker: a dropdown (scales as events accumulate, native on mobile) */
+/* the caret is a right-angled corner rather than a symmetric triangle — the same cut the
+   chips and cards take, pointing the same way */
 .tourselect {
   appearance: none; -webkit-appearance: none;
-  border: 1px solid var(--line); border-radius: 999px;
-  background: #ffffffb0 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2361706a'/%3E%3C/svg%3E") no-repeat right 15px center;
+  border: 1px solid var(--line); clip-path: var(--chip-clip);
+  background: #ffffffb0 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Cpath d='M0 0h9v9z' fill='%235c6a7c'/%3E%3C/svg%3E") no-repeat right 15px center;
   padding: 9px 36px 9px 16px; font-size: 14px; font-weight: 700; color: var(--ink);
   cursor: pointer; max-width: 100%;
 }
 .tourselect:hover { border-color: var(--acc); }
 .tourselect:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
 
-/* match-tier legend */
-.legend { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; }
-.legend .chip { font-size: 11px; font-weight: 600; color: var(--muted); padding: 3px 9px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); border-left-width: 4px; }
-.legend .chip.t-rich { border-left-color: var(--acc); }
-.legend .chip.t-some { border-left-color: var(--some); }
-.legend .chip.t-thin { border-left-color: #d6cfa8; }
-.legend .chip.t-none { border-left-color: #d0d7d3; }
+/* match-tier legend. The tier used to be a thick left border; it is now the same corner
+   wedge the match cards wear, so the legend and the thing it explains are the same shape.
+   The wedge is drawn from currentColor so one rule sets both triangle edges. */
+.legend { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap; }
+.legend .chip { position: relative; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 4px 9px 4px 14px; clip-path: var(--chip-clip); background: var(--card); border: 1px solid var(--line); }
+.legend .chip::before { content: ""; position: absolute; left: 0; top: 0; border: 6px solid transparent; border-left-color: currentColor; border-top-color: currentColor; }
+.legend .chip.t-rich::before { color: var(--acc); }
+.legend .chip.t-some::before { color: var(--some); }
+.legend .chip.t-thin::before { color: #c8cfd9; }
+.legend .chip.t-none::before { color: #dde2ea; }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
@@ -108,7 +147,8 @@ a { color: var(--acc-d); }
 /* 8-across rows (round of 16, round of 128) run narrow and tall: each player gets
    two lines — name left, sets right beneath — so names keep the full card width
    as the window narrows */
-.qcell.span1 .match { width: 100%; padding: 6px 8px; }
+/* the tier wedge shrinks with the card — at 13px it would reach into a 12px name */
+.qcell.span1 .match { width: 100%; padding: 6px 8px 6px 11px; --tier-wedge: 7px; }
 .qcell.span1 .side { flex-direction: column; align-items: stretch; gap: 0; }
 .qcell.span1 .nm { font-size: 12px; }
 .qcell.span1 .sets { font-size: 11px; text-align: right; }
@@ -116,16 +156,22 @@ a { color: var(--acc-d); }
 .quarters .wires .hot { stroke: var(--acc); stroke-width: 2.25; }
 /* textless selector chip under each round-of-16 match: pick one and its earlier
    rounds render below; the seed-leader label lives in the tooltip */
-.qsel { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 10px; color: var(--muted); cursor: pointer; line-height: 0; }
+.qsel { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--card); clip-path: var(--chip-clip); padding: 5px 12px; color: var(--muted); cursor: pointer; line-height: 0; }
 .qsel svg { display: block; fill: currentColor; }
 .qsel:hover { border-color: var(--acc); color: var(--ink); }
 .qsel.on { background: var(--acc); border-color: var(--acc); color: #fff; }
-.qchip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; position: relative; z-index: 2; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qchip { border: 1px solid var(--line); background: var(--card); clip-path: var(--chip-clip); padding: 7px 16px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; position: relative; z-index: 2; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qchip:hover { border-color: var(--acc); color: var(--ink); }
 .qchip.on { background: var(--acc); border-color: var(--acc); color: #fff; }
 
 /* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
-.bracket { display: flex; gap: 34px; overflow-x: auto; padding: 14px 0 30px; align-items: flex-start; position: relative; }
+/* overflow-y is hidden, not left to default: `overflow-x: auto` alone makes this a scroll
+   container on *both* axes (a visible overflow-y computes to auto next to a scrolling
+   overflow-x), and the wire overlay is sized from scrollHeight — an integer, against a
+   content height that isn't. The leftover fraction became a couple of pixels of vertical
+   scroll that swallowed the wheel whenever the pointer was over the draw. Nothing is newly
+   clipped: the box was already clipping on both axes. */
+.bracket { display: flex; gap: 34px; overflow-x: auto; overflow-y: hidden; padding: 14px 0 30px; align-items: flex-start; position: relative; }
 .round { flex: 0 0 auto; width: 232px; }
 .round h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); position: sticky; top: 0; background: var(--bg); padding: 4px 0; z-index: 3; }
 .round-list { position: relative; }
@@ -134,15 +180,22 @@ a { color: var(--acc-d); }
 .wires { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
 .wires path { fill: none; stroke: color-mix(in srgb, var(--acc) 38%, var(--line)); stroke-width: 1.75; }
 
-/* match card, shaded by how charted the *pairing* is (min of both players) */
-.match { background: var(--card); border: 1px solid var(--line); border-left: 4px solid #d0d7d3; border-radius: var(--radius); padding: 8px 10px; cursor: pointer; transition: border-color .15s, box-shadow .15s; z-index: 2; }
-.match:hover { border-color: var(--acc); box-shadow: 0 3px 12px rgba(0,0,0,.14); }
+/* Match card, shaded by how charted the *pairing* is (min of both players).
+   The tier reads as a triangle cut into the top-left corner instead of a rule down the
+   left edge. A rule and a card edge are the same shape, so the tier had to carry on
+   colour alone; a wedge is a different shape from everything around it and is found
+   before it is read. The card keeps its 1px frame all the way round. */
+.match { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px 8px 14px; cursor: pointer; transition: border-color .15s, box-shadow .15s; z-index: 2; }
+/* the drop shadow is offset on the same diagonal as the band's facet, and hard-edged —
+   a blurred shadow under a hard-cornered card is two different vocabularies */
+.match:hover { border-color: var(--acc); box-shadow: 6px 6px 0 color-mix(in srgb, var(--acc) 14%, transparent); }
 .match:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
-.match.t-rich { border-left-color: var(--acc); background: color-mix(in srgb, var(--acc) 7%, var(--card)); }
-.match.t-some { border-left-color: var(--some); background: color-mix(in srgb, var(--some) 7%, var(--card)); }
-.match.t-thin { border-left-color: #d6cfa8; }
-.match.t-none { border-left-color: #d0d7d3; }
-.match.t-tbd { border-left-color: var(--line); border-style: dashed; background: transparent; }
+.match::before { content: ""; position: absolute; left: 0; top: 0; border: var(--tier-wedge) solid transparent; border-left-color: var(--tier, #dde2ea); border-top-color: var(--tier, #dde2ea); }
+.match.t-rich { --tier: var(--acc); background: color-mix(in srgb, var(--acc) 7%, var(--card)); }
+.match.t-some { --tier: var(--some); background: color-mix(in srgb, var(--some) 7%, var(--card)); }
+.match.t-thin { --tier: #c8cfd9; }
+.match.t-none { --tier: #dde2ea; }
+.match.t-tbd { --tier: var(--line); border-style: dashed; background: transparent; }
 .match.ghost { cursor: default; }
 .match.ghost:hover { border-color: var(--line); box-shadow: none; }
 /* A bye holds a real entrant already through, so it reads solid rather than as a dashed
@@ -180,7 +233,7 @@ a { color: var(--acc-d); }
 .matchup { position: fixed; z-index: 21; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: min(880px, 94vw); max-height: min(88vh, 860px);
   display: flex; flex-direction: column; overflow: hidden;
-  background: var(--card); border: 0; border-radius: 16px;
+  background: var(--card); border: 0; border-radius: var(--radius);
   box-shadow: 0 24px 80px rgba(0,0,0,.35); animation: pop .16s ease-out; }
 .matchup[hidden] { display: none; }
 .matchup:focus { outline: none; }   /* it takes focus on open; the pop is the cue */
@@ -188,8 +241,10 @@ a { color: var(--acc-d); }
 /* A full 44px target — this is the one control on the panel, and on a phone it sits in the
    corner a thumb reaches worst — around a mark much smaller than that. The hit area is for
    the thumb; the glyph only has to be found, and at 26px it was the largest thing in a
-   corner whose job is to stay out of the way. The circle that comes up under it on hover
-   is drawn at the size the mark reads, not the size of the box. */
+   corner whose job is to stay out of the way. The shape that comes up under it on hover
+   is drawn at the size the mark reads, not the size of the box — and it takes the same
+   cut corners as the rest of the chrome, since a circle here was the last round thing
+   left in the panel. */
 .matchup { --close-size: 44px; --close-inset: 6px; }
 .matchup .close { position: absolute; top: 4px; right: var(--close-inset); z-index: 3;
   border: 0; background: none;
@@ -197,7 +252,7 @@ a { color: var(--acc-d); }
   display: flex; align-items: center; justify-content: center;
   padding: 0; font-size: 19px; line-height: 1; cursor: pointer; color: var(--hd-mut); }
 .matchup .close::before { content: ""; position: absolute; width: 30px; height: 30px;
-  border-radius: 50%; transition: background .12s ease; }
+  clip-path: var(--chip-clip); transition: background .12s ease; }
 .matchup .close:hover { color: var(--hd-ink); }
 .matchup .close:hover::before { background: color-mix(in srgb, var(--hd-mut) 15%, transparent); }
 
@@ -220,8 +275,11 @@ a { color: var(--acc-d); }
   --close-lane: calc(var(--close-inset) + var(--close-size) - var(--pad-r) + 8px);
   padding: 14px var(--pad-r) 15px 20px;
   color: var(--hd-ink); background: var(--hd-bg); transition: padding .18s ease; }
-.mtop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-  background: linear-gradient(90deg, var(--a) 0 50%, var(--b) 50% 100%); }
+/* The split is cut on the diagonal rather than butted square, and thickened to carry it.
+   A vertical seam between two colours is the one edge on the page that isn't on the
+   page's diagonal; at 3px there was no room to angle it, so it gets 8. */
+.mtop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px;
+  background: linear-gradient(96deg, var(--a) 0 50%, var(--b) 50% 100%); }
 /* The upper-right corner of chrome — which event this is, and when it was played — is the
    only chrome in the panel that belongs to the tournament rather than to the two players,
    so it's the only thing that wears its colour. Boxed and small, the trace of green or
@@ -236,7 +294,7 @@ a { color: var(--acc-d); }
    claiming 46px of corner, and the padding that shapes the pill was not the number setting
    the space around it. The condensed state was already zeroing these on its way out, which
    is the only reason it ever closed all the way. */
-.mevent, .mstate { width: fit-content; margin: 0; padding: 2px 9px; border-radius: 999px;
+.mevent, .mstate { width: fit-content; margin: 0; padding: 2px 11px; clip-path: var(--chip-clip);
   color: var(--acc-d); background: color-mix(in srgb, var(--acc) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--acc) 20%, transparent); }
 /* Top left, which is where you start reading — the event and round say which match this is
@@ -313,16 +371,19 @@ a { color: var(--acc-d); }
    like. It is now the only thing in the header saying the match is over — the word that used
    to say so beside the date is gone — so it is sized to be found rather than merely noticed.
    Still short of the 24px names: a caret that matches them competes with the thing it is
-   marking, and this one only has to be seen once. One gold both sides — see --win. */
-.mwin { flex: none; font-size: 18px; line-height: 1; color: var(--win); margin-left: -2px; }
-.mp.a .mwin::before { content: "\25C2"; }
+   marking, and this one only has to be seen once. One gold both sides — see --win.
+   ◀ is a fuller glyph than the ◂ it replaced — solid, and drawn to the em rather than
+   inset — so 18px here would land bigger than the 18px before it. 14px holds the size
+   the mark actually read at. */
+.mwin { flex: none; font-size: 14px; line-height: 1; color: var(--win); margin-left: -2px; }
+.mp.a .mwin::before { content: "\25C0"; }
 /* mirrored: the name is on its other side, so the caret turns and the nudge flips with it.
    The colour does not — it is the same gold whoever won, which is the point of it. */
 .mp.b .mwin { margin: 0 -2px 0 0; }
-.mp.b .mwin::before { content: "\25B8"; }
+.mp.b .mwin::before { content: "\25B6"; }
 .mflag { flex: none; font-size: 16px; line-height: 1; }
 .mseed { flex: none; font-size: 10px; font-weight: 700; color: var(--hd-mut); line-height: 1.6;
-  border: 1px solid var(--hd-line); border-radius: 4px; padding: 0 4px; }
+  border: 1px solid var(--hd-line); clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%); padding: 0 7px; }
 /* the cells flow down columns, so the flat A,B,A,B list becomes a row per player. It
    stretches over both name rows and splits them evenly, which is what puts each
    scoreline level with the name it belongs to.
@@ -373,7 +434,7 @@ a { color: var(--acc-d); }
    the header shrank around a gap the button was no longer in. Block-level it takes exactly
    its own height, which when collapsed is none. width:fit-content still shrink-wraps it. */
 .mchartbtn { display: flex; width: fit-content; margin: 2px 0 0 auto;
-  padding: 3px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+  padding: 3px 12px; clip-path: var(--chip-clip); font-size: 10.5px; font-weight: 700;
   text-decoration: none; white-space: nowrap; border: 1px solid transparent;
   max-height: 3em; overflow: hidden;
   transition: background .12s ease, border-color .12s ease, max-height .18s ease,
@@ -397,7 +458,7 @@ a { color: var(--acc-d); }
 .notekey .courts { display: flex; gap: 18px; margin: 10px 0 4px; }
 .notekey .courts svg { flex: 0 1 150px; max-width: 46%; height: auto; }
 .notekey .keytext div { margin: 6px 0; line-height: 1.5; }
-.notekey code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+.notekey code { background: color-mix(in srgb, var(--line) 55%, var(--card)); padding: 1px 4px; font-size: 11px; }
 .ct-line { stroke: var(--muted); stroke-width: 1.4; fill: none; }
 .ct-line-thin { stroke: var(--muted); stroke-width: 0.9; }
 .ct-net { stroke: var(--ink); stroke-width: 2.2; }
@@ -432,7 +493,7 @@ a { color: var(--acc-d); }
    nothing scrolls under it long enough to need pinning */
 .wp .sechead { position: static; margin: 0 0 6px; padding: 0; border-bottom: 0; }
 .wp-line { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
-.wp-line .wp-bar { flex: 1; height: 7px; border-radius: 4px; overflow: hidden; background: color-mix(in srgb, var(--b) 30%, var(--card)); }
+.wp-line .wp-bar { flex: 1; height: 8px; overflow: hidden; background: color-mix(in srgb, var(--b) 30%, var(--card)); }
 .wp-line .pa { height: 100%; background: color-mix(in srgb, var(--a) 65%, var(--card)); }
 .wp-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 
@@ -440,7 +501,7 @@ a { color: var(--acc-d); }
    Both players' headline numbers on one axis: bars grow outward from a shared centre,
    so a gap reads as a shape rather than as arithmetic between two distant columns. The
    hairline on each bar is the tour average, where the metric has one. */
-.tape { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 14px; margin-top: 14px; }
+.tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 14px; }
 /* The strip is the first thing in the scroll, right under a header that just named this
    match — so without a label of its own, its numbers default to reading as this match's.
    They're the opposite: a player's whole charted history, which is what the "not this
@@ -457,7 +518,7 @@ a { color: var(--acc-d); }
 .tarch, .tcharted { display: block; }
 .tcharted { font-variant-numeric: tabular-nums; }
 /* the per-column dot, used where a stacked phone column has to name its own player */
-.tdot { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+.tdot { flex: none; width: 9px; height: 9px; }
 .tdot.a { background: var(--a); }
 .tdot.b { background: var(--b); }
 
@@ -468,14 +529,16 @@ a { color: var(--acc-d); }
 .tval.a { text-align: right; }
 .tval.lead { color: var(--ink); font-weight: 800; }
 .tsub { display: block; font-size: 10px; font-weight: 500; color: var(--muted); }
-.tbar { position: relative; height: 9px; background: color-mix(in srgb, var(--line) 70%, var(--card)); }
-.tbar.a { border-radius: 4px 0 0 4px; }
-.tbar.b { border-radius: 0 4px 4px 0; }
+.tbar { position: relative; height: 10px; background: color-mix(in srgb, var(--line) 70%, var(--card)); }
 /* the fill is a flex row of segments; side A grows leftward from the centre, so it
-   reverses and both players' first segments meet in the middle */
-.tbar i { position: absolute; top: 0; bottom: 0; border-radius: inherit; display: flex; overflow: hidden; }
-.tbar.a i { right: 0; flex-direction: row-reverse; }
-.tbar.b i { left: 0; }
+   reverses and both players' first segments meet in the middle.
+   The far end tapers to a point, so a bar reads as an arrow pointing the way it grew —
+   which is the one thing a mirrored pair has to say and previously left to position
+   alone. The taper is on the outer end only: the inner ends still meet square at the
+   centre line, because that shared edge is what makes the two lengths comparable. */
+.tbar i { position: absolute; top: 0; bottom: 0; display: flex; overflow: hidden; }
+.tbar.a i { right: 0; flex-direction: row-reverse; clip-path: polygon(0 50%, 9px 0, 100% 0, 100% 100%, 9px 100%); }
+.tbar.b i { left: 0; clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%); }
 .tbar.a i > span { background: var(--a); }
 .tbar.b i > span { background: var(--b); }
 /* the missed half of the same decision: same hue, drained of it */
@@ -483,7 +546,7 @@ a { color: var(--acc-d); }
 .tbar u { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: var(--ink); opacity: .5; }
 
 .tapenote { margin: 12px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
-.segkey { display: inline-block; width: 13px; height: 8px; border-radius: 2px; background: var(--muted); vertical-align: 0; }
+.segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
 .tickkey { display: inline-block; width: 2px; height: 11px; background: var(--ink); opacity: .5; vertical-align: -2px; margin: 0 1px; }
 
@@ -506,7 +569,11 @@ a { color: var(--acc-d); }
   grid-template-rows: repeat(var(--rows, 1), auto); }
 /* the sticky bar's other half on a phone: the two column owners, over their columns */
 .secwho { display: none; }
-.seccol { min-width: 0; padding-left: 11px; border-left: 2px solid color-mix(in srgb, var(--shot) 40%, transparent);
+/* The player's colour caps the column instead of running down its left edge. A left rule
+   put two thin verticals in the middle of the panel, competing with the gutter between
+   the columns; a rule across the top states the ownership once, at the point the eye
+   enters the column, and gives the width back. */
+.seccol { min-width: 0; padding-top: 9px; border-top: 4px solid var(--shot);
   display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; align-items: start; }
 .seccol[data-side="a"] { --shot: var(--a); }
 .seccol[data-side="b"] { --shot: var(--b); }
@@ -547,7 +614,7 @@ a { color: var(--acc-d); }
 .trig.green::before { content: "▲"; color: var(--up); font-size: 10px; }
 .trig.bait::before { content: "⚠"; color: var(--warn); font-size: 11px; }
 .trig.gold::before { content: "⭐"; font-size: 10px; }
-.trig.gold { background: color-mix(in srgb, #d7b53d 12%, var(--card)); border-radius: 6px; padding: 5px 7px 5px 22px; }
+.trig.gold { background: color-mix(in srgb, #d7b53d 12%, var(--card)); padding: 5px 7px 5px 22px; }
 .trig.gold::before { left: 7px; top: 5px; }
 .trig.immune { color: var(--acc-d); font-weight: 600; }
 .trig.immune::before { content: "◆"; font-size: 10px; }
@@ -556,14 +623,14 @@ a { color: var(--acc-d); }
 .tnum b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .trig .lift { color: var(--muted); font-size: 11px; }
 .warnmark { color: var(--warn); }
-.trig code { background: #f2f5f3; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+.trig code { background: color-mix(in srgb, var(--line) 55%, var(--card)); padding: 1px 4px; font-size: 11px; }
 
 /* the court glyph's key, stated where the glyph is first used */
 .courtkey { margin: 5px 0 0; display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 10.5px; }
 .ck { color: var(--ink); font-weight: 700; }
 .ck.in { color: var(--muted); border-bottom: 1.5px dashed var(--muted); }
 .ck.out { border-bottom: 1.5px solid var(--acc); }
-.ck.half { background: color-mix(in srgb, var(--acc) 12%, transparent); padding: 0 4px; border-radius: 3px; }
+.ck.half { background: color-mix(in srgb, var(--acc) 12%, transparent); padding: 0 4px; }
 
 /* Expandable ball-path court under a trigger sequence. Collapsed by default; the summary
    is a small tap target, the SVG reuses the ct-* court styles above. */
@@ -592,13 +659,16 @@ a { color: var(--acc-d); }
 .rlist .match { position: static; }
 .rlist .pair { display: flex; flex-direction: column; gap: 6px; position: relative; padding-right: 14px; }
 /* right-side bracket joining a pair: these two winners meet next round */
-.rlist .pair::after { content: ""; position: absolute; right: 2px; top: 24px; bottom: 24px; width: 9px; border: 1.5px solid color-mix(in srgb, var(--acc) 38%, var(--line)); border-left: none; border-radius: 0 9px 9px 0; }
+/* The joiner is drawn by its own three borders, so it can't be clipped into a triangle —
+   a clip-path takes the borders away with the corners and leaves a sliver. Square corners
+   are the angular version of the same bracket, and they keep all three edges. */
+.rlist .pair::after { content: ""; position: absolute; right: 2px; top: 24px; bottom: 24px; width: 10px; border: 1.5px solid color-mix(in srgb, var(--acc) 42%, var(--line)); border-left: none; }
 
 @media (max-width: 700px) {
   .site-head h1 { font-size: 26px; }
   .nm { font-size: 13px; }
   /* the dialog becomes a bottom sheet: full width, rounded top, slides up */
-  .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; border-radius: 16px 16px 0 0; animation: sheet .2s ease-out; }
+  .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; animation: sheet .2s ease-out; }
   /* three columns in a phone's width: the first name goes to an initial before any name
      has to wrap, and the seed badge drops — it is in the draw behind the panel anyway */
   .mtop { --pad-r: 34px; padding: 13px var(--pad-r) 12px 14px; }

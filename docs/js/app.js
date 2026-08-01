@@ -122,12 +122,14 @@ function seg(container, items, active, onPick) {
 
 // Wordless view-toggle glyphs: stacked horizontal bars for the top-down quarter
 // view, vertical bars for the full draw's side-by-side round columns.
+// Square ends, no rx — a rounded cap is the one thing the rest of the page no
+// longer has, and at 14px it is most of what the glyph is.
 function barsIcon(vertical) {
   const s = document.createElement("span");
   s.className = "ico";
   s.innerHTML = vertical
-    ? `<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><rect x="1.2" y="1" width="2.8" height="12" rx="1.4"/><rect x="5.6" y="1" width="2.8" height="12" rx="1.4"/><rect x="10" y="1" width="2.8" height="12" rx="1.4"/></svg>`
-    : `<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><rect x="1" y="1.2" width="12" height="2.8" rx="1.4"/><rect x="1" y="5.6" width="12" height="2.8" rx="1.4"/><rect x="1" y="10" width="12" height="2.8" rx="1.4"/></svg>`;
+    ? `<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><rect x="1.2" y="1" width="2.8" height="12"/><rect x="5.6" y="1" width="2.8" height="12"/><rect x="10" y="1" width="2.8" height="12"/></svg>`
+    : `<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><rect x="1" y="1.2" width="12" height="2.8"/><rect x="1" y="5.6" width="12" height="2.8"/><rect x="1" y="10" width="12" height="2.8"/></svg>`;
   return s;
 }
 
@@ -187,8 +189,8 @@ function buildTabs() {
   const q = quarterable(t);
   $("viewTabs").style.display = q ? "" : "none";
   seg($("viewTabs"), [
-    ["quarters", barsIcon(false), "By quarter — the business end, top-down"],
-    ["full", barsIcon(true), "Full draw — every round side by side"],
+    ["quarters", barsIcon(false), "Slices"],
+    ["full", barsIcon(true), "Full draw"],
   ], q ? viewFor(t) : "full", (v) => {
     sel.view = v;
     sel.round = null;
