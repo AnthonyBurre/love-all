@@ -256,7 +256,6 @@ src/match_charting_project/        # the reusable, importable library
 └── viz/               # figure renderers
 tests/                 # pytest suite (e.g. notation decoder vs charted stats)
 data/                  # raw/ + processed/ parquet + tennis.duckdb   (gitignored)
-notebooks/             # numbered, disposable exploration
 experiments/           # self-contained idea spikes; they graduate into src/ if they earn it
 reports/               # generated outputs, never committed by hand
 docs/                  # the live Love All site (Pages)
