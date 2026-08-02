@@ -4,25 +4,25 @@
 
 *Long, evolving careers are split into early/late **era entities** via the `player_eras` layer, so each era clusters on its own — see “Career-era splits” below.*
 
-## Men — 241 entities, 4 archetypes (silhouette 0.14)
+## Men — 242 entities, 4 archetypes (silhouette 0.14)
 
 ![pca](figures/styles_pca_men.png)
 
-### 0. Baseline grinder / counterpuncher — 82 players
-- **Defining:** ↑avg_rally_len  ↓ace_rate  ↓serve_t
-- **Exemplars:** Novak Djokovic (2005–2016), Roberto Bautista Agut, Tommy Paul, Alejandro Tabilo, Pablo Carreno Busta, David Nalbandian
+### 0. Big-serving baseliner — 80 players
+- **Defining:** ↑serve_t  ↑ace_rate  ↑return_deep
+- **Exemplars:** Karen Khachanov (2015–2022), Stefanos Tsitsipas (2023–2026), Zizou Bergs, Tomas Berdych (2005–2013), Lucas Pouille, Jesper De Jong
 
-### 1. Net-rusher / serve-volleyer — 26 players
+### 1. Baseline grinder / counterpuncher — 105 players
+- **Defining:** ↓ace_rate  ↑avg_rally_len  ↓serve_t
+- **Exemplars:** Novak Djokovic (2005–2016), Tommy Paul, Alejandro Tabilo, Jannik Sinner (2013–2023), David Goffin, Carlos Alcaraz
+
+### 2. Net-rusher / serve-volleyer — 31 players
 - **Defining:** ↑net_pct  ↓fh_share  ↓avg_rally_len
-- **Exemplars:** Boris Becker (1991–1999), Michael Stich, Boris Becker (1985–1990), John Mcenroe (1978–1985), Richard Krajicek (1992–1996), Tim Henman (1995–1999)
+- **Exemplars:** Boris Becker (1991–1999), Michael Stich, Mark Philippoussis, Boris Becker (1985–1990), Richard Krajicek (1992–1996), John Mcenroe (1978–1985)
 
-### 2. Slice & variety — 26 players
-- **Defining:** ↑return_slice  ↑slice_pct  ↑ace_rate
-- **Exemplars:** Grigor Dimitrov, Tim Van Rijthoven, Daniel Altmaier, Tommy Haas, Feliciano Lopez (2003–2017), Roger Federer (2010–2021)
-
-### 3. Big-serving baseliner — 107 players
-- **Defining:** ↑unforced_rate  ↓return_slice  ↑serve_t
-- **Exemplars:** Karen Khachanov (2015–2022), Lucas Pouille, Tomas Berdych (2005–2013), Stefanos Tsitsipas (2023–2026), Alexei Popyrin, Zizou Bergs
+### 3. Slice & variety — 26 players
+- **Defining:** ↑slice_pct  ↑return_slice  ↑serve_wide
+- **Exemplars:** Grigor Dimitrov, Roger Federer (2010–2021), Mikhail Youzhny, Daniel Altmaier, Robin Haase, Stan Wawrinka
 
 ![heatmap](figures/styles_heatmap_men.png)
 
@@ -30,34 +30,33 @@
 
 ![pca](figures/styles_pca_women.png)
 
-### 0. Slice & net specialist — 7 players
-- **Defining:** ↑return_slice  ↑slice_pct  ↑net_pct
-- **Exemplars:** Amelie Mauresmo, Monica Niculescu, Ashleigh Barty, Taylor Townsend, Steffi Graf, Tatjana Maria
+### 0. All-courter — 60 players
+- **Defining:** ↑fh_share  ↓serve_wide  ↑df_rate
+- **Exemplars:** Andrea Petkovic, Leylah Fernandez, Bianca Andreescu (2017–2022), Maria Sakkari, Eugenie Bouchard (2017–2023), Elise Mertens
 
-### 1. All-courter — 67 players
-- **Defining:** ↓serve_wide  ↑fh_share  ↓ace_rate
-- **Exemplars:** Andrea Petkovic, Leylah Fernandez, Eugenie Bouchard (2017–2023), Maria Sakkari, Bianca Andreescu (2017–2022), Diana Shnaider
+### 1. Baseline grinder / counterpuncher — 49 players
+- **Defining:** ↑avg_rally_len  ↓df_rate  ↓serve_t
+- **Exemplars:** Jelena Jankovic, Marie Bouzkova, Anhelina Kalinina, Emma Raducanu, Mirra Andreeva, Flavia Pennetta
 
 ### 2. Big serve / first-strike — 39 players
-- **Defining:** ↑ace_rate  ↓avg_rally_len  ↑gs_winner_rate
-- **Exemplars:** Linda Noskova, Barbora Krejcikova, Elena Rybakina, Anett Kontaveit, Ana Ivanovic, Ekaterina Alexandrova
+- **Defining:** ↑ace_rate  ↓avg_rally_len  ↑serve_t
+- **Exemplars:** Linda Noskova, Barbora Krejcikova, Clara Tauson, Elena Rybakina, Veronika Kudermetova, Coco Vandeweghe
 
-### 3. Baseline grinder / counterpuncher — 39 players
-- **Defining:** ↑avg_rally_len  ↓serve_t  ↓ace_rate
-- **Exemplars:** Jelena Jankovic, Marie Bouzkova, Anhelina Kalinina, Flavia Pennetta, Sloane Stephens, Mirra Andreeva
+### 3. Slice & net specialist — 4 players
+- **Defining:** ↑return_slice  ↑slice_pct  ↑net_pct
+- **Exemplars:** Monica Niculescu, Tatjana Maria, Steffi Graf, Martina Navratilova
 
 ![heatmap](figures/styles_heatmap_women.png)
 
 ## Career-era splits (via the `player_eras` layer)
 
-34 evolving careers were split into early/late entities and fingerprinted independently. Where the eras land in **different** archetypes, the split captured a real style shift:
+35 evolving careers were split into early/late entities and fingerprinted independently. Where the eras land in **different** archetypes, the split captured a real style shift:
 
-**Diverged into different archetypes (6):**
-- **Ivan Lendl** (M) — 1979–1987: Baseline grinder / counterpuncher → 1988–1994: Slice & variety
+**Diverged into different archetypes (5):**
+- **Alexander Bublik** (M) — 2017–2023: Net-rusher / serve-volleyer → 2024–2026: Big-serving baseliner
 - **Karen Khachanov** (M) — 2015–2022: Big-serving baseliner → 2023–2026: Baseline grinder / counterpuncher
-- **Michael Chang** (M) — 1989–1993: Baseline grinder / counterpuncher → 1994–1998: Big-serving baseliner
-- **Tim Henman** (M) — 1995–1999: Net-rusher / serve-volleyer → 2000–2006: Slice & variety
+- **Michael Chang** (M) — 1989–1994: Baseline grinder / counterpuncher → 1995–1998: Big-serving baseliner
 - **Daria Kasatkina** (W) — 2015–2022: Baseline grinder / counterpuncher → 2023–2026: All-courter
-- **Magda Linette** (W) — 2016–2024: Baseline grinder / counterpuncher → 2025–2026: Big serve / first-strike
+- **Jessica Pegula** (W) — 2015–2024: All-courter → 2025–2026: Baseline grinder / counterpuncher
 
-**Stayed in one archetype (28):** Alexander Bublik (M), Alexander Zverev (M), Andre Agassi (M), Andrey Rublev (M), Andy Murray (M), Benoit Paire (M), Boris Becker (M), David Ferrer (M), Feliciano Lopez (M), Goran Ivanisevic (M), Jannik Sinner (M), Jimmy Connors (M), John Mcenroe (M), Juan Martin Del Potro (M), Novak Djokovic (M), Pete Sampras (M), Rafael Nadal (M), Richard Krajicek (M), Roger Federer (M), Stefan Edberg (M), Stefanos Tsitsipas (M), Tomas Berdych (M), Bianca Andreescu (W), Eugenie Bouchard (W), Jessica Pegula (W), Karolina Pliskova (W), Venus Williams (W), Victoria Azarenka (W)
+**Stayed in one archetype (30):** Alexander Zverev (M), Andre Agassi (M), Andrey Rublev (M), Andy Murray (M), Benoit Paire (M), Boris Becker (M), David Ferrer (M), Feliciano Lopez (M), Goran Ivanisevic (M), Ivan Lendl (M), Jannik Sinner (M), Jimmy Connors (M), John Mcenroe (M), Juan Martin Del Potro (M), Lleyton Hewitt (M), Novak Djokovic (M), Pete Sampras (M), Rafael Nadal (M), Richard Krajicek (M), Roger Federer (M), Stefan Edberg (M), Stefanos Tsitsipas (M), Tim Henman (M), Tomas Berdych (M), Bianca Andreescu (W), Eugenie Bouchard (W), Karolina Pliskova (W), Magda Linette (W), Venus Williams (W), Victoria Azarenka (W)

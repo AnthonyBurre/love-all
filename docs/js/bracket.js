@@ -165,32 +165,46 @@ function placeColumn(matches, cards, centers, gap) {
   return bottom;
 }
 
-// A wire between two cards, in the site's mitred idiom: it leaves the feeder square, turns
-// once onto a 45° diagonal, then squares up again to arrive at the target — the flat-topped
-// hexagonal shape a pair of them makes where two feeders converge. The old S-curve was the
-// only curve left on the page once the cards, the chips and the tier marks went angular, and
-// a lone curve reads as a leftover rather than a choice.
+// A wire between two cards in the full draw, in the site's mitred idiom: it leaves the
+// feeder square, turns once onto a diagonal, then squares up again to arrive at the target
+// — the flat-topped hexagonal shape a pair of them makes where two feeders converge. The
+// old S-curve was the only curve left on the page once the cards, the chips and the tier
+// marks went angular, and a lone curve reads as a leftover rather than a choice.
 //
-// The straight ends are a fixed length rather than whatever a 45° diagonal leaves over.
-// Holding the angle at 45° only works when the two cards are further apart along the axis
-// than across it, which is true in the full draw and false in the by-quarter view — there
-// the rounds are ~50px apart vertically and up to 290px apart horizontally, so the diagonal
-// ate the whole span and every wire collapsed to a bare line. Fixing the stub instead lets
-// the angle be whatever each view needs, and both views draw the same shape.
-//
-// `axis` is which way the tree grows: "x" for the left-to-right bracket, "y" for the
-// by-quarter view, which stacks its rounds bottom-to-top. The two differ only in which
-// pair of coordinates leads.
+// The straight ends are a fixed length rather than whatever a 45° diagonal leaves over:
+// holding the angle at 45° only works where the two cards are further apart along the axis
+// than across it, and a column of a tall draw is not reliably that. Fixing the stub instead
+// lets the diagonal be whatever the gap leaves.
 const WIRE_STUB = 12;
-function mitre(x1, y1, x2, y2, axis) {
-  const [a1, b1, a2, b2] = axis === "y" ? [y1, x1, y2, x2] : [x1, y1, x2, y2];
+function mitre(x1, y1, x2, y2) {
   const r = (v) => Math.round(v * 10) / 10;
-  const at = (a, b) => (axis === "y" ? `${r(b)} ${r(a)}` : `${r(a)} ${r(b)}`);
-  if (Math.abs(b2 - b1) < 0.6) return `M ${at(a1, b1)} L ${at(a2, b2)}`;
-  const run = Math.abs(a2 - a1), dir = a2 > a1 ? 1 : -1;
+  if (Math.abs(y2 - y1) < 0.6) return `M ${r(x1)} ${r(y1)} L ${r(x2)} ${r(y2)}`;
+  const run = Math.abs(x2 - x1), dir = x2 > x1 ? 1 : -1;
   const stub = Math.min(WIRE_STUB, run * 0.4);   // short runs keep a diagonal in the middle
-  return `M ${at(a1, b1)} L ${at(a1 + dir * stub, b1)} ` +
-         `L ${at(a2 - dir * stub, b2)} L ${at(a2, b2)}`;
+  return `M ${r(x1)} ${r(y1)} L ${r(x1 + dir * stub)} ${r(y1)} ` +
+         `L ${r(x2 - dir * stub)} ${r(y2)} L ${r(x2)} ${r(y2)}`;
+}
+
+// The by-quarter view's wires turn square and cut the corner, rather than running one long
+// diagonal between the rounds. Its geometry is the opposite of the full draw's: the rounds
+// stack ~50px apart vertically while a card can sit 290px away across the row, so a single
+// diagonal came out almost flat and the pair converging on a parent read as a wide, shallow
+// hexagon. Squared up — down out of the parent, across on the level between the two rounds,
+// down into the child — with both right angles cut at 45°, the same pair traces the cut
+// corners the cards and the chips wear, and the shape is the octagon rather than the hex.
+//
+// The cut is clamped to half of each span so a short or nearly-straight wire loses the
+// corner instead of overshooting through it.
+const WIRE_CUT = 9;
+function octagonal(x1, y1, x2, y2) {
+  const r = (v) => Math.round(v * 10) / 10;
+  if (Math.abs(x2 - x1) < 0.6) return `M ${r(x1)} ${r(y1)} L ${r(x2)} ${r(y2)}`;
+  const hdir = x2 > x1 ? 1 : -1, vdir = y2 > y1 ? 1 : -1;
+  const cut = Math.min(WIRE_CUT, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2);
+  const my = (y1 + y2) / 2;
+  return `M ${r(x1)} ${r(y1)} L ${r(x1)} ${r(my - vdir * cut)} ` +
+         `L ${r(x1 + hdir * cut)} ${r(my)} L ${r(x2 - hdir * cut)} ${r(my)} ` +
+         `L ${r(x2)} ${r(my + vdir * cut)} L ${r(x2)} ${r(y2)}`;
 }
 
 function drawConnectors(rounds, root, cards) {
@@ -208,7 +222,7 @@ function drawConnectors(rounds, root, cards) {
       if (!m.feeds || !cards.has(m.feeds)) continue;    // target outside this slice
       const a = pos(m.id), b = pos(m.feeds);
       const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      p.setAttribute("d", mitre(a.r, a.y, b.l, b.y, "x"));
+      p.setAttribute("d", mitre(a.r, a.y, b.l, b.y));
       svg.appendChild(p);
     }
   }
@@ -407,7 +421,7 @@ export function renderQuarters(t, root, cov, onClick, section) {
     const x1 = a.left - rect.left + a.width / 2, y1 = a.bottom - rect.top;
     const x2 = b.left - rect.left + b.width / 2, y2 = b.top - rect.top;
     const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("d", mitre(x1, y1, x2, y2, "y"));
+    p.setAttribute("d", octagonal(x1, y1, x2, y2));
     if (hot) p.setAttribute("class", "hot");
     svg.appendChild(p);
   };

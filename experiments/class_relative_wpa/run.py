@@ -20,8 +20,11 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[2] / "src"))
+sys.path.insert(0, str(HERE.parents[1] / "player_styles"))
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from fingerprint import FEATURES  # noqa: E402
 
 from match_charting_project.analysis.career_eras import load_era_map  # noqa: E402
 from match_charting_project.analysis.coverage import connect  # noqa: E402
@@ -35,10 +38,60 @@ MIN_SHOTS = 1500
 CLUSTERS = PROJECT_ROOT / "reports" / "player_style_clusters.csv"
 
 
+def _ridge(Z, y, lam):
+    """Ridge fit with an unpenalised intercept; returns (prediction, R²)."""
+    Zi = np.c_[np.ones(len(Z)), Z]
+    pen = np.eye(Zi.shape[1])
+    pen[0, 0] = 0.0
+    beta = np.linalg.solve(Zi.T @ Zi + lam * pen, Zi.T @ y)
+    pred = Zi @ beta
+    ss_res = float(((y - pred) ** 2).sum())
+    ss_tot = float(((y - y.mean()) ** 2).sum())
+    return pred, (1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0)
+
+
+def style_benchmark(Z, y, target_r2):
+    """Expected shot quality for a player's *style*, as a smooth function of their
+    fingerprint rather than the mean of the cluster they were sorted into.
+
+    Why not the cluster mean: it is a step function of style, and the step moves. A
+    player near a boundary takes their whole benchmark from whichever side the
+    clustering put them on that run, so re-running on 0.16% less data moved 57 of 388
+    archetype labels and flipped 92 shot-quality verdicts — 51 of them for players
+    whose *own* label never moved and whose measured quality changed in the fourth
+    decimal. Their benchmark moved underneath them. Fitted over the feature space
+    instead, a player between two styles gets a benchmark between them, and nothing
+    lurches when the boundary shifts.
+
+    How hard the model is allowed to work is the one real choice here, and it is not
+    free: unregularised, this fingerprint explains ~92% of the variance in shot quality
+    and the residual left over is mostly noise — the benchmark would be absorbing the
+    skill it is supposed to be measuring against. So λ is not a constant and not chosen
+    by cross-validation (which optimises prediction, the wrong target — it would pick
+    the model that absorbs the most). It is solved for: the smooth benchmark is
+    calibrated to absorb exactly as much variance as the four class means did, so this
+    controls for style to the same degree as the published metric and changes only the
+    discontinuity. On the current data that lands the two within +0.86 (men) and +0.81
+    (women) correlation of each other.
+    """
+    lo, hi = 1e-3, 1e6
+    for _ in range(60):                      # bisect: R² falls monotonically in λ
+        mid = (lo * hi) ** 0.5               # geometric, since λ spans decades
+        _, r2 = _ridge(Z, y, mid)
+        if r2 > target_r2:
+            lo = mid
+        else:
+            hi = mid
+    lam = (lo * hi) ** 0.5
+    pred, r2 = _ridge(Z, y, lam)
+    return pred, lam, r2
+
+
 def main() -> None:
     if not CLUSTERS.exists():
         raise SystemExit("Missing reports/player_style_clusters.csv — run player_styles first.")
-    clusters = pd.read_csv(CLUSTERS)[["player", "gender", "archetype"]]
+    clusters = pd.read_csv(CLUSTERS)[
+        ["player", "gender", "archetype", "style_margin", "style_confident", *FEATURES]]
     con = connect(read_only=True)
     era_map = load_era_map(con)   # keys WPA by era entity for split careers (matches clusters)
 
@@ -51,16 +104,32 @@ def main() -> None:
         grp = df.groupby("archetype")["avg_wpa_lost"]
         df["archetype_mean"] = grp.transform("mean")
         df["archetype_size"] = grp.transform("size")
-        std = grp.transform("std").replace(0, pd.NA)
-        df["class_rel_z"] = (df["avg_wpa_lost"] - df["archetype_mean"]) / std  # <0 = better
+
+        # The control level to match: how much of shot quality the four class means
+        # accounted for. Measured rather than assumed, so it tracks the clustering.
+        y = df["avg_wpa_lost"].to_numpy(float)
+        ss_tot = float(((y - y.mean()) ** 2).sum())
+        cluster_r2 = 1.0 - float(((y - df["archetype_mean"].to_numpy(float)) ** 2).sum()) / ss_tot
+
+        X = df[FEATURES].to_numpy(float)
+        Z = (X - X.mean(0)) / np.where(X.std(0) > 0, X.std(0), 1.0)
+        pred, lam, r2 = style_benchmark(Z, y, cluster_r2)
+        df["style_expected"] = pred
+        resid = y - pred
+        df["class_rel_z"] = resid / resid.std(ddof=1)          # <0 = better than their style
+        print(f"[{g}] style benchmark: λ={lam:,.0f} R²={r2:.3f} "
+              f"(class means {cluster_r2:.3f}) | between styles: "
+              f"{int((df.style_confident == 0).sum())}/{len(df)}")
+
         df["rank_overall"] = df["avg_wpa_lost"].rank(method="min").astype(int)
         df["rank_in_archetype"] = grp.rank(method="min").astype(int)
         frames.append(df)
     con.close()
 
-    cols = ["player", "gender", "archetype", "shots", "avg_wpa_lost", "accuracy",
-            "archetype_mean", "class_rel_z", "rank_overall", "rank_in_archetype",
-            "archetype_size"]
+    cols = ["player", "gender", "archetype", "style_margin", "style_confident",
+            "shots", "avg_wpa_lost", "accuracy",
+            "archetype_mean", "style_expected", "class_rel_z", "rank_overall",
+            "rank_in_archetype", "archetype_size"]
     out = pd.concat(frames)[cols].round(4).sort_values(["gender", "class_rel_z"])
     out.to_csv(PROJECT_ROOT / "reports" / "class_relative_wpa.csv", index=False)
 

@@ -85,10 +85,15 @@ function predictabilityLabel(bits) {
   return "average variety";
 }
 
+// The benchmark is no longer the mean of the archetype a player was sorted into — it is
+// what their own style fingerprint predicts, fitted smoothly across the style space — so
+// the wording names the style rather than the box. It also has to stay true for a player
+// whose archetype is withheld: "below their archetype" reads oddly beside a card that
+// declines to say which archetype that is, and this trio doesn't depend on one.
 function ratingLabel(z) {
   if (z == null) return "";
-  if (z <= -0.5) return "beats their archetype";
-  if (z >= 0.5) return "below their archetype";
+  if (z <= -0.5) return "beats their style";
+  if (z >= 0.5) return "below their style";
   return "typical for their style";
 }
 
@@ -276,8 +281,22 @@ const num = (v) => (v == null ? null : Number(v));
 
 function tapeRows(mu) {
   return [
+    // The bar is how often they win a service point; where it changes colour is how much
+    // of that they never had to play for. Aces are a subset of service points won, so the
+    // split is aces over *points won* — the share of this bar — while the number under the
+    // total is the ace rate as it is normally quoted, over every service point they hit.
+    // Two different denominators, which is why only one of them is printed: the bar carries
+    // the other one as a length, where it doesn't have to be read as a figure.
+    // Absent for a thinly-charted player (the build floors it at ~2 matches of service
+    // points), and the bar is then simply one block, as it was before.
     { k: "serve_rate", label: "serve points won", lo: 0.50, hi: 0.80, better: "hi",
-      avg: mu, fmt: pct },
+      avg: mu, fmt: pct,
+      sub: (s) => s.ace_rate == null ? "" : `${(Number(s.ace_rate) * 100).toFixed(1)}% aces`,
+      parts: (s) => {
+        if (s.ace_rate == null) return null;
+        const f = clamp01(Number(s.ace_rate) / Number(s.serve_rate));
+        return [{ f, cls: "deep" }, { f: 1 - f }];
+      } },
     { k: "return_rate", label: "return points won", lo: 0.18, hi: 0.48, better: "hi",
       avg: 1 - mu, fmt: pct },
     // The two halves of one decision, drawn as one bar: its length is how often they
@@ -345,8 +364,26 @@ function tapeWho(d, tag) {
   // strip below rests on them.
   // An uncharted player is the site's whole invitation, so the ask sits at the top of
   // their side rather than only in the empty column below it.
+  // Which hand rides on the style line rather than getting one of its own: it is the same
+  // kind of fact, and a third line costs the header more than the fact is worth. Printed
+  // for right-handers too, though most players are one — the court patterns below name
+  // their zones by the player's own hand ("the BH corner" is a different corner for a
+  // lefty), so this is the key to reading them, and a key that only appears sometimes
+  // leaves the reader to guess what its absence meant.
+  const hand = d && d.s.hand
+    ? `${d.s.hand === "L" ? "left" : "right"}-handed` : "";
+  // The archetype is only printed where the clustering actually placed the player.
+  // Style is a continuum — the clusters score a silhouette near 0.12 — and for about a
+  // third of players the nearest two archetypes fit equally well. Naming one of them
+  // there is a coin toss reported as a finding, and it was: those are the players whose
+  // label changed when a fifth of a percent of the charting corpus was removed and
+  // their own fingerprint had not moved. "Between styles" is the true statement, and
+  // unlike the name it doesn't move.
+  const arch = d && d.s.archetype
+    ? (Number(d.s.style_confident) === 0 ? "Between styles" : d.s.archetype) : "";
+  const style = d ? [arch, hand].filter(Boolean).join(" · ") : "";
   const meta = d
-    ? (d.s.archetype ? `<span class="tarch">${esc(d.s.archetype)}</span>` : "") +
+    ? (style ? `<span class="tarch">${esc(style)}</span>` : "") +
       `<span class="tcharted">charted: ${d.s.matches_charted} matches ·
        ${Number(d.s.points_charted).toLocaleString()} points</span>`
     : `<span class="tcharted">not charted yet —
@@ -371,6 +408,7 @@ function tape(da, db, mu) {
     <div class="tapehead">${tapeWho(da, "a")}${tapeWho(db, "b")}</div>
     ${tapeRows(mu).map((r) => tapeRow(r, sa, sb)).join("")}
     <p class="tapenote"><span class="tickkey"></span> this draw's tour average ·
+      <span class="segkey deep"></span> aces, within serve points won ·
       <span class="segkey"></span> landed <span class="segkey miss"></span> missed, on the
       winners + errors bar</p>
   </section>`;

@@ -8,9 +8,9 @@
 
 | decade | serve points | target charted | charted as unknown |
 |---|--:|--:|--:|
-| 2010s | 357,229 | 99.4% | 0.1% |
-| 2020s | 547,670 | 99.7% | 0.0% |
-| to-2009 | 379,569 | 96.6% | 0.2% |
+| 2010s | 356,930 | 99.4% | 0.1% |
+| 2020s | 547,198 | 99.7% | 0.0% |
+| to-2009 | 377,708 | 96.7% | 0.2% |
 
 - Across the 29 charters with 2,000+ serve points, the share of serves carrying a target runs from 97% to 100% (median 100%). Coverage is not the problem here; placement is one of the best-charted things in the notation.
 
@@ -29,10 +29,10 @@ Agreement is. Holding the player fixed and varying who charted them (cells of 15
 
 | side | serve | charted serves | wide | body | T | true spread (wide) |
 |---|---|--:|--:|--:|--:|--:|
-| deuce | 1st | 627,643 | 44% | 10% | 46% | ±6.5% (405 players) |
-| ad | 1st | 570,408 | 51% | 9% | 40% | ±7.0% (390 players) |
-| deuce | 2nd | 220,142 | 25% | 37% | 38% | ±10.0% (256 players) |
-| ad | 2nd | 207,009 | 50% | 31% | 19% | ±12.3% (248 players) |
+| deuce | 1st | 626,439 | 44% | 10% | 46% | ±6.5% (405 players) |
+| ad | 1st | 569,298 | 51% | 9% | 40% | ±7.0% (390 players) |
+| deuce | 2nd | 219,688 | 25% | 37% | 38% | ±10.0% (256 players) |
+| ad | 2nd | 206,584 | 49% | 31% | 19% | ±12.3% (248 players) |
 
 - The last column is the *true* spread: the raw spread across players (6.9% SD on the deuce-court wide share) with the sampling contribution (2.3%) removed. Players really do differ, and by much more than they differ by accident, which is the precondition for anything below.
 
@@ -40,14 +40,14 @@ Agreement is. Holding the player fixed and varying who charted them (cells of 15
 
 | statistic | players | true spread | half-vs-half r | full-sample reliability | noise vs binomial | serves for 80% signal |
 |---|--:|--:|--:|--:|--:|--:|
-| wide share (deuce, 1st serve) | 405 | ±6.5% | +0.58 | +0.74 | 3.7x | 864 |
-| T share (deuce, 1st serve) | 405 | ±6.8% | +0.51 | +0.67 | 5.5x | 1,175 |
-| 1st-serve-in rate, T minus wide | 259 | ±7.8% | +0.64 | +0.78 | 1.8x | 1,259 |
-| points won, T minus wide | 193 | ±3.1% | +0.22 | +0.36 | 1.9x | 11,315 |
+| wide share (deuce, 1st serve) | 405 | ±6.5% | +0.58 | +0.74 | 3.7x | 862 |
+| T share (deuce, 1st serve) | 405 | ±6.8% | +0.51 | +0.67 | 5.5x | 1,173 |
+| 1st-serve-in rate, T minus wide | 259 | ±7.8% | +0.64 | +0.78 | 1.8x | 1,251 |
+| points won, T minus wide | 193 | ±3.1% | +0.23 | +0.37 | 1.8x | 10,747 |
 
-- **Placement choice is a measurement.** A player's deuce-court wide share needs 864 charted first serves on that side to be 80% signal, which 159 players in this data reach.
+- **Placement choice is a measurement.** A player's deuce-court wide share needs 862 charted first serves on that side to be 80% signal, which 159 players in this data reach.
 - **The binomial answer would have been 231.** A player is not a fixed coin: the observed split-half correlation sits below what one would give, and closing that gap takes 3.7x the sampling variance. Step 4 measures the same excess directly. Any sample-size rule that assumes independent serves is optimistic by that factor.
-- **What a placement earns is not a measurement.** After removing sampling noise, players differ in points won behind the T minus behind the wide serve by only ±3.1%, the split halves of the same player agree at r = +0.22, and reaching 80% signal would take 11,315 charted first serves on the side. 'Wins more behind the T' is the stat most worth wanting and least worth printing.
+- **What a placement earns is not a measurement.** After removing sampling noise, players differ in points won behind the T minus behind the wide serve by only ±3.1%, the split halves of the same player agree at r = +0.23, and reaching 80% signal would take 10,747 charted first serves on the side. 'Wins more behind the T' is the stat most worth wanting and least worth printing.
 - Execution sits in between: how much more often a player lands the T than the wide serve repeats at r = +0.64. It is reportable for well-charted players, unlike the payoff.
 - **Split by charter instead of by match**, so that step 1's fingerprint counts against the statistic rather than for it, the wide share still repeats at r = +0.56 across 286 players whose matches split across charters (against +0.58 on the match split). Most of the stability is the player, not the person typing.
 
@@ -55,7 +55,7 @@ Agreement is. Holding the player fixed and varying who charted them (cells of 15
 
 - 382 (player, side) profiles have 15+ matches with 12+ charted first serves. Median dispersion phi = 1.80, against 1.00 for a player who flips the same coin every match.
 - 280 of them (73%) are overdispersed beyond chance at FDR 0.1. Serve placement is re-decided, not just executed.
-- On the 340 profiles where both conditioners can be estimated, median phi is 1.87. Expecting each match at the player's rate against that returner's handedness moves it to 1.80; expecting it at their rate that calendar year moves it to 1.64. Neither explains much: the movement is match-specific, and handedness and slow career drift are minor parts of it.
+- On the 340 profiles where both conditioners can be estimated, median phi is 1.85. Expecting each match at the player's rate against that returner's handedness moves it to 1.80; expecting it at their rate that calendar year moves it to 1.64. Neither explains much: the movement is match-specific, and handedness and slow career drift are minor parts of it.
 - Practical reading: a match supplies roughly 12–60 charted first serves per side, so a single-match placement mix carries a sampling error near ±10 points *before* this extra movement. Match-level placement claims need the error bar; career-level ones do not.
 
 Steadiest and most restless placement among the 182 profiles with 40+ charted matches (phi near 1.00 means the same mix every match):
@@ -69,15 +69,15 @@ Steadiest and most restless placement among the 182 profiles with 40+ charted ma
 | restless | Lorenzo Musetti | ad | 124 | 55% | 5.44 | 5.18 |
 | restless | Stefan Edberg | ad | 189 | 55% | 5.21 | 4.67 |
 | restless | Rafael Nadal | ad | 421 | 54% | 5.17 | 5.06 |
-| restless | Diego Schwartzman | ad | 49 | 36% | 5.00 | 3.93 |
+| restless | Rafael Nadal | deuce | 423 | 31% | 4.78 | 3.95 |
 
 The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 95% of the dispersion, so most of the movement is genuinely between matches within a season — though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
 
 ### 5. Careers
 
-- 143 careers clear 800+ charted first serves and an 8-year span. The median early-vs-late placement gap is 1.52x the same career split at random, and 72 careers (50%) clear 1.5x.
+- 143 careers clear 800+ charted first serves and an 8-year span. The median early-vs-late placement gap is 1.50x the same career split at random, and 71 careers (50%) clear 1.5x.
 - Read the ratio and the gap together. The ratio is a detection, and a heavily-charted career detects a small move easily because its null is tiny; the gap column is how much the placement actually moved.
-- Step 1's caveat lands hardest here: who charts a player changes across a career, so a placement 'change' can be a change of charter. 11 of the 72 detected careers have a body cell as their biggest move, and those are the ones to trust least.
+- Step 1's caveat lands hardest here: who charts a player changes across a career, so a placement 'change' can be a change of charter. 12 of the 71 detected careers have a body cell as their biggest move, and those are the ones to trust least.
 
 | player | serves | years | early→late gap | shuffled | ratio | biggest move |
 |---|--:|---|--:|--:|--:|---|
@@ -103,21 +103,21 @@ Largest actual movement among careers that clear the null:
 
 | side | bucket | first serves | wide | body | T |
 |---|---|--:|--:|--:|--:|
-| deuce | normal | 456,004 | 44% | 10% | 46% |
-| deuce | break_pt | 24,594 | 47% | 9% | 45% |
-| deuce | game_pt | 72,267 | 42% | 9% | 49% |
-| deuce | deuce | 84,140 | 46% | 10% | 44% |
-| deuce | tiebreak | 25,900 | 44% | 9% | 48% |
-| ad | normal | 331,409 | 50% | 9% | 41% |
-| ad | break_pt | 78,463 | 52% | 9% | 39% |
-| ad | game_pt | 170,579 | 52% | 9% | 39% |
-| ad | tiebreak | 24,481 | 51% | 9% | 39% |
+| deuce | normal | 455,095 | 44% | 10% | 46% |
+| deuce | break_pt | 24,551 | 47% | 9% | 45% |
+| deuce | game_pt | 72,132 | 42% | 9% | 49% |
+| deuce | deuce | 83,957 | 46% | 10% | 44% |
+| deuce | tiebreak | 25,867 | 44% | 9% | 48% |
+| ad | normal | 330,754 | 50% | 9% | 41% |
+| ad | break_pt | 78,312 | 52% | 9% | 39% |
+| ad | game_pt | 170,214 | 52% | 9% | 39% |
+| ad | tiebreak | 24,449 | 51% | 9% | 39% |
 
 - The `deuce` bucket (40-40) has no ad-court row, which is what the parity rule requires: six points played is an even count. It is a free check that the side derivation is right.
 - **T share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is -1.4% across 247 players with 80+ break-point first serves — near nothing. But 47 players move beyond chance at FDR 0.1 (15 toward the T, 32 away), so the tour-wide average is hiding players who cancel out.
-  Pete Sampras -13% (n=1,196, z=-8.7); Nick Kyrgios -15% (n=551, z=-7.0); Juan Martin Del Potro -11% (n=865, z=-6.4); Daniil Medvedev -7% (n=1,579, z=-5.8); Frances Tiafoe -14% (n=319, z=-5.1)
+  Pete Sampras -13% (n=1,190, z=-8.7); Nick Kyrgios -15% (n=545, z=-7.0); Juan Martin Del Potro -11% (n=865, z=-6.4); Daniil Medvedev -7% (n=1,579, z=-5.8); Frances Tiafoe -14% (n=319, z=-5.1)
 - **wide share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +2.3% across 247 players with 80+ break-point first serves — near nothing. But 58 players move beyond chance at FDR 0.1 (45 toward the wide, 13 away), so the tour-wide average is hiding players who cancel out.
-  Pete Sampras +12% (n=1,196, z=+8.3); Nick Kyrgios +14% (n=551, z=+6.8); Daniil Medvedev +8% (n=1,579, z=+6.7); Frances Tiafoe +16% (n=319, z=+6.0); Andy Murray +7% (n=1,809, z=+5.7)
+  Pete Sampras +12% (n=1,190, z=+8.2); Nick Kyrgios +14% (n=545, z=+6.7); Daniil Medvedev +8% (n=1,579, z=+6.7); Frances Tiafoe +16% (n=319, z=+6.0); Andy Murray +7% (n=1,809, z=+5.7)
 
 ### 7. How much history should a card report?
 
@@ -125,21 +125,21 @@ Largest actual movement among careers that clear the null:
 
 | history used | log-loss per serve | T-share error | estimator's share of it |
 |---|--:|--:|--:|
-| last 5 matches | 0.9215 | 7.9% | 6.6% |
-| last 10 matches | 0.9190 | 7.6% | 6.2% |
-| last 20 matches | 0.9182 | 7.4% | 5.9% |
-| last 40 matches | 0.9182 | 7.5% | 6.0% |
-| last 80 matches | 0.9183 | 7.6% | 6.1% |
-| whole career | 0.9187 | 7.6% | 6.2% |
-| all, 10-match half-life | 0.9170 | 7.4% | 5.9% |
-| all, 20-match half-life | 0.9173 | 7.4% | 5.9% |
-| all, 40-match half-life | 0.9178 | 7.5% | 6.0% |
-| all, 80-match half-life | 0.9182 | 7.5% | 6.1% |
+| last 5 matches | 0.9218 | 7.9% | 6.6% |
+| last 10 matches | 0.9193 | 7.6% | 6.2% |
+| last 20 matches | 0.9186 | 7.4% | 6.0% |
+| last 40 matches | 0.9186 | 7.5% | 6.1% |
+| last 80 matches | 0.9187 | 7.6% | 6.1% |
+| whole career | 0.9191 | 7.6% | 6.2% |
+| all, 10-match half-life | 0.9174 | 7.4% | 5.9% |
+| all, 20-match half-life | 0.9177 | 7.4% | 5.9% |
+| all, 40-match half-life | 0.9182 | 7.5% | 6.0% |
+| all, 80-match half-life | 0.9185 | 7.5% | 6.1% |
 
-- **Best rule: a 10-match half-life**, at 0.9170 against 0.9187 for the whole career. Most of what a card would get wrong is the holdout's own noise; of the part the estimator owns, recency removes 5% (6.2% → 5.9% on the T share).
-- Where the gain comes from, as log-loss saved against the career average: drifted (ratio ≥ 1.5x) — +0.0022 (72 players); stable — +0.0009 (70 players). The rule earns its keep on the careers step 5 flagged and costs almost nothing on the rest, which is the argument for applying it to everyone rather than branching.
-- Twenty matches is worth about 1,561 charted first serves and spans 4 years for the median player — which is the catch. A window short enough to be current is not automatically long enough to clear step 3's bar of 864 serves per side, so a card should print the window's own denominator and stay silent when it is thin.
-- Weighting all of a career by a 10-match half-life beats the best hard cutoff (last 40) by 0.0012. Old matches are worth less than recent ones but more than nothing, and a cliff throws that difference away.
+- **Best rule: a 10-match half-life**, at 0.9174 against 0.9191 for the whole career. Most of what a card would get wrong is the holdout's own noise; of the part the estimator owns, recency removes 5% (6.2% → 5.9% on the T share).
+- Where the gain comes from, as log-loss saved against the career average: drifted (ratio ≥ 1.5x) — +0.0022 (71 players); stable — +0.0010 (71 players). The rule earns its keep on the careers step 5 flagged and costs almost nothing on the rest, which is the argument for applying it to everyone rather than branching.
+- Twenty matches is worth about 1,561 charted first serves and spans 4 years for the median player — which is the catch. A window short enough to be current is not automatically long enough to clear step 3's bar of 862 serves per side, so a card should print the window's own denominator and stay silent when it is thin.
+- Weighting all of a career by a 10-match half-life beats the best hard cutoff (last 20) by 0.0012. Old matches are worth less than recent ones but more than nothing, and a cliff throws that difference away.
 
 ## Women
 
@@ -148,8 +148,8 @@ Largest actual movement among careers that clear the null:
 | decade | serve points | target charted | charted as unknown |
 |---|--:|--:|--:|
 | 2010s | 177,798 | 99.4% | 0.2% |
-| 2020s | 334,115 | 99.5% | 0.1% |
-| to-2009 | 57,913 | 97.8% | 0.2% |
+| 2020s | 332,874 | 99.5% | 0.1% |
+| to-2009 | 57,653 | 97.8% | 0.2% |
 
 - Across the 23 charters with 2,000+ serve points, the share of serves carrying a target runs from 97% to 100% (median 100%). Coverage is not the problem here; placement is one of the best-charted things in the notation.
 
@@ -157,7 +157,7 @@ Agreement is. Holding the player fixed and varying who charted them (cells of 15
 
 | target | charters compared | SD of the charter's shift | range |
 |---|--:|--:|--:|
-| wide | 16 | ±4.5% | -12.9% to +7.0% |
+| wide | 16 | ±4.5% | -12.9% to +6.9% |
 | body | 16 | ±5.6% | -13.0% to +10.8% |
 | T | 16 | ±4.2% | -6.1% to +9.4% |
 
@@ -168,10 +168,10 @@ Agreement is. Holding the player fixed and varying who charted them (cells of 15
 
 | side | serve | charted serves | wide | body | T | true spread (wide) |
 |---|---|--:|--:|--:|--:|--:|
-| deuce | 1st | 270,186 | 42% | 20% | 38% | ±7.9% (285 players) |
-| ad | 1st | 247,740 | 42% | 19% | 39% | ±9.4% (275 players) |
-| deuce | 2nd | 89,956 | 26% | 47% | 27% | ±13.1% (178 players) |
-| ad | 2nd | 82,589 | 38% | 42% | 20% | ±13.5% (163 players) |
+| deuce | 1st | 269,253 | 42% | 20% | 38% | ±7.9% (283 players) |
+| ad | 1st | 246,888 | 42% | 19% | 39% | ±9.2% (273 players) |
+| deuce | 2nd | 89,709 | 26% | 47% | 27% | ±13.2% (177 players) |
+| ad | 2nd | 82,359 | 38% | 42% | 20% | ±13.5% (162 players) |
 
 - The last column is the *true* spread: the raw spread across players (8.3% SD on the deuce-court wide share) with the sampling contribution (2.3%) removed. Players really do differ, and by much more than they differ by accident, which is the precondition for anything below.
 
@@ -179,16 +179,16 @@ Agreement is. Holding the player fixed and varying who charted them (cells of 15
 
 | statistic | players | true spread | half-vs-half r | full-sample reliability | noise vs binomial | serves for 80% signal |
 |---|--:|--:|--:|--:|--:|--:|
-| wide share (deuce, 1st serve) | 285 | ±7.9% | +0.65 | +0.79 | 3.8x | 565 |
-| T share (deuce, 1st serve) | 285 | ±8.3% | +0.66 | +0.80 | 4.2x | 549 |
-| 1st-serve-in rate, T minus wide | 155 | ±7.2% | +0.53 | +0.70 | 1.8x | 1,693 |
-| points won, T minus wide | 99 | ±3.8% | +0.25 | +0.40 | 1.6x | 8,200 |
+| wide share (deuce, 1st serve) | 283 | ±7.9% | +0.65 | +0.79 | 3.8x | 565 |
+| T share (deuce, 1st serve) | 283 | ±8.2% | +0.67 | +0.80 | 4.0x | 535 |
+| 1st-serve-in rate, T minus wide | 154 | ±7.3% | +0.53 | +0.70 | 1.8x | 1,695 |
+| points won, T minus wide | 99 | ±3.8% | +0.25 | +0.40 | 1.6x | 8,116 |
 
 - **Placement choice is a measurement.** A player's deuce-court wide share needs 565 charted first serves on that side to be 80% signal, which 134 players in this data reach.
-- **The binomial answer would have been 150.** A player is not a fixed coin: the observed split-half correlation sits below what one would give, and closing that gap takes 3.8x the sampling variance. Step 4 measures the same excess directly. Any sample-size rule that assumes independent serves is optimistic by that factor.
-- **What a placement earns is not a measurement.** After removing sampling noise, players differ in points won behind the T minus behind the wide serve by only ±3.8%, the split halves of the same player agree at r = +0.25, and reaching 80% signal would take 8,200 charted first serves on the side. 'Wins more behind the T' is the stat most worth wanting and least worth printing.
+- **The binomial answer would have been 149.** A player is not a fixed coin: the observed split-half correlation sits below what one would give, and closing that gap takes 3.8x the sampling variance. Step 4 measures the same excess directly. Any sample-size rule that assumes independent serves is optimistic by that factor.
+- **What a placement earns is not a measurement.** After removing sampling noise, players differ in points won behind the T minus behind the wide serve by only ±3.8%, the split halves of the same player agree at r = +0.25, and reaching 80% signal would take 8,116 charted first serves on the side. 'Wins more behind the T' is the stat most worth wanting and least worth printing.
 - Execution sits in between: how much more often a player lands the T than the wide serve repeats at r = +0.53. It is reportable for well-charted players, unlike the payoff.
-- **Split by charter instead of by match**, so that step 1's fingerprint counts against the statistic rather than for it, the wide share still repeats at r = +0.49 across 213 players whose matches split across charters (against +0.65 on the match split). Most of the stability is the player, not the person typing.
+- **Split by charter instead of by match**, so that step 1's fingerprint counts against the statistic rather than for it, the wide share still repeats at r = +0.52 across 212 players whose matches split across charters (against +0.65 on the match split). Most of the stability is the player, not the person typing.
 
 ### 4. Match to match: one coin, or a decision per opponent?
 
@@ -207,16 +207,16 @@ Steadiest and most restless placement among the 110 profiles with 40+ charted ma
 | steady | Caroline Garcia | ad | 42 | 40% | 1.00 | 0.65 |
 | restless | Elena Dementieva | ad | 47 | 41% | 5.52 | 2.02 |
 | restless | Justine Henin | deuce | 52 | 45% | 4.95 | 3.05 |
-| restless | Venus Williams | deuce | 90 | 36% | 4.68 | 1.96 |
+| restless | Venus Williams | deuce | 90 | 36% | 4.53 | 1.96 |
 | restless | Arantxa Rus | ad | 64 | 51% | 4.39 | 3.68 |
 
 The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 89% of the dispersion, so most of the movement is genuinely between matches within a season — though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
 
 ### 5. Careers
 
-- 106 careers clear 800+ charted first serves and an 8-year span. The median early-vs-late placement gap is 1.43x the same career split at random, and 49 careers (46%) clear 1.5x.
+- 106 careers clear 800+ charted first serves and an 8-year span. The median early-vs-late placement gap is 1.44x the same career split at random, and 50 careers (47%) clear 1.5x.
 - Read the ratio and the gap together. The ratio is a detection, and a heavily-charted career detects a small move easily because its null is tiny; the gap column is how much the placement actually moved.
-- Step 1's caveat lands hardest here: who charts a player changes across a career, so a placement 'change' can be a change of charter. 13 of the 49 detected careers have a body cell as their biggest move, and those are the ones to trust least.
+- Step 1's caveat lands hardest here: who charts a player changes across a career, so a placement 'change' can be a change of charter. 14 of the 50 detected careers have a body cell as their biggest move, and those are the ones to trust least.
 
 | player | serves | years | early→late gap | shuffled | ratio | biggest move |
 |---|--:|---|--:|--:|--:|---|
@@ -242,42 +242,42 @@ Largest actual movement among careers that clear the null:
 
 | side | bucket | first serves | wide | body | T |
 |---|---|--:|--:|--:|--:|
-| deuce | normal | 199,523 | 41% | 22% | 37% |
-| deuce | break_pt | 15,516 | 41% | 20% | 39% |
-| deuce | game_pt | 26,735 | 40% | 17% | 42% |
-| deuce | deuce | 46,053 | 43% | 20% | 37% |
-| deuce | tiebreak | 6,529 | 42% | 20% | 38% |
-| ad | normal | 146,576 | 41% | 20% | 39% |
-| ad | break_pt | 48,254 | 43% | 19% | 38% |
-| ad | game_pt | 70,579 | 43% | 19% | 38% |
-| ad | tiebreak | 6,179 | 41% | 20% | 39% |
+| deuce | normal | 198,994 | 41% | 22% | 37% |
+| deuce | break_pt | 15,482 | 41% | 20% | 39% |
+| deuce | game_pt | 26,660 | 40% | 17% | 42% |
+| deuce | deuce | 45,945 | 43% | 20% | 37% |
+| deuce | tiebreak | 6,491 | 42% | 20% | 38% |
+| ad | normal | 146,187 | 41% | 20% | 39% |
+| ad | break_pt | 48,152 | 43% | 19% | 38% |
+| ad | game_pt | 70,397 | 43% | 19% | 38% |
+| ad | tiebreak | 6,142 | 41% | 20% | 39% |
 
 - The `deuce` bucket (40-40) has no ad-court row, which is what the parity rule requires: six points played is an even count. It is a free check that the side derivation is right.
-- **T share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +0.2% across 198 players with 80+ break-point first serves — near nothing. But 16 players move beyond chance at FDR 0.1 (9 toward the T, 7 away), so the tour-wide average is hiding players who cancel out.
-  Caroline Wozniacki -7% (n=1,037, z=-4.4); Arantxa Rus +7% (n=572, z=+4.3); Arantxa Sanchez Vicario +11% (n=235, z=+4.0); Ana Ivanovic -10% (n=351, z=-3.7); Samantha Stosur +12% (n=215, z=+3.7)
-- **wide share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +1.3% across 198 players with 80+ break-point first serves — near nothing. But 25 players move beyond chance at FDR 0.1 (22 toward the wide, 3 away), so the tour-wide average is hiding players who cancel out.
+- **T share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +0.2% across 197 players with 80+ break-point first serves — near nothing. But 16 players move beyond chance at FDR 0.1 (9 toward the T, 7 away), so the tour-wide average is hiding players who cancel out.
+  Caroline Wozniacki -7% (n=1,037, z=-4.4); Arantxa Rus +7% (n=572, z=+4.3); Ana Ivanovic -10% (n=351, z=-3.7); Samantha Stosur +12% (n=215, z=+3.7); Arantxa Sanchez Vicario +10% (n=228, z=+3.6)
+- **wide share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +1.3% across 197 players with 80+ break-point first serves — near nothing. But 25 players move beyond chance at FDR 0.1 (22 toward the wide, 3 away), so the tour-wide average is hiding players who cancel out.
   Iga Swiatek -6% (n=1,198, z=-4.1); Beatriz Haddad Maia +15% (n=177, z=+4.0); Taylor Townsend +16% (n=126, z=+3.8); Ana Ivanovic +9% (n=351, z=+3.6); Magda Linette +8% (n=533, z=+3.5)
 
 ### 7. How much history should a card report?
 
-*Each of 168 players has their most recent 200+ charted first serves held out. Every rule below predicts that holdout from the matches before it, scored as log-loss per held-out serve (lower is better). The T-share columns are the same comparison in picturable units: total error, then what is left after removing the holdout's own sampling noise (4.4%), which every rule carries equally. All rules shrink toward the tour mix by 25 pseudo-counts, so this compares windows, not smoothing choices.*
+*Each of 167 players has their most recent 200+ charted first serves held out. Every rule below predicts that holdout from the matches before it, scored as log-loss per held-out serve (lower is better). The T-share columns are the same comparison in picturable units: total error, then what is left after removing the holdout's own sampling noise (4.4%), which every rule carries equally. All rules shrink toward the tour mix by 25 pseudo-counts, so this compares windows, not smoothing choices.*
 
 | history used | log-loss per serve | T-share error | estimator's share of it |
 |---|--:|--:|--:|
-| last 5 matches | 1.0237 | 8.8% | 7.6% |
-| last 10 matches | 1.0219 | 8.4% | 7.2% |
-| last 20 matches | 1.0210 | 8.2% | 6.9% |
-| last 40 matches | 1.0228 | 8.4% | 7.2% |
-| last 80 matches | 1.0232 | 8.5% | 7.3% |
-| whole career | 1.0237 | 8.6% | 7.3% |
-| all, 10-match half-life | 1.0198 | 8.1% | 6.9% |
-| all, 20-match half-life | 1.0210 | 8.3% | 7.0% |
-| all, 40-match half-life | 1.0221 | 8.4% | 7.1% |
-| all, 80-match half-life | 1.0229 | 8.5% | 7.2% |
+| last 5 matches | 1.0235 | 8.8% | 7.7% |
+| last 10 matches | 1.0217 | 8.4% | 7.2% |
+| last 20 matches | 1.0207 | 8.2% | 6.9% |
+| last 40 matches | 1.0225 | 8.4% | 7.2% |
+| last 80 matches | 1.0229 | 8.5% | 7.3% |
+| whole career | 1.0235 | 8.6% | 7.3% |
+| all, 10-match half-life | 1.0195 | 8.1% | 6.8% |
+| all, 20-match half-life | 1.0208 | 8.3% | 7.0% |
+| all, 40-match half-life | 1.0219 | 8.4% | 7.1% |
+| all, 80-match half-life | 1.0226 | 8.5% | 7.2% |
 
-- **Best rule: a 10-match half-life**, at 1.0198 against 1.0237 for the whole career. Most of what a card would get wrong is the holdout's own noise; of the part the estimator owns, recency removes 7% (7.3% → 6.9% on the T share).
-- Where the gain comes from, as log-loss saved against the career average: drifted (ratio ≥ 1.5x) — +0.0094 (48 players); stable — +0.0012 (56 players). The rule earns its keep on the careers step 5 flagged and costs almost nothing on the rest, which is the argument for applying it to everyone rather than branching.
-- Twenty matches is worth about 1,297 charted first serves and spans 4 years for the median player — which is the catch. A window short enough to be current is not automatically long enough to clear step 3's bar of 565 serves per side, so a card should print the window's own denominator and stay silent when it is thin.
+- **Best rule: a 10-match half-life**, at 1.0195 against 1.0235 for the whole career. Most of what a card would get wrong is the holdout's own noise; of the part the estimator owns, recency removes 7% (7.3% → 6.8% on the T share).
+- Where the gain comes from, as log-loss saved against the career average: drifted (ratio ≥ 1.5x) — +0.0090 (49 players); stable — +0.0013 (55 players). The rule earns its keep on the careers step 5 flagged and costs almost nothing on the rest, which is the argument for applying it to everyone rather than branching.
+- Twenty matches is worth about 1,298 charted first serves and spans 4 years for the median player — which is the catch. A window short enough to be current is not automatically long enough to clear step 3's bar of 565 serves per side, so a card should print the window's own denominator and stay silent when it is thin.
 - Weighting all of a career by a 10-match half-life beats the best hard cutoff (last 20) by 0.0012. Old matches are worth less than recent ones but more than nothing, and a cliff throws that difference away.
 
 ## Where this belongs, and what is already covered

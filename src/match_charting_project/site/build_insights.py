@@ -61,6 +61,43 @@ def _charted_matches(con) -> pd.DataFrame:
     return df[["gender", "year", "tourn_key", "p1_norm", "p2_norm", "match_id", "charted_by"]]
 
 
+def _player_facts(con) -> pd.DataFrame:
+    """Handedness and ace rate per ``(gender, player)``, straight from the main DB.
+
+    Both are facts about the player rather than findings about them, so neither comes
+    through an experiment: they are read here and shipped beside the rates.
+
+    Hand is the modal value across their charted matches, not the first one seen. A
+    handful of rows in the upstream matches CSV are column-shifted (the hand column
+    holding a date or a tie name), so anything that isn't R or L is dropped before the
+    vote rather than allowed to win one — and a player charted only in those rows comes
+    out null, which the panel prints as nothing.
+
+    Ace rate is aces over service points across every charted match, and needs the floor
+    because it is the one number here that isn't shrunk toward anything: over a single
+    charted match a couple of aces in a short set reads as a 15% ace rate. 200 service
+    points is about two matches.
+    """
+    hands = con.execute(
+        "WITH seen AS ("
+        "  SELECT gender, player1 AS player, upper(trim(player1_hand)) AS hand FROM matches"
+        "  UNION ALL"
+        "  SELECT gender, player2, upper(trim(player2_hand)) FROM matches), "
+        "voted AS ("
+        "  SELECT gender, player, hand,"
+        "         row_number() OVER (PARTITION BY gender, player ORDER BY count(*) DESC) rn"
+        "  FROM seen WHERE hand IN ('R', 'L') GROUP BY gender, player, hand) "
+        "SELECT gender, player, hand FROM voted WHERE rn = 1").fetchall()
+    aces = con.execute(
+        "SELECT gender, player,"
+        "       sum(CAST(aces AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE) AS ace_rate "
+        "FROM stats_overview WHERE set = 'Total' "
+        "GROUP BY gender, player HAVING sum(CAST(serve_pts AS INT)) >= 200").fetchall()
+    facts = pd.DataFrame(hands, columns=["gender", "player", "hand"])
+    return facts.merge(pd.DataFrame(aces, columns=["gender", "player", "ace_rate"]),
+                       on=["gender", "player"], how="outer")
+
+
 def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
     """Per-side serve placement for the panel, plus the gates it has to respect.
 
@@ -107,6 +144,7 @@ def build() -> int:
     strength, mu = current_strength(con)
     cov = coverage(con)
     charted = _charted_matches(con)
+    facts = _player_facts(con)
     con.close()
 
     summary = pd.DataFrame([
@@ -116,8 +154,17 @@ def build() -> int:
         for (g, p), (sv, rt) in strength.items()
     ])
 
+    summary = summary.merge(facts, on=["player", "gender"], how="left")
+
+    # style_confident travels with the archetype, and the panel is required to respect
+    # it: style is a continuum, the clustering's silhouette sits near 0.12, and for a
+    # third of entities the nearest two archetypes fit about equally well. Those are the
+    # ones whose label flipped wholesale when a fifth of a percent of the corpus moved,
+    # so shipping the name without the flag would be shipping the unstable half as
+    # though it were the stable half.
     clusters = _collapse(pd.read_csv(REPORTS / "player_style_clusters.csv")
-                         [["player", "gender", "archetype"]])
+                         [["player", "gender", "archetype", "style_margin",
+                           "style_confident"]])
     summary = summary.merge(clusters, on=["player", "gender"], how="left")
 
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
