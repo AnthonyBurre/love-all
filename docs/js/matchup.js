@@ -283,10 +283,17 @@ function tapeWho(d, tag) {
 function tape(da, db, mu) {
   const sa = da && da.s, sb = db && db.s;
   if (!sa && !sb) return "";
-  // The header above never says "this match" — it can't, the strip below is career-wide —
-  // so the strip has to say what it is itself, first thing, before its own numbers do.
-  return `<section class="tape">
-    <p class="tapetitle">Charted history <span>— career totals, not this match</span></p>
+  // The header above never says "this match" — it can't, everything below it is
+  // career-wide — so the body has to say what it is itself, first thing, before any of
+  // its numbers do.
+  //
+  // The title sits outside the strip, not in it. Inside, a bordered box drew a line
+  // around what it covered, and the caveat looked like it stopped at the strip's own
+  // numbers — while the court patterns and the triggers under it, which are career
+  // totals in exactly the same way, read as being about the match just named overhead.
+  // Out here it heads the whole body, which is the scope it actually has.
+  return `<p class="tapetitle">Charted history <span>— career totals, not this match</span></p>
+    <section class="tape">
     <div class="tapehead">${tapeWho(da, "a")}${tapeWho(db, "b")}</div>
     ${tapeRows(mu).map((r) => tapeRow(r, sa, sb)).join("")}
     <p class="tapenote"><span class="tickkey"></span> this draw's tour average ·
@@ -478,11 +485,14 @@ function scoreStack(a, b) {
   return `<div class="mscore">${cells}</div>`;
 }
 
-// A player's name in both renderings the header needs: the full name, and a
-// first-initial form the phone layout swaps in — a narrow three-column header runs out
-// of room for "Stefanos Tsitsipas" long before it runs out of room for "S. Tsitsipas",
-// and shortening the part that carries least beats wrapping or clipping the part that
-// carries most.
+// A player's name in both renderings the header might need: the full name, and a
+// first-initial form — a narrow three-column header runs out of room for "Stefanos
+// Tsitsipas" long before it runs out of room for "S. Tsitsipas", and shortening the part
+// that carries least beats wrapping or clipping the part that carries most.
+//
+// Both are always emitted and fitHeader() chooses, by measuring; CSS shows one and hides
+// the other. A one-word name abbreviates to itself, so it simply costs that rung of the
+// ladder nothing and the next one is tried.
 function nameHtml(name) {
   const full = esc(name || "TBD");
   const parts = String(name || "").trim().split(/\s+/);
@@ -652,6 +662,116 @@ function onBodyScroll() {
   else if (t < 8) panel.classList.remove("cond");
 }
 
+// Has either name been broken over more than one line?
+//
+// Line count, and not a width comparison, because there is no width here that answers the
+// question. A name is a flex item with min-width:0, so it never gets wider than its track —
+// it wraps instead — and .mname overflows visible, for which scrollWidth is just
+// clientWidth again even with the text held on one line. The two numbers came back equal
+// for a name plainly wrapped in two, so nothing was ever found to be short.
+//
+// clientHeight, not a rect: the panel opens under the `pop` animation, which scales it to
+// .97, and a rect is the *visual* box. Height and line-height are both layout, so the
+// animation cannot be seen from here — which matters, since this runs during it.
+function namesWrap(grid) {
+  for (const n of grid.querySelectorAll(".mname")) {
+    const lh = parseFloat(getComputedStyle(n).lineHeight);
+    if (lh > 0 && n.clientHeight > lh * 1.5) return true;
+  }
+  return false;
+}
+
+// Fit the scoreboard to the match in front of it, measured rather than assumed, giving up
+// the cheapest thing first.
+//
+// Three things to spend, in the order they are worth least.
+//
+// The gap either side of the score is the cheapest: it keeps the games off the end of a
+// name, which is worth 40px when 40px is spare and worth nothing at all beside a name broken
+// over two lines. So it goes first, and only down to the point where the names fit — no
+// further, since it buys nothing past that.
+//
+// The first name is next: "Alexander Zverev" down to "A. Zverev" costs the part of the name
+// carrying least, and a surname still says who this is. Cheaper than either a wrap or the
+// layout, so it is spent before both — and only when the gap alone didn't get there, which
+// is the part a media query could never do. The old rule abbreviated at 700px flat, so every
+// phone got initials whether the full name would have fitted or not.
+//
+// The staggered layout is the dear one. It is what ties each scoreline to the name it
+// belongs to, and its fallback — both names level, the games stacked between them — works
+// at any width but says less. So it is given up last, and only when a closed-up gap and an
+// abbreviated name together still leave something wrapping.
+//
+// The gap is re-spent after each of the other two, because every one of them changes what
+// the names have to fit into and the cheapest thing is worth re-offering against the new
+// question.
+//
+// When that happens depends on the match as much as on the window: five sets of games take
+// twice the middle of the band that straight sets do, and "A. Zverev" is not the width of
+// "Q. Halys". A breakpoint can see none of that — this used to switch at 620px, wider than
+// any phone in portrait, so every phone got the fallback and none of them needed it.
+//
+// Above 620px the stacked class is inert (see the stylesheet): there is room on a wide panel
+// for a long name to take two lines, and the stagger is still the better header. Setting it
+// there changes nothing, so the second gap pass simply re-reaches the same answer.
+//
+// Runs on open and on resize, and deliberately not on the body's scroll: each pass forces
+// layout several times over, and condensing only ever makes the names smaller, so it cannot
+// introduce a wrap that wasn't already there.
+// Set the widest gap in [min, max] that still holds every name on one line, and say whether
+// there was one. Left at the full gap when even min can't manage it, since a gap given up to
+// a wrap that happened regardless is just a narrower gap.
+//
+// Searched rather than calculated: what a name needs is only knowable by laying it out, and
+// the arithmetic — a gap surrendered returns twice itself to the two name tracks — quietly
+// stops holding once both names are against the limit at the same time. Wrapping is
+// monotonic in the gap, though; narrowing it can only ever give the names room. So the
+// boundary can be bisected, with lo always fitting and hi never, in five or six passes.
+function fitGap(grid, max, min) {
+  const setGap = (g) => grid.style.setProperty("--mgap", `${g}px`);
+  if (!namesWrap(grid)) return true;                   // fits at the full gap
+  setGap(min);
+  if (namesWrap(grid)) { grid.style.removeProperty("--mgap"); return false; }
+  let lo = min, hi = max;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    setGap(mid);
+    if (namesWrap(grid)) hi = mid; else lo = mid;
+  }
+  setGap(lo);
+  return true;
+}
+
+function fitHeader() {
+  const grid = document.querySelector("#matchupHead .mgrid");
+  if (!grid) return;
+  // Both off first: the question is what the *full* staggered layout does, so that has to
+  // be the thing measured. Left set from a narrower window they would answer about
+  // themselves and never come back off.
+  grid.classList.remove("stacked", "abbr");
+  grid.style.removeProperty("--mgap");
+
+  const cs = getComputedStyle(grid);
+  const max = parseFloat(cs.getPropertyValue("--mgap-max")) || 0;
+  const min = parseFloat(cs.getPropertyValue("--mgap-min")) || 0;
+
+  // full names, staggered — spend only the gap
+  if (fitGap(grid, max, min)) return;
+  // first name to an initial, and the gap offered again against the shorter names
+  grid.classList.add("abbr");
+  if (fitGap(grid, max, min)) return;
+  // still not enough: give the stagger up too, and spend the gap into what replaced it
+  grid.classList.add("stacked");
+  fitGap(grid, max, min);
+}
+
+let fitQueued = false;
+function onResize() {
+  if (fitQueued) return;
+  fitQueued = true;
+  requestAnimationFrame(() => { fitQueued = false; fitHeader(); });
+}
+
 export async function openMatchup(m, t) {
   const mine = ++openSeq;
   const panel = document.getElementById("matchup");
@@ -664,10 +784,12 @@ export async function openMatchup(m, t) {
   if (!wired) {
     panel.addEventListener("keydown", onPanelKey);
     body.addEventListener("scroll", onBodyScroll, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
     wired = true;
   }
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));
   document.getElementById("matchupHead").innerHTML = headHtml(m, t, round);
+  fitHeader();
   body.scrollTop = 0;
   panel.classList.remove("cond");
   panel.focus();

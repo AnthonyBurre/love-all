@@ -13,7 +13,11 @@ async function _init() {
   const workerUrl = URL.createObjectURL(
     new Blob([`importScripts("${bundle.mainWorker}");`], { type: "text/javascript" }));
   const worker = new Worker(workerUrl);
-  const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
+  // VoidLogger, not ConsoleLogger: duckdb-wasm's console logger reports every
+  // instantiation and query event as a bare object, so a page load left a dozen
+  // "[object Object]" lines in the console with nothing else to read them against.
+  // Anything this layer actually needs to say, it says at the catch sites.
+  const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   URL.revokeObjectURL(workerUrl);
   const buf = new Uint8Array(await (await fetch("./data/insights.duckdb")).arrayBuffer());

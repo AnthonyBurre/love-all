@@ -11,7 +11,22 @@
   --line: #d8dee8;
   --card: #ffffff;
   --warn: #c2410c;
-  --some: #d9a21f;         /* mid-coverage amber */
+  /* Charting coverage, as one ordered ramp: a hue for the tiers that have data, drained
+     as the data thins, then two neutrals for the tiers that barely do or don't. So a
+     card's fill answers "is this charted at all" before the wedge is read at all.
+     Fixed rather than themed, for the reason --up and --win are: how well charted a
+     pairing is belongs to the data, not to the tournament it happens at. Themed, the top
+     tier was green at Wimbledon and clay-red at Roland Garros — the scale changed meaning
+     between events, and on the clay band it changed places with the tier below it.
+     Gold is the top step now and not the second one. A saturated gold beside a
+     desaturated accent is the one being pointed at whatever the legend says, which is
+     why the old mid tier read as the deep one.
+     --cov-thin and --cov-none are three steps apart in lightness where they used to be
+     one; at #c8cfd9 against #dde2ea the bottom two tiers were the same mark. */
+  --cov-rich: #c8901a;     /* deep charting — gold */
+  --cov-some: #e6c885;     /* decent — the same hue, drained */
+  --cov-thin: #93a0b2;     /* thin — neutral: too little to read patterns from */
+  --cov-none: #dfe4ec;     /* uncharted — a hairline, and nothing else */
   /* "better than the tour" — a reading of a number, not decoration, so it is fixed like
      --warn rather than following the event's palette. A ▲ that is brown at Roland Garros
      and blue in New York is saying something about the tournament, which it isn't. */
@@ -124,10 +139,10 @@ a { color: var(--acc-d); }
 .legend { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap; }
 .legend .chip { position: relative; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 4px 9px 4px 14px; clip-path: var(--chip-clip); background: var(--card); border: 1px solid var(--line); }
 .legend .chip::before { content: ""; position: absolute; left: 0; top: 0; border: 6px solid transparent; border-left-color: currentColor; border-top-color: currentColor; }
-.legend .chip.t-rich::before { color: var(--acc); }
-.legend .chip.t-some::before { color: var(--some); }
-.legend .chip.t-thin::before { color: #c8cfd9; }
-.legend .chip.t-none::before { color: #dde2ea; }
+.legend .chip.t-rich::before { color: var(--cov-rich); }
+.legend .chip.t-some::before { color: var(--cov-some); }
+.legend .chip.t-thin::before { color: var(--cov-thin); }
+.legend .chip.t-none::before { color: var(--cov-none); }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
@@ -190,11 +205,19 @@ a { color: var(--acc-d); }
    a blurred shadow under a hard-cornered card is two different vocabularies */
 .match:hover { border-color: var(--acc); box-shadow: 6px 6px 0 color-mix(in srgb, var(--acc) 14%, transparent); }
 .match:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
-.match::before { content: ""; position: absolute; left: 0; top: 0; border: var(--tier-wedge) solid transparent; border-left-color: var(--tier, #dde2ea); border-top-color: var(--tier, #dde2ea); }
-.match.t-rich { --tier: var(--acc); background: color-mix(in srgb, var(--acc) 7%, var(--card)); }
-.match.t-some { --tier: var(--some); background: color-mix(in srgb, var(--some) 7%, var(--card)); }
-.match.t-thin { --tier: #c8cfd9; }
-.match.t-none { --tier: #dde2ea; }
+.match::before { content: ""; position: absolute; left: 0; top: 0; border: var(--tier-wedge) solid transparent; border-left-color: var(--tier, var(--cov-none)); border-top-color: var(--tier, var(--cov-none)); }
+/* The two charted tiers carry a tint as well as a wedge; the two uncharted ones are left
+   on the plain card. The tint is what orders them at a glance across a whole draw — a
+   wedge is 9px and has to be looked for, a fill does not. */
+/* The two percentages are not the same number because the two colours are not the same
+   strength: the top tier's gold is dark and saturated, the tier below it is that gold
+   already lightened, so an equal mix of each lands on nearly the same tint and the fills
+   stop ordering anything. These are set by where they come out, not by what they are —
+   ~#f7eedd against ~#fdfbf6, which is one clear step and then a second, fainter one. */
+.match.t-rich { --tier: var(--cov-rich); background: color-mix(in srgb, var(--cov-rich) 15%, var(--card)); }
+.match.t-some { --tier: var(--cov-some); background: color-mix(in srgb, var(--cov-some) 7%, var(--card)); }
+.match.t-thin { --tier: var(--cov-thin); }
+.match.t-none { --tier: var(--cov-none); }
 .match.t-tbd { --tier: var(--line); border-style: dashed; background: transparent; }
 .match.ghost { cursor: default; }
 .match.ghost:hover { border-color: var(--line); box-shadow: none; }
@@ -270,10 +293,12 @@ a { color: var(--acc-d); }
    the button's size or inset. It was three hand-tuned numbers before — 38px here, 36px on
    the condensed name, 34px of padding on the phone — which is three chances to move the
    button and leave one of them behind. */
+/* --pad-l is a variable and not a literal for the chart button's sake: the button hangs
+   off the right edge, and the inset it has to match is this one, on the other side. */
 .mtop { flex: none; position: relative;
-  --pad-r: 20px;
-  --close-lane: calc(var(--close-inset) + var(--close-size) - var(--pad-r) + 8px);
-  padding: 14px var(--pad-r) 15px 20px;
+  --pad-l: 20px; --pad-r: 20px;
+  --close-lane: calc(var(--close-inset) + var(--close-size) - var(--pad-l) + 8px);
+  padding: 14px var(--pad-r) 15px var(--pad-l);
   color: var(--hd-ink); background: var(--hd-bg); transition: padding .18s ease; }
 /* The split is cut on the diagonal rather than butted square, and thickened to carry it.
    A vertical seam between two colours is the one edge on the page that isn't on the
@@ -345,8 +370,29 @@ a { color: var(--acc-d); }
    instead of on the midpoint of two names that are rarely the same width. Each name then
    pulls in toward that centre line with justify-content, leaving any slack at the panel
    edges rather than at the score. */
-.mgrid { display: grid; grid-template-columns: 1fr auto 1fr;
-  grid-template-rows: auto auto; align-items: center; column-gap: 24px; row-gap: 2px; }
+/* minmax(0, 1fr), not 1fr: a bare 1fr floors at min-content, so a name wider than its
+   share grew its own track and the middle column — the score — came off the panel's
+   centre line by half the difference. The two names are rarely the same width, so that
+   was most matches. Floored at 0 the outer tracks stay equal whatever is in them, the
+   score sits on the centre line, and a long name wraps (overflow-wrap, on .mname)
+   instead of shoving it. */
+/* Equal tracks centre the score in this box, but the box is not the panel: the band's two
+   side paddings differ (the right one is wide to clear the close button), so the content
+   box's centre sits half that difference off the panel's own. The score was 10px left of
+   the middle on a phone, against a rule below it that splits at the true centre. Reaching
+   back across the difference puts the grid on the panel, and the close button is dealt
+   with where it is actually in the way — the condensed right-hand name, via --close-lane.
+   Zero on a wide panel, where the two paddings are equal. */
+/* The gap is the first thing to go. It is there to keep the games off the end of a name,
+   which is worth 40px when there is 40px spare and worth nothing next to a name broken
+   over two lines — so fitHeader() spends it down to --mgap-min before it lets anything
+   wrap, and only then gives up the staggered layout entirely. Both ends of the range live
+   here rather than in the script: they are the look of the band, and the phone overrides
+   them. --mgap is what the script writes; unset, the band runs at its full gap. */
+.mgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: auto auto; align-items: center; row-gap: 2px;
+  --mgap-max: 40px; --mgap-min: 12px; column-gap: var(--mgap, var(--mgap-max));
+  margin-right: calc(var(--pad-l) - var(--pad-r)); }
 /* The names are the header. Everything else in the band — the event, the date, the button —
    is chrome describing the match, and sits a size or two below them so the ranking is read
    before it is parsed. */
@@ -365,7 +411,14 @@ a { color: var(--acc-d); }
 .mp .mname { min-width: 0; font-weight: 600; line-height: 1.2; overflow-wrap: break-word; }
 .mp.win .mname { font-weight: 800; }
 .mp.lose { color: var(--hd-mut); }
-.mabbr { display: none; }                     /* the phone layout swaps these two over */
+/* Both renderings of the name ship, and fitHeader() picks between them — the full name by
+   default, the first name down to an initial once the gap has been spent and the name would
+   otherwise break over two lines. It used to be a straight media-query swap at 700px, which
+   abbreviated every name on every phone whether or not it was the one that didn't fit;
+   "Q. Halys" was being shown where "Quentin Halys" had room to spare. */
+.mabbr { display: none; }
+.mgrid.abbr .mfull { display: none; }
+.mgrid.abbr .mabbr { display: inline; }
 /* The winner's caret, pointing into their name from the score side. Dark and 12px it was
    the same weight as a full stop sitting at the end of the name, and that is what it looked
    like. It is now the only thing in the header saying the match is over — the word that used
@@ -433,7 +486,13 @@ a { color: var(--acc-d); }
    max-height:0 for the condensed header this one still left ~19px of blank line behind it —
    the header shrank around a gap the button was no longer in. Block-level it takes exactly
    its own height, which when collapsed is none. width:fit-content still shrink-wraps it. */
-.mchartbtn { display: flex; width: fit-content; margin: 2px 0 0 auto;
+/* The negative right margin pulls the button back out of --pad-r and onto --pad-l, so it
+   ends the band at the same inset the event pill starts it at. The padding on this side is
+   wide because the close button is up in the corner; the button is at the foot of the band,
+   below it, and has no reason to keep out of that lane. On a wide panel the two insets are
+   equal and the margin computes to 0, so this is only doing anything where they differ. */
+.mchartbtn { display: flex; width: fit-content;
+  margin: 2px calc(var(--pad-l) - var(--pad-r)) 0 auto;
   padding: 3px 12px; clip-path: var(--chip-clip); font-size: 10.5px; font-weight: 700;
   text-decoration: none; white-space: nowrap; border: 1px solid transparent;
   max-height: 3em; overflow: hidden;
@@ -501,12 +560,14 @@ a { color: var(--acc-d); }
    Both players' headline numbers on one axis: bars grow outward from a shared centre,
    so a gap reads as a shape rather than as arithmetic between two distant columns. The
    hairline on each bar is the tour average, where the metric has one. */
-.tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 14px; }
-/* The strip is the first thing in the scroll, right under a header that just named this
-   match — so without a label of its own, its numbers default to reading as this match's.
-   They're the opposite: a player's whole charted history, which is what the "not this
-   match" half says outright rather than trusting "charted: N matches" below to imply it. */
-.tapetitle { margin: 0 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+.tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0; }
+/* The first thing in the scroll, right under a header that just named this match — so
+   without a label over them, the numbers below default to reading as this match's.
+   They're the opposite: each player's whole charted history, which is what the "not this
+   match" half says outright rather than trusting "charted: N matches" further down to
+   imply it. It heads everything in the body, not just the strip, so it sits above the
+   strip's border rather than inside it — see the note in matchup.js. */
+.tapetitle { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--muted); }
 .tapetitle span { font-weight: 500; text-transform: none; letter-spacing: normal; opacity: .82; }
 .tapehead { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
@@ -656,7 +717,12 @@ a { color: var(--acc-d); }
 .roundchips .qchip { flex: 0 0 auto; }
 .roundtitle { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .rlist { display: flex; flex-direction: column; gap: 16px; }
-.rlist .match { position: static; }
+/* relative, not static: the card is out of the tree layout's absolute positioning here,
+   but it still has to be the containing block for its own tier wedge. Static, the wedge
+   resolved against .pair instead — so both cards in a pair drew their wedge on the pair's
+   top-left corner, the second over the first, and half the draw showed the wrong tier
+   while the other half showed none. Relative changes nothing about the flow. */
+.rlist .match { position: relative; }
 .rlist .pair { display: flex; flex-direction: column; gap: 6px; position: relative; padding-right: 14px; }
 /* right-side bracket joining a pair: these two winners meet next round */
 /* The joiner is drawn by its own three borders, so it can't be clipped into a triangle —
@@ -671,16 +737,17 @@ a { color: var(--acc-d); }
   .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; animation: sheet .2s ease-out; }
   /* three columns in a phone's width: the first name goes to an initial before any name
      has to wrap, and the seed badge drops — it is in the draw behind the panel anyway */
-  .mtop { --pad-r: 34px; padding: 13px var(--pad-r) 12px 14px; }
+  .mtop { --pad-l: 14px; --pad-r: 34px; padding: 13px var(--pad-r) 12px var(--pad-l); }
   /* Names back to the outer ends instead of pulled in toward the score. Pulling them in
      is a wide-panel move — it buys a scoreboard out of width the header was wasting. At
      this size there is no spare width to buy it with: the names already meet in the
      middle, and pulling them in only crowds them against the scoreline while the two
      edges sit empty. */
-  .mgrid { column-gap: 10px; }
+  .mgrid { --mgap-max: 10px; --mgap-min: 4px; }
   .mp { font-size: 17px; gap: 5px; justify-content: flex-start; }
-  .mp .mfull, .mp .mseed { display: none; }
-  .mp .mabbr { display: inline; }
+  /* the seed badge goes unconditionally — it is in the draw behind the panel anyway, and
+     unlike the name it is not something fitHeader trades away only when it has to */
+  .mp .mseed { display: none; }
   .mflag { font-size: 14px; }
   .sg { font-size: 14px; min-width: 13px; }
 }
@@ -690,18 +757,6 @@ a { color: var(--acc-d); }
    comparison and they survive a narrow column. Everything below stacks, so each column
    names its own player rather than relying on a position that no longer holds. */
 @media (max-width: 620px) {
-  /* No room here to run a scoreline out beside a name, so the header goes back to one
-     row — both names level, the score stacked between them a set per row. Same cells,
-     flowed across rows instead of down columns. */
-  .mgrid { grid-template-rows: auto; row-gap: 0; }
-  .mp.a, .mp.b { grid-row: 1; }
-  .mrule { display: none; }
-  .mscore { grid-row: 1; align-self: center;
-    grid-auto-flow: row; grid-template-rows: none; grid-template-columns: auto auto;
-    row-gap: 1px; column-gap: 8px; }
-  /* the wide layout pins each cell to a row so A's games sit under A's name; here there is
-     one row per set and the pair reads left to right in source order, so the pins come off */
-  .mscore .sg:nth-child(odd), .mscore .sg:nth-child(even) { grid-row: auto; }
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
   .tape { padding: 11px 12px 12px; }
@@ -729,3 +784,25 @@ a { color: var(--acc-d); }
   .msec.cards .pdesc { font-size: 12px; }
 }
 @media (max-width: 560px) { .legend { margin-left: 0; } }
+
+/* The scoreboard's last resort, and only reached when the staggered header has actually
+   run out of width — .stacked is put on by fitHeader() in matchup.js, which measures
+   rather than guesses. See the note there for why this isn't a breakpoint.
+   Gated at 620px because the measurement answers "did a name wrap", and on a wide panel
+   that is not a reason to give up the stagger: there is room for a long name to take two
+   lines, and a scoreline out beside the name it belongs to is still worth more. Below
+   620 a wrapped name means the two are colliding, which is what this fixes.
+   The header goes to one row — both names level, the score stacked between them a set per
+   row. Same cells, flowed across rows instead of down columns; no second markup path. */
+@media (max-width: 620px) {
+  .mgrid.stacked { grid-template-rows: auto; row-gap: 0; }
+  .mgrid.stacked .mp.a, .mgrid.stacked .mp.b { grid-row: 1; }
+  .mgrid.stacked .mrule { display: none; }
+  .mgrid.stacked .mscore { grid-row: 1; align-self: center;
+    grid-auto-flow: row; grid-template-rows: none; grid-template-columns: auto auto;
+    row-gap: 1px; column-gap: 8px; }
+  /* the wide layout pins each cell to a row so A's games sit under A's name; here there is
+     one row per set and the pair reads left to right in source order, so the pins come off */
+  .mgrid.stacked .mscore .sg:nth-child(odd),
+  .mgrid.stacked .mscore .sg:nth-child(even) { grid-row: auto; }
+}
