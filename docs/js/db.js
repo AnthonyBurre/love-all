@@ -1,5 +1,5 @@
 // DuckDB-WASM data layer — loads the shipped insights.duckdb once and exposes query().
-// The whole site (coverage badges, matchup insights, explore panel) reads through this.
+// The whole site (coverage badges, matchup insights) reads through this.
 import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
 
 let _conn = null;
@@ -13,7 +13,11 @@ async function _init() {
   const workerUrl = URL.createObjectURL(
     new Blob([`importScripts("${bundle.mainWorker}");`], { type: "text/javascript" }));
   const worker = new Worker(workerUrl);
-  const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
+  // VoidLogger, not ConsoleLogger: duckdb-wasm's console logger reports every
+  // instantiation and query event as a bare object, so a page load left a dozen
+  // "[object Object]" lines in the console with nothing else to read them against.
+  // Anything this layer actually needs to say, it says at the catch sites.
+  const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   URL.revokeObjectURL(workerUrl);
   const buf = new Uint8Array(await (await fetch("./data/insights.duckdb")).arrayBuffer());
@@ -43,10 +47,16 @@ export async function query(sql, params = []) {
   return (await conn.query(sql)).toArray().map((r) => r.toJSON());
 }
 
-// League mean serve-win rates (for the matchup strength combine).
+// League mean serve-win rates (for the matchup strength combine), keyed by gender.
+// Read by prefix rather than by testing for "mu_M" and treating everything else as the
+// women's value: `meta` is a general key/value table, so the first non-mu row added to it
+// would have become mu.W and skewed every women's win probability without erroring.
 export async function leagueMu() {
   const rows = await query("SELECT key, value FROM meta");
   const mu = {};
-  for (const r of rows) mu[r.key === "mu_M" ? "M" : "W"] = r.value;
+  for (const r of rows) {
+    const key = String(r.key);
+    if (key.startsWith("mu_")) mu[key.slice(3)] = r.value;
+  }
   return mu;
 }
