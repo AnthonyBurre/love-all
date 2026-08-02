@@ -1,6 +1,6 @@
 // The matchup drawer: experimental pre-match win probability + a card per player,
 // all queried from insights.duckdb via DuckDB-WASM.
-import { query, leagueMu } from "./db.js";
+import { query, leagueMu, serveGates } from "./db.js";
 import { preMatchWP } from "./winprob.js";
 import { patternSvg, pairSvg, shotLine } from "./court.js";
 
@@ -66,7 +66,14 @@ async function playerData(name, gender) {
       "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
       [name, gender]);
   } catch (e) { /* stale insights db: show the card without patterns */ }
-  return { s: s[0], triggers, patterns };
+  let serve = [];
+  try {
+    serve = await query(
+      "SELECT side, wide, t, n_eff, years, career_wide, career_t, reliable, drift_ratio " +
+      "FROM player_serve WHERE player = ? AND gender = ? AND reliable = 1",
+      [name, gender]);
+  } catch (e) { /* stale insights db: show the card without serve decisions */ }
+  return { s: s[0], triggers, patterns, serve };
 }
 
 // The qualitative reading of a number the comparison strip already prints, so each of
@@ -120,6 +127,73 @@ function trigLine(t) {
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
       ${payoff} <span class="lift">n=${Number(t.n)}</span></p>
     ${rallyDrawer(t.context)}</div>`;
+}
+
+// Where they aim the first serve. Only wide and T are printed: the body share is
+// partly a charter's opinion (charters disagree about it by ±4-6 points on the same
+// players), so the two shown do not add to 100 and the remainder is deliberately
+// unnamed. Rows appear per court side only where the player has enough charted serves
+// for the share to be mostly signal — the `reliable` flag the experiment ships, which
+// is already applied in the query, so a thinly-charted player shows nothing here
+// rather than a number that is really sampling noise.
+function serveHtml(d, gates) {
+  const rows = (d && d.serve) || [];
+  if (!rows.length) return "";
+  const pct = (v) => `${Math.round(Number(v) * 100)}%`;
+  const order = { deuce: 0, ad: 1 };
+  const sorted = [...rows].sort((a, b) => order[a.side] - order[b.side]);
+  // Laid out the way the server sees it. The deuce box is screen-left and the ad box
+  // screen-right, and inside each one the zones run outside-in on the deuce side and
+  // inside-out on the ad side, because the centre line is between the two boxes. So
+  // reading the strip left to right walks the four service-box thirds in the order they
+  // sit on the court — the same mapping court.js uses to place a serve bounce.
+  // --p drives a faint backfill behind each number, growing from the court line that
+  // zone belongs to — so the share reads as a bar without a second element to lay out.
+  const zone = (label, v) =>
+    `<span class="srvzone" style="--p:${(Number(v) * 100).toFixed(1)}%">
+      <span class="zl">${label}</span><b>${pct(v)}</b></span>`;
+  const box = (r) => {
+    const zones = r.side === "ad"
+      ? zone("T", r.t) + zone("wide", r.wide)
+      : zone("wide", r.wide) + zone("T", r.t);
+    return `<div class="srvbox">${zones}
+      <span class="srvlabel">${r.side} · n≈${Number(r.n_eff).toLocaleString()}</span></div>`;
+  };
+  // The window, in the reader's terms. The year span is the honest thing to print
+  // next to it: for a thinly-charted player "recent" can still reach back years, and
+  // that changes how much the number should be trusted.
+  const win = gates.recent_matches ? Math.round(gates.recent_matches) : null;
+  const span = sorted.find((r) => r.years)?.years?.replace("-", "–");
+  const caption = `<p class="srvwin">${win ? `last ${win} charted matches` : "recent matches"}${
+    span ? ` (${span})` : ""}</p>`;
+
+  // A career average would be a different number for the players who moved, so say so
+  // rather than quietly showing only the recent one.
+  let moved = "";
+  const big = sorted
+    .filter((r) => Number(r.drift_ratio) >= 1.5 && Math.abs(r.t - r.career_t) >= 0.05)
+    .sort((a, b) => Math.abs(b.t - b.career_t) - Math.abs(a.t - a.career_t))[0];
+  if (big) {
+    moved = `<p class="tnum">${big.side} court: T share ${
+      big.t > big.career_t ? "up from" : "down from"} <b>${pct(big.career_t)}</b>
+      across their whole career</p>`;
+  }
+  // Break points: side-adjusted, since break points skew to the ad court and the court
+  // moves placement more than the score does. Starred like a deep pattern, and for the
+  // same reason — most players show nothing here, because most players' break-point
+  // placement is indistinguishable from their normal-point placement once the
+  // multiplicity correction is applied.
+  let bp = "";
+  const delta = d.s && d.s.serve_bp_wide_delta;
+  if (d.s && Number(d.s.serve_bp_sig) === 1 && delta != null) {
+    const pts = Math.round(Math.abs(delta) * 100);
+    bp = `<p class="srvbp" title="a shift this size clears the experiment's significance
+      test; most players show nothing here">on break points, <b>${pts} points</b> ${
+      delta > 0 ? "wider" : "less wide"} than their own norm</p>`;
+  }
+  return `<div class="srv">
+    <div class="srvcourt">${sorted.map(box).join("")}</div>
+    ${caption}${moved}${bp}</div>`;
 }
 
 // How context-driven is the go-for-it decision (σ from the shot_triggers experiment)?
@@ -574,13 +648,16 @@ function headHtml(m, t, round) {
 // The body, in reading order: the headline numbers side by side, then the pictures, then
 // the sequences, then the small print. Every section below the strip shares one header
 // across both columns, so the two players stay level however unevenly charted they are.
-function bodyHtml(m, pa, pb, mu) {
+function bodyHtml(m, pa, pb, mu, gates) {
   const a = m.a, b = m.b;
   const ta = trigSets(pa), tb = trigSets(pb);
   const none = !pa && !pb
     ? `<p class="nochart">Neither player has Match Charting history yet.
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
   return tape(pa, pb, mu) + none +
+    section("serve decisions", `where the first serve goes, by court side — recent
+      matches counting most`, a, b,
+      serveHtml(pa, gates), serveHtml(pb, gates), "text") +
     section("court patterns", `their answer to an incoming ball, × how often the tour
       plays it from the same spot${COURT_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
@@ -796,13 +873,14 @@ export async function openMatchup(m, t) {
   body.innerHTML = `<div id="cardslot" class="loading">Loading…</div>
     <div id="wpslot"></div>${notationHelp()}`;
 
-  let pa, pb, mu;
+  let pa, pb, mu, gates;
   try {
     [pa, pb] = await Promise.all([
       playerData(m.a.matched, t.gender),
       playerData(m.b.matched, t.gender),
     ]);
     mu = (await leagueMu())[t.gender];
+    gates = (await serveGates())[t.gender] || {};
   } catch (e) {
     console.warn("insights db unavailable:", e);
     if (mine !== openSeq) return;
@@ -827,5 +905,5 @@ export async function openMatchup(m, t) {
   }
   const slot = document.getElementById("cardslot");
   slot.classList.remove("loading");
-  slot.innerHTML = bodyHtml(m, pa, pb, mu);
+  slot.innerHTML = bodyHtml(m, pa, pb, mu, gates);
 }

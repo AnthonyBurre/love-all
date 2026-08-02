@@ -47,6 +47,23 @@ export async function query(sql, params = []) {
   return (await conn.query(sql)).toArray().map((r) => r.toJSON());
 }
 
+// Serve-placement gates and tour baselines, keyed by gender then by what they are
+// (n80_wide, tour_deuce_t, …). These are thresholds the serve_tendencies experiment
+// owns — how much charted data a placement share needs before it means anything, and
+// what the tour does — so the panel reads them rather than carrying its own copy that
+// would go stale the next time the experiment is rerun.
+export async function serveGates() {
+  const out = { M: {}, W: {} };
+  try {
+    const rows = await query("SELECT key, value FROM meta WHERE key LIKE 'serve_%'");
+    for (const r of rows) {
+      const m = String(r.key).match(/^serve_(.+)_([MW])$/);
+      if (m) out[m[2]][m[1]] = r.value;
+    }
+  } catch (e) { /* stale insights db: the serve section stays hidden */ }
+  return out;
+}
+
 // League mean serve-win rates (for the matchup strength combine), keyed by gender.
 // Read by prefix rather than by testing for "mu_M" and treating everything else as the
 // women's value: `meta` is a general key/value table, so the first non-mu row added to it

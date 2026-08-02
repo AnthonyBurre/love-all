@@ -61,6 +61,46 @@ def _charted_matches(con) -> pd.DataFrame:
     return df[["gender", "year", "tourn_key", "p1_norm", "p2_norm", "match_id", "charted_by"]]
 
 
+def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
+    """Per-side serve placement for the panel, plus the gates it has to respect.
+
+    The shipped mix is the recency-weighted one (``serve_tendencies`` step 7: a
+    10-match half-life predicts a player's next matches better than their career
+    average, because placement drifts), and ``n_eff`` is its effective sample
+    size — the number the reliability gate applies to, since a decay weighting
+    has no raw denominator. ``reliable`` is that gate already applied.
+    """
+    path = REPORTS / "serve_tendencies_players.csv"
+    if not path.exists():
+        return None, []
+    df = pd.read_csv(path)
+    df = df[(df.serve == "1st") & df.recent_n_eff.notna() & df.recent_wide.notna()]
+    # Built column by column rather than renamed: the CSV carries both the recent
+    # and the career mix, and renaming one onto the other's name silently ships
+    # duplicate columns with the career values winning.
+    serve = pd.DataFrame({
+        "player": df.player, "gender": df.gender, "side": df.side,
+        "wide": df.recent_wide, "t": df.recent_t,
+        "n_eff": df.recent_n_eff.astype(int),
+        "years": df.recent_years,
+        "career_wide": df.wide, "career_t": df.t, "career_n": df.n,
+        "reliable": df.reliable.fillna(0).astype(int),
+        "drift_ratio": df.drift_ratio,
+    })
+
+    # Gates and tour baselines as meta rows, so the site never hardcodes a
+    # threshold the experiment owns. meta is numeric key/value, read by prefix.
+    rows = []
+    mpath = REPORTS / "serve_tendencies_meta.csv"
+    if mpath.exists():
+        for r in pd.read_csv(mpath).to_dict("records"):
+            g = r["gender"]
+            for col in ("n80_wide", "n80_t", "rule_param", "recent_matches",
+                        "tour_deuce_wide", "tour_deuce_t", "tour_ad_wide", "tour_ad_t"):
+                rows.append({"key": f"serve_{col}_{g}", "value": float(r[col])})
+    return serve, rows
+
+
 def build() -> int:
     """(Re)create ``insights.duckdb`` from the DB + experiment CSVs. Returns player count."""
     con = duckdb.connect(str(DB_PATH), read_only=True)
@@ -127,14 +167,32 @@ def build() -> int:
         columns={"att_rate": "trig_att_rate", "conversion": "trig_conversion"})
     summary = summary.merge(tp, on=["player", "gender"], how="left")
 
-    meta = pd.DataFrame([{"key": f"mu_{g}", "value": round(v, 5)} for g, v in mu.items()])
+    # Serve placement (serve_tendencies experiment). Only the two targets that
+    # survived that experiment's checks ship: the body share is partly a charter's
+    # opinion (charters disagree about it by ±4-6% on the same players), so it is
+    # measured there and deliberately not reported here. Shares are of all charted
+    # first serves, so wide + T does not reach 100% — the remainder is the body.
+    serve, serve_meta = _serve_placement()
+    if serve is not None:
+        bp = pd.read_csv(REPORTS / "serve_tendencies_leverage.csv")
+        bp = bp[(bp.direction == "wide") & (bp.bucket == "break_pt")][
+            ["player", "gender", "delta", "sig", "n"]].rename(
+            columns={"delta": "serve_bp_wide_delta", "sig": "serve_bp_sig",
+                     "n": "serve_bp_n"})
+        summary = summary.merge(bp, on=["player", "gender"], how="left")
+
+    meta = pd.DataFrame([{"key": f"mu_{g}", "value": round(v, 5)} for g, v in mu.items()]
+                        + serve_meta)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.unlink(missing_ok=True)     # fresh file: dropped tables must not ship forever
     out = duckdb.connect(str(OUT))
-    for name, df in (("player_summary", summary), ("player_triggers", triggers),
-                     ("player_patterns", patterns), ("meta", meta),
-                     ("charted_matches", charted)):
+    tables = [("player_summary", summary), ("player_triggers", triggers),
+              ("player_patterns", patterns), ("meta", meta),
+              ("charted_matches", charted)]
+    if serve is not None:
+        tables.append(("player_serve", serve))
+    for name, df in tables:
         out.register(f"_{name}", df)
         out.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _{name}")
     out.close()

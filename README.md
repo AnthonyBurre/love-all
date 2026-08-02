@@ -26,6 +26,7 @@ answers it, and what it found. They write their output to `reports/`.
 | [`context_length`](experiments/context_length/) | How many shots of history does charted data actually support? | **Two. The third actively hurts** held-out log-loss. And a player's top-5 signature list overlaps only J≈0.22 between halves of their own data, so much of any specific list is sampling luck. |
 | [`deep_patterns`](experiments/deep_patterns/) | For the most heavily charted players, do 3–4 shot patterns survive anyway? | 66 do, across 31 players, through a triple gate: beat your own parent pattern, replicate in both halves, clear a binomial test. Shipped as a gold-star tier. |
 | [`serve_side`](experiments/serve_side/) | Does deuce vs ad court hide structure? | Yes, and nothing else here conditioned on it. The direction codes mean **opposite wings** on the two sides, so serve analysis that ignores side is averaging two different shots together. |
+| [`serve_tendencies`](experiments/serve_tendencies/) | Which serve-placement stats can a player card safely carry? | Where a player serves is a measurement (split-half r = 0.58, ~860 serves for 80% signal); **what the placement earns is not** (r = 0.22, ~11,000 serves). Placement is re-decided per match, so the binomial sample-size rule is optimistic ~4x. |
 | [`player_styles`](experiments/player_styles/) | What style archetypes are there? | Four per tour, matching how fans talk: net-rusher (Sampras, McEnroe), baseline grinder (Djokovic, Nadal), slice & variety (Wawrinka, Federer), big-serving baseliner (Medvedev, Zverev). |
 | [`career_splits`](experiments/career_splits/) | Should a long career split into eras, or is that just two noisier samples of one player? | Split **selectively**. Most careers are stable; 34 genuinely evolved, and those detections are face-valid (Sabalenka's serve yips, Clijsters' comeback). Justifies `player_eras`, 358 → 392 entities. |
 | [`blind_reid`](experiments/blind_reid/) | Hide every name. Can you tell who is across the net purely from the shots coming back? | Yes, and **the serve is the weakest way to do it**. Response strokes alone reach AUC 0.685 on held-out players against the serve block's 0.643. Identity also fades measurably across years. |
@@ -65,8 +66,8 @@ finished events of every other tier. On a live match each box is shaded by how c
 pairing is; on a finished draw the shading turns per-match, and the drawer links straight to
 that match's full chart on Tennis Abstract or invites you to be the one who charts it. Click
 any match and a drawer opens with, for each player: a style archetype, serve and return
-rates against the tour average, court patterns, shot-making triggers, shot quality relative
-to that archetype, and an **experimental pre-match win probability**. All of it is queried in
+rates against the tour average, serve decisions, court patterns, shot-making triggers, shot
+quality relative to that archetype, and an **experimental pre-match win probability**. All of it is queried in
 the browser with **DuckDB-WASM**, with no backend.
 
 <details>
@@ -123,7 +124,13 @@ under `src/match_charting_project/{winprob_match,live,site}`.
 
 ## Reading the site's patterns and diagrams
 
-Each player's card leads with **court patterns**, written in plain English:
+Each player's card leads with **serve decisions**: where their first serve goes on each
+court side, next to what the tour does from the same side. Only wide and T are shown, so
+the two do not add to 100 — the remainder is the body serve, which `serve_tendencies`
+found to be partly a charter's opinion rather than a player's choice. The numbers cover
+recent matches, weighted so the newest count most, and a side appears only when the player
+has enough charted serves there for the share to be mostly signal rather than sampling
+noise. Below that come **court patterns**, written in plain English:
 `drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
 **shot-making triggers** are written in shot tokens: `serve wide · BH slice→3`. Click the
 **ball path** toggle under either to see it drawn on a small court. The drawer carries a
