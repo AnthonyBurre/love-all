@@ -589,6 +589,19 @@ function bodyHtml(m, pa, pb, mu) {
 const FOCUSABLE = "a[href], button:not([disabled]), summary, [tabindex]:not([tabindex='-1'])";
 let opener = null;          // the element that opened the panel, to hand focus back to
 let wired = false;
+// Each open takes a ticket. The queries below are async and the panel writes its results
+// into slots looked up by id, so an open whose queries outlive it — close one match, open
+// the next while the first is still in flight — would render its player under the other
+// match's header. A superseded open drops its results instead of painting them.
+let openSeq = 0;
+
+// The insights DB is a separate fetch from the draw feed, and the site is deployed without
+// it whenever the Release asset is missing (see .github/workflows/live.yml), so a failed
+// load is a state the panel has to have words for rather than one it can sit in. It is not
+// the "not charted yet" copy: that invites you to go and chart a match that may already be
+// charted, which is a different thing to say and, here, a wrong one.
+const DATA_DOWN = `<p class="nochart">Player charting data isn't loading right now — the
+  draw and scores above are unaffected.</p>`;
 
 function lockPage(on) {
   // <html> is the scroller here, so that is where the lock has to go; body alone does
@@ -640,6 +653,7 @@ function onBodyScroll() {
 }
 
 export async function openMatchup(m, t) {
+  const mine = ++openSeq;
   const panel = document.getElementById("matchup");
   const body = document.getElementById("matchupBody");
   if (panel.hidden) opener = document.activeElement;
@@ -660,12 +674,24 @@ export async function openMatchup(m, t) {
   body.innerHTML = `<div id="cardslot" class="loading">Loading…</div>
     <div id="wpslot"></div>${notationHelp()}`;
 
-  const [pa, pb] = await Promise.all([
-    playerData(m.a.matched, t.gender),
-    playerData(m.b.matched, t.gender),
-  ]);
+  let pa, pb, mu;
+  try {
+    [pa, pb] = await Promise.all([
+      playerData(m.a.matched, t.gender),
+      playerData(m.b.matched, t.gender),
+    ]);
+    mu = (await leagueMu())[t.gender];
+  } catch (e) {
+    console.warn("insights db unavailable:", e);
+    if (mine !== openSeq) return;
+    document.getElementById("wpslot").innerHTML = "";
+    const down = document.getElementById("cardslot");
+    down.classList.remove("loading");
+    down.innerHTML = DATA_DOWN;
+    return;
+  }
+  if (mine !== openSeq) return;
 
-  const mu = (await leagueMu())[t.gender];
   const wpslot = document.getElementById("wpslot");
   if (t.completed) {
     wpslot.innerHTML = "";              // result is in — no pre-match number to offer

@@ -185,9 +185,11 @@ function buildTabs() {
   $("genderTabs").style.display = g.length > 1 ? "" : "none";
 
   // Quarter view needs trustworthy slot ordering (fixture-backed or finished draws).
+  // Whether the toggle is *shown* is render()'s call rather than this one's: visibility also
+  // depends on the viewport (phones have no quarter view), and every path through here ends
+  // in a render(), so setting it here too only made two places to keep in agreement.
   const t = pick();
   const q = quarterable(t);
-  $("viewTabs").style.display = q ? "" : "none";
   seg($("viewTabs"), [
     ["quarters", barsIcon(false), "Slices"],
     ["full", barsIcon(true), "Full draw"],
