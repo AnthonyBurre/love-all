@@ -72,7 +72,23 @@ which correctly flags him as the steadiest of that group).
 
 ## Next: class-relative WPA
 
-`reports/player_style_clusters.csv` (player, gender, cluster, archetype) is the bridge
-to the differentiated product: fit the win-probability eval *per archetype* and measure
-each player's shot quality against peers of the same style — separating skill from style,
-which the league-baseline leaderboard in `chess_point_analysis` cannot.
+`reports/player_style_clusters.csv` (player, gender, cluster, archetype, `style_margin`,
+`style_confident`, plus the fingerprint features themselves) is the bridge to the
+differentiated product: measure each player's shot quality against what their style
+predicts — separating skill from style, which the league-baseline leaderboard in
+`chess_point_analysis` cannot.
+
+Two columns exist because the label is softer than it looks. `style_margin` is the
+per-entity silhouette — how much better this player's own archetype fits than the
+next-best one — and `style_confident` is that against `CONFIDENT_MARGIN`.
+
+They earn their place empirically. Re-running on 0.16% less charting data moved 57 of
+388 archetype labels, and 56 of those 57 belonged to players whose own fingerprint had
+not changed at all: k-means centroids shifted underneath them. The entities that moved
+had a median margin of 0.02 against 0.14 for the ones that held, so the margin predicts
+the churn sharply, and withholding the name below the threshold takes label instability
+among *asserted* archetypes from 15% to none across that same perturbation.
+
+Consumers are expected to respect the flag rather than take `archetype` at face value —
+the site prints "Between styles" below it. Nothing downstream should benchmark against a
+cluster mean; see `../class_relative_wpa` for why.

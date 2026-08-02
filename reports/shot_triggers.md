@@ -11,7 +11,7 @@
 - `FH net→3 · BH shot→2` → goes for it 73% (3.6×), converts 94% (+44% vs their norm) ✅ converts (n=127)
 - `FH drive→3 · BH shot→2` → goes for it 72% (3.5×), converts 92% (+42% vs their norm) ✅ converts (n=383)
 - `BH net→3 · BH shot→2` → goes for it 71% (3.4×), converts 98% (+48% vs their norm) ✅ converts (n=78)
-- `FH drive→3 · BH shot→1` → goes for it 67% (3.2×), converts 92% (+42% vs their norm) ✅ converts (n=126)
+- `BH net→3 · BH drive→2` → goes for it 67% (3.2×), converts 84% (+34% vs their norm) ✅ converts (n=66)
 
 **Worst traps** (pulled into attempts they don't convert):
 - `FH drive→1 · BH slice→1` → attempts 1.5× their norm but converts only 46% vs 50% baseline (n=89)
@@ -40,37 +40,37 @@
 - `BH slice→3 · BH slice→1` → attempts 1.6× their norm but converts only 49% vs 52% baseline (n=161)
 
 ### Pete Sampras
-*goes for it on 25.3% of strokes, converting 55%; 34,663 contextful strokes*
+*goes for it on 25.3% of strokes, converting 55%; 34,406 contextful strokes*
 
 **Trigger sequences** (lead-ups that most raise their attempt rate):
-- `FH net→3 · BH shot→2` → goes for it 75% (3.0×), converts 94% (+39% vs their norm) ✅ converts (n=65)
-- `FH net→3 · BH drive→1` → goes for it 75% (3.0×), converts 83% (+28% vs their norm) ✅ converts (n=85)
+- `FH net→3 · BH drive→1` → goes for it 76% (3.0×), converts 82% (+28% vs their norm) ✅ converts (n=82)
+- `FH net→3 · BH shot→2` → goes for it 75% (3.0×), converts 94% (+39% vs their norm) ✅ converts (n=64)
 - `BH net→3 · BH drive→1` → goes for it 70% (2.8×), converts 85% (+30% vs their norm) ✅ converts (n=74)
-- `BH net→1 · FH drive→3` → goes for it 62% (2.4×), converts 91% (+37% vs their norm) ✅ converts (n=112)
+- `BH net→1 · FH drive→3` → goes for it 61% (2.4×), converts 91% (+37% vs their norm) ✅ converts (n=111)
 
 **Worst traps** (pulled into attempts they don't convert):
 - `BH slice→2 · BH slice→3` → attempts 1.6× their norm but converts only 33% vs 55% baseline (n=60)
 
 ### Andre Agassi
-*goes for it on 16.6% of strokes, converting 49%; 51,973 contextful strokes*
+*goes for it on 16.6% of strokes, converting 49%; 51,113 contextful strokes*
 
 **Trigger sequences** (lead-ups that most raise their attempt rate):
-- `BH drive→3 · BH shot→2` → goes for it 70% (4.2×), converts 88% (+39% vs their norm) ✅ converts (n=74)
-- `FH drive→3 · BH shot→2` → goes for it 70% (4.2×), converts 84% (+35% vs their norm) ✅ converts (n=144)
-- `FH drive→1 · FH shot→2` → goes for it 54% (3.2×), converts 90% (+41% vs their norm) ✅ converts (n=78)
-- `FH drive→2 · FH net→2` → goes for it 50% (3.0×), converts 58% (+9% vs their norm) ✅ converts (n=62)
+- `BH drive→3 · BH shot→2` → goes for it 69% (4.2×), converts 88% (+39% vs their norm) ✅ converts (n=72)
+- `FH drive→3 · BH shot→2` → goes for it 69% (4.2×), converts 86% (+36% vs their norm) ✅ converts (n=140)
+- `FH drive→1 · FH shot→2` → goes for it 57% (3.4×), converts 90% (+41% vs their norm) ✅ converts (n=74)
+- `FH drive→2 · FH net→2` → goes for it 48% (2.9×), converts 55% (+6% vs their norm) ✅ converts (n=60)
 
 **No trap contexts** — every sequence that raises their attempt rate also meets or beats their usual conversion. Unbaitable (at this resolution).
 
 ## Women
 
 ### Serena Williams
-*goes for it on 22.3% of strokes, converting 44%; 20,427 contextful strokes*
+*goes for it on 22.3% of strokes, converting 44%; 20,259 contextful strokes*
 
 **Trigger sequences** (lead-ups that most raise their attempt rate):
+- `FH drive→3 · BH slice→2` → goes for it 42% (1.9×), converts 64% (+20% vs their norm) ✅ converts (n=161)
 - `serve wide · BH slice→2` → goes for it 42% (1.9×), converts 70% (+26% vs their norm) ✅ converts (n=106)
-- `FH drive→3 · BH slice→2` → goes for it 41% (1.8×), converts 64% (+20% vs their norm) ✅ converts (n=163)
-- `serve wide · FH slice→2` → goes for it 41% (1.8×), converts 54% (+10% vs their norm) ✅ converts (n=96)
+- `serve wide · FH slice→2` → goes for it 41% (1.8×), converts 54% (+9% vs their norm) ✅ converts (n=96)
 - `serve T · BH slice→2` → goes for it 38% (1.7×), converts 62% (+18% vs their norm) ✅ converts (n=98)
 
 **No trap contexts** — every sequence that raises their attempt rate also meets or beats their usual conversion. Unbaitable (at this resolution).
@@ -94,16 +94,16 @@
 **No trap contexts** — every sequence that raises their attempt rate also meets or beats their usual conversion. Unbaitable (at this resolution).
 
 ### Steffi Graf
-*goes for it on 16.5% of strokes, converting 44%; 18,816 contextful strokes*
+*goes for it on 16.4% of strokes, converting 43%; 18,589 contextful strokes*
 
 **Trigger sequences** (lead-ups that most raise their attempt rate):
 - `FH drive→1 · BH slice→2` → goes for it 29% (1.7×), converts 42% (-1% vs their norm) ⚠️ trap (n=91)
-- `serve wide · BH slice→2` → goes for it 29% (1.7×), converts 53% (+10% vs their norm) ✅ converts (n=224)
-- `FH drive→3 · BH slice→2` → goes for it 27% (1.7×), converts 70% (+27% vs their norm) ✅ converts (n=246)
-- `serve wide · FH slice→2` → goes for it 26% (1.6×), converts 68% (+24% vs their norm) ✅ converts (n=106)
+- `serve wide · BH slice→2` → goes for it 29% (1.7×), converts 54% (+10% vs their norm) ✅ converts (n=221)
+- `FH drive→3 · BH slice→2` → goes for it 27% (1.7×), converts 71% (+28% vs their norm) ✅ converts (n=242)
+- `serve wide · FH slice→2` → goes for it 26% (1.6×), converts 65% (+22% vs their norm) ✅ converts (n=99)
 
 **Worst traps** (pulled into attempts they don't convert):
-- `FH drive→1 · BH slice→2` → attempts 1.7× their norm but converts only 42% vs 44% baseline (n=91)
+- `FH drive→1 · BH slice→2` → attempts 1.7× their norm but converts only 42% vs 43% baseline (n=91)
 
 ## Are the winner book and the error book the same book?
 
@@ -116,16 +116,16 @@ Across 274 qualifying players, the correlation between a context's winner rate a
 | most cue-driven | σ (pp) | most pattern-immune | σ (pp) |
 |---|---|---|---|
 | Patrick Rafter (M) | 10.5 | Sergi Bruguera (M) | 0.4 |
-| Stefan Edberg (M) | 9.3 | Chris Evert (W) | 1.2 |
-| John Isner (M) | 9.2 | John Millman (M) | 1.3 |
-| Goran Ivanisevic (M) | 8.5 | Roberto Carballes Baena (M) | 1.4 |
-| Michael Stich (M) | 7.8 | Andrei Chesnokov (M) | 1.5 |
+| Stefan Edberg (M) | 9.3 | Andrei Chesnokov (M) | 1.0 |
+| John Isner (M) | 9.2 | Chris Evert (W) | 1.2 |
+| Goran Ivanisevic (M) | 8.5 | John Millman (M) | 1.3 |
+| Michael Stich (M) | 7.8 | Roberto Carballes Baena (M) | 1.4 |
 
 ![shot triggers](figures/shot_triggers.png)
 
 ## Opening sequences by serve side (deuce vs ad)
 
-The pooled tables above average over the court the point was served to, but the first four plies mean different things on the two sides: a wide serve opens the forehand in the deuce court and the backhand in the ad court. Here the opening attempts — the return, the serve+1, and the return+1 — are split by side and scored against the player's own norm *for that same shot and side*. Everything deeper in the rally stays pooled (above). Full rows in `reports/shot_triggers_openings.csv`; 311 green / 289 trap sequences across 212 players.
+The pooled tables above average over the court the point was served to, but the first four plies mean different things on the two sides: a wide serve opens the forehand in the deuce court and the backhand in the ad court. Here the opening attempts — the return, the serve+1, and the return+1 — are split by side and scored against the player's own norm *for that same shot and side*. Everything deeper in the rally stays pooled (above). Full rows in `reports/shot_triggers_openings.csv`; 311 green / 290 trap sequences across 212 players.
 
 ### Men
 
@@ -187,28 +187,29 @@ The pooled tables above average over the court the point was served to, but the 
 ### Pete Sampras
 
 **Serve, deuce court**
-- ✅ `serve T · BH slice→1` → serve+1 attempt 45% (1.7×), converts 84% (+24% vs norm) (n=97)
+- ✅ `serve T · BH slice→1` → serve+1 attempt 44% (1.6×), converts 83% (+24% vs norm) (n=95)
 - ✅ `serve wide · BH slice→2` → serve+1 attempt 43% (1.6×), converts 64% (+4% vs norm) (n=130)
 
 **Serve, ad court**
-- ✅ `serve wide · BH slice→2` → serve+1 attempt 48% (1.7×), converts 68% (+11% vs norm) (n=162)
-- ✅ `serve wide · BH drive→1` → serve+1 attempt 44% (1.6×), converts 76% (+19% vs norm) (n=121)
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 48% (1.7×), converts 68% (+11% vs norm) (n=161)
+- ✅ `serve wide · BH drive→1` → serve+1 attempt 43% (1.6×), converts 75% (+19% vs norm) (n=120)
 
 **Return, deuce court**
 - ✅ `BH drive→2 · FH net→3` → return+1 attempt 35% (1.7×), converts 67% (+19% vs norm) (n=85)
-- ⚠️ `BH slice→2 · BH net→3` → return+1 attempt 34% (1.6×) but converts only 33% (-15% vs norm) (n=62)
+- ⚠️ `BH slice→2 · BH net→3` → return+1 attempt 33% (1.6×) but converts only 35% (-13% vs norm) (n=60)
 
 ### Andre Agassi
 
 **Serve, ad court**
-- ✅ `serve wide · BH slice→2` → serve+1 attempt 32% (1.7×), converts 70% (+21% vs norm) (n=442)
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 32% (1.7×), converts 70% (+22% vs norm) (n=438)
 
 **Return, deuce court**
 - ✅ `BH drive→3 · BH net→3` → return+1 attempt 32% (2.2×), converts 67% (+15% vs norm) (n=65)
-- ✅ `BH drive→2 · BH net→3` → return+1 attempt 24% (1.7×), converts 70% (+18% vs norm) (n=110)
+- ✅ `BH drive→2 · BH net→3` → return+1 attempt 24% (1.7×), converts 70% (+19% vs norm) (n=110)
+- ⚠️ `BH drive→3 · BH slice→3` → return+1 attempt 22% (1.5×) but converts only 32% (-20% vs norm) (n=86)
 
 **Return, ad court**
-- ✅ `FH drive→2 · FH net→3` → return+1 attempt 38% (2.4×), converts 64% (+5% vs norm) (n=73)
+- ✅ `FH drive→2 · FH net→3` → return+1 attempt 38% (2.3×), converts 63% (+4% vs norm) (n=72)
 
 ### Women
 
@@ -242,11 +243,11 @@ The pooled tables above average over the court the point was served to, but the 
 ### Steffi Graf
 
 **Serve, deuce court**
-- ✅ `serve T · BH slice→2` → serve+1 attempt 28% (1.5×), converts 54% (+12% vs norm) (n=147)
+- ✅ `serve T · BH slice→2` → serve+1 attempt 28% (1.5×), converts 52% (+11% vs norm) (n=144)
 
 **Serve, ad court**
-- ✅ `serve wide · BH slice→2` → serve+1 attempt 37% (2.1×), converts 64% (+26% vs norm) (n=97)
+- ✅ `serve wide · BH slice→2` → serve+1 attempt 38% (2.1×), converts 64% (+25% vs norm) (n=95)
 
 **Return, ad court**
-- ⚠️ `serve body` → return attempt 15% (1.6×) but converts only 39% (-2% vs norm) (n=503)
+- ⚠️ `serve body` → return attempt 15% (1.6×) but converts only 40% (-2% vs norm) (n=494)
 

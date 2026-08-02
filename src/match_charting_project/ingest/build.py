@@ -70,7 +70,7 @@ def _rename(df: pd.DataFrame, mapping: dict[str, str]) -> pd.DataFrame:
     return df.rename(columns={c: mapping.get(c, _slug(c)) for c in df.columns})
 
 
-def build_matches() -> pd.DataFrame:
+def build_matches() -> "tuple[pd.DataFrame, dict]":
     frames = []
     for gender in GENDERS:
         path = RAW_DIR / f"charting-{gender}-matches.csv"
@@ -80,6 +80,9 @@ def build_matches() -> pd.DataFrame:
         df["gender"] = gender.upper()
         frames.append(df)
     matches = pd.concat(frames, ignore_index=True)
+    # Before anything is coerced: a shifted row has a date where the tournament should
+    # be, so parsing first would turn a recoverable row into a null and hide the cause.
+    matches, fixes = validate.repair_matches(matches)
     matches["date"] = pd.to_datetime(matches["date"], format="%Y%m%d", errors="coerce")
     matches["year"] = matches["date"].dt.year.astype("Int64")
     if "best_of" in matches:
@@ -89,10 +92,10 @@ def build_matches() -> pd.DataFrame:
     ]
     matches = validate.flag_matches(matches)
     matches.to_parquet(PROCESSED_DIR / "matches.parquet", index=False)
-    return matches
+    return matches, fixes
 
 
-def build_points() -> pd.DataFrame:
+def build_points() -> "tuple[pd.DataFrame, dict]":
     frames = []
     for gender in GENDERS:
         for decade in POINT_DECADES:
@@ -109,8 +112,11 @@ def build_points() -> pd.DataFrame:
             points[col] = pd.to_numeric(points[col], errors="coerce").astype("Int64")
     if "tb_set" in points:
         points["tb_set"] = points["tb_set"].map(POINTS_BOOL_MAP).astype("boolean")
+    # After the numeric coercion, since finding where one chart ends and the next
+    # begins means comparing point numbers, not the strings they arrived as.
+    points, fixes = validate.dedupe_points(points)
     points.to_parquet(PROCESSED_DIR / "points.parquet", index=False)
-    return points
+    return points, fixes
 
 
 def build_stats(which: str = "core") -> list[str]:
@@ -162,9 +168,9 @@ def build_duckdb() -> list[str]:
 def build_frames(stats_which: str = "core") -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build & write the parquet frames and the data-quality report."""
     ensure_dirs()
-    matches = build_matches()
+    matches, fix_m = build_matches()
     print(f"  matches : {len(matches):>9,} rows -> matches.parquet")
-    points = build_points()
+    points, fix_p = build_points()
     print(f"  points  : {len(points):>9,} rows -> points.parquet")
     stats = build_stats(stats_which)
     print(f"  stats   : {', '.join(stats) if stats else 'none'}")
@@ -175,7 +181,16 @@ def build_frames(stats_which: str = "core") -> tuple[pd.DataFrame, pd.DataFrame]
 
     report_path = PROJECT_ROOT / "reports" / "data_quality.md"
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(validate.render_markdown(m_rep, p_rep))
+    report_path.write_text(validate.render_markdown(m_rep, p_rep, fix_m, fix_p))
+    # The repairs lead the line as well as the report: they are what changed, and a
+    # build that quietly repaired nine rows should say so where it is read.
+    print(
+        f"  repairs : {fix_m['shifted_rows']} shifted match rows "
+        f"({len(fix_m['repaired'])} repaired, "
+        f"{len(fix_m['dropped_duplicate']) + len(fix_m['dropped_unrecoverable'])} dropped), "
+        f"{fix_p['double_charted']} double-charted matches "
+        f"(-{fix_p.get('dropped_rows', 0):,} point rows)"
+    )
     print(
         f"  quality : {m_rep['invalid_surface']} bad surfaces, "
         f"{p_rep['duplicate_match_pt']} dup points -> reports/data_quality.md"

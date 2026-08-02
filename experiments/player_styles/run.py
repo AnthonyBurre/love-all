@@ -6,7 +6,8 @@ Produces, per gender (kept separate — style spaces differ):
   reports/figures/styles_pca_{men,women}.png      players in PC1-PC2, by cluster
   reports/figures/styles_heatmap_{men,women}.png  what defines each archetype
   reports/player_styles.md                        the named archetypes + exemplars
-  reports/player_style_clusters.csv               player -> cluster (for class WPA)
+  reports/player_style_clusters.csv               player -> cluster + how well it fits,
+                                                  and the fingerprint behind it
 """
 
 import re
@@ -23,7 +24,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from cluster import describe, kmeans, pca, silhouette, standardize  # noqa: E402
+from cluster import describe, kmeans, pca, silhouette_samples, standardize  # noqa: E402
 from fingerprint import FEATURES, build_fingerprints  # noqa: E402
 
 from match_charting_project.analysis.career_eras import load_era_map  # noqa: E402
@@ -100,6 +101,23 @@ def fig_heatmap(clusters, path, title):
 
 _SPLIT_RE = re.compile(r"^(?P<base>.+) \((?P<y0>\d{4})[–-](?P<y1>\d{4})\)$")
 
+# Above what per-entity silhouette an archetype is worth asserting.
+#
+# The margin predicts instability sharply: when a fifth of a percent of the corpus was
+# removed, the 57 entities whose label changed had a median margin of 0.02 against 0.14
+# for the 331 that held. So this is the dial between how often a style is named and how
+# often the name survives a trivial change in the data, and it was set by measuring both
+# rather than picked a priori. Zero — the point where a player is exactly as close to a
+# neighbour as to their own cluster — sounds like the principled line but covers only
+# 39% of the churn, which leaves the label wrong about 10% of the time and is the state
+# this is meant to fix.
+#
+# At 0.08 the archetype goes unnamed for 31% of entities and 89% of the churn falls
+# inside that set, so among labels still asserted roughly 2% moved under the same
+# perturbation, against 15% before. Past here it gets expensive: 0.10 buys six more
+# points of churn coverage for nine more points of silence, and 0.12 buys one for twelve.
+CONFIDENT_MARGIN = 0.08
+
 
 def main() -> None:
     FIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -128,7 +146,8 @@ def main() -> None:
         # rather than something the data pins down; 4 reads cleanly and is stable.
         k = 4
         lab, _, _ = kmeans(Z, k, seed=1)
-        sil = silhouette(Z, lab)
+        sil_i = silhouette_samples(Z, lab)
+        sil = float(sil_i.mean())
         sc, _, expl = pca(Z, 2)
         clusters = describe(df, Z, lab, FEATURES)
 
@@ -138,8 +157,10 @@ def main() -> None:
         fig_heatmap(clusters, FIG_DIR / f"styles_heatmap_{label}.png",
                     f"{label.title()} style archetypes — defining features (z-scores)")
 
+        n_soft = int((sil_i <= CONFIDENT_MARGIN).sum())
         print(f"[{g}] {len(df)} entities | k={k} (silhouette {sil:.3f}) | "
-              f"sizes {[clusters[j]['size'] for j in sorted(clusters)]}")
+              f"sizes {[clusters[j]['size'] for j in sorted(clusters)]} | "
+              f"between styles: {n_soft} ({n_soft / len(df):.0%})")
 
         md.append(f"## {label.title()} — {len(df)} entities, {k} archetypes "
                   f"(silhouette {sil:.2f})\n")
@@ -153,13 +174,24 @@ def main() -> None:
             md.append("")
         md.append(f"![heatmap](figures/styles_heatmap_{label}.png)\n")
 
-        for name, j in zip(df.index, lab):
+        for name, j, s in zip(df.index, lab, sil_i):
             arch = archetype_name(clusters[int(j)]["centroid"], FEATURES)
-            mapping_rows.append({
+            row = {
                 "player": name, "gender": g, "cluster": int(j),
                 "archetype": arch,
+                # How much this entity's own cluster beats the next-best one for it.
+                # Shipped per player because the label is only worth asserting where
+                # this is positive — see CONFIDENT_MARGIN.
+                "style_margin": round(float(s), 4),
+                "style_confident": int(s > CONFIDENT_MARGIN),
                 "n_points": int(df.loc[name, "n_points"]),
-            })
+            }
+            # The fingerprint itself travels with the label, so a consumer can benchmark
+            # a player against the style *space* rather than against their cluster's
+            # mean. class_relative_wpa does exactly that; recomputing the fingerprint
+            # there would be a second definition of style that could drift from this one.
+            row.update({f: float(df.loc[name, f]) for f in FEATURES})
+            mapping_rows.append(row)
             mobj = _SPLIT_RE.match(name)
             if mobj:
                 era_arch[(g, mobj["base"])].append((int(mobj["y0"]), int(mobj["y1"]), arch))

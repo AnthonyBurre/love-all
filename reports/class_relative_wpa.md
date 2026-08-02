@@ -8,25 +8,25 @@
 
 | player | archetype | avg_wpa_lost | z | overall rank |
 |---|---|---|---|---|
-| Mats Wilander | Baseline grinder / counterpuncher | 0.053 | -2.28 | 1 |
-| Daniil Medvedev | Big-serving baseliner | 0.062 | -2.25 | 16 |
-| Jack Draper | Big-serving baseliner | 0.064 | -2.01 | 22 |
-| Pete Sampras (1990–1995) | Net-rusher / serve-volleyer | 0.077 | -1.94 | 127 |
-| Alexander Zverev (2024–2026) | Big-serving baseliner | 0.066 | -1.81 | 30 |
-| Juan Martin Del Potro (2014–2022) | Big-serving baseliner | 0.066 | -1.71 | 37 |
-| Andrei Chesnokov | Baseline grinder / counterpuncher | 0.057 | -1.71 | 2 |
-| Juan Martin Del Potro (2007–2013) | Big-serving baseliner | 0.066 | -1.69 | 38 |
-| Daniel Evans | Slice & variety | 0.069 | -1.59 | 53 |
-| Boris Becker (1985–1990) | Net-rusher / serve-volleyer | 0.080 | -1.57 | 148 |
-| Gilles Simon | Baseline grinder / counterpuncher | 0.058 | -1.57 | 3 |
-| Fabrice Santoro | Baseline grinder / counterpuncher | 0.058 | -1.56 | 4 |
+| Mats Wilander | Baseline grinder / counterpuncher | 0.053 | -2.32 | 1 |
+| Fabrice Santoro | Slice & variety | 0.058 | -2.07 | 4 |
+| Bjorn Borg | Baseline grinder / counterpuncher | 0.058 | -1.94 | 3 |
+| Tomas Martin Etcheverry | Baseline grinder / counterpuncher | 0.059 | -1.89 | 5 |
+| Gilles Simon | Baseline grinder / counterpuncher | 0.058 | -1.87 | 2 |
+| Lleyton Hewitt (1998–2004) | Baseline grinder / counterpuncher | 0.060 | -1.85 | 10 |
+| Roberto Bautista Agut | Baseline grinder / counterpuncher | 0.059 | -1.82 | 6 |
+| Roberto Carballes Baena | Baseline grinder / counterpuncher | 0.059 | -1.75 | 7 |
+| Daniil Medvedev | Big-serving baseliner | 0.062 | -1.74 | 15 |
+| Novak Djokovic (2017–2026) | Baseline grinder / counterpuncher | 0.061 | -1.72 | 13 |
+| Thomas Muster | Baseline grinder / counterpuncher | 0.060 | -1.69 | 9 |
+| Andrei Chesnokov | Baseline grinder / counterpuncher | 0.059 | -1.62 | 8 |
 
 **Best in each archetype:**
 
-- *Baseline grinder / counterpuncher* (82 players): **Mats Wilander** (0.053)
-- *Big-serving baseliner* (107 players): **Daniil Medvedev** (0.062)
-- *Net-rusher / serve-volleyer* (26 players): **Pete Sampras (1990–1995)** (0.077)
-- *Slice & variety* (26 players): **Daniel Evans** (0.069)
+- *Baseline grinder / counterpuncher* (105 players): **Mats Wilander** (0.053)
+- *Big-serving baseliner* (80 players): **Daniil Medvedev** (0.062)
+- *Net-rusher / serve-volleyer* (31 players): **Pete Sampras (1990–1995)** (0.077)
+- *Slice & variety* (26 players): **Fabrice Santoro** (0.058)
 
 ## Women
 
@@ -34,22 +34,22 @@
 
 | player | archetype | avg_wpa_lost | z | overall rank |
 |---|---|---|---|---|
-| Caroline Wozniacki | Baseline grinder / counterpuncher | 0.052 | -2.42 | 1 |
-| Linda Fruhvirtova | All-courter | 0.061 | -2.39 | 6 |
-| Sara Sorribes Tormo | Baseline grinder / counterpuncher | 0.054 | -2.21 | 2 |
-| Daria Kasatkina (2023–2026) | All-courter | 0.065 | -1.84 | 12 |
-| Jennifer Brady | Big serve / first-strike | 0.071 | -1.71 | 37 |
-| Sara Errani | Baseline grinder / counterpuncher | 0.057 | -1.70 | 3 |
-| Agnieszka Radwanska | Baseline grinder / counterpuncher | 0.057 | -1.67 | 4 |
-| Elina Svitolina | All-courter | 0.066 | -1.59 | 15 |
-| Monica Seles | All-courter | 0.068 | -1.40 | 17 |
-| Victoria Azarenka (2020–2025) | All-courter | 0.068 | -1.37 | 19 |
-| Kiki Bertens | Big serve / first-strike | 0.074 | -1.35 | 62 |
-| Simona Halep | All-courter | 0.068 | -1.33 | 21 |
+| Caroline Wozniacki | Baseline grinder / counterpuncher | 0.052 | -2.60 | 1 |
+| Agnieszka Radwanska | Baseline grinder / counterpuncher | 0.057 | -1.94 | 4 |
+| Linda Fruhvirtova | All-courter | 0.060 | -1.87 | 6 |
+| Sara Sorribes Tormo | Baseline grinder / counterpuncher | 0.054 | -1.73 | 2 |
+| Daria Kasatkina (2015–2022) | Baseline grinder / counterpuncher | 0.060 | -1.71 | 7 |
+| Sara Errani | Baseline grinder / counterpuncher | 0.057 | -1.67 | 3 |
+| Angelique Kerber | Baseline grinder / counterpuncher | 0.061 | -1.63 | 11 |
+| Martina Hingis | Baseline grinder / counterpuncher | 0.059 | -1.62 | 5 |
+| Magdalena Frech | Baseline grinder / counterpuncher | 0.061 | -1.59 | 10 |
+| Daria Kasatkina (2023–2026) | All-courter | 0.064 | -1.50 | 12 |
+| Katie Volynets | Baseline grinder / counterpuncher | 0.061 | -1.49 | 8 |
+| Flavia Pennetta | Baseline grinder / counterpuncher | 0.064 | -1.45 | 13 |
 
 **Best in each archetype:**
 
-- *All-courter* (67 players): **Linda Fruhvirtova** (0.061)
-- *Baseline grinder / counterpuncher* (39 players): **Caroline Wozniacki** (0.052)
-- *Big serve / first-strike* (39 players): **Jennifer Brady** (0.071)
-- *Slice & net specialist* (7 players): **Amelie Mauresmo** (0.069)
+- *All-courter* (60 players): **Linda Fruhvirtova** (0.060)
+- *Baseline grinder / counterpuncher* (49 players): **Caroline Wozniacki** (0.052)
+- *Big serve / first-strike* (39 players): **Jennifer Brady** (0.070)
+- *Slice & net specialist* (4 players): **Tatjana Maria** (0.068)

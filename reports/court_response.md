@@ -4,10 +4,10 @@
 
 ## Men
 
-- 1,284,468 points → 1,269,499 parsed → 3,587,652 rally-shot pairs → 3,526,567 usable observations, 735,124 of them shot-3 responses to a depth-charted return.
-- 468 players clear the gates with at least one stable pattern.
-- **Split-half stability**: r = +0.73 across 27,450 player-state-response cells — the tendencies repeat in the other half of the same player's matches.
-- **Distinctiveness**: the most-shared headline pattern (drive into the BH corner → crosscourt BH slice) tops 58 of 468 profiles (12%).
+- 1,281,836 points → 1,266,981 parsed → 3,579,737 rally-shot pairs → 3,519,200 usable observations, 733,587 of them shot-3 responses to a depth-charted return.
+- 467 players clear the gates with at least one stable pattern.
+- **Split-half stability**: r = +0.73 across 27,426 player-state-response cells — the tendencies repeat in the other half of the same player's matches.
+- **Distinctiveness**: the most-shared headline pattern (drive into the BH corner → crosscourt BH slice) tops 58 of 467 profiles (12%).
 
 **Highest-volume profiles** (lift vs the field in the same state; both-halves lifts in parentheses):
 
@@ -15,50 +15,50 @@
 - **Novak Djokovic** (R): drive into the BH corner → **BH drive down the line** (1.4x, n=8645/51097, halves 1.4/1.5, wins 52% vs 46%); drive into the middle → **BH drive down the line** (1.6x, n=3467/44399, halves 1.7/1.6, wins 53% vs 50%); drive into the BH corner → **BH net shot down the line** (1.4x, n=1475/51097, halves 1.4/1.5, wins 53% vs 54%)
 - **Rafael Nadal** (L): drive into the middle → **crosscourt FH drive** (1.5x, n=12203/33495, halves 1.5/1.6, wins 61% vs 55%); drive into the BH corner → **BH drive down the line** (1.4x, n=7006/41406, halves 1.4/1.5, wins 52% vs 46%); drive into the BH corner → **BH slice down the line** (2.1x, n=2582/41406, halves 2.0/2.2, wins 41% vs 34%)
 - **Andy Murray** (R): drive into the BH corner → **crosscourt BH slice** (1.5x, n=3250/24314, halves 1.6/1.3, wins 44% vs 41%); drive into the middle → **BH slice down the line** (2.1x, n=282/19764, halves 2.0/2.1, wins 51% vs 46%); drive into the middle → **BH slice through the middle** (1.5x, n=434/19764, halves 1.5/1.5, wins 44% vs 44%)
-- **Hubert Hurkacz** (R): drive into the BH corner → **BH drive down the line** (1.5x, n=3970/22857, halves 1.4/1.5, wins 45% vs 47%); drive into the FH corner → **crosscourt FH slice** (2.1x, n=776/17078, halves 2.2/2.0, wins 31% vs 32%); drive into the middle → **BH drive down the line** (1.4x, n=1249/17942, halves 1.4/1.4, wins 46% vs 50%)
+- **Hubert Hurkacz** (R): drive into the BH corner → **BH drive down the line** (1.5x, n=3960/22813, halves 1.4/1.5, wins 45% vs 47%); drive into the FH corner → **crosscourt FH slice** (2.1x, n=775/17045, halves 2.2/2.0, wins 31% vs 32%); drive into the middle → **BH drive down the line** (1.4x, n=1248/17909, halves 1.4/1.4, wins 46% vs 50%)
 - **Daniil Medvedev** (R): drive into the BH corner → **crosscourt BH drive** (1.6x, n=12330/22778, halves 1.6/1.6, wins 53% vs 48%); drive into the middle → **crosscourt BH drive** (2.1x, n=4953/21596, halves 2.2/2.0, wins 56% vs 51%); slice into the BH corner → **crosscourt BH drive** (2.0x, n=2662/5442, halves 2.1/2.0, wins 57% vs 52%)
 - **Dominic Thiem** (R): drive into the BH corner → **crosscourt BH slice** (2.1x, n=3204/17126, halves 2.1/2.0, wins 44% vs 41%); drive into the BH corner → **inside-out FH drive** (1.6x, n=1344/17126, halves 1.6/1.6, wins 51% vs 53%); drive into the BH corner → **BH slice through the middle** (1.4x, n=1468/17126, halves 1.5/1.4, wins 37% vs 33%)
 - **Stefanos Tsitsipas** (R): drive into the middle → **crosscourt FH drive** (1.5x, n=4185/11659, halves 1.5/1.5, wins 58% vs 55%); drive into the BH corner → **inside-out FH drive** (1.9x, n=1616/17669, halves 1.8/1.9, wins 54% vs 53%); drive into the BH corner → **inside-in FH drive** (2.0x, n=1235/17669, halves 1.9/2.0, wins 60% vs 57%)
 
 **Off the return** (the server's shot 3, by charted return depth — strongest evidence first, one per player):
 
-- **Stefan Edberg**: mid-depth drive return into the middle → **crosscourt BH net shot** (25.4x, n=845/2457, halves 26.3/25.0, wins 70% vs 65%)
+- **Stefan Edberg**: mid-depth drive return into the middle → **crosscourt BH net shot** (25.6x, n=845/2457, halves 26.5/25.2, wins 70% vs 65%)
 - **Rafael Nadal**: mid-depth drive return into the middle → **crosscourt FH drive** (1.7x, n=2708/6139, halves 1.6/1.7, wins 62% vs 57%)
 - **Stefanos Tsitsipas**: mid-depth drive return into the middle → **crosscourt FH drive** (1.7x, n=933/2055, halves 1.6/1.7, wins 62% vs 57%)
-- **Pete Sampras**: mid-depth drive return into the middle → **crosscourt BH net shot** (6.8x, n=242/2041, halves 5.7/8.0, wins 65% vs 66%)
-- **Andre Agassi**: mid-depth drive return into the middle → **crosscourt BH drive** (2.2x, n=589/2520, halves 2.4/2.0, wins 58% vs 53%)
-- **Novak Djokovic**: mid-depth drive return into the middle → **BH drive down the line** (2.1x, n=587/6492, halves 2.2/2.1, wins 57% vs 51%)
+- **Andre Agassi**: mid-depth drive return into the middle → **crosscourt BH drive** (2.2x, n=582/2438, halves 2.5/2.0, wins 58% vs 53%)
+- **Novak Djokovic**: mid-depth drive return into the middle → **BH drive down the line** (2.2x, n=587/6492, halves 2.2/2.1, wins 57% vs 51%)
+- **Pete Sampras**: mid-depth drive return into the middle → **crosscourt BH net shot** (6.7x, n=235/2019, halves 5.6/7.9, wins 65% vs 67%)
 
 ## Women
 
-- 569,826 points → 566,732 parsed → 1,652,222 rally-shot pairs → 1,622,954 usable observations, 383,557 of them shot-3 responses to a depth-charted return.
+- 568,325 points → 565,232 parsed → 1,647,981 rally-shot pairs → 1,621,690 usable observations, 383,217 of them shot-3 responses to a depth-charted return.
 - 346 players clear the gates with at least one stable pattern.
-- **Split-half stability**: r = +0.69 across 15,271 player-state-response cells — the tendencies repeat in the other half of the same player's matches.
+- **Split-half stability**: r = +0.69 across 15,265 player-state-response cells — the tendencies repeat in the other half of the same player's matches.
 - **Distinctiveness**: the most-shared headline pattern (drive into the BH corner → crosscourt BH slice) tops 34 of 346 profiles (10%).
 
 **Highest-volume profiles** (lift vs the field in the same state; both-halves lifts in parentheses):
 
 - **Bianca Andreescu** (R): drive into the FH corner → **FH slice through the middle** (1.9x, n=755/7790, halves 1.9/2.0, wins 30% vs 30%); drive into the FH corner → **FH drop/lob through the middle** (3.2x, n=349/7790, halves 3.1/3.3, wins 30% vs 29%); drive into the middle → **BH slice down the line** (3.1x, n=236/14067, halves 3.3/2.9, wins 39% vs 45%)
 - **Elina Svitolina** (R): drive into the FH corner → **FH slice through the middle** (1.5x, n=637/8331, halves 1.5/1.5, wins 31% vs 30%); drive into the FH corner → **crosscourt FH slice** (1.6x, n=357/8331, halves 1.8/1.4, wins 34% vs 33%); drive into the middle → **FH slice through the middle** (2.1x, n=86/10839, halves 1.9/2.3, wins 45% vs 40%)
-- **Serena Williams** (R): drive into the BH corner → **BH drive down the line** (1.5x, n=1373/6603, halves 1.5/1.5, wins 50% vs 48%); drive into the middle → **crosscourt BH drive** (1.5x, n=1435/7600, halves 1.4/1.5, wins 50% vs 52%); drive into the middle → **BH drive down the line** (1.6x, n=950/7600, halves 1.6/1.5, wins 52% vs 50%)
+- **Serena Williams** (R): drive into the BH corner → **BH drive down the line** (1.5x, n=1366/6556, halves 1.5/1.5, wins 50% vs 48%); drive into the middle → **crosscourt BH drive** (1.5x, n=1415/7506, halves 1.4/1.5, wins 50% vs 52%); drive into the middle → **BH drive down the line** (1.6x, n=943/7506, halves 1.7/1.5, wins 52% vs 50%)
 - **Mirra Andreeva** (R): drive into the FH corner → **FH slice through the middle** (2.6x, n=836/6428, halves 2.3/2.9, wins 39% vs 29%); drive into the FH corner → **crosscourt FH slice** (3.6x, n=607/6428, halves 3.7/3.6, wins 41% vs 33%); drive into the BH corner → **BH drive down the line** (1.5x, n=1561/7448, halves 1.5/1.5, wins 53% vs 48%)
-- **Steffi Graf** (R): drive into the BH corner → **crosscourt BH slice** (7.3x, n=3443/7757, halves 7.1/7.5, wins 50% vs 39%); drive into the middle → **crosscourt BH slice** (24.6x, n=691/4585, halves 23.0/26.2, wins 51% vs 47%); drive into the BH corner → **BH slice down the line** (6.1x, n=1140/7757, halves 6.1/6.1, wins 47% vs 31%)
+- **Steffi Graf** (R): drive into the BH corner → **crosscourt BH slice** (7.3x, n=3423/7706, halves 7.1/7.5, wins 50% vs 39%); drive into the middle → **crosscourt BH slice** (24.6x, n=681/4527, halves 23.0/26.2, wins 50% vs 47%); drive into the BH corner → **BH slice down the line** (6.1x, n=1135/7706, halves 6.2/6.1, wins 47% vs 31%)
 - **Kiki Bertens** (R): drive into the BH corner → **BH slice through the middle** (2.1x, n=1160/7905, halves 2.1/2.1, wins 37% vs 33%); drive into the BH corner → **crosscourt BH slice** (1.6x, n=865/7905, halves 1.6/1.7, wins 43% vs 40%); slice into the middle → **FH drive down the line** (1.6x, n=494/1251, halves 1.6/1.6, wins 63% vs 63%)
 - **Arantxa Rus** (L): drive into the BH corner → **FH drive through the middle** (3.1x, n=114/5183, halves 3.1/3.2, wins 42% vs 44%); drive into the BH corner → **inside-out FH drive** (1.7x, n=174/5183, halves 1.8/1.6, wins 50% vs 54%); drive into the BH corner → **inside-in FH drive** (1.8x, n=124/5183, halves 2.1/1.5, wins 58% vs 58%)
 - **Daria Kasatkina** (R): drive into the middle → **FH drive down the line** (1.5x, n=1417/5025, halves 1.5/1.5, wins 55% vs 53%); drive into the BH corner → **inside-out FH drive** (2.2x, n=261/6183, halves 1.9/2.4, wins 54% vs 54%); drive into the FH corner → **crosscourt FH slice** (2.1x, n=241/4341, halves 2.1/2.1, wins 34% vs 33%)
 
 **Off the return** (the server's shot 3, by charted return depth — strongest evidence first, one per player):
 
-- **Steffi Graf**: mid-depth drive return into the BH corner → **crosscourt BH slice** (10.8x, n=331/809, halves 10.8/11.5, wins 49% vs 37%)
+- **Steffi Graf**: mid-depth drive return into the BH corner → **crosscourt BH slice** (10.8x, n=330/804, halves 10.8/11.6, wins 49% vs 37%)
 - **Caroline Wozniacki**: mid-depth drive return into the middle → **BH drive down the line** (2.3x, n=311/1604, halves 2.2/2.5, wins 58% vs 51%)
-- **Martina Navratilova**: mid-depth drive return into the middle → **crosscourt BH net shot** (75.1x, n=55/374, halves 83.1/79.8, wins 70% vs 59%)
+- **Martina Navratilova**: mid-depth drive return into the middle → **crosscourt BH net shot** (75.1x, n=55/374, halves 83.0/79.7, wins 70% vs 59%)
 - **Iga Swiatek**: deep drive return into the middle → **crosscourt FH drive** (1.5x, n=456/1865, halves 1.4/1.6, wins 58% vs 48%)
-- **Serena Williams**: mid-depth drive return into the middle → **crosscourt BH drive** (1.6x, n=317/1348, halves 1.6/1.6, wins 47% vs 54%)
-- **Elena Rybakina**: mid-depth drive return into the middle → **crosscourt FH drive** (1.5x, n=353/1076, halves 1.5/1.5, wins 60% vs 55%)
+- **Serena Williams**: mid-depth drive return into the middle → **crosscourt BH drive** (1.6x, n=314/1328, halves 1.6/1.6, wins 47% vs 54%)
+- **Elena Rybakina**: mid-depth drive return into the middle → **crosscourt FH drive** (1.5x, n=353/1076, halves 1.5/1.5, wins 60% vs 54%)
 
 ## Against the current signature panel
 
-- The site's signatures: the single most-shared pair (`FH drive→3→BH drive→3`) appears on 69 of 313 player cards (22%).
+- The site's signatures: the single most-shared pair (`FH drive→3→BH drive→3`) appears on 63 of 309 player cards (20%).
 - Here, uncharted-direction artifacts are excluded by construction, handedness is normalized out of the state, and the split-half gate drops anything that does not repeat.
 
 ![stability](figures/court_response_stability.png)

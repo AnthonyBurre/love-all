@@ -218,8 +218,11 @@ function render() {
   $("status").hidden = true;
   const t = pick();
   document.body.dataset.theme = themeFor(t);
+  // The tab keeps the site's name and only that. It used to lead with the selected event,
+  // which made the tab rename itself every time you changed the dropdown — a tab you had
+  // parked reading "Wimbledon" was a tab you could no longer find by its title. The event
+  // is the <h1> on the page, where it doesn't have to compete for ~15 characters.
   $("pageTitle").textContent = glabel(t);
-  document.title = `${glabel(t)} — Love All`;
   updateLegend(t);
 
   // Phones skip the quarter view entirely: the whole draw, one round at a time,

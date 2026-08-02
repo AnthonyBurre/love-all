@@ -52,7 +52,17 @@ def kmeans(Z, k, restarts: int = 16, iters: int = 100, seed: int = 0):
     return best[1], best[2], best[0]
 
 
-def silhouette(Z, lab) -> float:
+def silhouette_samples(Z, lab):
+    """Per-entity silhouette: how much better this point's own cluster fits than the
+    next-best one, in [-1, 1].
+
+    Returned per entity and not just averaged because the average is a property of the
+    clustering while this is a property of the *player* — and with style, where the
+    overall silhouette sits near 0.12, the two say different things. A mean of 0.12
+    describes soft strata; a single player at 0.4 is squarely inside their archetype and
+    one at -0.05 is closer to a neighbouring cluster than to their own, which is a label
+    that should not be asserted as if it were the first kind.
+    """
     D = np.sqrt(((Z[:, None, :] - Z[None, :, :]) ** 2).sum(2))
     labs = np.unique(lab)
     sil = np.zeros(len(Z))
@@ -62,7 +72,11 @@ def silhouette(Z, lab) -> float:
         a = D[i, same].mean() if same.any() else 0.0
         b = min(D[i, lab == j].mean() for j in labs if j != lab[i])
         sil[i] = (b - a) / max(a, b) if max(a, b) > 0 else 0.0
-    return float(sil.mean())
+    return sil
+
+
+def silhouette(Z, lab) -> float:
+    return float(silhouette_samples(Z, lab).mean())
 
 
 def label_from_centroid(centroid, features, n: int = 3) -> str:

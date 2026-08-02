@@ -179,6 +179,63 @@ a { color: var(--acc-d); }
 .qchip:hover { border-color: var(--acc); color: var(--ink); }
 .qchip.on { background: var(--acc); border-color: var(--acc); color: #fff; }
 
+/* Slices only. The cards cut all four corners on the same 45° the rest of the chrome does,
+   so a card and the wire arriving at it are the same shape. The cut is small and even — a
+   card is still a rectangle to read, and 9px of corner is width the names and the games
+   were never using. The 8-across row cuts less (6px): its cards are ~135px wide, and a cut
+   sized for a 250px card eats into a 12px name there.
+   corner-shape, and not the clip-path this used to be. A clip is applied *after* everything
+   the element paints, so it took the border off the four diagonals and erased the offset
+   hover shadow and the focus ring entirely — three separate things then had to be rebuilt
+   inside the box (a hand-drawn evenodd ring for the outline, inset shadows standing in for
+   a lift). A bevel is the box's own geometry instead: border, box-shadow and outline all
+   follow it for free, which is why every rule below this point is simply the full draw's,
+   inherited. Where corner-shape isn't supported the whole block is skipped and the cards
+   come out square — the full draw's corner, which is the right thing to degrade to.
+   border-radius lives inside the @supports for that reason: on its own it would round
+   them, and nothing on this page is round. */
+@supports (corner-shape: bevel) {
+  .quarters .match { border-radius: 9px; corner-shape: bevel; }
+  .quarters .qcell.span1 .match { border-radius: 6px; }
+  /* --- charting depth, told by the corners ------------------------------------------
+     The tier mark moves into the facets the bevel opens up, and *how many are filled*
+     is the depth: four for deep charting, two for decent, one for thin, none for
+     uncharted. The colour still says it — same ramp as the legend — but it is no longer
+     the only thing saying it, and a count survives what a shade does not: a greyscale
+     print, a red-green reader, and the corner of the eye halfway down a 32-card draw.
+     Which is the job this mark actually has. Nobody reads a card to learn its tier;
+     they sweep a draw looking for the matches worth opening.
+     It also retires the wedge. That was a triangle laid on a square corner, and it only
+     existed because a rule down the edge was the same shape as the edge — with a bevel
+     there is a facet to fill, so the tier is the card's own geometry and there is one
+     less thing drawn on top of it.
+     Painted as background gradients rather than elements: the bevel already clips the
+     background box, so each triangle shows exactly as much as its corner opens and no
+     more. background-image, not the `background` shorthand — the tint underneath is set
+     by .match.t-rich and a shorthand here would wipe it. */
+  /* One filled facet per corner, differing only in which way the gradient runs. Declared
+     on the card and not in :root, because a custom property substitutes its var()s
+     against the element it is *declared* on — at :root there is no --tier and no --notch
+     and all four resolve to nothing. Same trap as --head-meta further up. */
+  .quarters .match { overflow: hidden; --notch: 11px;
+    --nw-tl: linear-gradient(135deg, var(--tier) 0 var(--notch), transparent var(--notch));
+    --nw-tr: linear-gradient(225deg, var(--tier) 0 var(--notch), transparent var(--notch));
+    --nw-bl: linear-gradient(45deg,  var(--tier) 0 var(--notch), transparent var(--notch));
+    --nw-br: linear-gradient(315deg, var(--tier) 0 var(--notch), transparent var(--notch)); }
+  .quarters .qcell.span1 .match { --notch: 8px; }
+  .quarters .match::before { display: none; }
+  .quarters .match { background-repeat: no-repeat; background-size: var(--notch) var(--notch); }
+  .quarters .match.t-thin { background-image: var(--nw-tl); background-position: top left; }
+  .quarters .match.t-some { background-image: var(--nw-tl), var(--nw-br);
+    background-position: top left, bottom right; }
+  .quarters .match.t-rich { background-image: var(--nw-tl), var(--nw-tr), var(--nw-bl), var(--nw-br);
+    background-position: top left, top right, bottom left, bottom right; }
+}
+/* The start time (or the live marker) is the one line under a card's two columns of names
+   and games, and left-aligned it hung off the end of a row that is otherwise balanced about
+   its centre. Centred, it reads as belonging to the match rather than to the left player. */
+.quarters .match .detail { text-align: center; }
+
 /* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
 /* overflow-y is hidden, not left to default: `overflow-x: auto` alone makes this a scroll
    container on *both* axes (a visible overflow-y computes to auto next to a scrolling
@@ -604,11 +661,21 @@ a { color: var(--acc-d); }
 .tbar.b i > span { background: var(--b); }
 /* the missed half of the same decision: same hue, drained of it */
 .tbar i > span.miss { opacity: .38; }
+/* The other way a bar splits. An ace is a service point won like every other point in that
+   bar — there is no failed half to drain — so the ace share deepens instead of the rest
+   draining. Drained, it was the wrong shape of statement and the wrong weight: aces are a
+   twelfth of a good server's points won, so ~90% of the strip's headline row went faint and
+   the serve bars came out paler than the return bars under them. Deepened, the row keeps its
+   weight and the marked part is the one that reads as emphatic, which is what winning a
+   point outright is. It sits against the centre line, so the two players' cores meet. */
+.tbar.a i > span.deep { background: color-mix(in srgb, var(--a) 60%, #000); }
+.tbar.b i > span.deep { background: color-mix(in srgb, var(--b) 60%, #000); }
 .tbar u { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: var(--ink); opacity: .5; }
 
 .tapenote { margin: 12px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
+.segkey.deep { background: color-mix(in srgb, var(--muted) 60%, #000); }
 .tickkey { display: inline-block; width: 2px; height: 11px; background: var(--ink); opacity: .5; vertical-align: -2px; margin: 0 1px; }
 
 /* --- a topic, one header, two columns -------------------------------------------
