@@ -56,14 +56,20 @@ def _live() -> None:
             print(f"  {r['label']:<18} {len(r['matches']):>3} matches")
 
 
-def _feeds_calendar(season: "int | None") -> None:
-    """Re-read the season pages. Run once when the tours publish a calendar, and again if an
-    event changes level mid-season."""
+def _feeds_calendar(season: "int | None", if_stale: bool = False) -> None:
+    """Re-read the season pages: tour levels, and the per-event draw-page links the draw feed
+    needs. ``--if-stale`` skips the read while the cache is fresh — what CI runs hourly."""
     from collections import Counter
 
     from match_charting_project.live import feeds
 
-    doc = feeds.refresh_calendar(season)
+    if if_stale:
+        doc, refreshed = feeds.refresh_calendar_if_stale(season)
+        if not refreshed:
+            print(f"  calendar cache is fresh ({doc.get('fetched')}) — not re-reading.")
+            return
+    else:
+        doc = feeds.refresh_calendar(season)
     by_tier = Counter(e["tier"] for e in doc["events"])
     print(f"  calendar {doc['season']}: {len(doc['events'])} events -> {feeds.CALENDAR}")
     for tier, n in sorted(by_tier.items()):
@@ -265,6 +271,8 @@ def main(argv: list[str] | None = None) -> None:
     fdsub = fd.add_subparsers(dest="feeds_cmd", required=True)
     fc = fdsub.add_parser("calendar", help="re-read both tours' season pages (tier + surface)")
     fc.add_argument("--season", type=int, default=None, help="defaults to the current year")
+    fc.add_argument("--if-stale", action="store_true",
+                    help="skip the read while the cached calendar is still fresh")
     fdsub.add_parser("draws", help="fetch any newly-published draw sheet for live events")
     site = sub.add_parser("site", help="build site data artifacts")
     site.add_argument("what", choices=["build-insights", "build-brackets"])
@@ -296,7 +304,7 @@ def main(argv: list[str] | None = None) -> None:
             _history_seed()
     elif args.cmd == "feeds":
         if args.feeds_cmd == "calendar":
-            _feeds_calendar(args.season)
+            _feeds_calendar(args.season, args.if_stale)
         elif args.feeds_cmd == "draws":
             _feeds_draws()
     elif args.cmd == "site":

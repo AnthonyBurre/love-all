@@ -1,6 +1,9 @@
 """Tests for the live source adapter + player matching (no network needed)."""
 
-from match_charting_project.live import brackets, espn, levels, players
+import json
+from datetime import date, datetime, timedelta, timezone
+
+from match_charting_project.live import brackets, espn, feeds, levels, players
 
 
 def test_normalize_strips_accents_and_punctuation():
@@ -193,3 +196,88 @@ def test_bracket_linkage_duplicate_name_claims_nothing():
     rounds = brackets.rounds(t)
     (r1,) = rounds[0]["matches"]
     assert r1.feeds is None
+
+
+# --- calendar freshness ----------------------------------------------------------------
+
+def _cal_doc(fetched, season=None):
+    return {"season": season or date.today().year, "fetched": fetched,
+            "events": [{"event": "Canadian Open", "gender": "M", "city": "Montreal",
+                        "tier": "ATP 1000", "month": 8, "singles_pages": []}]}
+
+
+def _iso(**ago):
+    return (datetime.now(timezone.utc) - timedelta(**ago)).isoformat(timespec="minutes")
+
+
+def test_a_calendar_read_within_the_day_is_fresh():
+    assert feeds.calendar_stale(_cal_doc(_iso(hours=3))) is False
+
+
+def test_a_calendar_read_days_ago_is_stale_even_in_its_own_season():
+    # The regression this gate exists for: the cache is the right season and parses fine,
+    # but predates the National Bank Open draw — so it links no draw page for it, and the
+    # season check it replaced would have held it until January.
+    assert feeds.calendar_stale(_cal_doc(_iso(days=3))) is True
+
+
+def test_last_seasons_calendar_is_stale():
+    assert feeds.calendar_stale(_cal_doc(_iso(minutes=1), season=date.today().year - 1))
+
+
+def test_an_empty_or_undated_calendar_is_stale():
+    assert feeds.calendar_stale({})                          # no cache at all
+    assert feeds.calendar_stale({"season": date.today().year, "events": []})
+    assert feeds.calendar_stale(_cal_doc(None))              # written without a stamp
+    assert feeds.calendar_stale(_cal_doc("not a timestamp"))
+
+
+def test_a_naive_timestamp_is_read_as_utc():
+    # Older caches were stamped without an offset; those must not blow up the comparison.
+    naive = datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="minutes")
+    assert feeds.calendar_stale(_cal_doc(naive)) is False
+
+
+# --- event labels ----------------------------------------------------------------------
+
+CAL_CANADA = {"season": 2026, "events": [
+    {"gender": "M", "event": "Canadian Open", "city": "Montreal", "tier": "ATP 1000",
+     "surface": "Hard", "indoor": False, "month": 8, "singles_pages": []},
+    {"gender": "W", "event": "Canadian Open", "city": "Toronto", "tier": "WTA 1000",
+     "surface": "Hard", "indoor": False, "month": 8, "singles_pages": []},
+]}
+
+
+def test_event_meta_names_an_event_the_way_people_do():
+    # The feed calls it after the title sponsor and files both draws under one venue. The
+    # calendar knows the name people use, the per-tour level, and that the men are in
+    # Montreal while the women are in Toronto — same event, two cities.
+    sponsor = "National Bank Open presented by Rogers"
+    men = feeds.event_meta_for("Toronto", sponsor, "M", 8, CAL_CANADA)
+    women = feeds.event_meta_for("Toronto", sponsor, "W", 8, CAL_CANADA)
+    assert men["common_name"] == women["common_name"] == "Canadian Open"
+    assert (men["level"], men["venue"]) == ("ATP 1000", "Montreal")
+    assert (women["level"], women["venue"]) == ("WTA 1000", "Toronto")
+    assert men["surface"] == "Hard" and men["indoor"] is False
+
+
+def test_event_meta_is_empty_when_the_calendar_cannot_place_the_event():
+    # A stop the calendar doesn't cover leaves the site showing the feed's name alone,
+    # which is the state this replaced — never a line of half-filled labels.
+    assert feeds.event_meta_for("Nowhere", "Some New Open", "M", 3, CAL_CANADA) == {}
+    assert feeds.event_meta_for("Toronto", "National Bank Open", "M", 8,
+                                {"season": 2026, "events": []}) == {}
+
+
+def test_serialize_carries_the_event_labels_so_the_archive_freezes_them():
+    t = _tour([_m("f", 100, "Final", "Ann", "Bea")])
+    t.name, t.city, t.gender = "National Bank Open presented by Rogers", "Toronto", "M"
+    for m in t.matches:
+        m.date = "2026-08-05T18:00Z"
+
+    assert brackets.serialize(t, use_fixture=False)["event"] == {}   # no calendar cached
+    feeds.CALENDAR.write_text(json.dumps(CAL_CANADA))                # conftest's tmp path
+    payload = brackets.serialize(t, use_fixture=False)
+    assert payload["event"]["common_name"] == "Canadian Open"
+    assert payload["event"]["level"] == "ATP 1000"
+    assert payload["name"] == t.name                    # the sponsor's name is still there

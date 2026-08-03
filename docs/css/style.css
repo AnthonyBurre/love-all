@@ -27,6 +27,24 @@
   --cov-some: #e6c885;     /* decent — the same hue, drained */
   --cov-thin: #93a0b2;     /* thin — neutral: too little to read patterns from */
   --cov-none: #dfe4ec;     /* uncharted — a hairline, and nothing else */
+  /* What the corner notches mix toward. They keep the tier's own colour — the count and
+     the colour say the same thing twice, which is the point of a redundant encoding —
+     but pulled back toward this neutral so the ramp reads as a family of marks rather
+     than four different-coloured ones. It is --cov-thin's grey, where the ramp already
+     turns neutral, so the thin tier mixes to exactly itself and is unchanged.
+     Fixed rather than themed, like --up and --win: how well charted a match is belongs
+     to the data, not to the tournament it was played at. */
+  --notch-neutral: #93a0b2;
+  --notch-mix: 72%;        /* how much of the tier's own colour survives the pull */
+  /* The tint under a card, in the two tiers that carry one. Named because the legend has
+     to be able to wear exactly the same wash as the thing it is a key for. */
+  --tint-rich: color-mix(in srgb, var(--cov-rich) 15%, var(--card));
+  --tint-some: color-mix(in srgb, var(--cov-some) 7%, var(--card));
+  /* Toned down for the slices view, where the notch count carries the ordering and the
+     tint is only a hint behind it. In the full draw the tint is still the only thing that
+     works at a glance, so it keeps its full strength there — see the corner-shape block. */
+  --tint-rich-soft: color-mix(in srgb, var(--cov-rich) 7%, var(--card));
+  --tint-some-soft: color-mix(in srgb, var(--cov-some) 4%, var(--card));
   /* "better than the tour" — a reading of a number, not decoration, so it is fixed like
      --warn rather than following the event's palette. A ▲ that is brown at Roland Garros
      and blue in New York is saying something about the tournament, which it isn't. */
@@ -108,7 +126,11 @@ a { color: var(--acc-d); }
   background: var(--trim); clip-path: polygon(0 0, 34% 0, 30% 100%, 0 100%); }
 .site-head .brand { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: var(--head-meta); }
 .site-head h1 { margin: 4px 0 8px; font-size: 40px; font-weight: 800; line-height: 1.05; letter-spacing: -0.035em; }
-.site-head .tag { margin: 0; max-width: 760px; line-height: 1.55; color: var(--head-ink); font-size: 14.5px; opacity: .92; }
+/* The only prose in the band now that the site's general blurb is gone: it describes the
+   draw you are looking at rather than the site, so it takes the full-strength ink and
+   enough weight to read as part of the title block instead of a footnote to it. */
+.site-head .billing { margin: 0; max-width: 760px; line-height: 1.5;
+  font-size: 13.5px; font-weight: 600; letter-spacing: .01em; color: var(--head-ink); }
 .site-head a { color: #fff; text-decoration: underline; }
 .meta { margin: 12px 0 0; font-size: 12.5px; color: var(--head-meta); }
 .contribute { font-weight: 600; }
@@ -137,12 +159,14 @@ a { color: var(--acc-d); }
    wedge the match cards wear, so the legend and the thing it explains are the same shape.
    The wedge is drawn from currentColor so one rule sets both triangle edges. */
 .legend { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap; }
-.legend .chip { position: relative; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 4px 9px 4px 14px; clip-path: var(--chip-clip); background: var(--card); border: 1px solid var(--line); }
-.legend .chip::before { content: ""; position: absolute; left: 0; top: 0; border: 6px solid transparent; border-left-color: currentColor; border-top-color: currentColor; }
-.legend .chip.t-rich::before { color: var(--cov-rich); }
-.legend .chip.t-some::before { color: var(--cov-some); }
-.legend .chip.t-thin::before { color: var(--cov-thin); }
-.legend .chip.t-none::before { color: var(--cov-none); }
+.legend .chip { position: relative; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 4px 9px 4px 14px; clip-path: var(--chip-clip); background-color: var(--card); border: 1px solid var(--line); }
+/* --tier on the chip rather than a colour on its ::before, so the slices view's notches
+   can read the same variable the cards do and the two can't drift apart. */
+.legend .chip::before { content: ""; position: absolute; left: 0; top: 0; border: 6px solid transparent; border-left-color: var(--tier); border-top-color: var(--tier); }
+.legend .chip.t-rich { --tier: var(--cov-rich); }
+.legend .chip.t-some { --tier: var(--cov-some); }
+.legend .chip.t-thin { --tier: var(--cov-thin); }
+.legend .chip.t-none { --tier: var(--cov-none); }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
@@ -167,7 +191,12 @@ a { color: var(--acc-d); }
 .qcell.span1 .side { flex-direction: column; align-items: stretch; gap: 0; }
 .qcell.span1 .nm { font-size: 12px; }
 .qcell.span1 .sets { font-size: 11px; text-align: right; }
-.qcell.picked .match { border-color: var(--acc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 28%, transparent); }
+/* The match above the open section wears nothing: the filled chip under it and the hot wire
+   running down from it already say which section is unfolded, and a third mark saying the
+   same thing cost the card its own behaviour — an accent border and a ring outrank
+   .match:hover, so the one card you had just clicked was the one card that stopped
+   answering the pointer, which reads as disabled rather than as chosen. It is still a
+   match tile like every other, and opens its own panel. */
 .quarters .wires .hot { stroke: var(--acc); stroke-width: 2.25; }
 /* textless selector chip under each round-of-16 match: pick one and its earlier
    rounds render below; the seed-leader label lives in the tooltip */
@@ -218,18 +247,60 @@ a { color: var(--acc-d); }
      against the element it is *declared* on — at :root there is no --tier and no --notch
      and all four resolve to nothing. Same trap as --head-meta further up. */
   .quarters .match { overflow: hidden; --notch: 11px;
-    --nw-tl: linear-gradient(135deg, var(--tier) 0 var(--notch), transparent var(--notch));
-    --nw-tr: linear-gradient(225deg, var(--tier) 0 var(--notch), transparent var(--notch));
-    --nw-bl: linear-gradient(45deg,  var(--tier) 0 var(--notch), transparent var(--notch));
-    --nw-br: linear-gradient(315deg, var(--tier) 0 var(--notch), transparent var(--notch)); }
+    --notch-ink: color-mix(in srgb, var(--tier) var(--notch-mix), var(--notch-neutral));
+    --nw-tl: linear-gradient(135deg, var(--notch-ink) 0 var(--notch), transparent var(--notch));
+    --nw-tr: linear-gradient(225deg, var(--notch-ink) 0 var(--notch), transparent var(--notch));
+    --nw-bl: linear-gradient(45deg,  var(--notch-ink) 0 var(--notch), transparent var(--notch));
+    --nw-br: linear-gradient(315deg, var(--notch-ink) 0 var(--notch), transparent var(--notch)); }
   .quarters .qcell.span1 .match { --notch: 8px; }
   .quarters .match::before { display: none; }
   .quarters .match { background-repeat: no-repeat; background-size: var(--notch) var(--notch); }
   .quarters .match.t-thin { background-image: var(--nw-tl); background-position: top left; }
-  .quarters .match.t-some { background-image: var(--nw-tl), var(--nw-br);
+  /* background-color, not the `background` shorthand: the shorthand would take the notches
+     off with it. The wash is the softened one — four notches already order this row, and
+     at full strength the tint was competing with them for the same job. */
+  .quarters .match.t-some { background-color: var(--tint-some-soft);
+    background-image: var(--nw-tl), var(--nw-br);
     background-position: top left, bottom right; }
-  .quarters .match.t-rich { background-image: var(--nw-tl), var(--nw-tr), var(--nw-bl), var(--nw-br);
+  .quarters .match.t-rich { background-color: var(--tint-rich-soft);
+    background-image: var(--nw-tl), var(--nw-tr), var(--nw-bl), var(--nw-br);
     background-position: top left, top right, bottom left, bottom right; }
+
+  /* The legend is a key, so it is built out of the same parts as the thing it keys: a
+     bevelled box wearing the same wash and the same number of notches the cards do.
+     Counting them on a chip is how you learn that the count means anything — the ramp
+     alone never said that, and with the notches doing most of the work it is the half of
+     the encoding a reader is least likely to guess. */
+  body[data-view="quarters"] .legend .chip {
+    clip-path: none; border-radius: 7px; corner-shape: bevel; overflow: hidden;
+    padding: 4px 11px; --notch: 8px;
+    background-repeat: no-repeat; background-size: var(--notch) var(--notch);
+    --notch-ink: color-mix(in srgb, var(--tier) var(--notch-mix), var(--notch-neutral));
+    --nw-tl: linear-gradient(135deg, var(--notch-ink) 0 var(--notch), transparent var(--notch));
+    --nw-tr: linear-gradient(225deg, var(--notch-ink) 0 var(--notch), transparent var(--notch));
+    --nw-bl: linear-gradient(45deg,  var(--notch-ink) 0 var(--notch), transparent var(--notch));
+    --nw-br: linear-gradient(315deg, var(--notch-ink) 0 var(--notch), transparent var(--notch)); }
+  body[data-view="quarters"] .legend .chip::before { display: none; }
+  body[data-view="quarters"] .legend .chip.t-thin {
+    background-image: var(--nw-tl); background-position: top left; }
+  body[data-view="quarters"] .legend .chip.t-some { background-color: var(--tint-some-soft);
+    background-image: var(--nw-tl), var(--nw-br);
+    background-position: top left, bottom right; }
+  body[data-view="quarters"] .legend .chip.t-rich { background-color: var(--tint-rich-soft);
+    background-image: var(--nw-tl), var(--nw-tr), var(--nw-bl), var(--nw-br);
+    background-position: top left, top right, bottom left, bottom right; }
+
+  /* The section selector is the only control that lives *inside* the draw rather than in
+     the row above it, so it takes the draw's corner and not the row's: the same bevel the
+     cards around it wear, in place of the parallelogram the tabs, the dropdown and the
+     round chips take. A parallelogram among bevelled octagons was the one shape in this
+     view that belonged to a different picture — and it is the chip sitting closest to the
+     cards, directly under one.
+     6px, not the card's 9: this is the smallest box on the page at ~22px tall, and a cut
+     sized for a 250px card takes most of its height. It is the span1 card's cut, which is
+     the same choice made there for the same reason. Where corner-shape isn't supported
+     the base rule's parallelogram stands, exactly as the cards fall back to square. */
+  .qsel { clip-path: none; border-radius: 6px; corner-shape: bevel; }
 }
 /* The start time (or the live marker) is the one line under a card's two columns of names
    and games, and left-aligned it hung off the end of a row that is otherwise balanced about
@@ -271,11 +342,19 @@ a { color: var(--acc-d); }
    already lightened, so an equal mix of each lands on nearly the same tint and the fills
    stop ordering anything. These are set by where they come out, not by what they are —
    ~#f7eedd against ~#fdfbf6, which is one clear step and then a second, fainter one. */
-.match.t-rich { --tier: var(--cov-rich); background: color-mix(in srgb, var(--cov-rich) 15%, var(--card)); }
-.match.t-some { --tier: var(--cov-some); background: color-mix(in srgb, var(--cov-some) 7%, var(--card)); }
+/* background-color, never the `background` shorthand. The shorthand resets every
+   background longhand it doesn't mention — including background-size — and these rules
+   tie with `.quarters .match` on specificity while sitting later in the file, so they
+   won and quietly reset the notch's 11px background box to `auto`. That box is the
+   shape: clipped to 11 square, the gradient's triangle is cut twice and the bevel takes
+   the outer corner, which is the six-sided mark. Unclipped it is a plain triangle with
+   one corner off — a trapezoid. Only t-thin came out right, because its base rule sets
+   a custom property and no background at all. */
+.match.t-rich { --tier: var(--cov-rich); background-color: var(--tint-rich); }
+.match.t-some { --tier: var(--cov-some); background-color: var(--tint-some); }
 .match.t-thin { --tier: var(--cov-thin); }
 .match.t-none { --tier: var(--cov-none); }
-.match.t-tbd { --tier: var(--line); border-style: dashed; background: transparent; }
+.match.t-tbd { --tier: var(--line); border-style: dashed; background-color: transparent; }
 .match.ghost { cursor: default; }
 .match.ghost:hover { border-color: var(--line); box-shadow: none; }
 /* A bye holds a real entrant already through, so it reads solid rather than as a dashed
@@ -531,6 +610,10 @@ a { color: var(--acc-d); }
    against the content edge, not the panel edge, so they have to pull back by exactly
    this much to sit flush under the scoreboard. Kept in one place so the two can't drift. */
 .mbody { --pad-t: 14px; overflow-y: auto; overscroll-behavior: contain; padding: var(--pad-t) 20px 22px; }
+/* A match with no entrants on either side writes no body at all (see openMatchup), and an
+   empty box still holding its own 14/22 leaves a dead band of card under the split rule —
+   which reads as something that failed to load rather than as nothing to say. */
+.mbody:empty { padding: 0; }
 .mbody .loading { padding: 30px 0; color: var(--muted); font-size: 13px; }
 
 /* Lower right, diagonally opposite the event and date — chrome describing the match starts
@@ -848,6 +931,7 @@ a { color: var(--acc-d); }
 
 @media (max-width: 700px) {
   .site-head h1 { font-size: 26px; }
+  .site-head .billing { font-size: 12.5px; }
   .nm { font-size: 13px; }
   /* the dialog becomes a bottom sheet: full width, rounded top, slides up */
   .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; animation: sheet .2s ease-out; }

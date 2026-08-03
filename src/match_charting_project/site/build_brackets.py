@@ -68,6 +68,23 @@ def _chart_id(m: dict, gender: str, year: int, tks: "list[str]", charted: dict) 
     return None
 
 
+def _backfill_event(t: dict, cal: dict) -> None:
+    """Give an archived payload its ``event`` block if it was frozen before the block existed.
+
+    A live draw gets its labels at serialize time and carries a frozen copy into the archive,
+    so this only ever fires for the draws already sitting in ``history.json``. Reading the
+    current calendar for them is sound as far as it reaches — a slam's common name, level and
+    surface don't move between seasons — and an event the calendar no longer lists simply
+    finds nothing, which is where the payload started.
+    """
+    if t.get("event"):
+        return
+    dates = [m["date"] for r in t["rounds"] for m in r["matches"] if m.get("date")]
+    t["event"] = feeds.event_meta_for(
+        t.get("city") or "", t.get("name") or "", t["gender"],
+        int(min(dates)[5:7]) if dates else None, cal)
+
+
 def _annotate(t: dict, universe: dict, charted: dict) -> None:
     """Tag sides with their matched charting name; tag a completed draw's matches with
     charted/chart_id — but only once the event has any charting, else leave them null so
@@ -99,8 +116,14 @@ def _annotate(t: dict, universe: dict, charted: dict) -> None:
 
 def payload() -> dict:
     # Pick up any newly-published draw sheet before serializing, so a draw released since the
-    # last run is scaffolded on this one. Adopted sheets are never re-fetched, so the steady
-    # state costs no Wikipedia calls.
+    # last run is scaffolded on this one. The calendar comes first because it is what links
+    # the draw pages — and because it also decides each event's tour level, which
+    # `current_tournaments` reads. Adopted sheets are never re-fetched and the calendar only
+    # re-reads once it has aged out, so the steady-state hourly run costs no Wikipedia calls.
+    try:
+        feeds.refresh_calendar_if_stale()
+    except Exception:
+        pass                              # a calendar outage degrades to the cached copy
     tours = espn.current_tournaments()
     try:
         feeds.refresh_draws(tours)
@@ -118,7 +141,9 @@ def payload() -> dict:
     tours = list(store) + [t for t in live if (t["id"], t["gender"]) not in frozen]
 
     universe, charted = _insights()
+    cal = feeds.load_calendar()
     for t in tours:
+        _backfill_event(t, cal)
         _annotate(t, universe, charted)
     return {"updated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "tournaments": tours}

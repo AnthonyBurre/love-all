@@ -5,7 +5,7 @@ Four feeds, each with its own cadence and its own source:
 ===========  ======================================  ==========================
 feed         source                                  refresh
 ===========  ======================================  ==========================
-calendar     Wikipedia season pages (tier, surface)  once a season, on demand
+calendar     Wikipedia season pages (tier, surface)  daily, when stale
 draws        Wikipedia per-event draw pages          when a draw is published
 scores       ESPN scoreboard (``live.espn``)         hourly
 insights     Match Charting Project DB               weekly
@@ -26,7 +26,7 @@ Two feeds come from Wikipedia, which is crowdsourced and so never trusted blindl
 """
 
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from match_charting_project.live import wiki
 from match_charting_project.live.players import tourn_key
@@ -38,6 +38,15 @@ DRAWS = PROJECT_ROOT / "data" / "draws.json"
 # A parsed draw must reproduce this share of the live feed's first-round pairings to be
 # adopted. Set high: the right draw scores 1.0, and the nearest wrong answers score ≤0.06.
 AGREEMENT_FLOOR = 0.9
+
+# How long a calendar read stays good. A season page is *not* written once and left alone:
+# it links each event's draw page only after that draw is made, so the page grows links all
+# season. This used to be a season-equality check — refresh only when the cached season is
+# last year's — and a cache taken on 2026-07-30, days before the National Bank Open draw was
+# published, held all season with no draw link for it. Without the link the sheet is never
+# fetched and the bracket stays unslotted, which would have gone on to cost every remaining
+# event of the season: Cincinnati, the US Open, Shanghai, Paris, all of them.
+CALENDAR_MAX_AGE = timedelta(days=1)
 
 TOURS = {"M": "ATP", "W": "WTA"}
 SOURCE_NOTE = "Draw sheets, tour levels and surfaces come from Wikipedia."
@@ -72,6 +81,30 @@ def _stamp() -> str:
 
 
 # --- calendar --------------------------------------------------------------------------
+
+def calendar_stale(cal: "dict | None" = None, now: "datetime | None" = None) -> bool:
+    """True when the calendar cache is worth re-reading: missing, from another season, or
+    older than ``CALENDAR_MAX_AGE``. An unreadable or undated cache counts as stale."""
+    cal = load_calendar() if cal is None else cal
+    if not cal.get("events") or cal.get("season") != date.today().year:
+        return True
+    try:
+        fetched = datetime.fromisoformat(str(cal.get("fetched")))
+    except ValueError:
+        return True
+    if fetched.tzinfo is None:
+        fetched = fetched.replace(tzinfo=timezone.utc)
+    return (now or datetime.now(timezone.utc)) - fetched >= CALENDAR_MAX_AGE
+
+
+def refresh_calendar_if_stale(season: "int | None" = None) -> "tuple[dict, bool]":
+    """``(calendar, refreshed)`` — re-read the season pages only when the cache has aged
+    out, so the hourly build costs two Wikipedia calls a day rather than two an hour."""
+    cal = load_calendar()
+    if not calendar_stale(cal):
+        return cal, False
+    return refresh_calendar(season), True
+
 
 def refresh_calendar(season: "int | None" = None) -> dict:
     """Re-read both tours' season pages into the calendar cache. Returns the cache."""
@@ -137,14 +170,21 @@ def _draw_key(tournament) -> str:
     return f"{tourn_key(tournament.city or tournament.name)}|{tournament.gender}"
 
 
+def _month_of(tournament) -> "int | None":
+    """The month a live event starts in, from its earliest scheduled match."""
+    stamps = [m.date for m in (getattr(tournament, "matches", None) or [])
+              if getattr(m, "date", "")]
+    return int(min(stamps)[5:7]) if stamps else None
+
+
+def _entry_for(tournament, cal: "dict | None" = None) -> "dict | None":
+    return lookup(tournament.city or "", tournament.name, tournament.gender,
+                  _month_of(tournament), cal)
+
+
 def _pages_for(tournament, cal: dict) -> "list[str]":
     """Draw pages worth trying for this event: whatever the calendar links for it."""
-    month = None
-    if getattr(tournament, "matches", None):
-        stamps = [m.date for m in tournament.matches if getattr(m, "date", "")]
-        if stamps:
-            month = int(min(stamps)[5:7])
-    ev = lookup(tournament.city or "", tournament.name, tournament.gender, month, cal)
+    ev = _entry_for(tournament, cal)
     return list(ev.get("singles_pages") or []) if ev else []
 
 
@@ -182,6 +222,42 @@ def refresh_draws(tournaments: list, store: "dict | None" = None) -> dict:
     store["updated"] = _stamp()
     _write(DRAWS, store)
     return store
+
+
+def event_meta(tournament, cal: "dict | None" = None) -> dict:
+    """What to call this event and what it is: ``{common_name, level, surface, indoor,
+    venue}``, or ``{}`` when the calendar can't place it.
+
+    The live feed names an event after its title sponsor — "National Bank Open presented by
+    Rogers" — which is nobody's name for it. The calendar carries the name people use
+    ("Canadian Open") next to the tour level and surface, and it does so per tour, which is
+    also how it knows the two halves of a combined event can sit in different cities: the
+    2026 men's draw is in Montreal and the women's in Toronto, both of which the feed
+    reports as Toronto.
+
+    ``level`` is the tour's own label ("ATP 1000"), narrower than the ``tier`` the payload
+    already carries — that one collapses both tours into "Masters / WTA 1000" because the
+    charted database does, which is right for grouping draws and wrong for describing one.
+
+    Empty for an event the calendar doesn't cover, or a past season it no longer lists; the
+    site then shows the feed's name on its own.
+    """
+    return _meta(_entry_for(tournament, cal))
+
+
+def _meta(ev: "dict | None") -> dict:
+    if not ev:
+        return {}
+    return {"common_name": ev.get("event") or "", "level": ev.get("tier") or "",
+            "surface": ev.get("surface") or "", "indoor": bool(ev.get("indoor")),
+            "venue": ev.get("city") or ""}
+
+
+def event_meta_for(city: str, name: str, gender: str, month: "int | None" = None,
+                   cal: "dict | None" = None) -> dict:
+    """``event_meta`` from plain values, for a serialized payload rather than a live
+    ``Tournament`` — how a draw archived before the block existed picks one up."""
+    return _meta(lookup(city or "", name or "", gender, month, cal))
 
 
 def fixture_for(tournament, store: "dict | None" = None) -> "dict | None":
