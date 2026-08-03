@@ -696,19 +696,29 @@ a { color: var(--acc-d); }
 .wp-line .pa { height: 100%; background: color-mix(in srgb, var(--a) 65%, var(--card)); }
 .wp-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 
-/* --- the comparison strip -------------------------------------------------------
+/* --- the comparison strip, headed "side by side" ---------------------------------
    Both players' headline numbers on one axis: bars grow outward from a shared centre,
    so a gap reads as a shape rather than as arithmetic between two distant columns. The
    hairline on each bar is the tour average, where the metric has one. */
-.tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0; }
+/* The trough the two mirrored bars meet across, and the hairline standing in it. Both
+   layouts read the same variable, so the phone's stacked rows put the centre line in the
+   same place the wide one does. */
+.tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0;
+  --trough: 7px; }
 /* The first thing in the scroll, right under a header that just named this match — so
-   without a label over them, the numbers below default to reading as this match's.
-   They're the opposite: each player's whole charted history, which is what the "not this
-   match" half says outright rather than trusting "charted: N matches" further down to
-   imply it. It heads everything in the body, not just the strip, so it sits above the
-   strip's border rather than inside it — see the note in matchup.js. */
-.tapetitle { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+   without a label over them, the numbers below default to reading as this match's. They're
+   the opposite, which is what the "not this one" half says outright rather than trusting
+   "charted: N matches" further down to imply it. It heads every section in the body, so it
+   sits out here rather than inside any of them — see the note in matchup.js. */
+.tapetitle { margin: 0 0 3px; font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--muted); }
+/* What "charted" is doing in the title above. Small print, and always printed: it is the
+   one caveat that changes how every number in the body should be read, and a reader who
+   has to open something to find that out has already read the numbers without it.
+   Held to a measure rather than run across a 840px panel — a caveat set as one long line
+   of 10.5px grey is a line people's eyes slide off, which defeats printing it at all. */
+.covnote { margin: 0 0 12px; max-width: 74ch; font-size: 10.5px; line-height: 1.55;
+  color: var(--muted); }
 .tapetitle span { font-weight: 500; text-transform: none; letter-spacing: normal; opacity: .82; }
 .tapehead { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
 /* no name here: the header above names this side and never scrolls away, and the rule
@@ -725,12 +735,21 @@ a { color: var(--acc-d); }
 
 .taperow { margin: 7px 0 0; }
 .tkey { margin: 0 0 1px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-.tbars { display: grid; grid-template-columns: minmax(72px, 1fr) 2fr 2fr minmax(72px, 1fr); align-items: center; gap: 7px; }
+.tbars { display: grid; grid-template-columns: minmax(72px, 1fr) 2fr 2fr minmax(72px, 1fr);
+  align-items: center; gap: var(--trough); }
 .tval { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); line-height: 1.25; }
 .tval.a { text-align: right; }
 .tval.lead { color: var(--ink); font-weight: 800; }
 .tsub { display: block; font-size: 10px; font-weight: 500; color: var(--muted); }
 .tbar { position: relative; height: 10px; background: color-mix(in srgb, var(--line) 70%, var(--card)); }
+/* The axis both bars are measured from, drawn in the trough between them. The pair already
+   met there, but a gap is only the absence of two bars — on a row where both run long the
+   two colours nearly touch and there is nothing saying which edge is zero. One element
+   draws the whole line, hung off side A into the middle of the trough, so it lands on the
+   same centre on a phone (where the bars sit under their numbers) as on a wide panel. */
+.tbar.a::after { content: ""; position: absolute; top: -3px; bottom: -3px;
+  right: calc(-0.5px - var(--trough) / 2); width: 1px;
+  background: color-mix(in srgb, var(--ink) 16%, transparent); }
 /* the fill is a flex row of segments; side A grows leftward from the centre, so it
    reverses and both players' first segments meet in the middle.
    The far end tapers to a point, so a bar reads as an arrow pointing the way it grew —
@@ -753,13 +772,28 @@ a { color: var(--acc-d); }
    point outright is. It sits against the centre line, so the two players' cores meet. */
 .tbar.a i > span.deep { background: color-mix(in srgb, var(--a) 60%, #000); }
 .tbar.b i > span.deep { background: color-mix(in srgb, var(--b) 60%, #000); }
-.tbar u { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: var(--ink); opacity: .5; }
+/* The tour average, laid across the bar. It has to be legible on the saturated fill *and*
+   on the empty track behind it, and no single colour manages both: half-opacity ink was the
+   mark before, and on a violet or red fill it was simply not there — which is the half of
+   the bar the average usually lands in. So it is a light core with a dark halo, and reads
+   against either. The cue bars under the shot-making triggers wear the same mark, for the
+   same reason and against the same two grounds. */
+.tbar u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--card);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 50%, transparent); }
+/* centred on the value rather than butted against it: the mark has width, and half of it
+   either side is the difference between "at the average" and "just past it" */
+.tbar.a u { margin-right: -1px; }
+.tbar.b u { margin-left: -1px; }
 
 .tapenote { margin: 12px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
 .segkey.deep { background: color-mix(in srgb, var(--muted) 60%, #000); }
-.tickkey { display: inline-block; width: 2px; height: 11px; background: var(--ink); opacity: .5; vertical-align: -2px; margin: 0 1px; }
+/* the key wears the mark it is a key for, halo and all — hence the margin, which is the
+   room the halo needs to not sit on the words either side of it */
+.tickkey { display: inline-block; width: 2px; height: 11px; background: var(--card);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 50%, transparent);
+  vertical-align: -2px; margin: 0 3px; }
 
 /* --- a topic, one header, two columns -------------------------------------------
    The topic sticks to the top of the scroll while its own cards pass under it: the
@@ -795,9 +829,13 @@ a { color: var(--acc-d); }
 
 /* one court pattern: the drawing, then the lift, then what it is and what it earns */
 .pcard2 { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 12px; }
-.pcourt { flex: 0 0 96px; }
-.pcourt svg { width: 96px; height: auto; display: block; }
-/* These thumbnails render at ~0.64 scale, so the drawn balls need extra weight in viewBox
+/* 88px of box, not the 96 it was: the drawing is cropped to the court now (see FRAME in
+   court.js) instead of carrying 20 units of blank field either side, so a narrower box
+   holds a court an eighth wider than the old one did. The width it gives back goes to the
+   description beside it. */
+.pcourt { flex: 0 0 88px; }
+.pcourt svg { width: 88px; height: auto; display: block; }
+/* These thumbnails render at ~0.72 scale, so the drawn balls need extra weight in viewBox
    units to survive the reduction, while the court's own lines thin out and recede. */
 .pcourt .ct-shot { stroke-width: 2.3; }
 .pcourt .ct-shot.incoming { stroke-width: 1.9; stroke-dasharray: 4 3; }
@@ -833,10 +871,21 @@ a { color: var(--acc-d); }
 .tnum { margin: 2px 0 0; color: var(--muted); }
 .tnum b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .trig .lift { color: var(--muted); font-size: 11px; }
+/* The cue's bar. Same grammar as the comparison strip's split row — a track, a fill that
+   changes colour where the attempts stopped landing, a haloed tick at the reference — but
+   growing from the left rather than from a shared centre, because there is only one player
+   in this column and nothing to mirror it against. */
+.tmeter { position: relative; height: 7px; margin: 4px 0 0;
+  background: color-mix(in srgb, var(--line) 70%, var(--card)); }
+.tmeter i { position: absolute; left: 0; top: 0; bottom: 0; display: flex; overflow: hidden; }
+.tmeter i > span { background: var(--shot, var(--acc)); }
+.tmeter i > span.miss { opacity: .38; }
+.tmeter u { position: absolute; top: -2.5px; bottom: -2.5px; width: 2px; margin-left: -1px;
+  background: var(--card); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 50%, transparent); }
 .warnmark { color: var(--warn); }
 .trig code { background: color-mix(in srgb, var(--line) 55%, var(--card)); padding: 1px 4px; font-size: 11px; }
 
-/* serve decisions: the two service boxes as the server sees them, deuce left and ad
+/* serve direction: the two service boxes as the server sees them, deuce left and ad
    right, each zone sitting where it does on the court — so the numbers are laid out
    in court order and the frame only has to suggest the lines. Wide and T only: the
    body share is partly a charter's opinion, so it is not reported and the two shown
@@ -887,6 +936,10 @@ a { color: var(--acc-d); }
 
 /* the court glyph's key, stated where the glyph is first used */
 .courtkey { margin: 5px 0 0; display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 10.5px; }
+/* The cue bar's key. Ordinary inline flow, unlike .courtkey above: that one keys three
+   glyphs with a word each and wants them spaced apart as three items, this one is a
+   sentence with marks in it, and laid out as flex items its own clauses came apart. */
+.meterkey { display: block; margin: 5px 0 0; font-size: 10.5px; line-height: 1.6; }
 .ck { color: var(--ink); font-weight: 700; }
 .ck.in { color: var(--muted); border-bottom: 1.5px dashed var(--muted); }
 .ck.out { border-bottom: 1.5px solid var(--acc); }
@@ -960,8 +1013,23 @@ a { color: var(--acc-d); }
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
   .tape { padding: 11px 12px 12px; }
-  .tbars { grid-template-columns: minmax(58px, 1fr) 2fr 2fr minmax(58px, 1fr); gap: 5px; }
-  .tval { font-size: 12px; }
+  /* Each number moves off the end of its bar and sits over it. In a 58px column beside the
+     bar it wrapped to three lines — "typical for / their style" — which left no two rows
+     the same height and the bars about 100px long, on the one chart that has to survive a
+     phone. Stacked, the reading is unchanged: a number over its own bar, the two bars still
+     meeting on the centre line, and each bar now runs half the panel. */
+  .tbars { grid-template-columns: 1fr 1fr; column-gap: var(--trough); row-gap: 3px;
+    align-items: end; }
+  .tval { grid-row: 1; font-size: 12px; }
+  .tval.a { grid-column: 1; text-align: left; }
+  .tval.b { grid-column: 2; text-align: right; }
+  .tbar { grid-row: 2; }
+  .tbar.a { grid-column: 1; }
+  .tbar.b { grid-column: 2; }
+  /* on the number's own line now, rather than under it: the row is a half-panel wide, and
+     the two read as one phrase — "64/100 · typical for their style" */
+  .tsub { display: inline; }
+  .tsub::before { content: " · "; }
   /* The court sections stay two-up. Stacking them puts a player's three drawings a
      screen and a half from the three they are meant to be read against, which is the
      section — so the card gives up its side-by-side layout instead, and the comparison
@@ -978,8 +1046,12 @@ a { color: var(--acc-d); }
   .msec.cards .sw { display: flex; align-items: center; gap: 5px; min-width: 0;
     padding-left: 10px; color: var(--ink); }
   .msec.cards .pcard2 { display: block; margin-bottom: 14px; }
-  .msec.cards .pcourt { width: 92px; margin-bottom: 3px; }
-  .msec.cards .pcourt svg { width: 92px; }
+  /* Stacked, the court has the whole column to itself and was using half of it — 92px of
+     drawing with 70px of nothing beside it, on the screen where the drawing is hardest to
+     read. It takes the width instead; the height it costs is the one thing a phone has
+     plenty of, and this section is the reason to open the panel. */
+  .msec.cards .pcourt { width: 104px; margin-bottom: 3px; }
+  .msec.cards .pcourt svg { width: 104px; }
   .msec.cards .plift { font-size: 15px; }
   .msec.cards .pdesc { font-size: 12px; }
 }

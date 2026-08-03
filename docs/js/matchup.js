@@ -75,7 +75,7 @@ async function playerData(name, gender) {
       "SELECT side, wide, t, n_eff, years, career_wide, career_t, reliable, drift_ratio " +
       "FROM player_serve WHERE player = ? AND gender = ? AND reliable = 1",
       [name, gender]);
-  } catch (e) { /* stale insights db: show the card without serve decisions */ }
+  } catch (e) { /* stale insights db: show the card without serve direction */ }
   return { s: s[0], triggers, patterns, serve };
 }
 
@@ -114,6 +114,30 @@ function rallyDrawer(pattern) {
 // how often that shot pays. Courts stay collapsed here — a trigger is a 2–4 stroke
 // sequence, and a column of full sequence drawings would bury the court patterns above,
 // which are what the panel leads with.
+// The cue's two numbers, drawn as the one bar they are: its length is how often the cue
+// makes them go for a finishing shot, where it changes colour is how much of that landed,
+// and the tick is the rate the shot gets played at *without* the cue — so the lift the
+// sentence states as "3.0× their norm" is also the gap between the tick and the bar's end.
+//
+// Deliberately the same construction as the comparison strip's winners-and-errors row,
+// down to the drained second segment and the haloed reference tick, because it is the same
+// measurement: the notation key already tells the reader these are "the same pair of
+// numbers the strip up top splits into one bar, read per cue". They should look like it.
+// The domain is 0–1 rather than the strip's 0.05–0.32, though: a cue that does anything at
+// all pushes the attempt rate far past the range a player's rally balls average out to, and
+// on the strip's scale every one of these would sit clamped at the end of the bar.
+function trigMeter(t) {
+  const att = Number(t.att_rate);
+  if (!isFinite(att)) return "";
+  const conv = t.conversion == null ? null : Number(t.conversion);
+  const lift = Number(t.att_lift);
+  const norm = isFinite(lift) && lift > 0 ? att / lift : null;
+  const segs = conv == null ? `<span style="flex:1"></span>`
+    : `<span style="flex:${conv}"></span><span class="miss" style="flex:${1 - conv}"></span>`;
+  const tick = norm == null ? "" : `<u style="left:${(norm * 100).toFixed(1)}%"></u>`;
+  return `<div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i>${tick}</div>`;
+}
+
 function trigLine(t) {
   // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates across
   // halves of the player's data — only the hugely-charted earn these.
@@ -134,6 +158,7 @@ function trigLine(t) {
     <p class="tnum">goes for it <b>${Math.round(t.att_rate * 100)}%</b>
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
       ${payoff} <span class="lift">n=${Number(t.n)}</span></p>
+    ${trigMeter(t)}
     ${rallyDrawer(t.context)}</div>`;
 }
 
@@ -269,7 +294,7 @@ function trigSets(d) {
   };
 }
 
-// --- the comparison strip -----------------------------------------------------------
+// --- the comparison strip, headed "side by side" --------------------------------------
 // Both players' headline numbers on one shared axis, bars growing outward from a centre
 // line, so a difference reads as a shape instead of as arithmetic between two columns
 // that have drifted a screen apart.
@@ -394,19 +419,39 @@ function tapeWho(d, tag) {
   return `<div class="twho ${tag}"><p class="tmeta">${meta}</p></div>`;
 }
 
+// The one line over the whole body. The scoreboard above it never says "this match" — it
+// can't, nothing under here is about this match — so the body has to say what it is itself,
+// before any of its numbers do.
+//
+// It used to ride inside the strip and head only what followed the strip, which left serve
+// direction above it uncovered once that section moved to the top. Everything in the body is
+// the same thing: what the charting has of these two players. So the line heads all of it.
+//
+// "Their charted matches, not this one", and no longer "career totals": serve direction is a
+// recent-form window rather than a career total, and a subtitle that covers the body has to
+// be true of every section in it. The section says which window in its own caption.
+//
+// The asterisk is the other half of the same statement. "Charted history" invites the reader
+// to treat these as the player's record, and they are a sample of it — one assembled by
+// volunteers picking matches worth charting, which is not how a random sample is drawn. That
+// belongs beside the title rather than in the notation key at the foot, because it changes
+// how every number below should be read and most readers never open the key.
+const CHARTED_TITLE = `<p class="tapetitle">Charted history
+    <span>— their charted matches, not this one</span></p>
+  <p class="covnote">* Charting is volunteer work, so these are the matches someone chose to
+    chart. That weights the numbers toward big occasions rather than sampling a career
+    evenly.</p>`;
+
+// The strip's own heading. It had none while the title above sat inside it; with the title
+// promoted to head the body, the one chart here without a name would have been this one.
+// "Side by side" names the form rather than the contents, because the form is what tells it
+// from its neighbours: every other section gives each player a column, and this is the one
+// place the two are measured on a shared axis.
 function tape(da, db, mu) {
   const sa = da && da.s, sb = db && db.s;
   if (!sa && !sb) return "";
-  // The header above never says "this match" — it can't, everything below it is
-  // career-wide — so the body has to say what it is itself, first thing, before any of
-  // its numbers do.
-  //
-  // The title sits outside the strip, not in it. Inside, a bordered box drew a line
-  // around what it covered, and the caveat looked like it stopped at the strip's own
-  // numbers — while the court patterns and the triggers under it, which are career
-  // totals in exactly the same way, read as being about the match just named overhead.
-  // Out here it heads the whole body, which is the scope it actually has.
-  return `<p class="tapetitle">Charted history <span>— career totals, not this match</span></p>
+  return `<section class="msec">
+    <h3 class="sechead">side by side</h3>
     <section class="tape">
     <div class="tapehead">${tapeWho(da, "a")}${tapeWho(db, "b")}</div>
     ${tapeRows(mu).map((r) => tapeRow(r, sa, sb)).join("")}
@@ -414,7 +459,7 @@ function tape(da, db, mu) {
       <span class="segkey deep"></span> aces, within serve points won ·
       <span class="segkey"></span> landed <span class="segkey miss"></span> missed, on the
       winners + errors bar</p>
-  </section>`;
+  </section></section>`;
 }
 
 // --- shared-header sections ---------------------------------------------------------
@@ -467,6 +512,15 @@ const COURT_LEGEND = `<span class="courtkey">
   <span class="ck in">dashed</span> the ball they get ·
   <span class="ck out">solid</span> their answer ·
   <span class="ck half">tinted half</span> their side of the net</span>`;
+
+// The key to the bar under each cue. Same marks the comparison strip's note uses, because
+// it is the strip's bar: a reader who has scrolled past one already knows this one.
+// `baseline` is what the tick stands for, and the two sections do not agree on it — a
+// shallow cue is measured against the player's own norm, a deep one against the shorter
+// pattern it is built out of — so it is the caller's word, not this string's.
+const meterLegend = (baseline) => `<span class="meterkey">
+  <span class="segkey"></span> landed <span class="segkey miss"></span> missed, out of the
+  balls the cue provokes · <span class="tickkey"></span> ${baseline}</span>`;
 
 function confidence(pa, pb) {
   const minPts = Math.min(Number(pa.s.points_charted) || 0, Number(pb.s.points_charted) || 0);
@@ -686,28 +740,40 @@ function headHtml(m, t, round) {
     ${chartButton(m)}`;
 }
 
-// The body, in reading order: the headline numbers side by side, then the pictures, then
-// the sequences, then the small print. Every section below the strip shares one header
+// The body, under one title: where the serve goes, then the two players side by side, then
+// the pictures, then the sequences, then the small print. Every section shares one header
 // across both columns, so the two players stay level however unevenly charted they are.
+//
+// Serve direction leads. Every point starts with one, it is the only thing here a viewer can
+// expect to see happen in the match they just tapped, and it is the shortest section in the
+// panel — so it reads as an opening rather than as something to scroll past. The summary of
+// the two careers sits behind it, which is what you reach for second.
+//
+// The title is gated on there being a player under it. With neither side charted the body is
+// the invitation to go and chart one, and "Charted history" over "Neither player has Match
+// Charting history yet" heads a section with the word "history" twice and no history in it.
+// The two conditions are exact opposites, so exactly one of them ever prints.
 function bodyHtml(m, pa, pb, mu, gates) {
   const a = m.a, b = m.b;
   const ta = trigSets(pa), tb = trigSets(pb);
   const none = !pa && !pb
     ? `<p class="nochart">Neither player has Match Charting history yet.
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
-  return tape(pa, pb, mu) + none +
-    section("serve decisions", `where the first serve goes, by court side — recent
+  return (pa || pb ? CHARTED_TITLE : "") +
+    section("serve direction", `where the first serve goes, by court side — recent
       matches counting most`, a, b,
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
+    tape(pa, pb, mu) + none +
     section("court patterns", `their answer to an incoming ball, × how often the tour
       plays it from the same spot${COURT_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("off the return", `what they do with the returns they serve up, by return
       depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
     section("shot-making triggers", `a lead-up that shifts how often they go for a
-      finishing shot — and whether it pays`, a, b, ta.main, tb.main, "text") +
+      finishing shot — and whether it pays${meterLegend("their rate without the cue")}`,
+      a, b, ta.main, tb.main, "text") +
     section("deep patterns ⭐", `3–4 shot sequences only chartable at this player's
-      coverage`, a, b, ta.gold, tb.gold, "text");
+      coverage${meterLegend("the shorter pattern's rate")}`, a, b, ta.gold, tb.gold, "text");
 }
 
 // --- the panel as a dialog ----------------------------------------------------------
@@ -773,11 +839,26 @@ function onPanelKey(e) {
 // So once the body starts moving it condenses to the names and the score, and comes back
 // when you return to the top. The two thresholds are hysteresis: one value would flicker
 // as the collapse itself changes what is under the fold.
+let condFit = 0;
 function onBodyScroll() {
   const panel = document.getElementById("matchup");
   const t = document.getElementById("matchupBody").scrollTop;
+  const was = panel.classList.contains("cond");
   if (t > 24) panel.classList.add("cond");
   else if (t < 8) panel.classList.remove("cond");
+  if (panel.classList.contains("cond") === was) return;
+  // Condensing is not only a shrink. It also moves the right-hand name into the close
+  // button's lane (see --close-lane), and that is width taken off a name fitHeader() sized
+  // without it — so "S. Tsitsipas", fitted at the top of the scroll, came back one line
+  // down and then, once overflow-wrap ran out of patience, broken across the middle of a
+  // word. So the fit is re-asked on the transition, which happens twice a scroll at most;
+  // on every scroll event it would force layout several times a frame to answer a question
+  // that hasn't changed.
+  // After the band's size transition, not during it: .mp animates its font-size, and a
+  // name measured mid-transition is measured at a size it is on its way out of — which
+  // resolves, every time, toward abbreviating a name that would have fitted.
+  clearTimeout(condFit);
+  condFit = setTimeout(fitHeader, 200);
 }
 
 // Has either name been broken over more than one line?

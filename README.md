@@ -66,7 +66,7 @@ finished events of every other tier. On a live match each box is shaded by how c
 pairing is; on a finished draw the shading turns per-match, and the drawer links straight to
 that match's full chart on Tennis Abstract or invites you to be the one who charts it. Click
 any match and a drawer opens with, for each player: a style archetype, serve and return
-rates against the tour average, serve decisions, court patterns, shot-making triggers, shot
+rates against the tour average, serve direction, court patterns, shot-making triggers, shot
 quality relative to that archetype, and an **experimental pre-match win probability**. All of it is queried in
 the browser with **DuckDB-WASM**, with no backend.
 
@@ -124,15 +124,26 @@ under `src/match_charting_project/{winprob_match,live,site}`.
 
 ## Reading the site's patterns and diagrams
 
-Each player's card leads with **serve decisions**: where their first serve goes on each
-court side, next to what the tour does from the same side. Only wide and T are shown, so
+Everything in the drawer sits under one heading, **charted history**, because that is what
+all of it is: these players as the Match Charting Project has them, not as this match went.
+Charting is volunteer work, so which matches exist depends on what someone chose to chart,
+and that weights the numbers toward big occasions rather than sampling a career evenly. The
+drawer says so in a line under the heading, and it is worth keeping in mind for every number
+below.
+
+It opens on **serve direction**: where their first serve goes on each court side,
+laid out the way the server sees the two boxes. Only wide and T are shown, so
 the two do not add to 100 — the remainder is the body serve, which `serve_tendencies`
 found to be partly a charter's opinion rather than a player's choice. The numbers cover
 recent matches, weighted so the newest count most, and a side appears only when the player
 has enough charted serves there for the share to be mostly signal rather than sampling
-noise. Below that come **court patterns**, written in plain English:
+noise. Under it, **side by side** puts both players' headline numbers on one shared axis —
+the only place in the drawer they aren't in a column each. Below that come **court
+patterns**, written in plain English:
 `drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
-**shot-making triggers** are written in shot tokens: `serve wide · BH slice→3`. Click the
+**shot-making triggers** are written in shot tokens: `serve wide · BH slice→3`, with a bar
+under each cue: its length is how often that cue makes them go for a finishing shot, the
+colour change is how much of that landed, and the tick is the rate without the cue. Click the
 **ball path** toggle under either to see it drawn on a small court. The drawer carries a
 short "How to read the shot notation" key of its own, so the reference below is only here
 for when you want the exact semantics.

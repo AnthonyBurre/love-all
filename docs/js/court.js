@@ -16,14 +16,24 @@
 // whose side is whose — cues that earn their place only at thumbnail scale. Geometry is
 // shared; styling is not, and nothing here needs porting back.
 
-// --- court geometry (viewBox 150 x 190; matches court.py and the notation-key courts) ---
-const W = 150, H = 190;
+// --- court geometry (a 150 x 190 field; matches court.py and the notation-key courts) ---
 const LEFT = 20, RIGHT = 130, TOP = 10, BOTTOM = 180, NET = 95, HALF = NET - TOP;
 const SERVICE_F = 0.5;                       // service line, as a fraction of a half
 const LANE_L = 40, LANE_MID = 75, LANE_R = 110;
 const DEPTH_DEFAULT = 0.62;                  // rally bounce depth (tokens carry no depth)
 const SERVE_DEPTH_F = 0.42;                  // serve lands a touch inside the service line
 const SERVE_TOKEN_DIR = { W: "4", B: "5", T: "6" };
+
+// The court occupies x 20–130, y 10–180 of the 150×190 field the geometry is written in, so
+// a full-field viewBox spends a quarter of a thumbnail's width on blank margin. These draw
+// at ~88px in the panel, where that margin is the difference between a ball path you can
+// follow and a smudge. FRAME crops to the court plus a few units of air — enough for the two
+// player markers and a terminal arrowhead, and nothing else. It is presentation, like the
+// arrowheads and the tinted half: every coordinate below is still court.py's, so the two
+// renderers stay in sync and nothing here needs porting back.
+const FRAME_PAD = 6;
+const FRAME = [LEFT - FRAME_PAD, TOP - FRAME_PAD,
+  RIGHT - LEFT + 2 * FRAME_PAD, BOTTOM - TOP + 2 * FRAME_PAD].join(" ");
 
 // Direction wingtips: two small chevrons per segment, at these fractions along it.
 const TIP_AT = [0.38, 0.72];
@@ -143,7 +153,7 @@ export function rallySvg(tokens, court = "deuce") {
     els.push(shotLine(px, py, b.x, b.y, { faint: !last, arrow: last, shot: i + 1 }));
     px = b.x; py = b.y;
   });
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${COURT}${els.join("")}</svg>`;
+  return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${COURT}${els.join("")}</svg>`;
 }
 
 // --- pattern string -> tokens (the inverse of shot_language.tokens.pretty) --------------
@@ -199,5 +209,5 @@ export function pairSvg(incCode, respCode, depth = "") {
     `<circle cx="${f(inc.x)}" cy="${f(inc.y)}" r="3" class="ct-bounce"/>`,
     shotLine(inc.x, inc.y, out.x, out.y, { arrow: true, shot: 2 }),
   ];
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${mine}${COURT}${els.join("")}</svg>`;
+  return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${mine}${COURT}${els.join("")}</svg>`;
 }
