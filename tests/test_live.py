@@ -1,6 +1,8 @@
 """Tests for the live source adapter + player matching (no network needed)."""
 
-from match_charting_project.live import brackets, espn, levels, players
+from datetime import date, datetime, timedelta, timezone
+
+from match_charting_project.live import brackets, espn, feeds, levels, players
 
 
 def test_normalize_strips_accents_and_punctuation():
@@ -193,3 +195,43 @@ def test_bracket_linkage_duplicate_name_claims_nothing():
     rounds = brackets.rounds(t)
     (r1,) = rounds[0]["matches"]
     assert r1.feeds is None
+
+
+# --- calendar freshness ----------------------------------------------------------------
+
+def _cal_doc(fetched, season=None):
+    return {"season": season or date.today().year, "fetched": fetched,
+            "events": [{"event": "Canadian Open", "gender": "M", "city": "Montreal",
+                        "tier": "ATP 1000", "month": 8, "singles_pages": []}]}
+
+
+def _iso(**ago):
+    return (datetime.now(timezone.utc) - timedelta(**ago)).isoformat(timespec="minutes")
+
+
+def test_a_calendar_read_within_the_day_is_fresh():
+    assert feeds.calendar_stale(_cal_doc(_iso(hours=3))) is False
+
+
+def test_a_calendar_read_days_ago_is_stale_even_in_its_own_season():
+    # The regression this gate exists for: the cache is the right season and parses fine,
+    # but predates the National Bank Open draw — so it links no draw page for it, and the
+    # season check it replaced would have held it until January.
+    assert feeds.calendar_stale(_cal_doc(_iso(days=3))) is True
+
+
+def test_last_seasons_calendar_is_stale():
+    assert feeds.calendar_stale(_cal_doc(_iso(minutes=1), season=date.today().year - 1))
+
+
+def test_an_empty_or_undated_calendar_is_stale():
+    assert feeds.calendar_stale({})                          # no cache at all
+    assert feeds.calendar_stale({"season": date.today().year, "events": []})
+    assert feeds.calendar_stale(_cal_doc(None))              # written without a stamp
+    assert feeds.calendar_stale(_cal_doc("not a timestamp"))
+
+
+def test_a_naive_timestamp_is_read_as_utc():
+    # Older caches were stamped without an offset; those must not blow up the comparison.
+    naive = datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="minutes")
+    assert feeds.calendar_stale(_cal_doc(naive)) is False

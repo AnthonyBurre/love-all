@@ -66,33 +66,25 @@ jobs:
         if: ${{ steps.history.outputs.seed_needed == 'true' }}
         run: uv run match-charting-project history seed
 
-      # The Wikipedia-sourced feeds: the tour calendar (which events exist, and at what
-      # level) and the draw sheets (slot order, seeds, byes). Both are caches, not committed
-      # data — the calendar is re-read once a season, and a draw sheet is fetched once and
-      # never again, so the steady-state hourly run makes no Wikipedia requests at all.
+      # The Wikipedia-sourced feeds: the tour calendar (which events exist, at what level,
+      # and where each one's draw page lives) and the draw sheets themselves (slot order,
+      # seeds, byes). Both are caches, not committed data.
       - name: Fetch feed caches (from the Release)
-        id: feeds
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p data
           gh release download feeds-cache --pattern calendar.json --dir data --clobber || true
           gh release download feeds-cache --pattern draws.json --dir data --clobber || true
-          season="$(date -u +%Y)"
-          have="$(python -c "import json,sys;print(json.load(open('data/calendar.json'))['season'])" 2>/dev/null || echo none)"
-          if [ "$have" != "$season" ]; then
-            echo "calendar cache is '$have', want $season — will refresh"
-            echo "refresh_calendar=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "calendar cache is current ($have)"
-            echo "refresh_calendar=false" >> "$GITHUB_OUTPUT"
-          fi
 
-      # Without this the site can't tell a 500 from a 250 and serves only slams and 1000s,
-      # so it runs whenever the cache is missing or from a previous season.
-      - name: Refresh the tour calendar (once a season)
-        if: ${{ steps.feeds.outputs.refresh_calendar == 'true' }}
-        run: uv run match-charting-project feeds calendar
+      # Without the calendar the site can't tell a 500 from a 250 and serves only slams and
+      # 1000s. It also carries the per-event draw-page links, which a season page grows all
+      # year as each draw is made — so this is an age check, not the season check it used to
+      # be: that one pinned a July cache until January and left every event drawn after it
+      # with no draw sheet. --if-stale no-ops while the cache is under a day old, keeping the
+      # hourly run at two Wikipedia calls a day (an adopted draw sheet is never re-fetched).
+      - name: Refresh the tour calendar (daily)
+        run: uv run match-charting-project feeds calendar --if-stale
 
       - name: Build brackets + assemble docs/data
         run: |

@@ -5,7 +5,7 @@ Four feeds, each with its own cadence and its own source:
 ===========  ======================================  ==========================
 feed         source                                  refresh
 ===========  ======================================  ==========================
-calendar     Wikipedia season pages (tier, surface)  once a season, on demand
+calendar     Wikipedia season pages (tier, surface)  daily, when stale
 draws        Wikipedia per-event draw pages          when a draw is published
 scores       ESPN scoreboard (``live.espn``)         hourly
 insights     Match Charting Project DB               weekly
@@ -26,7 +26,7 @@ Two feeds come from Wikipedia, which is crowdsourced and so never trusted blindl
 """
 
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from match_charting_project.live import wiki
 from match_charting_project.live.players import tourn_key
@@ -38,6 +38,15 @@ DRAWS = PROJECT_ROOT / "data" / "draws.json"
 # A parsed draw must reproduce this share of the live feed's first-round pairings to be
 # adopted. Set high: the right draw scores 1.0, and the nearest wrong answers score ≤0.06.
 AGREEMENT_FLOOR = 0.9
+
+# How long a calendar read stays good. A season page is *not* written once and left alone:
+# it links each event's draw page only after that draw is made, so the page grows links all
+# season. This used to be a season-equality check — refresh only when the cached season is
+# last year's — and a cache taken on 2026-07-30, days before the National Bank Open draw was
+# published, held all season with no draw link for it. Without the link the sheet is never
+# fetched and the bracket stays unslotted, which would have gone on to cost every remaining
+# event of the season: Cincinnati, the US Open, Shanghai, Paris, all of them.
+CALENDAR_MAX_AGE = timedelta(days=1)
 
 TOURS = {"M": "ATP", "W": "WTA"}
 SOURCE_NOTE = "Draw sheets, tour levels and surfaces come from Wikipedia."
@@ -72,6 +81,30 @@ def _stamp() -> str:
 
 
 # --- calendar --------------------------------------------------------------------------
+
+def calendar_stale(cal: "dict | None" = None, now: "datetime | None" = None) -> bool:
+    """True when the calendar cache is worth re-reading: missing, from another season, or
+    older than ``CALENDAR_MAX_AGE``. An unreadable or undated cache counts as stale."""
+    cal = load_calendar() if cal is None else cal
+    if not cal.get("events") or cal.get("season") != date.today().year:
+        return True
+    try:
+        fetched = datetime.fromisoformat(str(cal.get("fetched")))
+    except ValueError:
+        return True
+    if fetched.tzinfo is None:
+        fetched = fetched.replace(tzinfo=timezone.utc)
+    return (now or datetime.now(timezone.utc)) - fetched >= CALENDAR_MAX_AGE
+
+
+def refresh_calendar_if_stale(season: "int | None" = None) -> "tuple[dict, bool]":
+    """``(calendar, refreshed)`` — re-read the season pages only when the cache has aged
+    out, so the hourly build costs two Wikipedia calls a day rather than two an hour."""
+    cal = load_calendar()
+    if not calendar_stale(cal):
+        return cal, False
+    return refresh_calendar(season), True
+
 
 def refresh_calendar(season: "int | None" = None) -> dict:
     """Re-read both tours' season pages into the calendar cache. Returns the cache."""

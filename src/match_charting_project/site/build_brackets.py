@@ -99,8 +99,14 @@ def _annotate(t: dict, universe: dict, charted: dict) -> None:
 
 def payload() -> dict:
     # Pick up any newly-published draw sheet before serializing, so a draw released since the
-    # last run is scaffolded on this one. Adopted sheets are never re-fetched, so the steady
-    # state costs no Wikipedia calls.
+    # last run is scaffolded on this one. The calendar comes first because it is what links
+    # the draw pages — and because it also decides each event's tour level, which
+    # `current_tournaments` reads. Adopted sheets are never re-fetched and the calendar only
+    # re-reads once it has aged out, so the steady-state hourly run costs no Wikipedia calls.
+    try:
+        feeds.refresh_calendar_if_stale()
+    except Exception:
+        pass                              # a calendar outage degrades to the cached copy
     tours = espn.current_tournaments()
     try:
         feeds.refresh_draws(tours)
