@@ -404,7 +404,6 @@ export function renderQuarters(t, root, cov, onClick, section) {
         btn.setAttribute("aria-label", btn.title);
         btn.onclick = () => row.pick.onPick(j);
         cell.append(btn);
-        if (j === row.pick.selected) cell.classList.add("picked");
         chips[i].push(btn);
       }
       cards[i].push(card);

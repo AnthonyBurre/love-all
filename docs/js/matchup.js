@@ -10,6 +10,9 @@ const CHART_GUIDE =
   "https://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/";
 const last = (name) => String(name || "").split(" ").slice(-1)[0];
 const pct = (x) => (x * 100).toFixed(1) + "%";
+// The same two slot markers bracket.js treats as non-entrants: they fill a side of a card,
+// but there is no player behind them to look anything up for.
+const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== "Bye";
 
 // Country name (ESPN's flag alt text) → ISO 3166-1 alpha-2, so we can show a flag emoji
 // instead of the country name. Covers every nation that turns up in the draws; anything
@@ -908,6 +911,17 @@ export async function openMatchup(m, t) {
   body.scrollTop = 0;
   panel.classList.remove("cond");
   panel.focus();
+  // An unfilled match — a final whose two slots are both still TBD — has no body to write.
+  // Everything below the scoreboard is keyed to a player: two charted histories, the
+  // patterns each of them plays, a number for which of them wins. With neither side known
+  // that came out as a run of empty sections, a win probability apologising for itself and
+  // a notation key for drawings that weren't there, all of it under a header that had
+  // already said "TBD vs TBD" — five screens restating one word. The header keeps saying
+  // which round this is, and the panel stops there.
+  if (!isEntrant(m.a) && !isEntrant(m.b)) {
+    body.innerHTML = "";
+    return;
+  }
   body.innerHTML = `<div id="cardslot" class="loading">Loading…</div>
     <div id="wpslot"></div>${notationHelp()}`;
 

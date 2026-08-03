@@ -231,6 +231,12 @@ function render() {
   const mobile = window.matchMedia("(max-width: 700px)").matches;
   const quarters = !mobile && quarterable(t) && viewFor(t) === "quarters";
   $("viewTabs").style.display = !mobile && quarterable(t) ? "" : "none";
+  // The legend sits outside the draw it explains, so it has to be told which one is under
+  // it: only the slices view spells charting depth as a count of corner notches, and a key
+  // demonstrating four notches above a draw that draws one wedge is a key for the wrong
+  // picture. The two views' cards still share the colour ramp, which is what the chips say
+  // in either case — this only decides whether they also carry the count.
+  document.body.dataset.view = quarters ? "quarters" : "draw";
 
   if (mobile) {
     if (sel.round == null || sel.round >= t.rounds.length) sel.round = currentRound(t.rounds);
