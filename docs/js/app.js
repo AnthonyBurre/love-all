@@ -19,7 +19,13 @@ const $ = (id) => document.getElementById(id);
 // labelled by year, so Wimbledon 2025 and a live Wimbledon never collide in the dropdown.
 const SEP = "␟";
 const gkey = (t) => (t.completed ? `${t.name}${SEP}${t.season}` : t.name);
-const glabel = (t) => (t.completed ? `${t.name} ${t.season}` : t.name);
+// What to call an event on screen. The feed's own name is the title sponsor's — "National
+// Bank Open presented by Rogers" — which is not what anyone calls the thing, so lead with
+// the name the calendar says people use and leave the sponsor's to the line under the
+// title. Keyed identity stays on the feed name: it's the stable one, it's what pairs the
+// two draws of an event, and a calendar that can't place an event doesn't change it.
+const ename = (t) => (t.event || {}).common_name || t.name;
+const glabel = (t) => (t.completed ? `${ename(t)} ${t.season}` : ename(t));
 
 // Season/tournament theme: slams get their own palette, everything below them follows its
 // surface. Keyed off the venue city, since the feed's event name is a sponsor's ("HSBC
@@ -201,6 +207,35 @@ function buildTabs() {
   });
 }
 
+// The size of the field, counted off the draw itself rather than read from the calendar —
+// the calendar's figure is a hand-typed one that has been wrong (it claimed 48 for a
+// Washington draw that was 32). A round-1 slot is two players unless it is a bye, so a 96
+// is 64 slots with 32 of them byes. Unknown for a draw with no slot scaffold, where round
+// one is only the matches the feed happens to have named.
+function drawSize(t) {
+  if (!t.slotted && !t.completed) return null;
+  const r1 = (t.rounds[0] || {}).matches || [];
+  return r1.length ? r1.length * 2 - r1.filter((m) => m.bye).length : null;
+}
+
+// The line under the <h1>: what this draw is, in the order you'd ask. It opens with the
+// sponsor's name for the event, which the <h1> no longer carries but the tour publishes and
+// a search turns up, then the level, the surface, the size of the field and the host city.
+// Every part is optional — an event the calendar can't place keeps its name alone rather
+// than showing a line of gaps.
+function billing(t) {
+  const e = t.event || {};
+  const bits = [];
+  if (t.name !== ename(t)) bits.push(t.name);
+  bits.push(e.level || t.tier);
+  if (e.surface) bits.push(e.indoor ? `${e.surface} (indoor)` : e.surface);
+  const size = drawSize(t);
+  if (size) bits.push(`${size}-player draw`);
+  const where = e.venue || t.city;
+  if (where) bits.push(where);
+  return bits.filter(Boolean);
+}
+
 // A finished draw with charting reads as a plain charted / not-charted split; everything
 // else keeps the four-step coverage scale.
 function updateLegend(t) {
@@ -223,6 +258,9 @@ function render() {
   // parked reading "Wimbledon" was a tab you could no longer find by its title. The event
   // is the <h1> on the page, where it doesn't have to compete for ~15 characters.
   $("pageTitle").textContent = glabel(t);
+  const bits = billing(t);
+  $("billing").textContent = bits.join(" · ");
+  $("billing").hidden = !bits.length;
   updateLegend(t);
 
   // Phones skip the quarter view entirely: the whole draw, one round at a time,

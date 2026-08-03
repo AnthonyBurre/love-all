@@ -84,13 +84,24 @@ def _side_dict(s) -> dict:
 
 
 def serialize(tournament, use_fixture: bool = True) -> dict:
-    """A tournament as a JSON-ready payload dict (the ``brackets.json`` tournament shape),
-    structural only. Used for both live draws and the accumulating history archive."""
+    """A tournament as a JSON-ready payload dict (the ``brackets.json`` tournament shape).
+
+    Structure, plus the ``event`` block of reader-facing labels (common name, tour level,
+    surface — see ``feeds.event_meta``). Used for both live draws and the accumulating
+    history archive, so an event's labels freeze into the archive with its draw rather than
+    being re-derived later from a calendar that has moved on to the next season.
+    """
+    from match_charting_project.live import feeds
+
     rds = rounds(tournament, use_fixture=use_fixture)
     slotted = all(getattr(m, "slot", 0) for r in rds for m in r["matches"])
+    try:
+        meta = feeds.event_meta(tournament)
+    except Exception:
+        meta = {}                         # no calendar cached: the feed name stands alone
     return {
         "id": tournament.id, "name": tournament.name, "tier": tournament.tier,
-        "city": getattr(tournament, "city", ""),
+        "city": getattr(tournament, "city", ""), "event": meta,
         "gender": tournament.gender, "best_of": tournament.best_of, "slotted": slotted,
         "rounds": [
             {"rank": r["rank"], "label": r["label"], "matches": [
