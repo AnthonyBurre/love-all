@@ -64,15 +64,16 @@ export async function serveGates() {
   return out;
 }
 
-// The tour's own spread, per gender, for the three metrics the panel places a player
-// *inside* rather than merely prints. Every charted value of each one, sorted ascending —
-// a few hundred numbers a tour, which is small enough to ship down whole and enough to
-// both draw the distribution and say where in it one player stands.
+// The whole charted tour, per gender, as the pairs the matchup panel's one field plots: how
+// varied a player's shot mix is, against how much the situation moves their shot selection.
+// A couple of hundred rows a tour, which is small enough to ship down whole.
 //
-// A percentile is the only reading of "3.2 bits" that means anything to a reader who has
-// never seen another player's, and it is what the fixed qualitative thresholds could not
-// give: on the built table those put two thirds of the tour in the same middle bucket, so
-// the word beside almost every player was the same word.
+// Only players charted enough for both. A player with one coordinate cannot stand anywhere on
+// a field, and is not part of the crowd the two in this match are being placed against.
+//
+// The name rides along so every mark in that crowd can say who it is on hover. Without it the
+// field draws a population and then refuses to name any of it, which is the difference between
+// a reference the reader can check and a wash behind the two marks that matter.
 //
 // Cached as the promise rather than the value, so two panels opening at once share one
 // query — the panel awaits this on every open.
@@ -85,21 +86,15 @@ export function tourSpread() {
 async function loadSpread() {
   const out = { M: {}, W: {} };
   try {
-    // One pass per metric, unioned and sorted by value, so each array arrives in order
-    // and the percentile lookup is a bisect rather than a sort per open.
     const rows = await query(
-      `SELECT gender, 'bits' AS metric, bits AS v FROM player_summary WHERE bits IS NOT NULL
-       UNION ALL
-       SELECT gender, 'sigma', sigma FROM player_summary WHERE sigma IS NOT NULL
-       UNION ALL
-       SELECT gender, 'accuracy', accuracy FROM player_summary WHERE accuracy IS NOT NULL
-       ORDER BY 1, 2, 3`);
+      `SELECT gender, player, bits, sigma FROM player_summary
+       WHERE bits IS NOT NULL AND sigma IS NOT NULL`);
     for (const r of rows) {
       const g = out[r.gender];
       if (!g) continue;
-      (g[r.metric] || (g[r.metric] = [])).push(Number(r.v));
+      (g.pairs || (g.pairs = [])).push([Number(r.bits), Number(r.sigma), String(r.player)]);
     }
-  } catch (e) { /* stale insights db: the panel drops the tour comparisons */ }
+  } catch (e) { /* stale insights db: the panel drops the field */ }
   return out;
 }
 

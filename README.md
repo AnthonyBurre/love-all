@@ -136,9 +136,8 @@ racket in, their shot-quality rating, and how much of them the charting actually
 are read through by everything below — the counts are the denominator of every number in the
 drawer, and the court drawings two sections down name their zones by the player's own hand, so
 a lefty's forehand corner is a righty's backhand corner. The rating is a 0–100 score of shot
-execution that no player comes near either end of; the charted tours run about 49 to 73, so it
-is printed with the share of the tour each player is ahead of, and with whether they beat or
-fall short of what their own style fingerprint predicts.
+execution, printed with whether the player beats or falls short of what their own style
+fingerprint predicts — which is a comparison the raw score can't make.
 
 Then **serve direction**: where their first serve goes on each court side,
 laid out the way the server sees the two boxes. Only wide and T are shown, so
@@ -159,14 +158,21 @@ their arc climbs.
 
 Only those two get rings, because a ring only works for a number with a real zero and a
 reachable ceiling. **How guessable they are** — variety (how much a player's shot mix moves)
-and shot selection (how much the situation moves it) — has neither: every player on tour lands
-inside a narrow band, so on a zeroed ring or a zeroed field they all draw the same mark. So
-each of those two gets a track running from the lowest charted player on that tour to the
-highest, with the distribution of all of them drawn behind it and each player standing where
-they stand in it. The reading under it is a percentile — *more varied than 73%* — which is
-what makes two players a fifth of a bit apart legible as twenty-five percentiles apart. The
-shape behind the marks is why: most of the tour is bunched and the top end is a long thin
-tail.
+and shot selection (how much the situation moves it) — has neither, and the two are
+independent besides: across the built table they correlate +0.21 on the men's side and −0.24
+on the women's, and all four quadrants around their medians fill about evenly. Independence is
+what a field is for, so those two share one, variety across in bits and shot selection up in
+percentage points, both axes ticked in their own units with a drawn arrow showing which way
+they grow.
+
+Every charted player on that tour is drawn behind them, one light grey × each; the two players
+in this match are open rings in their own colours. That crowd is the part that makes raw units
+readable — half the tour sits inside a band about a third of a bit wide, and you can see the
+band rather than being told about it, so "3.2 bits" means something without a percentile
+standing in for it. Hovering any × names the player it is. Nothing is restated in text beside
+the field: the axes carry the values, and the legend carries the only thing the drawing can't
+say, which is who is who. A player charted enough for one axis but not the other can't stand
+anywhere, so the coordinate we do have is ticked on its own axis instead.
 
 Below the rings come **court patterns**, written in plain English:
 `drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
