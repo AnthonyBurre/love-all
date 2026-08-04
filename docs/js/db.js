@@ -64,6 +64,45 @@ export async function serveGates() {
   return out;
 }
 
+// The tour's own spread, per gender, for the three metrics the panel places a player
+// *inside* rather than merely prints. Every charted value of each one, sorted ascending —
+// a few hundred numbers a tour, which is small enough to ship down whole and enough to
+// both draw the distribution and say where in it one player stands.
+//
+// A percentile is the only reading of "3.2 bits" that means anything to a reader who has
+// never seen another player's, and it is what the fixed qualitative thresholds could not
+// give: on the built table those put two thirds of the tour in the same middle bucket, so
+// the word beside almost every player was the same word.
+//
+// Cached as the promise rather than the value, so two panels opening at once share one
+// query — the panel awaits this on every open.
+let _spread = null;
+export function tourSpread() {
+  if (!_spread) _spread = loadSpread();
+  return _spread;
+}
+
+async function loadSpread() {
+  const out = { M: {}, W: {} };
+  try {
+    // One pass per metric, unioned and sorted by value, so each array arrives in order
+    // and the percentile lookup is a bisect rather than a sort per open.
+    const rows = await query(
+      `SELECT gender, 'bits' AS metric, bits AS v FROM player_summary WHERE bits IS NOT NULL
+       UNION ALL
+       SELECT gender, 'sigma', sigma FROM player_summary WHERE sigma IS NOT NULL
+       UNION ALL
+       SELECT gender, 'accuracy', accuracy FROM player_summary WHERE accuracy IS NOT NULL
+       ORDER BY 1, 2, 3`);
+    for (const r of rows) {
+      const g = out[r.gender];
+      if (!g) continue;
+      (g[r.metric] || (g[r.metric] = [])).push(Number(r.v));
+    }
+  } catch (e) { /* stale insights db: the panel drops the tour comparisons */ }
+  return out;
+}
+
 // League mean serve-win rates (for the matchup strength combine), keyed by gender.
 // Read by prefix rather than by testing for "mu_M" and treating everything else as the
 // women's value: `meta` is a general key/value table, so the first non-mu row added to it

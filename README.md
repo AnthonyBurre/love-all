@@ -131,19 +131,51 @@ and that weights the numbers toward big occasions rather than sampling a career 
 drawer says so in a line under the heading, and it is worth keeping in mind for every number
 below.
 
-It opens on **serve direction**: where their first serve goes on each court side,
+It opens on a **profile band**: what kind of player each of them is, which hand they hold the
+racket in, their shot-quality rating, and how much of them the charting actually has. All four
+are read through by everything below — the counts are the denominator of every number in the
+drawer, and the court drawings two sections down name their zones by the player's own hand, so
+a lefty's forehand corner is a righty's backhand corner. The rating is a 0–100 score of shot
+execution that no player comes near either end of; the charted tours run about 49 to 73, so it
+is printed with the share of the tour each player is ahead of, and with whether they beat or
+fall short of what their own style fingerprint predicts.
+
+Then **serve direction**: where their first serve goes on each court side,
 laid out the way the server sees the two boxes. Only wide and T are shown, so
 the two do not add to 100 — the remainder is the body serve, which `serve_tendencies`
 found to be partly a charter's opinion rather than a player's choice. The numbers cover
 recent matches, weighted so the newest count most, and a side appears only when the player
 has enough charted serves there for the share to be mostly signal rather than sampling
-noise. Under it, **side by side** puts both players' headline numbers on one shared axis —
-the only place in the drawer they aren't in a column each. Below that come **court
-patterns**, written in plain English:
+noise. Under it, **side by side** gives serve points won and return points won a ring each:
+both players start at
+the foot and climb, one up the left and one up the right, so the comparison is which sweep
+goes further. Every ring runs between the two figures printed at its ends — zero under the
+foot, its ceiling over the top — so twice the arc is twice the number, within a ring. The
+ceilings differ where a metric's own full is useless: returning is the half of tennis nobody
+wins outright, so that ring ends at 67% rather than spending two thirds of its climb on ground
+no player has stood on. Read those ends before comparing one ring to another. All of it costs resolution where two tour pros differ by a
+point or two, which is why each player's figure stands on their own side of the ring, the side
+their arc climbs.
+
+Only those two get rings, because a ring only works for a number with a real zero and a
+reachable ceiling. **How guessable they are** — variety (how much a player's shot mix moves)
+and shot selection (how much the situation moves it) — has neither: every player on tour lands
+inside a narrow band, so on a zeroed ring or a zeroed field they all draw the same mark. So
+each of those two gets a track running from the lowest charted player on that tour to the
+highest, with the distribution of all of them drawn behind it and each player standing where
+they stand in it. The reading under it is a percentile — *more varied than 73%* — which is
+what makes two players a fifth of a bit apart legible as twenty-five percentiles apart. The
+shape behind the marks is why: most of the tour is bunched and the top end is a long thin
+tail.
+
+Below the rings come **court patterns**, written in plain English:
 `drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
 **shot-making triggers** are written in shot tokens: `serve wide · BH slice→3`, with a bar
 under each cue: its length is how often that cue makes them go for a finishing shot, the
-colour change is how much of that landed, and the tick is the rate without the cue. Click the
+colour change is how much of that landed, and the tick is the rate without the cue. The first
+bar in each player's column is that player with no cue at all — their rate over every rally
+stroke they hit, drawn on the same scale and from the same left edge — so the section's whole
+claim is one glance: this is the rate, and these are the lead-ups that move it. Click the
 **ball path** toggle under either to see it drawn on a small court. The drawer carries a
 short "How to read the shot notation" key of its own, so the reference below is only here
 for when you want the exact semantics.
