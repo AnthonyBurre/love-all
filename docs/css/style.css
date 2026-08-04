@@ -696,70 +696,197 @@ a { color: var(--acc-d); }
 .wp-line .pa { height: 100%; background: color-mix(in srgb, var(--a) 65%, var(--card)); }
 .wp-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 
-/* --- the comparison strip -------------------------------------------------------
+/* --- the comparison strip, headed "side by side" ---------------------------------
    Both players' headline numbers on one axis: bars grow outward from a shared centre,
    so a gap reads as a shape rather than as arithmetic between two distant columns. The
    hairline on each bar is the tour average, where the metric has one. */
-.tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0; }
+/* --dn-size is the drawn diameter of one ring, set here because the box it sits in is what
+   there is to divide up: two rings across a wide panel and one across a phone, each with a
+   player's number and qualifier either side of it. */
+.tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0;
+  --dn-size: 116px; }
 /* The first thing in the scroll, right under a header that just named this match — so
-   without a label over them, the numbers below default to reading as this match's.
-   They're the opposite: each player's whole charted history, which is what the "not this
-   match" half says outright rather than trusting "charted: N matches" further down to
-   imply it. It heads everything in the body, not just the strip, so it sits above the
-   strip's border rather than inside it — see the note in matchup.js. */
-.tapetitle { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+   without a label over them, the numbers below default to reading as this match's. They're
+   the opposite, which is what the "not this one" half says outright rather than trusting
+   "charted: N matches" further down to imply it. It heads every section in the body, so it
+   sits out here rather than inside any of them — see the note in matchup.js. */
+.tapetitle { margin: 0 0 3px; font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--muted); }
+/* What "charted" is doing in the title above. Small print, and always printed: it is the
+   one caveat that changes how every number in the body should be read, and a reader who
+   has to open something to find that out has already read the numbers without it.
+   Held to a measure rather than run across a 840px panel — a caveat set as one long line
+   of 10.5px grey is a line people's eyes slide off, which defeats printing it at all. */
+.covnote { margin: 0 0 12px; max-width: 74ch; font-size: 10.5px; line-height: 1.55;
+  color: var(--muted); }
 .tapetitle span { font-weight: 500; text-transform: none; letter-spacing: normal; opacity: .82; }
-.tapehead { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
-/* no name here: the header above names this side and never scrolls away, and the rule
-   closing it says in colour which side is which. */
-.twho { min-width: 0; }
-.twho.b { text-align: right; }
-.tmeta { margin: 0; font-size: 11px; color: var(--muted); }
-.tarch, .tcharted { display: block; }
-.tcharted { font-variant-numeric: tabular-nums; }
+
+/* --- who these two are, over everything the body measures -----------------------------
+   Two halves, each capped by a rule in its player's colour — the same mark that caps every
+   column further down, and the same left-right order as the split under the scoreboard. No
+   name on either: the header above holds those and never scrolls away.
+   Mirrored, like every other two-player layout in the panel: A reads out from the left edge
+   and B in from the right, so each side's text hangs on the edge its own colour is. */
+.pband { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 16px; }
+.pbside { min-width: 0; padding-top: 9px; border-top: 4px solid var(--shot); }
+.pbside[data-side="a"] { --shot: var(--a); }
+.pbside[data-side="b"] { --shot: var(--b); text-align: right; }
+/* The style label is the identity, so it takes the size. Two or three words, and on a phone
+   half of them wrap — which is fine, it is the one thing here worth two lines. */
+.pbstyle { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--ink); }
+.pbhand { margin: 1px 0 0; font-size: 11px; color: var(--muted); }
+/* The score, out of a hundred nobody reaches — see profileSide() for why the ring went. The
+   denominator is set small and the name smaller still: the figure is what is being read, and
+   "/100" and "shot quality" are both there to tell you what it is once. */
+.pbq { margin: 9px 0 0; line-height: 1.1; }
+.pbq b { font-size: 22px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pbq span { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pbq em { display: block; margin-top: 1px; font-style: normal; font-size: 10px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.pbnote { margin: 3px 0 0; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
+.pbchart { margin: 9px 0 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pbnone { margin: 0; font-size: 11.5px; color: var(--warn); line-height: 1.45; }
 /* the per-column dot, used where a stacked phone column has to name its own player */
 .tdot { flex: none; width: 9px; height: 9px; }
 .tdot.a { background: var(--a); }
 .tdot.b { background: var(--b); }
 
-.taperow { margin: 7px 0 0; }
-.tkey { margin: 0 0 1px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-.tbars { display: grid; grid-template-columns: minmax(72px, 1fr) 2fr 2fr minmax(72px, 1fr); align-items: center; gap: 7px; }
-.tval { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); line-height: 1.25; }
-.tval.a { text-align: right; }
-.tval.lead { color: var(--ink); font-weight: 800; }
-.tsub { display: block; font-size: 10px; font-weight: 500; color: var(--muted); }
-.tbar { position: relative; height: 10px; background: color-mix(in srgb, var(--line) 70%, var(--card)); }
-/* the fill is a flex row of segments; side A grows leftward from the centre, so it
-   reverses and both players' first segments meet in the middle.
-   The far end tapers to a point, so a bar reads as an arrow pointing the way it grew —
-   which is the one thing a mirrored pair has to say and previously left to position
-   alone. The taper is on the outer end only: the inner ends still meet square at the
-   centre line, because that shared edge is what makes the two lengths comparable. */
-.tbar i { position: absolute; top: 0; bottom: 0; display: flex; overflow: hidden; }
-.tbar.a i { right: 0; flex-direction: row-reverse; clip-path: polygon(0 50%, 9px 0, 100% 0, 100% 100%, 9px 100%); }
-.tbar.b i { left: 0; clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%); }
-.tbar.a i > span { background: var(--a); }
-.tbar.b i > span { background: var(--b); }
+/* The two rings side by side on a wide panel and stacked on a phone, with the pair of tour
+   tracks under them taking the full row either way. Each ring spends width on the numbers
+   either side of it rather than stacking them in the hole, which is what buys the phone
+   layout its one virtue: one ring per row puts both midlines on the same vertical. */
+.dnwrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 18px; }
+.dn { min-width: 0; }
+/* Reserved at two lines whether the name needs them or not, so the two rings sit level across
+   the row even when one name wraps and the other doesn't. Bottom-aligned inside that box, so
+   a one-line name still sits against the ring it belongs to and the spare line opens above
+   rather than between them. */
+.dnkey { display: flex; align-items: flex-end; justify-content: center; text-align: center;
+  margin: 0; min-height: 2.7em; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--muted); line-height: 1.35; }
+/* The two ends of the ring's scale, at the two ends of the ring: zero under the foot both
+   sweeps leave from, the ceiling over the top they climb toward. Printed rather than assumed,
+   because the two do not share one — "67%" against an arc at two thirds says nothing without
+   it — and printed here rather than in a caption above, because this is where a reader looks
+   to find out what an arc has reached. */
+/* The negative margins pull them in over the blank the viewBox leaves outside the ring —
+   about 10px at this size — so each cap sits against the arc it belongs to instead of
+   floating a gap away from it. Nothing is drawn out there to collide with. */
+.dncap { display: block; font-size: 9px; letter-spacing: .04em; color: var(--muted);
+  opacity: .85; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.dnring .dncap:first-child { margin-bottom: -7px; }
+.dnring .dncap:last-child { margin-top: -7px; }
+/* The ring on the panel's own centre line, with a player either side of it. Equal outer
+   tracks rather than tracks sized to their contents: the two qualifiers are rarely the same
+   length, and sized to them the ring would sit off-centre by half the difference — which is
+   the one thing this layout exists to avoid. */
+.dnrow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center; gap: 10px; }
+.dnring { width: var(--dn-size); display: flex; flex-direction: column; align-items: center;
+  gap: 1px; }
+.dnring svg { display: block; width: var(--dn-size); height: var(--dn-size); }
+/* Each player's pair reads outward from the ring: the number against it, the qualifier
+   under the number. No colour chip on either — the side is the key, and it is the same side
+   the player's own arc climbs. */
+.dside { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.dside.a { align-items: flex-end; text-align: right; }
+.dside.b { align-items: flex-start; text-align: left; }
+/* one ring's figure and its qualifier, kept together; the gap above separates the pairs
+   where a cell nests two rings */
+.dpair { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.dv { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--muted); line-height: 1.2; }
+.dv.lead { color: var(--ink); font-weight: 800; }
+.ds { font-size: 10px; color: var(--muted); line-height: 1.4; }
+
+/* The unreached part of the domain, and the only thing saying how far a sweep could have
+   gone. A full circle, because the two half-turns either side of 12 o'clock are the whole
+   axis between them. */
+/* 10 units of the 100-unit viewBox, matching DN_W in matchup.js — the two have to agree, and
+   this is the only place either is written down besides the geometry constants there. */
+.dtrack { fill: none; stroke: color-mix(in srgb, var(--line) 70%, var(--card));
+  stroke-width: 10; }
+.dseg { fill: none; stroke-width: 10; stroke-linecap: butt; }
+.dseg.a { stroke: var(--a); }
+.dseg.b { stroke: var(--b); }
 /* the missed half of the same decision: same hue, drained of it */
-.tbar i > span.miss { opacity: .38; }
-/* The other way a bar splits. An ace is a service point won like every other point in that
-   bar — there is no failed half to drain — so the ace share deepens instead of the rest
+.dseg.miss { opacity: .38; }
+/* The other way an arc splits. An ace is a service point won like every other point in that
+   sweep — there is no failed half to drain — so the ace share deepens instead of the rest
    draining. Drained, it was the wrong shape of statement and the wrong weight: aces are a
-   twelfth of a good server's points won, so ~90% of the strip's headline row went faint and
-   the serve bars came out paler than the return bars under them. Deepened, the row keeps its
-   weight and the marked part is the one that reads as emphatic, which is what winning a
-   point outright is. It sits against the centre line, so the two players' cores meet. */
-.tbar.a i > span.deep { background: color-mix(in srgb, var(--a) 60%, #000); }
-.tbar.b i > span.deep { background: color-mix(in srgb, var(--b) 60%, #000); }
-.tbar u { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: var(--ink); opacity: .5; }
+   twelfth of a good server's points won, so ~90% of the serve ring would go faint and come
+   out paler than the return ring beside it. Deepened, the ring keeps its weight and the
+   marked part is the one that reads as emphatic, which is what winning a point outright is.
+   It starts at 12 o'clock, so the two players' cores meet at the origin. */
+.dseg.a.deep { stroke: color-mix(in srgb, var(--a) 60%, #000); }
+.dseg.b.deep { stroke: color-mix(in srgb, var(--b) 60%, #000); }
+/* The tour average, as a spoke across the ring. It has to be legible on the saturated arc
+   *and* on the empty track behind it, and no single colour manages both — on a violet or red
+   arc a dark mark is simply not there, which is the half of the ring the average usually
+   lands in. So it is a light core over a dark halo, drawn as two lines because SVG has no
+   box-shadow. The cue bars under the shot-making triggers wear the same mark, in CSS, for
+   the same reason and against the same two grounds. */
+.dtickhalo { stroke: color-mix(in srgb, var(--ink) 50%, transparent); stroke-width: 3.6;
+  stroke-linecap: butt; }
+.dtick { stroke: var(--card); stroke-width: 1.8; stroke-linecap: butt; }
+/* zero, cut into the ring — see dnOrigin() for why it is the card's colour and not a mark */
+.dorigin { stroke: var(--card); stroke-width: 2.2; stroke-linecap: butt; }
+
+/* --- variety and shot selection, against the tour ------------------------------------
+   A full-width cell, because a distribution wants length and the two players' readings sit
+   under it rather than beside it. On the rings the flanks work: one figure and a short
+   qualifier either side of a 116px circle. Here each reading is a figure plus a sentence,
+   and the picture is a track that gets better the wider it is — so the row is the picture
+   and the readings take a half each underneath. */
+.dn.wide { grid-column: 1 / -1; }
+.dn.wide .dnkey { min-height: 0; justify-content: flex-start; text-align: left; }
+.dnsub { margin: 2px 0 0; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
+.vax { margin-top: 12px; }
+.vname { margin: 0; font-size: 11.5px; font-weight: 700; color: var(--ink); }
+.vname span { font-weight: 500; color: var(--muted); }
+/* The plot: the tour's own distribution, with a mark per player standing in it. The marks
+   are HTML rather than SVG because the drawing is stretched to the cell's width — see
+   varyAxis(). The baseline under it is the axis; there is no scale line above it, because
+   the two ends are printed under the two ends. */
+.vplot { position: relative; height: 56px; margin-top: 6px;
+  border-bottom: 1px solid var(--line); }
+.vdist { display: block; width: 100%; height: 100%; }
+.vdist path { fill: color-mix(in srgb, var(--ink) 13%, transparent); }
+/* One player, standing in it. A rule through the full height rather than a dot on the curve:
+   two players land within a few percent of each other often enough that overlap is the normal
+   case, and two rules a pixel apart still read as two where two dots read as a smudge. The
+   card-coloured outline is what keeps it legible over the filled distribution and over the
+   empty ground either side of it, the same job the rings' haloed tick does. */
+.vmark { position: absolute; top: -4px; bottom: 0; width: 2px; margin-left: -1px;
+  background: var(--a); box-shadow: 0 0 0 1px var(--card); }
+.vmark.b { background: var(--b); }
+.vmark::after { content: ""; position: absolute; left: 50%; top: -4px;
+  width: 8px; height: 8px; margin-left: -4px; background: inherit; border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--card); }
+/* the tour's lowest and highest charted player, at the two ends they are */
+.vends { display: flex; justify-content: space-between; margin-top: 3px; }
+.vends span { font-size: 9px; letter-spacing: .04em; color: var(--muted); opacity: .85;
+  font-variant-numeric: tabular-nums; }
+/* The two readings, a half of the row each and reading outward from their own edge. These
+   carry a colour chip, which nothing else in this section does: everywhere else each player
+   holds their own half of the picture, and here the two share one track — a player can be
+   the left-hand reading with the right-hand mark. */
+.vreads { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; }
+.vread { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.vread.b { text-align: right; align-items: flex-end; }
+.vv { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600;
+  color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.vread.b .vv { flex-direction: row-reverse; }
 
 .tapenote { margin: 12px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
 .segkey.deep { background: color-mix(in srgb, var(--muted) 60%, #000); }
-.tickkey { display: inline-block; width: 2px; height: 11px; background: var(--ink); opacity: .5; vertical-align: -2px; margin: 0 1px; }
+/* the key wears the mark it is a key for, halo and all — hence the margin, which is the
+   room the halo needs to not sit on the words either side of it */
+.tickkey { display: inline-block; width: 2px; height: 11px; background: var(--card);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 50%, transparent);
+  vertical-align: -2px; margin: 0 3px; }
 
 /* --- a topic, one header, two columns -------------------------------------------
    The topic sticks to the top of the scroll while its own cards pass under it: the
@@ -778,8 +905,6 @@ a { color: var(--acc-d); }
    one. Browsers without subgrid drop the rule and get the old stacks. */
 .seccols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 0;
   grid-template-rows: repeat(var(--rows, 1), auto); }
-/* the sticky bar's other half on a phone: the two column owners, over their columns */
-.secwho { display: none; }
 /* The player's colour caps the column instead of running down its left edge. A left rule
    put two thin verticals in the middle of the panel, competing with the gutter between
    the columns; a rule across the top states the ownership once, at the point the eye
@@ -795,9 +920,13 @@ a { color: var(--acc-d); }
 
 /* one court pattern: the drawing, then the lift, then what it is and what it earns */
 .pcard2 { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 12px; }
-.pcourt { flex: 0 0 96px; }
-.pcourt svg { width: 96px; height: auto; display: block; }
-/* These thumbnails render at ~0.64 scale, so the drawn balls need extra weight in viewBox
+/* 88px of box, not the 96 it was: the drawing is cropped to the court now (see FRAME in
+   court.js) instead of carrying 20 units of blank field either side, so a narrower box
+   holds a court an eighth wider than the old one did. The width it gives back goes to the
+   description beside it. */
+.pcourt { flex: 0 0 88px; }
+.pcourt svg { width: 88px; height: auto; display: block; }
+/* These thumbnails render at ~0.72 scale, so the drawn balls need extra weight in viewBox
    units to survive the reduction, while the court's own lines thin out and recede. */
 .pcourt .ct-shot { stroke-width: 2.3; }
 .pcourt .ct-shot.incoming { stroke-width: 1.9; stroke-dasharray: 4 3; }
@@ -829,14 +958,32 @@ a { color: var(--acc-d); }
 .trig.gold::before { left: 7px; top: 5px; }
 .trig.immune { color: var(--acc-d); font-weight: 600; }
 .trig.immune::before { content: "◆"; font-size: 10px; }
+/* The player's own rate, heading their column of cues. It keeps .trig's left inset with no
+   glyph in it, so its bar starts on the same vertical as every cue bar below and the lengths
+   compare directly — which is the whole reason it is here and not on a ring three sections
+   up. The rule under it is what says the rest of the column is measured against this. */
+.trig.base { margin-bottom: 12px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.trig.base .tcue { color: var(--muted); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; }
 .tcue { margin: 0; }
 .tnum { margin: 2px 0 0; color: var(--muted); }
 .tnum b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .trig .lift { color: var(--muted); font-size: 11px; }
+/* The cue's bar. Same grammar as the comparison strip's split row — a track, a fill that
+   changes colour where the attempts stopped landing, a haloed tick at the reference — but
+   growing from the left rather than from a shared centre, because there is only one player
+   in this column and nothing to mirror it against. */
+.tmeter { position: relative; height: 7px; margin: 4px 0 0;
+  background: color-mix(in srgb, var(--line) 70%, var(--card)); }
+.tmeter i { position: absolute; left: 0; top: 0; bottom: 0; display: flex; overflow: hidden; }
+.tmeter i > span { background: var(--shot, var(--acc)); }
+.tmeter i > span.miss { opacity: .38; }
+.tmeter u { position: absolute; top: -2.5px; bottom: -2.5px; width: 2px; margin-left: -1px;
+  background: var(--card); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 50%, transparent); }
 .warnmark { color: var(--warn); }
 .trig code { background: color-mix(in srgb, var(--line) 55%, var(--card)); padding: 1px 4px; font-size: 11px; }
 
-/* serve decisions: the two service boxes as the server sees them, deuce left and ad
+/* serve direction: the two service boxes as the server sees them, deuce left and ad
    right, each zone sitting where it does on the court — so the numbers are laid out
    in court order and the frame only has to suggest the lines. Wide and T only: the
    body share is partly a charter's opinion, so it is not reported and the two shown
@@ -887,6 +1034,10 @@ a { color: var(--acc-d); }
 
 /* the court glyph's key, stated where the glyph is first used */
 .courtkey { margin: 5px 0 0; display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 10.5px; }
+/* The cue bar's key. Ordinary inline flow, unlike .courtkey above: that one keys three
+   glyphs with a word each and wants them spaced apart as three items, this one is a
+   sentence with marks in it, and laid out as flex items its own clauses came apart. */
+.meterkey { display: block; margin: 5px 0 0; font-size: 10.5px; line-height: 1.6; }
 .ck { color: var(--ink); font-weight: 700; }
 .ck.in { color: var(--muted); border-bottom: 1.5px dashed var(--muted); }
 .ck.out { border-bottom: 1.5px solid var(--acc); }
@@ -903,8 +1054,7 @@ a { color: var(--acc-d); }
 .rally .court { margin: 4px 0 2px; }
 .rally .court svg { width: 112px; height: auto; display: block; }
 .nochart { font-size: 12.5px; color: var(--warn); margin: 14px 0 0; }
-.nochart a, .tmeta a { font-weight: 700; }
-.twho .tmeta a { color: var(--warn); }
+.nochart a, .pbnone a { font-weight: 700; color: var(--warn); }
 
 .site-foot { border-top: 1px solid var(--line); margin-top: 24px; padding: 22px 0 40px; color: var(--muted); font-size: 13px; }
 .site-foot p { line-height: 1.55; max-width: 820px; }
@@ -959,9 +1109,17 @@ a { color: var(--acc-d); }
 @media (max-width: 620px) {
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+  /* One ring per row. Two would halve the width the numbers either side of each ring need,
+     and it would put two midlines on a phone instead of one — where a single column means
+     both rings share a vertical and the eye runs straight down them. Height is the one
+     thing a phone has to spend. The tour tracks were already taking the full row and are
+     unaffected: a distribution is the one thing here that only needs width. */
   .tape { padding: 11px 12px 12px; }
-  .tbars { grid-template-columns: minmax(58px, 1fr) 2fr 2fr minmax(58px, 1fr); gap: 5px; }
-  .tval { font-size: 12px; }
+  .dnwrap { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  /* The distribution keeps its shape at a third of the width, so what it gives up is height —
+     the one thing a phone is short of, and the one dimension here that is only ever read as
+     "which bins are taller than which". */
+  .vplot { height: 44px; }
   /* The court sections stay two-up. Stacking them puts a player's three drawings a
      screen and a half from the three they are meant to be read against, which is the
      section — so the card gives up its side-by-side layout instead, and the comparison
@@ -973,13 +1131,13 @@ a { color: var(--acc-d); }
   .msec.text .seccol { display: block; grid-row: auto; }
   .seccol { padding-left: 8px; }
   .msec.text .colwho { display: flex; }
-  .msec.cards .secwho { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px;
-    margin-top: 3px; text-transform: none; letter-spacing: 0; font-size: 11px; }
-  .msec.cards .sw { display: flex; align-items: center; gap: 5px; min-width: 0;
-    padding-left: 10px; color: var(--ink); }
   .msec.cards .pcard2 { display: block; margin-bottom: 14px; }
-  .msec.cards .pcourt { width: 92px; margin-bottom: 3px; }
-  .msec.cards .pcourt svg { width: 92px; }
+  /* Stacked, the court has the whole column to itself and was using half of it — 92px of
+     drawing with 70px of nothing beside it, on the screen where the drawing is hardest to
+     read. It takes the width instead; the height it costs is the one thing a phone has
+     plenty of, and this section is the reason to open the panel. */
+  .msec.cards .pcourt { width: 104px; margin-bottom: 3px; }
+  .msec.cards .pcourt svg { width: 104px; }
   .msec.cards .plift { font-size: 15px; }
   .msec.cards .pdesc { font-size: 12px; }
 }

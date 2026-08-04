@@ -9,7 +9,7 @@ pair of small chevrons so the direction of travel reads at a glance, and the fin
 stroke drawn as a landed winner or a marked miss (into the net / long / wide).
 
 The court geometry and CSS-class names mirror the mini-courts the Pages site
-already draws in ``docs/js/matchup.js`` (viewBox 150×190, net at y=95, the
+already draws in ``docs/js/court.js`` (a 150×190 field, net at y=95, the
 ``ct-*`` classes), so an SVG from here drops straight into that theme with
 ``css_classes=True``; the default is self-contained (inline colours) so the same
 call also embeds in a Markdown report or saves as a standalone ``.svg``.
@@ -33,7 +33,11 @@ from dataclasses import dataclass
 from match_charting_project.shots.notation import ParsedPoint, Shot, parse_point
 from match_charting_project.shots.score import serve_side
 
-# --- Court geometry (matches the site's mini-courts: viewBox 150 x 190) -------
+# --- Court geometry (matches the site's mini-courts: a 150 x 190 field) -------
+# Every coordinate below is shared with docs/js/court.js. The viewBox is not: these
+# render at full size in a report and keep the whole field, where the site's thumbnails
+# draw at ~88px and crop to the court to buy back the blank margin. Presentation only —
+# nothing here follows it.
 _W, _H = 150, 190
 _LEFT, _RIGHT = 20.0, 130.0          # singles sidelines
 _TOP, _BOTTOM = 10.0, 180.0          # baselines
