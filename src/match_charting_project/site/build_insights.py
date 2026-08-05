@@ -150,7 +150,9 @@ def build() -> int:
     summary = pd.DataFrame([
         {"gender": g, "player": p, "serve_rate": round(sv, 4), "return_rate": round(rt, 4),
          "matches_charted": cov.get((g, p), {}).get("matches", 0),
-         "points_charted": cov.get((g, p), {}).get("points", 0)}
+         "points_charted": cov.get((g, p), {}).get("points", 0),
+         "year_min": cov.get((g, p), {}).get("year_min"),
+         "year_max": cov.get((g, p), {}).get("year_max")}
         for (g, p), (sv, rt) in strength.items()
     ])
 

@@ -747,7 +747,9 @@ a { color: var(--acc-d); }
 .pbq em { display: block; margin-top: 1px; font-style: normal; font-size: 10px;
   font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .pbnote { margin: 3px 0 0; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
-.pbchart { margin: 9px 0 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Leads the column now — see profileSide() — so it takes the top margin the rule's
+   padding-top already covers, and gives its own gap below instead of above. */
+.pbchart { margin: 0 0 9px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pbnone { margin: 0; font-size: 11.5px; color: var(--warn); line-height: 1.45; }
 /* the per-column dot, used where a stacked phone column has to name its own player */
 .tdot { flex: none; width: 9px; height: 9px; }
@@ -760,13 +762,6 @@ a { color: var(--acc-d); }
    layout its one virtue: one ring per row puts both midlines on the same vertical. */
 .dnwrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 18px; }
 .dn { min-width: 0; }
-/* Reserved at two lines whether the name needs them or not, so the two rings sit level across
-   the row even when one name wraps and the other doesn't. Bottom-aligned inside that box, so
-   a one-line name still sits against the ring it belongs to and the spare line opens above
-   rather than between them. */
-.dnkey { display: flex; align-items: flex-end; justify-content: center; text-align: center;
-  margin: 0; min-height: 2.7em; font-size: 10px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .06em; color: var(--muted); line-height: 1.35; }
 /* The two ends of the ring's scale, at the two ends of the ring: zero under the foot both
    sweeps leave from, the ceiling over the top they climb toward. Printed rather than assumed,
    because the two do not share one — "67%" against an arc at two thirds says nothing without
@@ -787,7 +782,16 @@ a { color: var(--acc-d); }
   align-items: center; gap: 10px; }
 .dnring { width: var(--dn-size); display: flex; flex-direction: column; align-items: center;
   gap: 1px; }
+.dnringin { position: relative; }
 .dnring svg { display: block; width: var(--dn-size); height: var(--dn-size); }
+/* The ring's name, moved into its own hole rather than set as a line of print over the row —
+   see donut(). Shrunk and shortened (VARY... no, tapeRows' `short`) to fit the ~72px of clear
+   space the ring's stroke leaves at its centre; centred over the svg it sits inside, not over
+   the caps either side of it. */
+.dnttl { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  margin: 0; width: 58px; text-align: center; font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .03em; line-height: 1.25; color: var(--muted);
+  pointer-events: none; }
 /* Each player's pair reads outward from the ring: the number against it, the qualifier
    under the number. No colour chip on either — the side is the key, and it is the same side
    the player's own arc climbs. */
@@ -835,18 +839,9 @@ a { color: var(--acc-d); }
 /* zero, cut into the ring — see dnOrigin() for why it is the card's colour and not a mark */
 .dorigin { stroke: var(--card); stroke-width: 2.2; stroke-linecap: butt; }
 
-/* --- variety and shot selection, against the tour ------------------------------------
-   A full-width cell, because a distribution wants length and the two players' readings sit
-   under it rather than beside it. On the rings the flanks work: one figure and a short
-   qualifier either side of a 116px circle. Here each reading is a figure plus a sentence,
-   and the picture is a track that gets better the wider it is — so the row is the picture
-   and the readings take a half each underneath. */
-/* --- variety against shot selection, on one field ---------------------------------------
-   A full-width cell: a scatter is the one thing in this section that wants room, and with the
-   figures no longer restated beside it there is nothing to put in a flank. */
-.dn.wide { grid-column: 1 / -1; }
-.dn.wide .dnkey { min-height: 0; justify-content: flex-start; text-align: left; }
-.dnsub { margin: 2px 0 0; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
+/* --- variety against shot selection, on one field, in its own section (varietySection) -----
+   Its own sechead/secnote now — see .msec/.sechead below — rather than a wide cell sharing the
+   rings' "side by side" title, which never described a scatter against the tour. */
 
 /* The field and its furniture, on one grid so the tick labels line up with the drawing they
    belong to without either of them knowing a pixel size. Column 1 is the y name, column 2 the
