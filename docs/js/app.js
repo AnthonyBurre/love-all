@@ -218,22 +218,21 @@ function drawSize(t) {
   return r1.length ? r1.length * 2 - r1.filter((m) => m.bye).length : null;
 }
 
-// The line under the <h1>: what this draw is, in the order you'd ask. It opens with the
+// The lines under the <h1>: what this draw is, in the order you'd ask. First the
 // sponsor's name for the event, which the <h1> no longer carries but the tour publishes and
-// a search turns up, then the level, the surface, the size of the field and the host city.
-// Every part is optional — an event the calendar can't place keeps its name alone rather
-// than showing a line of gaps.
+// a search turns up, then the level, the surface and the size of the field together, then
+// the host city on its own — three different questions ("what's it called", "what kind of
+// event", "where") rather than one run-on line. Every part is optional — an event the
+// calendar can't place keeps its name alone rather than showing a line of gaps.
 function billing(t) {
   const e = t.event || {};
-  const bits = [];
-  if (t.name !== ename(t)) bits.push(t.name);
-  bits.push(e.level || t.tier);
-  if (e.surface) bits.push(e.indoor ? `${e.surface} (indoor)` : e.surface);
+  const name = t.name !== ename(t) ? t.name : null;
+  const kind = [e.level || t.tier];
+  if (e.surface) kind.push(e.indoor ? `${e.surface} (indoor)` : e.surface);
   const size = drawSize(t);
-  if (size) bits.push(`${size}-player draw`);
+  if (size) kind.push(`${size}-player draw`);
   const where = e.venue || t.city;
-  if (where) bits.push(where);
-  return bits.filter(Boolean);
+  return [name, kind.filter(Boolean).join(" · "), where].filter(Boolean);
 }
 
 // A finished draw with charting reads as a plain charted / not-charted split; everything
@@ -258,9 +257,16 @@ function render() {
   // parked reading "Wimbledon" was a tab you could no longer find by its title. The event
   // is the <h1> on the page, where it doesn't have to compete for ~15 characters.
   $("pageTitle").textContent = glabel(t);
-  const bits = billing(t);
-  $("billing").textContent = bits.join(" · ");
-  $("billing").hidden = !bits.length;
+  const lines = billing(t);
+  const bEl = $("billing");
+  bEl.innerHTML = "";
+  for (const line of lines) {
+    const span = document.createElement("span");
+    span.className = "billing-line";
+    span.textContent = line;
+    bEl.append(span);
+  }
+  bEl.hidden = !lines.length;
   updateLegend(t);
 
   // Phones skip the quarter view entirely: the whole draw, one round at a time,

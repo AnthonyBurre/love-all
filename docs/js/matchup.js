@@ -785,16 +785,16 @@ function profileSide(d, tag) {
 // recent-form window rather than a career total, and a subtitle that covers the body has to
 // be true of every section in it. The section says which window in its own caption.
 //
-// The asterisk is the other half of the same statement. "Charted history" invites the reader
-// to treat these as the player's record, and they are a sample of it — one assembled by
-// volunteers picking matches worth charting, which is not how a random sample is drawn. That
-// belongs beside the title rather than in the notation key at the foot, because it changes
-// how every number below should be read and most readers never open the key.
 const CHARTED_TITLE = `<p class="tapetitle">Charted history
-    <span>— their charted matches, not this one</span></p>
-  <p class="covnote">* Charting is volunteer work, so these are the matches someone chose to
-    chart. That weights the numbers toward big occasions rather than sampling a career
-    evenly.</p>`;
+    <span>— their charted matches, not this one</span></p>`;
+
+// The asterisk on "Charted history": these are a sample assembled by volunteers picking
+// matches worth charting, not a random one, so it isn't the player's record. It reads once
+// per panel and applies to every number above it, so it closes the panel rather than
+// competing with the title for the first thing a reader sees under it.
+const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are the matches
+    someone chose to chart. That weights the numbers toward big occasions rather than
+    sampling a career evenly.</p>`;
 
 // The strip's own heading. It had none while the title above sat inside it; with the title
 // promoted to head the body, the one chart here without a name would have been this one.
@@ -1104,17 +1104,22 @@ function headHtml(m, t, round) {
   // row — see .mgrid.noscore.
   const played = (m.a.sets || []).length || (m.b.sets || []).length;
   const rule = played ? `<i class="mrule"></i>` : "";
-  // Event/round and when both belong to the tournament, not to either player, so they
-  // share one corner instead of bracketing the scoreboard from opposite ends — freeing
-  // the other corner for the one thing there is to *do* about this match: chart it, or
-  // read the chart that's already there.
+  // Event/round belongs to the tournament, not to either player, so it sits in its own
+  // corner rather than bracketing the scoreboard from an opposite end. A played or live
+  // match's when joins it there, top left, since both are read before the score is. An
+  // upcoming match's when is a countdown, not a record — it's still true at the moment
+  // you'd act on it, which is down by the chart button, the one thing there is to *do*
+  // about a match that hasn't been played yet.
+  const upcoming = m.state === "pre";
   return `<div class="mcorner">
       <p class="mevent">${eyebrow(t, round)}</p>
-      ${when ? `<p class="mstate">${when}</p>` : ""}
+      ${when && !upcoming ? `<p class="mstate">${when}</p>` : ""}
     </div>
     <div class="mgrid${played ? "" : " noscore"}">
       ${side(m.a, "a")}${scoreStack(m.a, m.b)}${side(m.b, "b")}${rule}</div>
-    ${chartButton(m)}`;
+    ${upcoming
+      ? `<div class="mfoot">${when ? `<p class="mstate">${when}</p>` : ""}${chartButton(m)}</div>`
+      : chartButton(m)}`;
 }
 
 // The body, under one title: who the two players are, then the two headline rings, then where
@@ -1159,7 +1164,8 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
       finishing shot — and whether it pays${meterLegend("their rate without the cue")}`,
       a, b, ta.main, tb.main, "text") +
     section("deep patterns ⭐", `3–4 shot sequences only chartable at this player's
-      coverage${meterLegend("the shorter pattern's rate")}`, a, b, ta.gold, tb.gold, "text");
+      coverage${meterLegend("the shorter pattern's rate")}`, a, b, ta.gold, tb.gold, "text") +
+    (pa || pb ? COV_NOTE : "");
 }
 
 // --- the panel as a dialog ----------------------------------------------------------
