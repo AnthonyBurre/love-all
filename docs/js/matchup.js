@@ -773,12 +773,6 @@ function profileSide(d, tag) {
   </div>`;
 }
 
-function styleBand(da, db) {
-  const a = profileSide(da, "a"), b = profileSide(db, "b");
-  if (!a && !b) return "";
-  return `<div class="pband styleband">${a}${b}</div>`;
-}
-
 // The one line over the whole body. The scoreboard above it never says "this match" — it
 // can't, nothing under here is about this match — so the body has to say what it is itself,
 // before any of its numbers do.
@@ -813,20 +807,28 @@ const CHARTED_TITLE = `<p class="tapetitle">Charted history
 // (varietySection, "how guessable they are"), and winners-and-errors is the first bar in each
 // player's column under shot-making triggers, which is where the numbers it should be held
 // against already were.
+//
+// The rings stack rather than sit side by side, and the two style columns flank the stack
+// instead of sitting in a row above it, wide enough allowing: three tracks (style, rings,
+// style) instead of the two rows a narrower panel needs. Centred on that row, the stack lands
+// in the gap a style column already has between its own archetype line and its shot-quality
+// figure — so on a wide panel the rings read as filling that gap rather than as a block
+// dropped in below it. See .tapemain in the stylesheet for the two grid-template-areas this
+// switches between.
 function tape(da, db, mu) {
   const sa = da && da.s, sb = db && db.s;
   if (!sa && !sb) return "";
   const cells = tapeRows(mu).map((r) => donut(r, sa, sb)).join("");
-  const style = styleBand(da, db);
-  if (!cells && !style) return "";
+  const sideA = profileSide(da, "a"), sideB = profileSide(db, "b");
+  if (!cells && !sideA && !sideB) return "";
+  const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
   return `<section class="msec">
     <h3 class="sechead">side by side</h3>
     <section class="tape">
-    ${style}
-    <div class="dnwrap">${cells}</div>
-    <p class="tapenote">
+    <div class="tapemain">${sideA}${rings}${sideB}</div>
+    ${cells ? `<p class="tapenote">
       <span class="tickkey"></span> this draw's tour average ·
-      <span class="segkey deep"></span> aces, within serve points won</p>
+      <span class="segkey deep"></span> aces, within serve points won</p>` : ""}
   </section></section>`;
 }
 
@@ -1145,8 +1147,7 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
   return (pa || pb ? CHARTED_TITLE + profileBand(pa, pb) : "") +
     tape(pa, pb, mu) +
-    section("serve direction", `where the first serve goes, by court side — recent
-      matches counting most`, a, b,
+    section("serve direction", `recency weighted measures of first serve direction by court side`, a, b,
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
     varietySection(pa, pb, spread) + none +
     section("court patterns", `their answer to an incoming ball, × how often the tour

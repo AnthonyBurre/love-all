@@ -756,11 +756,38 @@ a { color: var(--acc-d); }
 .tdot.a { background: var(--a); }
 .tdot.b { background: var(--b); }
 
-/* The two rings side by side on a wide panel and stacked on a phone, with the pair of tour
-   tracks under them taking the full row either way. Each ring spends width on the numbers
-   either side of it rather than stacking them in the hole, which is what buys the phone
-   layout its one virtue: one ring per row puts both midlines on the same vertical. */
-.dnwrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 18px; }
+/* --- the style band and the rings, sharing one grid (tape()) ---------------------------
+   Narrow: the two style columns sit in a row of their own, the ring stack in a full-width
+   row under them — the same shape "Charted history" above already uses for its own two-up
+   band, so the panel doesn't grow a second convention for a pair of player columns.
+   Wide: a third, narrow track opens between the style columns and the rings move into it.
+   Centred on the row (see the media query below), the stack lands level with the gap a style
+   column already has between its archetype line and its shot-quality figure — so on a wide
+   panel the rings read as rising to fill that gap rather than as a block dropped in beneath
+   it. Named areas rather than source order, because which markup element is "left" changes
+   between the two shapes and an area name says so without a second layout for the JS side. */
+.tapemain { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 18px;
+  grid-template-areas: "sa sb" "rings rings"; align-items: start; }
+.tapemain > .pbside.a { grid-area: sa; }
+.tapemain > .pbside.b { grid-area: sb; }
+/* One ring per row, centred: each ring already pulls its own flanking numbers in against
+   itself (see .dside below), so a ring reads centred at any track width regardless of how
+   much of the row's width is actually spare either side of it. */
+.dnstack { grid-area: rings; display: flex; flex-direction: column; align-items: center;
+  gap: 22px; min-width: 0; }
+@media (min-width: 761px) {
+  /* align-items stays "start": the style columns keep the same top edge as the box and as
+     "Charted history" above, rather than floating to the middle of a row the taller ring
+     stack now sets the height of. Only the stack itself is asked to centre — align-self on
+     .dnstack alone — so it climbs to the middle of that height while the rule at the top of
+     each style column stays put. */
+  .tapemain { grid-template-columns: 1fr minmax(270px, 340px) 1fr;
+    grid-template-areas: "sa rings sb"; align-items: start; }
+  .dnstack { align-self: center; }
+  /* Room to spend, now the rings have a track of their own instead of sharing a row with a
+     second ring: the wider a ring is drawn, the more its arc can say. */
+  .tape { --dn-size: 148px; }
+}
 .dn { min-width: 0; }
 /* The two ends of the ring's scale, at the two ends of the ring: zero under the foot both
    sweeps leave from, the ceiling over the top they climb toward. Printed rather than assumed,
@@ -1148,18 +1175,12 @@ a { color: var(--acc-d); }
 }
 @keyframes sheet { from { opacity: 0; transform: translateY(28px); } }
 
-/* phone panel: the strip is the one thing that stays two-up — mirrored bars are the
-   comparison and they survive a narrow column. Everything below stacks, so each column
-   names its own player rather than relying on a position that no longer holds. */
+/* phone panel: everything stacks, so each column names its own player rather than relying
+   on a position that no longer holds. */
 @media (max-width: 620px) {
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
-  /* One ring per row. Two would halve the width the numbers either side of each ring need,
-     and it would put two midlines on a phone instead of one — where a single column means
-     both rings share a vertical and the eye runs straight down them. Height is the one
-     thing a phone has to spend. The field below already takes the full row either way. */
   .tape { padding: 11px 12px 12px; }
-  .dnwrap { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   /* The field needs no phone layout of its own: it is a square with its labels on two sides
      and a legend under it, and every one of those is sized off the field rather than off the
      panel. It just gets narrower. The y tick column tightens, being the one fixed width in it. */
