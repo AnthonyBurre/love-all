@@ -739,31 +739,56 @@ a { color: var(--acc-d); }
    denominator is set small and the name smaller still: the figure is what is being read, and
    "/100" and "shot quality" are both there to tell you what it is once. */
 .pbq { margin: 9px 0 0; line-height: 1.1; }
-.pbq b { font-size: 22px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* Proportional figures, not tabular. Equal-width digits are for numbers that have to line up
+   down a column; on a standalone figure at this size they set every 1 in the width of a 0 and
+   "60.7" comes out visibly loose. The counts further down do align, and keep theirs. */
+.pbq b { font-size: 22px; font-weight: 700; color: var(--ink); }
 .pbq span { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pbq em { display: block; margin-top: 1px; font-style: normal; font-size: 10px;
   font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .pbnote { margin: 3px 0 0; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
-.pbchart { margin: 9px 0 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Leads the column now — see profileSide() — so it takes the top margin the rule's
+   padding-top already covers, and gives its own gap below instead of above. */
+.pbchart { margin: 0 0 9px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pbnone { margin: 0; font-size: 11.5px; color: var(--warn); line-height: 1.45; }
 /* the per-column dot, used where a stacked phone column has to name its own player */
 .tdot { flex: none; width: 9px; height: 9px; }
 .tdot.a { background: var(--a); }
 .tdot.b { background: var(--b); }
 
-/* The two rings side by side on a wide panel and stacked on a phone, with the pair of tour
-   tracks under them taking the full row either way. Each ring spends width on the numbers
-   either side of it rather than stacking them in the hole, which is what buys the phone
-   layout its one virtue: one ring per row puts both midlines on the same vertical. */
-.dnwrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 18px; }
+/* --- the style band and the rings, sharing one grid (tape()) ---------------------------
+   Narrow: the two style columns sit in a row of their own, the ring stack in a full-width
+   row under them — the same shape "Charted history" above already uses for its own two-up
+   band, so the panel doesn't grow a second convention for a pair of player columns.
+   Wide: a third, narrow track opens between the style columns and the rings move into it.
+   Centred on the row (see the media query below), the stack lands level with the gap a style
+   column already has between its archetype line and its shot-quality figure — so on a wide
+   panel the rings read as rising to fill that gap rather than as a block dropped in beneath
+   it. Named areas rather than source order, because which markup element is "left" changes
+   between the two shapes and an area name says so without a second layout for the JS side. */
+.tapemain { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 18px;
+  grid-template-areas: "sa sb" "rings rings"; align-items: start; }
+.tapemain > .pbside.a { grid-area: sa; }
+.tapemain > .pbside.b { grid-area: sb; }
+/* One ring per row, centred: each ring already pulls its own flanking numbers in against
+   itself (see .dside below), so a ring reads centred at any track width regardless of how
+   much of the row's width is actually spare either side of it. */
+.dnstack { grid-area: rings; display: flex; flex-direction: column; align-items: center;
+  gap: 22px; min-width: 0; }
+@media (min-width: 761px) {
+  /* align-items stays "start": the style columns keep the same top edge as the box and as
+     "Charted history" above, rather than floating to the middle of a row the taller ring
+     stack now sets the height of. Only the stack itself is asked to centre — align-self on
+     .dnstack alone — so it climbs to the middle of that height while the rule at the top of
+     each style column stays put. */
+  .tapemain { grid-template-columns: 1fr minmax(270px, 340px) 1fr;
+    grid-template-areas: "sa rings sb"; align-items: start; }
+  .dnstack { align-self: center; }
+  /* Room to spend, now the rings have a track of their own instead of sharing a row with a
+     second ring: the wider a ring is drawn, the more its arc can say. */
+  .tape { --dn-size: 148px; }
+}
 .dn { min-width: 0; }
-/* Reserved at two lines whether the name needs them or not, so the two rings sit level across
-   the row even when one name wraps and the other doesn't. Bottom-aligned inside that box, so
-   a one-line name still sits against the ring it belongs to and the spare line opens above
-   rather than between them. */
-.dnkey { display: flex; align-items: flex-end; justify-content: center; text-align: center;
-  margin: 0; min-height: 2.7em; font-size: 10px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .06em; color: var(--muted); line-height: 1.35; }
 /* The two ends of the ring's scale, at the two ends of the ring: zero under the foot both
    sweeps leave from, the ceiling over the top they climb toward. Printed rather than assumed,
    because the two do not share one — "67%" against an arc at two thirds says nothing without
@@ -784,7 +809,16 @@ a { color: var(--acc-d); }
   align-items: center; gap: 10px; }
 .dnring { width: var(--dn-size); display: flex; flex-direction: column; align-items: center;
   gap: 1px; }
+.dnringin { position: relative; }
 .dnring svg { display: block; width: var(--dn-size); height: var(--dn-size); }
+/* The ring's name, moved into its own hole rather than set as a line of print over the row —
+   see donut(). Shrunk and shortened (VARY... no, tapeRows' `short`) to fit the ~72px of clear
+   space the ring's stroke leaves at its centre; centred over the svg it sits inside, not over
+   the caps either side of it. */
+.dnttl { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  margin: 0; width: 58px; text-align: center; font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .03em; line-height: 1.25; color: var(--muted);
+  pointer-events: none; }
 /* Each player's pair reads outward from the ring: the number against it, the qualifier
    under the number. No colour chip on either — the side is the key, and it is the same side
    the player's own arc climbs. */
@@ -832,51 +866,89 @@ a { color: var(--acc-d); }
 /* zero, cut into the ring — see dnOrigin() for why it is the card's colour and not a mark */
 .dorigin { stroke: var(--card); stroke-width: 2.2; stroke-linecap: butt; }
 
-/* --- variety and shot selection, against the tour ------------------------------------
-   A full-width cell, because a distribution wants length and the two players' readings sit
-   under it rather than beside it. On the rings the flanks work: one figure and a short
-   qualifier either side of a 116px circle. Here each reading is a figure plus a sentence,
-   and the picture is a track that gets better the wider it is — so the row is the picture
-   and the readings take a half each underneath. */
-.dn.wide { grid-column: 1 / -1; }
-.dn.wide .dnkey { min-height: 0; justify-content: flex-start; text-align: left; }
-.dnsub { margin: 2px 0 0; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
-.vax { margin-top: 12px; }
-.vname { margin: 0; font-size: 11.5px; font-weight: 700; color: var(--ink); }
-.vname span { font-weight: 500; color: var(--muted); }
-/* The plot: the tour's own distribution, with a mark per player standing in it. The marks
-   are HTML rather than SVG because the drawing is stretched to the cell's width — see
-   varyAxis(). The baseline under it is the axis; there is no scale line above it, because
-   the two ends are printed under the two ends. */
-.vplot { position: relative; height: 56px; margin-top: 6px;
-  border-bottom: 1px solid var(--line); }
-.vdist { display: block; width: 100%; height: 100%; }
-.vdist path { fill: color-mix(in srgb, var(--ink) 13%, transparent); }
-/* One player, standing in it. A rule through the full height rather than a dot on the curve:
-   two players land within a few percent of each other often enough that overlap is the normal
-   case, and two rules a pixel apart still read as two where two dots read as a smudge. The
-   card-coloured outline is what keeps it legible over the filled distribution and over the
-   empty ground either side of it, the same job the rings' haloed tick does. */
-.vmark { position: absolute; top: -4px; bottom: 0; width: 2px; margin-left: -1px;
-  background: var(--a); box-shadow: 0 0 0 1px var(--card); }
-.vmark.b { background: var(--b); }
-.vmark::after { content: ""; position: absolute; left: 50%; top: -4px;
-  width: 8px; height: 8px; margin-left: -4px; background: inherit; border-radius: 50%;
-  box-shadow: 0 0 0 1.5px var(--card); }
-/* the tour's lowest and highest charted player, at the two ends they are */
-.vends { display: flex; justify-content: space-between; margin-top: 3px; }
-.vends span { font-size: 9px; letter-spacing: .04em; color: var(--muted); opacity: .85;
-  font-variant-numeric: tabular-nums; }
-/* The two readings, a half of the row each and reading outward from their own edge. These
-   carry a colour chip, which nothing else in this section does: everywhere else each player
-   holds their own half of the picture, and here the two share one track — a player can be
-   the left-hand reading with the right-hand mark. */
-.vreads { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; }
-.vread { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.vread.b { text-align: right; align-items: flex-end; }
-.vv { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600;
-  color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.2; }
-.vread.b .vv { flex-direction: row-reverse; }
+/* --- variety against shot selection, on one field, in its own section (varietySection) -----
+   Its own sechead/secnote now — see .msec/.sechead below — rather than a wide cell sharing the
+   rings' "side by side" title, which never described a scatter against the tour. */
+
+/* The field and its furniture, on one grid so the tick labels line up with the drawing they
+   belong to without either of them knowing a pixel size. Column 1 is the y name, column 2 the
+   y tick labels, column 3 the plot; the x ticks and the x name sit under column 3 only. */
+/* Capped, not filled to the row: both axes are square-scaled and there is no second thing to
+   put beside them now the figures have gone. The cap is generous rather than tidy — 164 marks
+   in a dense band separate in proportion to the field's width, so every pixel here is
+   legibility in the one place the chart is hardest to read. */
+.vfield { display: grid; width: min(100%, 440px); margin: 12px auto 0;
+  grid-template-columns: auto auto minmax(0, 1fr); }
+.vfplot { grid-column: 3; grid-row: 1; position: relative; }
+.vfplot svg { display: block; width: 100%; aspect-ratio: 1; height: auto; }
+/* Tick labels are HTML over the drawing, positioned by the same percentages the marks are —
+   see varyField(). Type inside a viewBox scales with the box and comes out under 7px on a
+   phone; out here it keeps the panel's own size at any width. */
+.vfyt { grid-column: 2; grid-row: 1; position: relative; width: 30px; }
+.vfyt span { position: absolute; right: 5px; transform: translateY(-50%); }
+.vfxt { grid-column: 3; grid-row: 2; position: relative; height: 14px; }
+.vfxt span { position: absolute; top: 2px; transform: translateX(-50%); }
+.vfyt span, .vfxt span { font-size: 9px; color: var(--muted); opacity: .85;
+  font-variant-numeric: tabular-nums; line-height: 1.2; white-space: nowrap; }
+/* Each axis says which way it grows, what it measures, and in what — the drawn arrow on the
+   axis itself carries the direction, so the words don't have to borrow a → to gesture at it. */
+.vfname { margin: 0; font-size: 9.5px; font-weight: 600; color: var(--muted);
+  letter-spacing: .01em; line-height: 1.3; }
+.vfname.x { grid-column: 3; grid-row: 3; margin-top: 2px; text-align: center; }
+/* Rotated bottom-to-top, which is the direction the axis runs and the way its arrow points. */
+.vfname.y { grid-column: 1; grid-row: 1; writing-mode: vertical-rl; transform: rotate(180deg);
+  display: flex; align-items: center; justify-content: center; }
+
+/* Every stroke on the field is non-scaling, which means the widths below are rendered pixels
+   rather than viewBox units. That distinction is the bug this section had: the field is a
+   100×100 viewBox drawn at ~330px, so a stroke-width of 1 came out 3px and a "2px ring" came
+   out 6px — a hairline grid that read as a heavy rule, and a ring that read as a border drawn
+   around the mark. Radii are still viewBox units and are divided by hand. */
+.vx, .vgrid, .vring, .vrug, .vaxis { vector-effect: non-scaling-stroke; }
+.vplotbg { fill: color-mix(in srgb, var(--line) 12%, var(--card)); stroke: none; }
+/* solid hairlines one step off the surface — all a reference line is allowed to be */
+.vgrid { stroke: color-mix(in srgb, var(--ink) 9%, transparent); stroke-width: 1; }
+/* the two axes and their heads: the shaft is a stroke, the head a filled triangle */
+.vaxis { stroke: color-mix(in srgb, var(--ink) 38%, transparent); stroke-width: 1.2; fill: none; }
+.vhead { fill: color-mix(in srgb, var(--ink) 38%, transparent); stroke: none; }
+/* The crowd: one light grey × a player. Two crossing strokes rather than a dot, so a pile-up
+   stays see-through instead of filling in, and so the shape itself is different from the two
+   rings rather than a smaller version of them. */
+/* Light, and light on purpose: half the charted tour sits inside a band about a third of a
+   bit wide, so at any real weight that band stops being a hundred players and becomes one
+   black smear. Thin and pale, the overlaps accumulate into tone — the density reads as
+   density, which is the thing the crowd is here to show. */
+.vx { stroke: color-mix(in srgb, var(--ink) 24%, transparent); stroke-width: 1;
+  stroke-linecap: round; fill: none; }
+/* The two players: open rings in their own colours, hollow. A surface fill made the ring a
+   token sitting on top of the crowd — it occluded whichever players it happened to land on,
+   which is the one thing a mark placed *in* a distribution should not do, and at the size it
+   needed to carry that fill it read as the subject of the chart rather than a position in it.
+   Hollow and smaller, it is a circle drawn around a spot on the field and the crowd inside it
+   stays readable. Colour and the closed shape are what tell it from an ×, not bulk. */
+.vring { fill: none; stroke-width: 2.5; }
+.vring.a { stroke: var(--a); }
+.vring.b { stroke: var(--b); }
+/* half a position: the one coordinate we have, ticked on its own axis */
+.vrug { stroke-width: 3; stroke-linecap: butt; }
+.vrug.a { stroke: var(--a); }
+.vrug.b { stroke: var(--b); }
+
+/* The legend, and the only thing left where two columns of restated figures used to be: with
+   the axes ticked and labelled, the drawing already carries the values, and what it cannot say
+   is which ring is which player. Each key wears the mark it identifies. */
+.vlegend { grid-column: 1 / -1; grid-row: 4; display: flex; flex-wrap: wrap;
+  justify-content: center; gap: 4px 14px; margin: 9px 0 0; font-size: 10px; color: var(--muted); }
+.vkey { display: inline-flex; align-items: center; gap: 5px; }
+.vkey i { flex: none; width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid var(--shot, var(--muted)); }
+.vkey.a { --shot: var(--a); }
+.vkey.b { --shot: var(--b); }
+/* the crowd's key wears a × drawn in borders rather than a ring */
+.vkey.peer i { width: 9px; height: 9px; border: 0; border-radius: 0;
+  background:
+    linear-gradient(to bottom right, transparent 43%, color-mix(in srgb, var(--ink) 42%, transparent) 43% 57%, transparent 57%),
+    linear-gradient(to bottom left, transparent 43%, color-mix(in srgb, var(--ink) 42%, transparent) 43% 57%, transparent 57%); }
 
 .tapenote { margin: 12px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
@@ -1103,23 +1175,16 @@ a { color: var(--acc-d); }
 }
 @keyframes sheet { from { opacity: 0; transform: translateY(28px); } }
 
-/* phone panel: the strip is the one thing that stays two-up — mirrored bars are the
-   comparison and they survive a narrow column. Everything below stacks, so each column
-   names its own player rather than relying on a position that no longer holds. */
+/* phone panel: everything stacks, so each column names its own player rather than relying
+   on a position that no longer holds. */
 @media (max-width: 620px) {
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
-  /* One ring per row. Two would halve the width the numbers either side of each ring need,
-     and it would put two midlines on a phone instead of one — where a single column means
-     both rings share a vertical and the eye runs straight down them. Height is the one
-     thing a phone has to spend. The tour tracks were already taking the full row and are
-     unaffected: a distribution is the one thing here that only needs width. */
   .tape { padding: 11px 12px 12px; }
-  .dnwrap { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  /* The distribution keeps its shape at a third of the width, so what it gives up is height —
-     the one thing a phone is short of, and the one dimension here that is only ever read as
-     "which bins are taller than which". */
-  .vplot { height: 44px; }
+  /* The field needs no phone layout of its own: it is a square with its labels on two sides
+     and a legend under it, and every one of those is sized off the field rather than off the
+     panel. It just gets narrower. The y tick column tightens, being the one fixed width in it. */
+  .vfyt { width: 26px; }
   /* The court sections stay two-up. Stacking them puts a player's three drawings a
      screen and a half from the three they are meant to be read against, which is the
      section — so the card gives up its side-by-side layout instead, and the comparison

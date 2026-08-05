@@ -79,24 +79,6 @@ async function playerData(name, gender) {
   return { s: s[0], triggers, patterns, serve };
 }
 
-// Where a value stands in the tour's own sorted values: the share of charted players it is
-// above, 0–1. Bisected rather than scanned — the arrays are a few hundred long and every
-// panel asks this four or five times.
-function pctile(sorted, v) {
-  if (!sorted || !sorted.length || v == null) return null;
-  let lo = 0, hi = sorted.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (sorted[mid] < v) lo = mid + 1; else hi = mid;
-  }
-  return lo / sorted.length;
-}
-
-// A percentile as a share, held off both ends: nobody is "ahead of 0%" or "ahead of 100%"
-// of a group they are themselves in, and printing either invites the reader to check a
-// claim the number was never making.
-const pctileFmt = (p) => `${Math.min(99, Math.max(1, Math.round(p * 100)))}%`;
-
 // The benchmark is no longer the mean of the archetype a player was sorted into — it is
 // what their own style fingerprint predicts, fitted smoothly across the style space — so
 // the wording names the style rather than the box. It also has to stay true for a player
@@ -394,7 +376,8 @@ function tapeRows(mu) {
     // Absent for a thinly-charted player (the build floors it at ~2 matches of service
     // points), and the arc is then simply one colour.
     {
-      k: "serve_rate", label: "serve points won", hi: 1, top: "100%", better: "hi",
+      k: "serve_rate", label: "serve points won", short: ["serve pts", "won"],
+      hi: 1, top: "100%", better: "hi",
       avg: mu, fmt: pct,
       sub: (s) => s.ace_rate == null ? "" : `${(Number(s.ace_rate) * 100).toFixed(1)}% aces`,
       parts: (s) => {
@@ -412,7 +395,8 @@ function tapeRows(mu) {
     // under the name is for, and why the note below stops short of saying arcs compare
     // between rings.
     {
-      k: "return_rate", label: "return points won", hi: 0.67, top: "67%", better: "hi",
+      k: "return_rate", label: "return points won", short: ["return pts", "won"],
+      hi: 0.67, top: "67%", better: "hi",
       avg: 1 - mu, fmt: pct
     },
   ];
@@ -484,11 +468,10 @@ const dnFlank = (it, tag) => `<div class="dside ${tag}">
     ${it.sub ? `<span class="ds">${esc(it.sub)}</span>` : ""}
   </div></div>`;
 
-// A ring cell: the name, then a player, the ring, and the other player. The scale used to be a
-// line of small print under the name; it is now written on the picture at the two ends it
-// actually refers to, which is where a reader looks for it.
-const dnCell = (label, a, art, b) => `<div class="dn">
-  <p class="dnkey">${esc(label)}</p>
+// A ring cell: a player, the ring, and the other player. The name used to run as a line of
+// small print over the row; it now sits in the ring's own hole, so nothing above the row
+// answers a question the ring itself already sits under.
+const dnCell = (a, art, b) => `<div class="dn">
   <div class="dnrow">${a}${art}${b}</div>
 </div>`;
 
@@ -511,175 +494,251 @@ function donut(r, sa, sb) {
   // "no data" only in the label a screen reader hears — set beside the picture it would be a
   // sentence where every other cell holds a figure, which is what the em dash is for.
   const say = (v) => (v == null ? "no data" : r.fmt(v));
+  // The ring's name, shrunk and shortened to sit in its own hole rather than over the row —
+  // the one place beside the arc itself a reader is already looking.
+  const title = r.short
+    ? `<p class="dnttl">${r.short.map(esc).join("<br>")}</p>` : "";
   // The two ends of the scale, at the two ends of the ring. Both sweeps start at the foot and
   // finish at the top, so those are the only two places the numbers could go and mean
   // anything — and put there they are read off the picture rather than remembered from a
   // caption above it.
-  return dnCell(r.label,
+  return dnCell(
     dnFlank(item(va, sa, "a"), "a"),
     `<div class="dnring">
       <span class="dncap">${esc(r.top)}</span>
-      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img"
-        aria-label="${esc(`${r.label} — ${say(va)} against ${say(vb)}`)}">
-        <circle class="dtrack" cx="${DN_C}" cy="${DN_C}" r="${DN_R}"/>
-        ${arc(va, sa, "a")}${arc(vb, sb, "b")}${dnOrigin()}
-        ${/* one per side, and only where that side has a sweep to read it against — a lone
-             tick on an empty half is a reference for a number that isn't there */""}
-        ${r.avg == null || va == null ? "" : dnTick(dnAt(at(r.avg), "a"))}
-        ${r.avg == null || vb == null ? "" : dnTick(dnAt(at(r.avg), "b"))}
-      </svg>
+      <div class="dnringin">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img"
+          aria-label="${esc(`${r.label} — ${say(va)} against ${say(vb)}`)}">
+          <circle class="dtrack" cx="${DN_C}" cy="${DN_C}" r="${DN_R}"/>
+          ${arc(va, sa, "a")}${arc(vb, sb, "b")}${dnOrigin()}
+          ${/* one per side, and only where that side has a sweep to read it against — a lone
+               tick on an empty half is a reference for a number that isn't there */""}
+          ${r.avg == null || va == null ? "" : dnTick(dnAt(at(r.avg), "a"))}
+          ${r.avg == null || vb == null ? "" : dnTick(dnAt(at(r.avg), "b"))}
+        </svg>
+        ${title}
+      </div>
       <span class="dncap">0</span>
     </div>`,
     dnFlank(item(vb, sb, "b"), "b"));
 }
 
-// --- variety and shot selection, against the tour they were measured on -----------------
-// Two numbers a reader has no scale for. "3.2 bits" and "σ 5.5pp" are not quantities anyone
-// arrives with an instinct about, and the pair of them used to be plotted on a field running
-// from zero to a ceiling picked just past the tour's highest — which put every player in the
-// world inside one small patch near the middle, two dots on top of each other, with the same
-// three-word qualifier printed beside both of them.
+// --- variety and shot selection, on one field, in the units they are measured in --------
+// Both axes are raw: bits across, σ in percentage points up, each running the length of the
+// charted tour. No ranks and no percentiles — a percentile is a second thing to learn before
+// the first one means anything, and it silently discards how far apart two players are in
+// favour of how many people happen to sit between them.
 //
-// It was not the drawing's fault. The words underneath it were calibrated the same way: on the
-// built table, the thresholds that separated "fairly patterned" from "average variety" from
-// "unusually varied" sat at roughly the 27th and 93rd percentile of the charted men, so two
-// players in three got the middle word whatever they actually did. A field divided into nine
-// regions by those lines is nine regions one of which holds nearly everybody.
+// What makes raw units work here — where they didn't when this was two dots on an empty
+// square — is the crowd. Every charted player on the tour is drawn behind these two, one
+// light grey × each, so the bunching is on the page instead of being a fact you have to be
+// told. If most of the tour sits between 2.9 and 3.2 bits, the reader sees a dense band there
+// and sees which side of it these two are on. The distribution was what the percentile was
+// standing in for, and the crowd states it directly.
 //
-// So the scale is the tour itself. Each axis is a track running from the lowest charted player
-// on that tour to the highest, with the distribution of all of them drawn behind it, and each
-// player marked where they stand in it. The reading is a percentile, which is a sentence
-// anyone can finish: more varied than 77% of the tour. The shape behind the marks is the other
-// half of it — it shows that most of the tour is bunched and the top end is a long thin tail,
-// which is why two players a fifth of a bit apart can be twenty-five percentiles apart.
-//
-// They stay together in one cell, and stacked rather than crossed. The scatter's argument for
-// crossing them was that they are independent (they correlate +0.21 on the men's side and
-// −0.16 on the women's, so the sign does not even survive the change of tour) and that the
-// corner a player stands in is the finding. With two dots and no third player to compare
-// against, the corner was never legible; two tracks say each half plainly and the reader can
-// still hold them together, because they are six lines apart under one heading.
-// `end` is how the two ends of the track are written, where that differs from how a player's
-// own figure is: the ends are read as a range and want to be as short as a range is, and "σ"
-// printed four times across one axis says nothing after the first. Left off where the two are
-// the same thing.
+// Two symbols, and they are doing the emphasis: the crowd is a light grey ×, the two players
+// are open rings in their own colours, filled with the surface so they punch a hole in the
+// crowd rather than sitting in it. Different shape, different weight, different colour — a
+// reader finds the two marks that are about this match before reading anything.
 const VARY = [
-  { k: "bits", label: "variety", blurb: "how much their shot mix moves",
-    fmt: (v) => `${v.toFixed(1)} bits`, more: "more varied than" },
-  { k: "sigma", label: "shot selection", blurb: "how much the situation moves it",
-    fmt: (v) => `σ ${(v * 100).toFixed(1)}pp`, end: (v) => `${(v * 100).toFixed(1)}pp`,
-    more: "more cue-driven than" },
+  {
+    k: "bits", label: "variety", unit: "bits", blurb: "how much their shot mix moves",
+    more: "more varied", fmt: (v) => `${v.toFixed(1)} bits`, tick: (v) => v.toFixed(1)
+  },
+  {
+    k: "sigma", label: "shot selection", unit: "σ pp",
+    blurb: "how much the situation moves it", more: "more cue-driven",
+    fmt: (v) => `σ ${(v * 100).toFixed(1)}pp`,
+    tick: (v) => String(+(v * 100).toFixed(2))
+  },
 ];
 
-// How coarsely the tour's distribution is binned behind a track. 20 bins over the ~190 charted
-// men who have a variety number is about ten to a bin at the mode and one or none out in the
-// tail, which is the shape being drawn — finer and it comes apart into noise, coarser and the
-// bunching that is the whole point of showing it flattens out.
-const VBINS = 20;
-
-// The tour's distribution as one filled area, in a 20-unit-tall box that is stretched to
-// whatever width the track gets. preserveAspectRatio="none" and a fill with no stroke: a
-// stroked outline would come out thick horizontally and hairline vertically under that
-// stretch, where a filled shape is simply the shape.
-function distArea(tour) {
-  const lo = tour[0], hi = tour[tour.length - 1];
-  if (!(hi > lo)) return "";
-  const counts = new Array(VBINS).fill(0);
-  for (const v of tour) {
-    counts[Math.min(VBINS - 1, Math.floor((v - lo) / (hi - lo) * VBINS))]++;
-  }
-  const top = Math.max(...counts);
-  const w = 100 / VBINS;
-  let d = "M0,20";
-  counts.forEach((c, i) => {
-    const y = (20 - (c / top) * 20).toFixed(2);
-    d += ` L${(i * w).toFixed(2)},${y} L${((i + 1) * w).toFixed(2)},${y}`;
-  });
-  return `<svg class="vdist" viewBox="0 0 100 20" preserveAspectRatio="none"
-    xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="${d} L100,20 Z"/></svg>`;
+// Axis bounds on round numbers rather than on the extreme players. The tour's own min and max
+// are arbitrary values to tick an axis at — "2.674 bits" is one player, not a scale — so the
+// domain is widened to whole steps and the ticks land on them.
+function niceScale(lo, hi) {
+  // Five intervals rather than four, which is not arithmetic pedantry: at four, σ's span of
+  // 10.05pp asks for a 2.51pp step, the 2.5 candidate misses by a hundredth, and the scale
+  // jumps to 5 — putting the top tick at 15pp when nobody on tour passes 10.5 and spending a
+  // third of the axis on empty ground.
+  const raw = (hi - lo) / 5 || 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = ([1, 2, 2.5, 5, 10].find((m) => m * mag >= raw) || 10) * mag;
+  const a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step;
+  const ticks = [];
+  for (let v = a; v <= b + step / 1e6; v += step) ticks.push(v);
+  return { lo: a, hi: b, ticks };
 }
 
-// One axis: the name, the distribution with both players marked on it, its two ends, and a
-// reading per player.
-//
-// The marks are HTML over the drawing rather than shapes inside it, for the same reason the
-// scatter's axis labels were: anything inside a stretched viewBox is stretched with it. A mark
-// out here is a 2px rule at a left offset, the same 2px at any panel width.
-//
-// The two readings sit under the track, A at the left end and B at the right, and each carries
-// a colour chip — the one place in the panel where a chip earns itself. Everywhere else the
-// two players hold their own halves of the layout and position is the key. Here they share one
-// track, and a player can perfectly well be the left-hand reading with the right-hand mark.
-function varyAxis(r, sa, sb, tour) {
-  const lo = tour[0], hi = tour[tour.length - 1];
-  const at = (v) => clamp01((v - lo) / (hi - lo)) * 100;
-  const end = r.end || r.fmt;
-  const val = (s) => (s ? num(s[r.k]) : null);
+// The plot box, in the 100×100 viewBox the field is drawn in. The data area is inset from the
+// edges to leave the two axis arrows a lane of their own inside the square — which keeps them
+// part of the same uniformly-scaled drawing, so an arrowhead is the shape it was drawn as at
+// any panel width, instead of being a separate stretched SVG that has to be re-squared by hand.
+const PLOT = { x0: 9, x1: 97, y0: 3, y1: 91 };
+// where the two axis arrows run, just outside the data on the inside of the square
+const AXIS = { x: 3.5, y: 96.5 };
+
+function varyField(sa, sb, spread) {
+  const [rx, ry] = VARY;
+  const peers = spread.pairs || [];
+  if (peers.length < 60) return "";
+  const val = (r, s) => (s ? num(s[r.k]) : null);
+  if (!VARY.some((r) => val(r, sa) != null || val(r, sb) != null)) return "";
+
+  // The domain covers the crowd and both players, so nothing plotted can fall outside it.
+  const span = (r, i) => {
+    const vs = peers.map((p) => p[i]).concat(
+      [val(r, sa), val(r, sb)].filter((v) => v != null));
+    return niceScale(Math.min(...vs), Math.max(...vs));
+  };
+  const sx = span(rx, 0), sy = span(ry, 1);
+  const fx = (v) => PLOT.x0 + clamp01((v - sx.lo) / (sx.hi - sx.lo)) * (PLOT.x1 - PLOT.x0);
+  const fy = (v) => PLOT.y1 - clamp01((v - sy.lo) / (sy.hi - sy.lo)) * (PLOT.y1 - PLOT.y0);
+  const X = (v) => fx(v).toFixed(2), Y = (v) => fy(v).toFixed(2);
+
+  // Hairlines at the ticks. They are what a reader reads a mark's value off now that no figure
+  // is printed beside the field — the whole reason the flanking numbers could go.
+  const grid = sx.ticks.map((v) =>
+    `<line class="vgrid" x1="${X(v)}" y1="${PLOT.y0}" x2="${X(v)}" y2="${PLOT.y1}"/>`)
+    .concat(sy.ticks.map((v) =>
+      `<line class="vgrid" x1="${PLOT.x0}" y1="${Y(v)}" x2="${PLOT.x1}" y2="${Y(v)}"/>`))
+    .join("");
+
+  // The crowd. A × rather than a dot: it reads as lighter at the same ink, two crossing strokes
+  // let a reader see through a pile-up instead of watching it fill in, and it is a different
+  // shape from the two rings rather than a smaller version of them.
+  const crowd = peers.map(([b, g, name]) => {
+    const x = fx(b), y = fy(g), a = 1.7;
+    return `<path class="vx" d="M${(x - a).toFixed(2)},${(y - a).toFixed(2)}
+      l${a * 2},${a * 2} M${(x - a).toFixed(2)},${(y + a).toFixed(2)} l${a * 2},${-a * 2}"
+      ><title>${esc(name)} — ${esc(rx.fmt(b))}, ${esc(ry.fmt(g))}</title></path>`;
+  }).join("");
+
+  // A player with only one of the two can't stand anywhere, but the coordinate we do have is
+  // worth drawing — as a tick on its own axis, which is the honest half of a position.
   const mark = (s, tag) => {
-    const v = val(s);
-    return v == null ? ""
-      : `<i class="vmark ${tag}" style="left:${at(v).toFixed(1)}%"></i>`;
+    const x = val(rx, s), y = val(ry, s);
+    if (x == null && y == null) return "";
+    const say = `<title>${esc(rx.fmt(x ?? NaN))}, ${esc(ry.fmt(y ?? NaN))}</title>`;
+    if (x != null && y != null) {
+      return `<circle class="vring ${tag}" cx="${X(x)}" cy="${Y(y)}" r="2.8">${say}</circle>`;
+    }
+    return x != null
+      ? `<line class="vrug ${tag}" x1="${X(x)}" y1="${PLOT.y1}" x2="${X(x)}" y2="${PLOT.y1 - 6}"/>`
+      : `<line class="vrug ${tag}" x1="${PLOT.x0}" y1="${Y(y)}" x2="${PLOT.x0 + 6}" y2="${Y(y)}"/>`;
   };
-  const read = (s, tag) => {
-    const v = val(s), p = pctile(tour, v);
-    return `<div class="vread ${tag}">
-      <span class="vv"><span class="tdot ${tag}"></span>${v == null ? "—" : esc(r.fmt(v))}</span>
-      ${p == null ? "" : `<span class="ds">${r.more} ${pctileFmt(p)}</span>`}</div>`;
-  };
-  const say = (s) => { const v = val(s); return v == null ? "no data" : r.fmt(v); };
-  return `<div class="vax">
-    <p class="vname">${esc(r.label)} <span>${esc(r.blurb)}</span></p>
-    <div class="vplot" role="img" aria-label="${esc(`${r.label}, across ${tour.length}
-      charted players from ${r.fmt(lo)} to ${r.fmt(hi)} — ${say(sa)} against ${say(sb)}`)}">
-      ${distArea(tour)}${mark(sb, "b")}${mark(sa, "a")}
+
+  // Real arrows, drawn: a shaft along each axis and a filled head at the growing end. They are
+  // the direction the axis runs, so they belong on the axis rather than inside a caption as a
+  // typographic → borrowed to gesture at one.
+  const arrows = `
+    <path class="vaxis" d="M${PLOT.x0},${AXIS.y} H${PLOT.x1 - 2.4}"/>
+    <path class="vhead" d="M${PLOT.x1},${AXIS.y} l-3.2,-2 v4 z"/>
+    <path class="vaxis" d="M${AXIS.x},${PLOT.y1} V${PLOT.y0 + 2.4}"/>
+    <path class="vhead" d="M${AXIS.x},${PLOT.y0} l-2,3.2 h4 z"/>`;
+
+  // Tick labels are HTML laid over the drawing at the same percentages, not <text> inside it:
+  // text in a viewBox scales with the box, so a label that reads at 9px on a wide panel comes
+  // out under 7 on a phone. Out here it keeps the panel's own type at either size.
+  const xt = sx.ticks.map((v) =>
+    `<span style="left:${fx(v).toFixed(2)}%">${esc(rx.tick(v))}</span>`).join("");
+  const yt = sy.ticks.map((v) =>
+    `<span style="top:${fy(v).toFixed(2)}%">${esc(ry.tick(v))}</span>`).join("");
+
+  // The legend, which is all that is left where two columns of restated figures used to be.
+  // With the axes labelled and ticked, printing "3.0 bits" beside a mark already sitting at 3.0
+  // on a labelled scale says the same thing twice and buys the cell four lines to do it. What
+  // the reader cannot get from the drawing is which ring is which player — so that, and only
+  // that, is what stays, wearing the mark it identifies.
+  // Only for a player who has a mark out there. A key is a promise that a shape is on the
+  // field, and a thinly-charted player has neither coordinate — naming them here sends the
+  // reader hunting a ring that was never drawn.
+  const key = (s, tag) => !s || !VARY.some((r) => val(r, s) != null) ? "" :
+    `<span class="vkey ${tag}"><i></i>${esc(last(s.player) || "")}</span>`;
+  const say = (r, s) => { const v = val(r, s); return v == null ? "no data" : r.fmt(v); };
+
+  return `<div class="vfield">
+    <p class="vfname y">${esc(ry.more)} — ${esc(ry.label)} (${esc(ry.unit)})</p>
+    <div class="vfyt">${yt}</div>
+    <div class="vfplot">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img"
+        aria-label="${esc(`${rx.label} against ${ry.label}, among ${peers.length} charted
+          players — ${say(rx, sa)} and ${say(ry, sa)} against ${say(rx, sb)} and ${say(ry, sb)}`)}">
+        <rect class="vplotbg" x="${PLOT.x0}" y="${PLOT.y0}"
+          width="${PLOT.x1 - PLOT.x0}" height="${PLOT.y1 - PLOT.y0}"/>
+        ${grid}${arrows}${crowd}${mark(sb, "b")}${mark(sa, "a")}
+      </svg>
     </div>
-    <div class="vends"><span>${esc(end(lo))}</span><span>${esc(end(hi))}</span></div>
-    <div class="vreads">${read(sa, "a")}${read(sb, "b")}</div>
+    <div class="vfxt">${xt}</div>
+    <p class="vfname x">${esc(rx.more)} — ${esc(rx.label)} (${esc(rx.unit)})</p>
+    <p class="vlegend">${key(sa, "a")}${key(sb, "b")}
+      <span class="vkey peer"><i></i>every other charted player</span></p>
   </div>`;
 }
 
-// An axis appears only where there is a tour to stand it against and at least one of the two
-// players is on it. The floor on the tour's size is not decoration: a percentile out of thirty
-// players is a rank dressed up as a rate, and the distribution behind it would be drawing
-// twenty bins out of thirty numbers.
-function varyCell(sa, sb, spread) {
-  const axes = VARY
-    .map((r) => [r, spread[r.k] || []])
-    .filter(([r, tour]) => tour.length >= 60 && (num(sa && sa[r.k]) != null || num(sb && sb[r.k]) != null));
-  if (!axes.length) return "";
-  return `<div class="dn wide">
-    <p class="dnkey">how guessable they are</p>
-    <p class="dnsub">each of them against every charted player on this tour — so the
-      percentages below are shares of that tour, not of anything in this match</p>
-    ${axes.map(([r, tour]) => varyAxis(r, sa, sb, tour)).join("")}
-  </div>`;
+// "How guessable they are" promoted to its own section, with its own sticky header — it used
+// to be one wide cell inside "side by side", sharing that section's title and its note about
+// the rings' own tour-average tick, which didn't describe this field at all.
+function varietySection(da, db, spread) {
+  const sa = da && da.s, sb = db && db.s;
+  const field = varyField(sa, sb, spread);
+  if (!field) return "";
+  const [rx, ry] = VARY;
+  return `<section class="msec">
+    <h3 class="sechead">how guessable they are</h3>
+    <p class="secnote">${esc(rx.label)} across (${esc(rx.blurb)}, in bits) and
+      ${esc(ry.label)} up (${esc(ry.blurb)}, as σ in percentage points)</p>
+    ${field}
+  </section>`;
 }
 
-// Who these two players are, over everything the body then measures. It carries the three
-// facts every section below is read through — what kind of player this is, which hand they
-// hold the racket in, and how much of them the charting actually has — plus the one score
-// that belongs with them rather than in a comparison.
-//
-// It sits here, directly under the scoreboard and above the first section, because the
-// charted counts are the denominator of every number in the panel and were previously three
-// screens down inside the side-by-side strip, under the numbers they qualify. Style and
-// handedness were down there with them, and the court patterns two sections further on name
-// their zones by the player's own hand — "the BH corner" is a different corner for a lefty —
-// so the key to reading those drawings was arriving after them.
+// How much of each player the charting actually has, under the title that names what these
+// counts are — matches, points, and the span of years they were charted across. An uncharted
+// player is the site's whole invitation, so the ask sits here too rather than only in the
+// empty columns below it.
 //
 // No name and no flag: the scroll-locked match header above carries those, and this side of
 // the panel is the same player in the same position. The player colours (--a / --b) are
 // declared by the split rule under that header, its left half player A and its right half
 // player B; the rule across the top of each half here is the same colour, and it is the same
 // mark that caps each column further down.
-function profileSide(d, tag, spread) {
-  // An uncharted player is the site's whole invitation, so the ask sits at the top of their
-  // side rather than only in the empty columns below it.
+function coverageSide(d, tag) {
   if (!d) {
     return `<div class="pbside ${tag}" data-side="${tag}">
       <p class="pbnone">not charted yet —
         <a href="${CHART_GUIDE}" target="_blank" rel="noopener">chart a match →</a></p></div>`;
   }
+  const s = d.s;
+  // "charted:" is stated rather than implied: these counts are how much of the player exists
+  // in the data, not how much tennis they have played.
+  const years = s.year_min == null ? "" : s.year_min === s.year_max
+    ? ` · ${s.year_min}` : ` · ${s.year_min}–${s.year_max}`;
+  return `<div class="pbside ${tag}" data-side="${tag}">
+    <p class="pbchart">charted: ${s.matches_charted} matches ·
+      ${Number(s.points_charted).toLocaleString()} points${years}</p>
+  </div>`;
+}
+
+function profileBand(da, db) {
+  if (!da && !db) return "";
+  return `<div class="pband">
+    ${coverageSide(da, "a")}${coverageSide(db, "b")}</div>`;
+}
+
+// Who these two players are: what kind of player this is, which hand they hold the racket in,
+// and the one score that belongs with them rather than in a comparison. It carries the facts
+// the rest of the panel is read through, so it sits ahead of the rings rather than after them
+// — the court patterns two sections further on name their zones by the player's own hand ("the
+// BH corner" is a different corner for a lefty), so the key to reading those drawings has to
+// arrive before them.
+//
+// It moved into "side by side" from its own band under "Charted history" — the counts up there
+// are what every number in the panel is measured against and earn the title to themselves;
+// style, hand, and shot quality are the first *comparison*, which is what this section is for.
+// Empty for an uncharted player: the invitation to go chart them already ran under "Charted
+// history", and a second empty box here would only repeat it.
+function profileSide(d, tag) {
+  if (!d) return "";
   const s = d.s;
   // Printed for right-handers too, though most players are one: a key that only appears
   // sometimes leaves the reader to guess what its absence meant.
@@ -692,49 +751,26 @@ function profileSide(d, tag, spread) {
   // "Between styles" is the true statement, and unlike the name it doesn't move.
   const arch = s.archetype
     ? (Number(s.style_confident) === 0 ? "Between styles" : s.archetype) : "";
-  // Shot quality, out of a hundred it never approaches. The charted tour runs from about 49
-  // to 73, so 61/100 reads as a middling mark and is in fact within a point of the median —
-  // which is why the percentile is printed under it and the ring it used to have is gone. A
-  // ring drew that whole distribution inside a quarter turn.
+  if (!arch && !hand && num(s.accuracy) == null) return "";
+  // Shot quality, raw and out of the hundred it is scored against. The qualifier under it is
+  // the class_relative_wpa experiment's reading — how they do against what their own style
+  // fingerprint predicts — which is a comparison the score itself can't make.
   //
-  // The two lines under the score are two different questions and both are worth asking: how
-  // they rank against everyone, and how they rank against what their own style predicts. The
-  // second is the class_relative_wpa experiment's finding and can disagree with the first —
-  // a style whose players all execute well produces a good absolute score that is below par
-  // for the style.
+  // One decimal, though the score is a coarse thing: rounded to a whole number the two players
+  // print the same figure often, since the charted tour spends most of its range in the fifties
+  // and sixties. Neither figure is set as the leader, unlike the rings below — this is a
+  // per-player fact in a per-player band, and 60.7 against 60.8 is not a finding.
   const acc = num(s.accuracy);
-  const p = pctile(spread.accuracy, acc);
-  const notes = [p == null ? "" : `ahead of ${pctileFmt(p)} of the tour`,
-    ratingLabel(s.class_rel_z)].filter(Boolean).join(" · ");
-  // One decimal, though the score is a coarse thing. Rounded to a whole number the two
-  // players print the same figure often — the charted tour spends most of its range in the
-  // fifties and sixties — and then sit above two different percentiles, which reads as an
-  // error in one line or the other rather than as two numbers at different resolutions.
-  //
-  // Neither figure is set as the leader, unlike the rings below. This is a per-player fact
-  // sitting in a per-player band, and the gaps are of a size — 60.7 against 60.8 — where ink
-  // saying "this one is ahead" is a claim about the third significant figure of a rating that
-  // does not have three. The percentile under it already does the comparing, at the
-  // resolution the comparison survives at: ahead of 25% of the tour against ahead of 28%.
   const quality = acc == null ? "" : `
     <p class="pbq"><b>${acc.toFixed(1)}</b><span>/100</span>
       <em>shot quality</em></p>
-    ${notes ? `<p class="pbnote">${esc(notes)}</p>` : ""}`;
-  // "charted:" is stated rather than implied: these counts are how much of the player exists
-  // in the data, not how much tennis they have played.
+    ${ratingLabel(s.class_rel_z)
+      ? `<p class="pbnote">${esc(ratingLabel(s.class_rel_z))}</p>` : ""}`;
   return `<div class="pbside ${tag}" data-side="${tag}">
     ${arch ? `<p class="pbstyle">${esc(arch)}</p>` : ""}
     ${hand ? `<p class="pbhand">${esc(hand)}</p>` : ""}
     ${quality}
-    <p class="pbchart">charted: ${s.matches_charted} matches ·
-      ${Number(s.points_charted).toLocaleString()} points</p>
   </div>`;
-}
-
-function profileBand(da, db, spread) {
-  if (!da && !db) return "";
-  return `<div class="pband">
-    ${profileSide(da, "a", spread)}${profileSide(db, "b", spread)}</div>`;
 }
 
 // The one line over the whole body. The scoreboard above it never says "this match" — it
@@ -766,24 +802,33 @@ const CHARTED_TITLE = `<p class="tapetitle">Charted history
 // from its neighbours: every other section gives each player a column, and this is the one
 // place the two are measured on a shared axis.
 //
-// Two rings and the pair of tour tracks, where there were six rings and a scatter. The four
-// that left were not deleted — the two whose ranges no ring could show now read against the
-// tour's own spread at the foot of this section, and winners-and-errors is the first bar in
-// each player's column under shot-making triggers, which is where the numbers it should be
-// held against already were.
-function tape(da, db, mu, spread) {
+// Two rings, where there were six and a scatter. The four that left were not deleted — variety
+// and shot selection now read against the tour's own spread in their own section
+// (varietySection, "how guessable they are"), and winners-and-errors is the first bar in each
+// player's column under shot-making triggers, which is where the numbers it should be held
+// against already were.
+//
+// The rings stack rather than sit side by side, and the two style columns flank the stack
+// instead of sitting in a row above it, wide enough allowing: three tracks (style, rings,
+// style) instead of the two rows a narrower panel needs. Centred on that row, the stack lands
+// in the gap a style column already has between its own archetype line and its shot-quality
+// figure — so on a wide panel the rings read as filling that gap rather than as a block
+// dropped in below it. See .tapemain in the stylesheet for the two grid-template-areas this
+// switches between.
+function tape(da, db, mu) {
   const sa = da && da.s, sb = db && db.s;
   if (!sa && !sb) return "";
-  const cells = tapeRows(mu).map((r) => donut(r, sa, sb)).join("") +
-    varyCell(sa, sb, spread);
-  if (!cells) return "";
+  const cells = tapeRows(mu).map((r) => donut(r, sa, sb)).join("");
+  const sideA = profileSide(da, "a"), sideB = profileSide(db, "b");
+  if (!cells && !sideA && !sideB) return "";
+  const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
   return `<section class="msec">
     <h3 class="sechead">side by side</h3>
     <section class="tape">
-    <div class="dnwrap">${cells}</div>
-    <p class="tapenote">
+    <div class="tapemain">${sideA}${rings}${sideB}</div>
+    ${cells ? `<p class="tapenote">
       <span class="tickkey"></span> this draw's tour average ·
-      <span class="segkey deep"></span> aces, within serve points won</p>
+      <span class="segkey deep"></span> aces, within serve points won</p>` : ""}
   </section></section>`;
 }
 
@@ -996,13 +1041,20 @@ function nameHtml(name) {
     `<span class="mabbr">${abbr}</span></span>`;
 }
 
+// What to call the event here: the same call app.js makes for the page's own <h1> — the
+// calendar's common name ("Canadian Open") over the feed's own name, which is the title
+// sponsor's ("National Bank Open presented by Rogers") and not what anyone calls the thing.
+// Unlike the page header, there is no line underneath for the sponsor's name to fall back
+// to, so it is simply dropped here rather than restated in an eyebrow that is read once.
+const ename = (t) => (t.event || {}).common_name || t.name;
+
 // Where this match sits: event and round. It rides in the top corner beside the close
 // button rather than over the names, because it is the context you read once on opening
 // and then stop looking at, and the scoreboard is what the header is for. No draw here:
 // the tabs behind the panel are already set to one, and a men's and a women's match never
 // share a screen.
 function eyebrow(t, round) {
-  const event = t.completed ? `${t.name} ${t.season}` : t.name;
+  const event = t.completed ? `${ename(t)} ${t.season}` : ename(t);
   return [esc(event), round ? esc(round.label) : ""].filter(Boolean).join(" · ");
 }
 
@@ -1065,20 +1117,23 @@ function headHtml(m, t, round) {
     ${chartButton(m)}`;
 }
 
-// The body, under one title: who the two players are, then where the serve goes, then the two
-// of them side by side, then the pictures, then the sequences, then the small print. Every
-// section shares one header across both columns, so the two players stay level however
-// unevenly charted they are.
+// The body, under one title: who the two players are, then the two headline rings, then where
+// the serve goes, then how guessable they are, then the pictures, then the sequences, then the
+// small print. Every section shares one header across both columns, so the two players stay
+// level however unevenly charted they are.
 //
-// The profile band leads, because everything under it is read through it: the charted counts
-// are the denominator of every number in the panel, and the handedness is the key to reading
-// the court drawings two sections down. It used to sit inside the side-by-side strip, which
-// put all of that after the numbers it qualifies.
+// The coverage band leads, under "Charted history", because the charted counts are the
+// denominator of every number in the panel — everything under it is read through them.
 //
-// Serve direction is then the first measurement. Every point starts with one, it is the only
-// thing here a viewer can expect to see happen in the match they just tapped, and it is the
-// shortest section in the panel — so it reads as an opening rather than as something to
-// scroll past.
+// "Side by side" comes next, and now opens with style, hand, and shot quality ahead of the two
+// rings: the handedness there is the key to reading the court drawings two sections down, so it
+// has to arrive before them, and style and shot quality are the first per-player comparison the
+// body makes, which is what the section is for.
+//
+// Serve direction is then the first single-player measurement. Every point starts with one, it
+// is the only thing here a viewer can expect to see happen in the match they just tapped, and
+// it is the shortest section in the panel — so it reads as an opening rather than as something
+// to scroll past.
 //
 // The title is gated on there being a player under it. With neither side charted the body is
 // the invitation to go and chart one, and "Charted history" over "Neither player has Match
@@ -1090,11 +1145,11 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
   const none = !pa && !pb
     ? `<p class="nochart">Neither player has Match Charting history yet.
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
-  return (pa || pb ? CHARTED_TITLE + profileBand(pa, pb, spread) : "") +
-    section("serve direction", `where the first serve goes, by court side — recent
-      matches counting most`, a, b,
+  return (pa || pb ? CHARTED_TITLE + profileBand(pa, pb) : "") +
+    tape(pa, pb, mu) +
+    section("serve direction", `recency weighted measures of first serve direction by court side`, a, b,
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
-    tape(pa, pb, mu, spread) + none +
+    varietySection(pa, pb, spread) + none +
     section("court patterns", `their answer to an incoming ball, × how often the tour
       plays it from the same spot${COURT_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +

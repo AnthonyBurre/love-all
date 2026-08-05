@@ -74,12 +74,15 @@ def match_player(name: str, gender: str, universe: dict, cutoff: float = 0.88) -
 
 
 def coverage(con) -> dict:
-    """``(gender, canonical player) -> {'matches': n, 'points': n}`` charted."""
+    """``(gender, canonical player) -> {'matches', 'points', 'year_min', 'year_max'}`` charted."""
     rows = con.execute(
         "WITH mp AS (SELECT match_id, count(*) n FROM points WHERE svr IN (1,2) GROUP BY match_id) "
-        "SELECT gender, player, count(*) AS matches, sum(n) AS points FROM ("
-        "  SELECT gender, player1 AS player, match_id FROM matches "
-        "  UNION ALL SELECT gender, player2, match_id FROM matches) t "
+        "SELECT gender, player, count(*) AS matches, sum(n) AS points, "
+        "       min(year) AS year_min, max(year) AS year_max FROM ("
+        "  SELECT gender, player1 AS player, match_id, year FROM matches "
+        "  UNION ALL SELECT gender, player2, match_id, year FROM matches) t "
         "JOIN mp USING (match_id) GROUP BY gender, player"
     ).fetchall()
-    return {(g, p): {"matches": int(mt), "points": int(pts)} for g, p, mt, pts in rows}
+    return {(g, p): {"matches": int(mt), "points": int(pts),
+                     "year_min": int(y0), "year_max": int(y1)}
+            for g, p, mt, pts, y0, y1 in rows}
