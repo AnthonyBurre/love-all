@@ -49,8 +49,8 @@ player hits (static mix), `shot_language` says **in what order** (sequence/predi
 and this says **which orders pay off** (winner) or **cost** (error).
 
 `../shot_triggers` later recast these two books as one: winner and error contexts
-substantially overlap because both mark the *decision to go for it* — see that experiment
-for attempt/conversion, trap patterns, and pattern-immunity.
+substantially overlap because both mark the same *aggressive shot* — see that experiment
+for frequency/conversion, trap patterns, and pattern-immunity.
 
 ## Honest limitations
 

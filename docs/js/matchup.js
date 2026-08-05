@@ -101,12 +101,12 @@ function rallyDrawer(pattern) {
 }
 
 // One decision, two outcomes: a green light converts, a trap is taken bait. The cue is
-// the lead-up sequence; the two numbers are how often it provokes a go-for-it shot and
+// the lead-up sequence; the two numbers are the aggressive shot frequency it provokes and
 // how often that shot pays. Courts stay collapsed here — a trigger is a 2–4 stroke
 // sequence, and a column of full sequence drawings would bury the court patterns above,
 // which are what the panel leads with.
-// The cue's two numbers, drawn as the one bar they are: its length is how often the cue
-// makes them go for a finishing shot, where it changes colour is how much of that landed,
+// The cue's two numbers, drawn as the one bar they are: its length is the aggressive shot
+// frequency the cue provokes, where it changes colour is how much of that landed,
 // and the tick is the rate the shot gets played at *without* the cue — so the lift the
 // sentence states as "3.0× their norm" is also the gap between the tick and the bar's end.
 //
@@ -115,7 +115,7 @@ function rallyDrawer(pattern) {
 // measurement: the notation key already tells the reader these are "the same pair of
 // numbers the strip up top splits into one bar, read per cue". They should look like it.
 // The domain is 0–1 rather than the strip's 0.05–0.32, though: a cue that does anything at
-// all pushes the attempt rate far past the range a player's rally balls average out to, and
+// all pushes the frequency far past the range a player's rally balls average out to, and
 // on the strip's scale every one of these would sit clamped at the end of the bar.
 function trigMeter(t) {
   const att = Number(t.att_rate);
@@ -146,7 +146,7 @@ function trigLine(t) {
   return `<div class="trig ${cls}"${deep
     ? ` title="deep pattern: only visible with this player's huge charted history"` : ""}>
     <p class="tcue">after <code>${esc(t.context)}</code></p>
-    <p class="tnum">goes for it <b>${Math.round(t.att_rate * 100)}%</b>
+    <p class="tnum">aggressive <b>${Math.round(t.att_rate * 100)}%</b>
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
       ${payoff} <span class="lift">n=${Number(t.n)}</span></p>
     ${trigMeter(t)}
@@ -254,8 +254,8 @@ function patternCard(p) {
 const familyCards = (d, fam, n) => !d ? "" :
   d.patterns.filter((p) => p.family === fam).slice(0, n).map(patternCard).join("");
 
-// The player's own rate, with no cue at all: how often a rally ball of theirs is an attempt
-// at a finishing shot, and how much of that lands.
+// The player's own rate, with no cue at all: their aggressive shot frequency over every
+// rally ball they hit, and how much of that lands.
 //
 // It headed the comparison strip as a ring of its own, and a ring was the wrong instrument
 // for it. Every player on either tour sits near a fifth, so the arc was a stub at the foot
@@ -275,7 +275,7 @@ function trigBase(d) {
     : `<span style="flex:${conv}"></span><span class="miss" style="flex:${1 - conv}"></span>`;
   return `<div class="trig base">
     <p class="tcue">every rally stroke, no cue</p>
-    <p class="tnum">goes for it <b>${(att * 100).toFixed(1)}%</b>${conv == null ? ""
+    <p class="tnum">aggressive <b>${(att * 100).toFixed(1)}%</b>${conv == null ? ""
       : ` · converts <b>${Math.round(conv * 100)}%</b>`}
       ${/* Not quite the same number as the ticks below, and said so: each cue's tick is the
            player's rate with that cue's own balls taken out, which moves it by a tenth of a
@@ -307,7 +307,7 @@ function trigSets(d) {
     .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
   const immune = d.s.n_traps != null && Number(d.s.n_traps) === 0
     ? `<div class="trig immune">no trap sequences — every lead-up that raises their
-       aggression also meets their usual conversion</div>` : "";
+       aggressive shot frequency also meets their usual conversion</div>` : "";
   return {
     main: base + [...greens, ...traps].map(trigLine).join("") + immune,
     gold: gold.map(trigLine).join(""),
@@ -967,18 +967,20 @@ function notationHelp() {
         often as the tour does from the same spot. <b>wins 52% ▲6</b> is the payoff:
         how often the point ends up theirs after that response, vs the tour playing
         the same ball.</div>
-      <div>Triggers group a player's winners and unforced errors as one decision —
-        an <em>attempt</em> at a finishing shot. <code>A · B</code> is the cue:
-        their shot A, then the opponent's reply B. "Goes for it" is the attempt
-        rate that cue provokes; "converts" is winners per attempt. A cue that
-        raises attempts but sinks conversion is a trap — they take the bait.
-        The first bar in each column is the same pair of numbers over every rally
-        stroke the player hits, with no cue at all: their baseline, and the tick
-        every bar below it is measured against.</div>
+      <div>Triggers group a player's point-ending shots as one decision: an
+        <em>aggressive shot</em>, a stroke they went for the finish with. It counts
+        three ways — a winner, their own unforced error, or a shot that forced the
+        reply into an error. <code>A · B</code> is the cue: their shot A, then the
+        opponent's reply B. "Aggressive" is the <em>aggressive shot frequency</em>
+        that cue provokes — how often a stroke there is one — and "converts" is the
+        share that paid, winners and forced errors together. A cue that raises the
+        frequency but sinks conversion is a trap: they take the bait. The first bar
+        in each column is the same pair of numbers over every rally stroke the player
+        hits, with no cue at all: their baseline, and the tick every bar below it is
+        measured against.</div>
       <div>A rally stroke there is anything from the third ball of the point on, so
-        serves and returns aren't in the winners + unforced errors denominator.
-        Forced errors sit outside the split as well, because being beaten isn't a shot
-        they chose.</div>
+        serves and returns aren't in the denominator. An error the player was forced
+        into counts against whoever forced it, not against them.</div>
     </div>
   </details>`;
 }
@@ -1160,8 +1162,8 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("off the return", `what they do with the returns they serve up, by return
       depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
-    section("shot-making triggers", `a lead-up that shifts how often they go for a
-      finishing shot — and whether it pays${meterLegend("their rate without the cue")}`,
+    section("shot-making triggers", `a lead-up that shifts their aggressive shot
+      frequency — and whether it pays${meterLegend("their rate without the cue")}`,
       a, b, ta.main, tb.main, "text") +
     section("deep patterns ⭐", `3–4 shot sequences only chartable at this player's
       coverage${meterLegend("the shorter pattern's rate")}`, a, b, ta.gold, tb.gold, "text") +

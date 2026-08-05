@@ -50,10 +50,10 @@ Note that break points are not purely ad-court: `15-40` and `0-40` fall on
 opposite sides, so consecutive break points in a game alternate courts. That is
 the confound this step exists to separate.
 
-**Step 3 — serve+1.** The forehand share and attempt rate of the server's first
-groundstroke, split by side, since serve-plus-one is where a side split is most
-likely to move. Nadal's serve+1 is a forehand 75% of the time in the deuce court
-and 80% in the ad court, and he converts those ad-court attempts at 60% against
+**Step 3 — serve+1.** The forehand share and aggressive shot frequency of the
+server's first groundstroke, split by side, since serve-plus-one is where a side
+split is most likely to move. Nadal's serve+1 is a forehand 75% of the time in the
+deuce court and 80% in the ad court, and he converts those ad-court shots at 60% against
 49% in the deuce court — the left-handed forehand-plus-one off the ad-court
 serve, visible only once the side is separated out. Claims here stay in
 server-wing and wide/body/T terms, which are side-relative and always correct

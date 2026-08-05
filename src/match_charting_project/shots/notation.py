@@ -270,3 +270,30 @@ def iter_parsed_points(con, where: str = "", sample: "int | None" = None):
         sql += f" USING SAMPLE reservoir({int(sample)} ROWS) REPEATABLE (1)"
     for svr, fs, ss, win in con.execute(sql).fetchall():
         yield parse_point(fs, ss, svr, win)
+
+
+def aggressive_shot(shots: list, i: int, n_shots: "int | None" = None) -> "tuple[int, int, int]":
+    """Read the stroke at ``i`` as (winner, own unforced error, induced forced error).
+
+    An **aggressive shot** is one where the point ended on this stroke's account: the
+    player hit a winner, missed one themselves (``@``), or their shot survived and the
+    reply to it was charted a forced error (``#``), which credits the pressure to this
+    stroke rather than to the opponent who framed the ball. All three sum to the
+    aggressive shot count; the middle one is the only failure, so conversion is
+    ``(winner + induced) / total``.
+
+    Returns all zeros for a rally ball. Shared by every experiment that counts these
+    (``shot_triggers``, ``deep_patterns``, ``context_length``, ``serve_side``) so the
+    numerator cannot drift between them — see ``experiments/shot_triggers/README.md``
+    for why induced forced errors are in it.
+    """
+    if n_shots is None:
+        n_shots = len(shots)
+    term = shots[i].terminal
+    if term == "*":
+        return 1, 0, 0
+    if term == "@":
+        return 0, 1, 0
+    if term is None and i + 1 < n_shots and shots[i + 1].terminal == "#":
+        return 0, 0, 1
+    return 0, 0, 0

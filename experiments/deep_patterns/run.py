@@ -5,13 +5,13 @@ Run:  python experiments/deep_patterns/run.py
 For players with >=10k charted points: mine K=3 and K=4 trigger contexts that
 (1) beat their own (K-1)-suffix parent at >=1.3x with an exact binomial p<0.005,
 (2) replicate above the parent rate in both match-hash halves (>=15 strokes each),
-(3) meet the production support floor (>=60 strokes, >=12 attempts). Survivors are
+(3) meet the production support floor (>=60 strokes, >=12 aggressive shots). Survivors are
 tagged green/trap by conversion like production triggers.
 
 A final section is a side refinement pass over the survivors: each gold
 pattern's occurrences whose K-shot window reaches into the first four plies are
 split by deuce/ad court, and Fisher exact tests (Holm-corrected across the whole
-family) ask whether the attempt rate or conversion differs between courts.
+family) ask whether the aggressive shot frequency or conversion differs between courts.
 Discovery itself stays pooled. Writes reports/deep_patterns.{md,csv},
 reports/deep_patterns_side.csv + figure.
 """
@@ -34,13 +34,13 @@ from tokens import point_tokens, pretty  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
-from match_charting_project.shots.notation import parse_point  # noqa: E402
+from match_charting_project.shots.notation import aggressive_shot, parse_point  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
 
 MIN_POINTS = 10_000     # charted points to enter the candidate pool
 DEPTHS = (3, 4)         # deep context lengths (production triggers use 2)
 MIN_CTX, MIN_ATT = 60, 12          # production support floor
-PARENT_LIFT = 1.3       # deep attempt rate must be >= this x its parent's
+PARENT_LIFT = 1.3       # deep aggressive shot frequency must be >= this x its parent's
 P_MAX = 0.005           # exact binomial tail vs the parent rate
 HALF_N = 15             # per-half support for the replication gate
 GLABEL = {"M": "Men", "W": "Women"}
@@ -93,13 +93,16 @@ def collect(con, gender: str, pool: set):
             names = {1: p1, 2: p2}
             h3 = 3 * (zlib.crc32(str(mid).encode()) & 1)
             side = serve_side(pts)
-            for i in range(2, len(pt.shots)):
+            n_sh = len(pt.shots)
+            for i in range(2, n_sh):
                 pl = names[pt.shots[i].hitter]
                 if pl not in pool:
                     continue
-                term = pt.shots[i].terminal
-                att = 1 if term in ("*", "@") else 0
-                w = 1 if term == "*" else 0
+                # winner / own unforced error / forced the reply out: all three are
+                # aggressive shots, and everything but the middle one paid off.
+                _w, _e, _f = aggressive_shot(pt.shots, i, n_sh)
+                att = _w + _e + _f
+                w = _w + _f
                 b = base[pl]
                 b[h3] += 1
                 b[h3 + 1] += att
@@ -196,8 +199,8 @@ def side_heterogeneity(rows: list, side_tabs_by_gender: dict, alpha: float = 0.0
 
     Discovery stays pooled; this is a refinement pass. For each gold pattern the
     opening-touching occurrences are split by side and two Fisher exact tests ask
-    whether the attempt rate (needs >=HALF_N strokes per side) or the conversion
-    (needs >=MIN_ATT/2 attempts per side) differs between courts. Holm correction
+    whether the aggressive shot frequency (needs >=HALF_N strokes per side) or the conversion
+    (needs >=MIN_ATT/2 aggressive shots per side) differs between courts. Holm correction
     runs across every test performed, so a ``side_diff`` flag means the pattern
     genuinely behaves differently by court; everything else keeps its pooled
     estimate with evidence that pooling is justified.
@@ -303,7 +306,7 @@ def main():
                 md.append(f"### {player} — {len(sub)} gold patterns")
                 for r in sub.sort_values("parent_lift", ascending=False).head(5).itertuples():
                     kind = "✅" if r.tag == "green" else "⚠️"
-                    md.append(f"- `{_ctx_str(r.context)}` → goes for it "
+                    md.append(f"- `{_ctx_str(r.context)}` → aggressive "
                               f"{r.att_rate:.0%} vs {r.parent_rate:.0%} without the "
                               f"{'first' if r.depth == 3 else 'first two'} shot(s) "
                               f"({r.parent_lift:.1f}× the parent), converts "
@@ -321,7 +324,7 @@ def main():
               "costs more power than it buys. Instead, each gold pattern's "
               "occurrences whose K-shot window reaches into the first four plies "
               "(where the notation is side-relative) are split deuce/ad, and Fisher "
-              "exact tests ask whether the attempt rate or the conversion differs "
+              "exact tests ask whether the aggressive shot frequency or the conversion differs "
               "between courts, Holm-corrected across the whole family. A flagged "
               "pattern behaves differently by court and is shown split; the rest "
               "keep their pooled estimate with evidence that pooling is justified. "
@@ -330,14 +333,14 @@ def main():
     if len(df):
         het = df[df.side_diff != ""]
         md.append(f"{n_tests} tests across {len(df)} gold patterns "
-                  f"({int(df.p_att.notna().sum())} attempt-rate, "
+                  f"({int(df.p_att.notna().sum())} aggressive-shot-frequency, "
                   f"{int(df.p_conv.notna().sum())} conversion; the rest lacked "
                   f"per-side support) → **{len(het)} pattern"
                   f"{'s' if len(het) != 1 else ''} with a real side difference** "
                   "at Holm-adjusted p<0.05.")
         md.append("")
-        diff_name = {"att": "attempt rate", "conv": "conversion",
-                     "att+conv": "attempt rate and conversion"}
+        diff_name = {"att": "aggressive shot frequency", "conv": "conversion",
+                     "att+conv": "aggressive shot frequency and conversion"}
         for r in het.itertuples():
             kind = "✅" if r.tag == "green" else "⚠️"
             md.append(f"### {r.player} — `{_ctx_str(r.context)}` {kind}")

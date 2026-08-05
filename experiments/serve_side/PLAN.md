@@ -84,7 +84,7 @@ player's ad-court serve-points-won on non-pressure points vs break points —
 that isolates the pressure effect from the side effect.
 
 **Step 3 — interaction with existing shot analyses.** Re-run the
-shot_triggers attempt/conversion metrics and the deep_patterns 3-4 shot
+shot_triggers frequency/conversion metrics and the deep_patterns 3-4 shot
 patterns split by side, for the heavily-charted players. Serve-plus-one
 patterns are the most likely place a side split changes the story (the
 forehand-after-wide-serve pattern only exists on one side per handedness).

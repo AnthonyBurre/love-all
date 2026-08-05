@@ -1058,7 +1058,7 @@ a { color: var(--acc-d); }
 .tnum b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .trig .lift { color: var(--muted); font-size: 11px; }
 /* The cue's bar. Same grammar as the comparison strip's split row — a track, a fill that
-   changes colour where the attempts stopped landing, a haloed tick at the reference — but
+   changes colour where the aggressive shots stopped landing, a haloed tick at the reference — but
    growing from the left rather than from a shared centre, because there is only one player
    in this column and nothing to mirror it against. */
 .tmeter { position: relative; height: 7px; margin: 4px 0 0;

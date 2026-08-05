@@ -188,9 +188,9 @@ def build() -> int:
                     [["player", "gender", "class_rel_z", "accuracy", "avg_wpa_lost"]])
     summary = summary.merge(crw, on=["player", "gender"], how="left")
 
-    # Shot-making triggers (shot_triggers experiment): green lights by attempt lift,
-    # traps by how far conversion falls below the player's norm. (These superseded the
-    # old separate winner/error pattern books — see experiments/shot_triggers.)
+    # Shot-making triggers (shot_triggers experiment): green lights by aggressive shot
+    # frequency lift, traps by how far conversion falls below the player's norm. (These
+    # superseded the old separate winner/error pattern books — see experiments/shot_triggers.)
     tr = pd.read_csv(REPORTS / "shot_triggers.csv")
     greens = (tr[tr.tag == "green"].sort_values("att_lift", ascending=False)
               .groupby(["player", "gender"]).head(3))

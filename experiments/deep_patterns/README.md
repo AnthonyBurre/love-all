@@ -14,12 +14,12 @@ by the shorter pattern inside it*. Requiring it to beat the player's base rate
 would just relabel every good 2-shot trigger with a redundant third shot. So a
 K-shot context earns gold only if:
 
-1. **Beats its own parent** — its attempt rate is ≥1.3× the rate of its
+1. **Beats its own parent** — its aggressive shot frequency is ≥1.3× the rate of its
    (K−1)-shot suffix, and an exact binomial test against the parent rate
    clears p < 0.005 (the parent, not the base rate, is the null).
 2. **Replicates** — in each half of the player's matches (hash split) the
-   context has ≥15 strokes and an attempt rate above the parent's in both.
-3. **Meets the production support floor** — ≥60 strokes, ≥12 attempts overall,
+   context has ≥15 strokes and an aggressive shot frequency above the parent's in both.
+3. **Meets the production support floor** — ≥60 strokes, ≥12 aggressive shots overall,
    same as every displayed trigger.
 
 Gates 1–2 multiply: a fluke that survives a p<0.005 test on the full data
@@ -36,7 +36,7 @@ because halving every sample by side before mining costs more power than it
 buys. Side enters as a refinement pass over the gold survivors instead: for
 each one, the occurrences whose K-shot window reaches into the first four
 plies (serve, return, serve+1, return+1) are split deuce/ad, and two-sided
-Fisher exact tests ask whether the attempt rate or the conversion differs
+Fisher exact tests ask whether the aggressive shot frequency or the conversion differs
 between courts, Holm-corrected across every test performed. A pattern that
 shows a real difference is displayed split by court; the rest keep their
 pooled estimate, now with evidence that pooling is justified rather than

@@ -65,6 +65,6 @@
 
 ## Next steps
 
-- An outcome layer per pattern (how often the response wins the point vs the field's outcomes from the same state), mirroring the trigger experiment's attempt/conversion split.
+- An outcome layer per pattern (how often the response wins the point vs the field's outcomes from the same state), mirroring the trigger experiment's frequency/conversion split.
 - Separate the drop shot and lob out of the drop/lob bucket once counts allow.
 - Depth beyond shot 3 if charting coverage ever improves (only ~19% of later rally balls carry a depth code).
