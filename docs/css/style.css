@@ -131,6 +131,7 @@ a { color: var(--acc-d); }
    enough weight to read as part of the title block instead of a footnote to it. */
 .site-head .billing { margin: 0; max-width: 760px; line-height: 1.5;
   font-size: 13.5px; font-weight: 600; letter-spacing: .01em; color: var(--head-ink); }
+.billing-line { display: block; }
 .site-head a { color: #fff; text-decoration: underline; }
 .meta { margin: 12px 0 0; font-size: 12.5px; color: var(--head-meta); }
 .contribute { font-weight: 600; }
@@ -354,13 +355,20 @@ a { color: var(--acc-d); }
 .match.t-some { --tier: var(--cov-some); background-color: var(--tint-some); }
 .match.t-thin { --tier: var(--cov-thin); }
 .match.t-none { --tier: var(--cov-none); }
-.match.t-tbd { --tier: var(--line); border-style: dashed; background-color: transparent; }
+/* Transparent used to mean "the page's own colour", since nothing sat between a card and
+   var(--bg) — so an undecided slot and the page itself were the same fill, and the card
+   only read as a card at all because of its dashed edge. A step of --line off --card does
+   the same job the tint does for the charted tiers: the fill itself now says "nothing
+   decided here" instead of leaving that entirely to the border. */
+.match.t-tbd { --tier: var(--line); border-style: dashed;
+  background-color: color-mix(in srgb, var(--line) 22%, var(--card)); }
 .match.ghost { cursor: default; }
 .match.ghost:hover { border-color: var(--line); box-shadow: none; }
 /* A bye holds a real entrant already through, so it reads solid rather than as a dashed
-   undecided slot — but no match is played there, so it doesn't invite a click. */
-.match.bye { cursor: default; border-style: solid; }
-.match.bye:hover { border-color: var(--line); box-shadow: none; }
+   undecided slot — and it opens the same matchup panel a real match would, with that one
+   player's charted history, so it keeps the ordinary card's hover and pointer instead of
+   the ghost's inert ones. */
+.match.bye { border-style: solid; }
 .match .side.byeside .nm { color: var(--muted); font-style: italic; }
 .seed { color: var(--muted); font-size: 10.5px; font-weight: 600; margin-right: 5px; vertical-align: 8%; }
 
@@ -631,6 +639,12 @@ a { color: var(--acc-d); }
    wide because the close button is up in the corner; the button is at the foot of the band,
    below it, and has no reason to keep out of that lane. On a wide panel the two insets are
    equal and the margin computes to 0, so this is only doing anything where they differ. */
+/* Upcoming match only: the when pill moves down here from the top-left corner to sit
+   opposite the chart button on the same row, bottom left. .mchartbtn keeps the same
+   margin-left: auto it already had standing alone — that alone is enough to push it to
+   the row's far end once it shares a flex row instead of being the row's only content. */
+.mfoot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.mfoot .mstate { margin: 2px 0 0; }
 .mchartbtn { display: flex; width: fit-content;
   margin: 2px calc(var(--pad-l) - var(--pad-r)) 0 auto;
   padding: 3px 12px; clip-path: var(--chip-clip); font-size: 10.5px; font-weight: 700;
@@ -666,7 +680,9 @@ a { color: var(--acc-d); }
 .ct-sub { font-size: 8.5px; fill: var(--muted); text-anchor: middle; }
 .ct-sub.anchor-start { text-anchor: start; }
 .ct-cap { font-size: 8.5px; fill: var(--ink); font-weight: 600; text-anchor: middle; }
-.ct-player { fill: var(--acc); }
+/* the profiled player's contact, so it takes their column colour like their ball paths
+   do; the notation-key courts set no --shot and keep the tournament accent */
+.ct-player { fill: var(--shot, var(--acc)); }
 .ct-target { fill: none; stroke: var(--acc); stroke-width: 1.6; }
 /* --shot is set per player column, so a ball path carries the same colour as that
    player's bars in the comparison strip; it falls back to the tournament accent. */
@@ -675,13 +691,17 @@ a { color: var(--acc-d); }
 /* wingtips on a shot line: which way the ball went */
 .ct-tip { stroke: var(--shot, var(--acc)); stroke-width: 1.1; fill: none; }
 .ct-tip.faint { opacity: 0.35; }
+/* an opponent's ball keeps its chevrons mid-chain, in the line's own neutral */
+.ct-tip.incoming { stroke: var(--muted); opacity: .8; }
 /* arrowhead on the stroke that finishes a drawing */
 .ct-head { fill: var(--shot, var(--acc)); stroke: none; }
 .ct-head.faint { opacity: 0.35; }
-/* court-pattern glyph: the ball the player *received* is dashed and neutral, their own
-   answer is solid and coloured, and their half of the net carries a wash — three cues
-   for orientation, so none of them has to survive alone at thumbnail size. */
-.ct-mine { fill: color-mix(in srgb, var(--shot, var(--acc)) 8%, transparent); }
+/* Every ball-path drawing says whose is whose three ways, so none of them has to survive
+   alone at thumbnail size: the player's half washed in their colour, their own balls solid
+   and in that colour, the opponent's dashed and neutral. A hollow ring marks the bounce
+   the drawing turns on — the ball they answered on a court pattern, the ball they attacked
+   at the end of a trigger. */
+.ct-mine { fill: color-mix(in srgb, var(--shot, var(--acc)) 13%, transparent); }
 .ct-shot.incoming { stroke: var(--muted); stroke-width: 1.1; stroke-dasharray: 3 2.5; opacity: .8; }
 .ct-them { fill: none; stroke: var(--muted); stroke-width: 1.1; }
 .ct-bounce { fill: var(--card); stroke: var(--muted); stroke-width: 1.1; }
@@ -701,24 +721,26 @@ a { color: var(--acc-d); }
    so a gap reads as a shape rather than as arithmetic between two distant columns. The
    hairline on each bar is the tour average, where the metric has one. */
 /* --dn-size is the drawn diameter of one ring, set here because the box it sits in is what
-   there is to divide up: two rings across a wide panel and one across a phone, each with a
-   player's number and qualifier either side of it. */
+   there is to divide up. The rings stack one per row now at every width (see .tapemain), so
+   the ring no longer shares its row with a second one below 761px either — it can spend the
+   width that used to buy two rings side by side on one, larger ring instead. */
 .tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0;
-  --dn-size: 116px; }
+  --dn-size: 132px; }
 /* The first thing in the scroll, right under a header that just named this match — so
    without a label over them, the numbers below default to reading as this match's. They're
    the opposite, which is what the "not this one" half says outright rather than trusting
    "charted: N matches" further down to imply it. It heads every section in the body, so it
-   sits out here rather than inside any of them — see the note in matchup.js. */
+   sits out here rather than inside any of them — see the note in matchup.js. Centred: every
+   section under it keeps a left-aligned label, but this one heads the whole panel rather
+   than a column inside it, and centred is what tells the two apart at a glance. */
 .tapetitle { margin: 0 0 3px; font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--muted); }
-/* What "charted" is doing in the title above. Small print, and always printed: it is the
-   one caveat that changes how every number in the body should be read, and a reader who
-   has to open something to find that out has already read the numbers without it.
-   Held to a measure rather than run across a 840px panel — a caveat set as one long line
-   of 10.5px grey is a line people's eyes slide off, which defeats printing it at all. */
-.covnote { margin: 0 0 12px; max-width: 74ch; font-size: 10.5px; line-height: 1.55;
-  color: var(--muted); }
+  letter-spacing: .06em; color: var(--muted); text-align: center; }
+/* What "charted" is doing in the title above. Small print, printed once, at the foot of the
+   panel rather than under the title it explains: read there it's read last, after the
+   numbers it caveats rather than before them, and a rule above it separates it from the
+   section it's least about — the last one — instead of looking like a note on that one alone. */
+.covnote { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line);
+  max-width: 74ch; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
 .tapetitle span { font-weight: 500; text-transform: none; letter-spacing: normal; opacity: .82; }
 
 /* --- who these two are, over everything the body measures -----------------------------
@@ -1005,7 +1027,6 @@ a { color: var(--acc-d); }
 .pcourt .ct-them, .pcourt .ct-bounce { stroke-width: 1.6; }
 .pcourt .ct-line { stroke-width: 1.1; opacity: .7; }
 .pcourt .ct-net { stroke-width: 2.6; }
-.pcourt .ct-mine { fill: color-mix(in srgb, var(--shot, var(--acc)) 13%, transparent); }
 .pmeta { min-width: 0; }
 .plift { margin: 0; font-size: 17px; font-weight: 800; color: var(--shot); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .plift span { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
@@ -1026,8 +1047,17 @@ a { color: var(--acc-d); }
 .trig.green::before { content: "▲"; color: var(--up); font-size: 10px; }
 .trig.bait::before { content: "⚠"; color: var(--warn); font-size: 11px; }
 .trig.gold::before { content: "⭐"; font-size: 10px; }
-.trig.gold { background: color-mix(in srgb, #d7b53d 12%, var(--card)); padding: 5px 7px 5px 22px; }
-.trig.gold::before { left: 7px; top: 5px; }
+/* The gold wash rides the written sequence only, not the whole card. What sits under the
+   cue is a court drawing and a two-tone bar, and both are read against the card's own
+   white — a tinted court half and a drained bar segment have to mean the same thing here
+   as they do in every other card, which a background behind them quietly undoes.
+   The wash is pulled back by exactly its own left padding, so the cue's text still starts
+   on the same vertical as the numbers and the drawing below it, and it bleeds left into
+   the gutter the ⭐ sits in — which is absolutely positioned, so it paints over the wash.
+   It stays a block and shrinks with `fit-content` rather than going inline-block: inline
+   layout would render the source newline in front of it as a space and shove it right. */
+.trig.gold .tcue { width: fit-content; padding: 3px 7px; margin-left: -7px;
+  background: color-mix(in srgb, #d7b53d 12%, var(--card)); }
 .trig.immune { color: var(--acc-d); font-weight: 600; }
 .trig.immune::before { content: "◆"; font-size: 10px; }
 /* The player's own rate, heading their column of cues. It keeps .trig's left inset with no
@@ -1042,7 +1072,7 @@ a { color: var(--acc-d); }
 .tnum b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .trig .lift { color: var(--muted); font-size: 11px; }
 /* The cue's bar. Same grammar as the comparison strip's split row — a track, a fill that
-   changes colour where the attempts stopped landing, a haloed tick at the reference — but
+   changes colour where the aggressive shots stopped landing, a haloed tick at the reference — but
    growing from the left rather than from a shared centre, because there is only one player
    in this column and nothing to mirror it against. */
 .tmeter { position: relative; height: 7px; margin: 4px 0 0;
@@ -1134,8 +1164,13 @@ a { color: var(--acc-d); }
 
 /* phone layout: one round at a time as a vertical list — no horizontal panning */
 .bracket.aslist { display: block; overflow-x: visible; }
-.roundchips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; }
-.roundchips .qchip { flex: 0 0 auto; }
+/* Every chip shrinks to share the row rather than holding its own width and running the
+   row past the screen — a phone's width divided by a slam's seven rounds is still enough
+   for "R16", the longest label this ever prints. overflow-x stays as a fallback for a
+   draw with more rounds than that budget covers, but the ordinary case now fits with
+   nothing to scroll. */
+.roundchips { display: flex; gap: 5px; overflow-x: auto; padding: 2px 0 10px; }
+.roundchips .qchip { flex: 1 1 0; min-width: 0; padding: 7px 6px; text-align: center; }
 .roundtitle { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .rlist { display: flex; flex-direction: column; gap: 16px; }
 /* relative, not static: the card is out of the tree layout's absolute positioning here,

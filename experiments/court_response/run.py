@@ -439,7 +439,7 @@ def main():
     md.append("")
     md.append("- An outcome layer per pattern (how often the response wins the point "
               "vs the field's outcomes from the same state), mirroring the trigger "
-              "experiment's attempt/conversion split.")
+              "experiment's frequency/conversion split.")
     md.append("- Separate the drop shot and lob out of the drop/lob bucket once "
               "counts allow.")
     md.append("- Depth beyond shot 3 if charting coverage ever improves (only ~19% "

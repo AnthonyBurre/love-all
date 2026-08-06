@@ -21,7 +21,7 @@ answers it, and what it found. They write their output to `reports/`.
 | [`chess_point_analysis`](experiments/chess_point_analysis/) | Can chess-analysis techniques be ported to a tennis point? | Yes. A point string is a move list, so it gets an engine eval, WPA per shot, and an opening explorer. The decoder validates to within 1–5% of the project's own stat lines. |
 | [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Moutet, McEnroe, Navratilova, Niculescu. Most predictable: Agassi, Cilic, Osaka, Ostapenko. Junkballers score high, flat first-strike baseliners low. |
 | [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive and face-valid. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, the textbook pressure point. |
-| [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **attempt**. That yields go-for-it cues, conversion rates, and **traps**, meaning cues that raise attempts but sink conversion. Ships to the site. |
+| [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, conversion rates, and **traps**, meaning cues that raise the frequency but sink conversion. Ships to the site. |
 | [`court_response`](experiments/court_response/) | What does a player do with a given incoming ball? | Enough stability to read as a scouting report: split-half r = 0.73 (men) / 0.69 (women) over ~43k state-response cells. Federer's crosscourt backhand slice, Djokovic's backhand down the line. |
 | [`context_length`](experiments/context_length/) | How many shots of history does charted data actually support? | **Two. The third actively hurts** held-out log-loss. And a player's top-5 signature list overlaps only J≈0.22 between halves of their own data, so much of any specific list is sampling luck. |
 | [`deep_patterns`](experiments/deep_patterns/) | For the most heavily charted players, do 3–4 shot patterns survive anyway? | 66 do, across 31 players, through a triple gate: beat your own parent pattern, replicate in both halves, clear a binomial test. Shipped as a gold-star tier. |
@@ -221,10 +221,18 @@ Each stroke is one token:
 - **Serves.** A serve is written as its target: `serve wide`, `serve body`, or `serve T`.
 
 A trigger reads as a lead-up, the player's shot then the opponent's reply, and asks what
-that cue provokes. The framework groups winners and unforced errors as one behavioral unit,
-the **attempt**: both mean the player went for a finishing shot, and only the execution
-differed. "Goes for it" is the attempt rate the cue provokes; "converts" is winners per
-attempt; a cue that raises attempts but sinks conversion is a trap, and they take the bait.
+that cue provokes. The framework groups a player's point-ending shots as one behavioral
+unit, the **aggressive shot**: a winner, their own unforced error, or a shot that forced
+the reply into an error. All three mean they went for the finish, and only the execution
+differed. "Aggressive" is the **aggressive shot frequency** the cue provokes — how often a
+stroke there is one — and "converts" is the share that paid, winners and forced errors
+together. A cue that raises the frequency but sinks conversion is a trap, and they take the
+bait.
+
+That numerator matches the one behind
+[Aggression Score](https://www.tennisabstract.com/blog/2015/08/31/measuring-wta-tactics-with-aggression-score/).
+It's a change from the narrower winner-plus-unforced reading used until 2026-08-05;
+[`shot_triggers`](experiments/shot_triggers/) carries the split-half test that settled it.
 
 ### The court diagram
 

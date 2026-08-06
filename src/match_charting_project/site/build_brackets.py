@@ -129,6 +129,9 @@ def payload() -> dict:
         feeds.refresh_draws(tours)
     except Exception:
         pass                              # a draw feed outage degrades to name inference
+    # How old the live scores actually are — the oldest of the two league fetches, so a
+    # half-stale build dates itself by its worst half rather than its best.
+    fetched_at = min((t.fetched_at for t in tours if t.fetched_at), default="")
     live = [brackets.serialize(t, use_fixture=True) for t in tours]
 
     store = history.load()
@@ -145,7 +148,9 @@ def payload() -> dict:
     for t in tours:
         _backfill_event(t, cal)
         _annotate(t, universe, charted)
-    return {"updated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
+    # `updated` is the age of the *data*, not of the build. With no live draw there is no
+    # live data to be stale about, so an all-archive build dates itself by the build.
+    return {"updated": fetched_at or datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "tournaments": tours}
 
 

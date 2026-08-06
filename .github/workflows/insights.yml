@@ -15,9 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The version we ship on lives in .python-version
+      - id: py
+        run: echo "version=$(cat .python-version)" >> "$GITHUB_OUTPUT"
       - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ steps.py.outputs.version }}
 
       - name: Install dependencies
         run: uv sync --extra analysis

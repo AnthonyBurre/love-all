@@ -17,10 +17,14 @@ everywhere.
 
 import pytest
 
-from match_charting_project.live import feeds
+from match_charting_project.live import espn, feeds
 
 
 @pytest.fixture(autouse=True)
 def _isolate_feed_caches(tmp_path, monkeypatch):
     monkeypatch.setattr(feeds, "CALENDAR", tmp_path / "calendar.json")
     monkeypatch.setattr(feeds, "DRAWS", tmp_path / "draws.json")
+    # Same guarantee for the scoreboard cache: it decides whether ``espn._fetch`` skips the
+    # network at all, so a test reading the developer's real copy would be gated on whatever
+    # tournament happened to be running that week.
+    monkeypatch.setattr(espn, "_CACHE", tmp_path / "live")

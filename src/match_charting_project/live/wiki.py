@@ -30,8 +30,9 @@ import re
 import urllib.parse
 import urllib.request
 
+from match_charting_project.live import UA
+
 API = "https://en.wikipedia.org/w/api.php"
-UA = "match-charting-project/0.1 (https://github.com/anthonyburre/love-all)"
 # Wikipedia asks for a descriptive UA; anonymous API reads need no key.
 
 BYE = "Bye"

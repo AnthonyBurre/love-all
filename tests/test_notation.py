@@ -11,7 +11,7 @@ from collections import defaultdict
 import pytest
 
 from match_charting_project.paths import DB_PATH
-from match_charting_project.shots.notation import parse_point, stroke_kind
+from match_charting_project.shots.notation import aggressive_shot, parse_point, stroke_kind
 
 # (first_serve, second_serve, server, pt_winner,
 #  outcome, server_won, rally_len, ending_side)
@@ -53,6 +53,35 @@ def test_stroke_kind():
     assert stroke_kind("v", False) == "net"
     assert stroke_kind("l", False) == "other"
     assert stroke_kind("", True) == "serve"
+
+
+def test_aggressive_shot_reads_all_three_kinds():
+    """Winner, own unforced error, and forcing the reply out all count; rally balls don't.
+
+    The third case is the one worth pinning: the credit goes to the stroke *before*
+    the ``#``, never to the player who was forced into the error.
+    """
+    p = parse_point("4b27f3s2f+1f2n@", "", 1, 1)   # server's last stroke misses (@)
+    last = len(p.shots) - 1
+    assert aggressive_shot(p.shots, last) == (0, 1, 0)
+    assert aggressive_shot(p.shots, last - 1) == (0, 0, 0)   # a rally ball, not aggressive
+
+    p = parse_point("4b27f3f1*", "", 1, 1)                   # server's last stroke wins
+    last = len(p.shots) - 1
+    assert aggressive_shot(p.shots, last) == (1, 0, 0)
+
+    p = parse_point("4b27f3f1n#", "", 1, 1)                  # returner forced into an error
+    last = len(p.shots) - 1
+    assert aggressive_shot(p.shots, last) == (0, 0, 0), "the forced error is not the hitter's"
+    assert aggressive_shot(p.shots, last - 1) == (0, 0, 1), "it credits the shot that forced it"
+
+
+def test_aggressive_shot_respects_a_truncated_view():
+    """With n_shots clipped, a reply outside the window can't be read as induced."""
+    p = parse_point("4b27f3f1n#", "", 1, 1)
+    forcing = len(p.shots) - 2
+    assert aggressive_shot(p.shots, forcing, len(p.shots)) == (0, 0, 1)
+    assert aggressive_shot(p.shots, forcing, forcing + 1) == (0, 0, 0)
 
 
 def test_empty_point_is_not_ok():

@@ -8,8 +8,8 @@
 
 | side | points | 1st in | wide/body/T | ace | DF | 1st-serve won | 2nd-serve won |
 |---|--:|--:|:-:|--:|--:|--:|--:|
-| deuce | 664,007 | 63% | 44%/10%/46% | 8.8% | 3.4% | 73% | 51% |
-| ad | 605,492 | 61% | 51%/9%/40% | 7.7% | 3.5% | 71% | 51% |
+| deuce | 662,698 | 63% | 44%/10%/46% | 8.8% | 3.4% | 73% | 51% |
+| ad | 604,283 | 61% | 51%/9%/40% | 7.7% | 3.5% | 71% | 51% |
 
 ### Heavily-charted players (both sides ≥ 2,000 charted points)
 
@@ -21,10 +21,10 @@
 |  | ad | 21,711 | 64% | 51%/40% | 7.0% | 3.0% | 72% | 55% |
 | Rafael Nadal | deuce | 18,094 | 67% | 30%/51% | 3.8% | 2.4% | 70% | 55% |
 |  | ad | 16,440 | 70% | 54%/28% | 4.7% | 2.2% | 71% | 56% |
-| Pete Sampras | deuce | 11,389 | 59% | 42%/52% | 15.3% | 4.9% | 82% | 55% |
-|  | ad | 10,292 | 58% | 42%/52% | 13.1% | 4.3% | 79% | 53% |
-| Andre Agassi | deuce | 10,556 | 63% | 50%/41% | 5.5% | 2.7% | 71% | 54% |
-|  | ad | 9,732 | 64% | 59%/37% | 4.8% | 2.7% | 69% | 55% |
+| Pete Sampras | deuce | 11,275 | 59% | 42%/52% | 15.2% | 4.9% | 81% | 55% |
+|  | ad | 10,193 | 58% | 42%/52% | 13.0% | 4.3% | 79% | 53% |
+| Andre Agassi | deuce | 10,343 | 63% | 50%/41% | 5.5% | 2.8% | 71% | 54% |
+|  | ad | 9,534 | 64% | 59%/37% | 4.9% | 2.6% | 69% | 55% |
 
 ### Step 2 — serve-points-won by leverage, within each side
 
@@ -32,8 +32,8 @@
 
 | side | normal | break pt | game pt | break−normal |
 |---|--:|--:|--:|--:|
-| deuce | 65% (456,828) | 61% (24,626) | 67% (72,375) | -3% |
-| ad | 64% (331,721) | 61% (78,552) | 65% (170,724) | -3% |
+| deuce | 65% (455,915) | 61% (24,582) | 67% (72,240) | -3% |
+| ad | 64% (331,062) | 61% (78,399) | 65% (170,359) | -3% |
 
 Per player (break−normal on each side, the pressure swing net of side):
 
@@ -62,32 +62,32 @@ Per player (break−normal on each side, the pressure swing net of side):
 
 | side | normal | break pt | game pt | break−normal |
 |---|--:|--:|--:|--:|
-| deuce | 71% (7,923) | 65% (275) | 71% (1,436) | -6% |
-| ad | 68% (5,676) | 69% (921) | 67% (3,167) | +1% |
+| deuce | 71% (7,838) | 65% (274) | 71% (1,418) | -6% |
+| ad | 68% (5,615) | 69% (916) | 67% (3,140) | +1% |
 
 **Andre Agassi**
 
 | side | normal | break pt | game pt | break−normal |
 |---|--:|--:|--:|--:|
-| deuce | 65% (7,290) | 62% (375) | 64% (1,162) | -3% |
-| ad | 64% (5,322) | 63% (1,259) | 65% (2,836) | -1% |
+| deuce | 65% (7,153) | 62% (366) | 64% (1,140) | -3% |
+| ad | 64% (5,218) | 63% (1,234) | 66% (2,769) | -0% |
 
 ### Step 3 — serve+1 (server's first groundstroke), by side
 
-*FH share = how often the serve+1 is a forehand; attempt = winner or unforced error; claims stay in server-wing / side terms (no returner handedness assumed).*
+*FH share = how often the serve+1 is a forehand; aggressive = the aggressive shot frequency — the +1 was a winner, an unforced error, or forced the reply out — and convert = the share of those that paid; claims stay in server-wing / side terms (no returner handedness assumed).*
 
-| player | side | serve+1 | FH share | attempt rate | convert |
+| player | side | serve+1 | FH share | aggressive | convert |
 |---|---|--:|--:|--:|--:|
-| Roger Federer | deuce | 19,614 | 69% | 24% | 59% |
-|  | ad | 18,218 | 65% | 24% | 57% |
-| Novak Djokovic | deuce | 16,218 | 60% | 17% | 54% |
-|  | ad | 15,101 | 52% | 17% | 51% |
-| Rafael Nadal | deuce | 13,333 | 75% | 13% | 49% |
-|  | ad | 11,742 | 80% | 17% | 60% |
-| Pete Sampras | deuce | 5,615 | 46% | 27% | 60% |
-|  | ad | 5,529 | 49% | 28% | 56% |
-| Andre Agassi | deuce | 7,120 | 50% | 17% | 47% |
-|  | ad | 6,813 | 51% | 19% | 49% |
+| Roger Federer | deuce | 19,614 | 69% | 33% | 70% |
+|  | ad | 18,218 | 65% | 33% | 68% |
+| Novak Djokovic | deuce | 16,218 | 60% | 25% | 68% |
+|  | ad | 15,101 | 52% | 24% | 66% |
+| Rafael Nadal | deuce | 13,333 | 75% | 18% | 65% |
+|  | ad | 11,742 | 80% | 24% | 73% |
+| Pete Sampras | deuce | 5,570 | 46% | 41% | 73% |
+|  | ad | 5,483 | 49% | 41% | 70% |
+| Andre Agassi | deuce | 6,961 | 49% | 24% | 63% |
+|  | ad | 6,681 | 51% | 27% | 64% |
 
 ## Women
 
@@ -95,19 +95,19 @@ Per player (break−normal on each side, the pressure swing net of side):
 
 | side | points | 1st in | wide/body/T | ace | DF | 1st-serve won | 2nd-serve won |
 |---|--:|--:|:-:|--:|--:|--:|--:|
-| deuce | 294,804 | 63% | 42%/21%/37% | 4.5% | 4.9% | 65% | 45% |
-| ad | 271,928 | 62% | 42%/19%/39% | 3.8% | 4.8% | 63% | 46% |
+| deuce | 294,018 | 63% | 42%/21%/38% | 4.5% | 4.9% | 65% | 45% |
+| ad | 271,214 | 62% | 42%/19%/39% | 3.8% | 4.8% | 63% | 46% |
 
 ### Heavily-charted players (both sides ≥ 2,000 charted points)
 
 | player | side | pts | 1st in | wide/T | ace | DF | 1st won | 2nd won |
 |---|---|--:|--:|:-:|--:|--:|--:|--:|
-| Serena Williams | deuce | 5,025 | 60% | 50%/42% | 12.8% | 4.4% | 73% | 46% |
-|  | ad | 4,600 | 61% | 45%/49% | 10.3% | 4.6% | 71% | 47% |
+| Serena Williams | deuce | 4,995 | 60% | 50%/42% | 12.9% | 4.4% | 73% | 46% |
+|  | ad | 4,573 | 61% | 45%/49% | 10.4% | 4.5% | 71% | 47% |
 | Iga Swiatek | deuce | 7,250 | 64% | 39%/33% | 4.2% | 3.3% | 69% | 53% |
 |  | ad | 6,618 | 63% | 39%/33% | 3.6% | 3.6% | 68% | 52% |
-| Steffi Graf | deuce | 3,224 | 67% | 50%/36% | 4.8% | 3.4% | 66% | 51% |
-|  | ad | 2,977 | 66% | 57%/30% | 3.4% | 2.4% | 65% | 51% |
+| Steffi Graf | deuce | 3,184 | 67% | 50%/36% | 4.8% | 3.4% | 66% | 51% |
+|  | ad | 2,940 | 66% | 57%/30% | 3.4% | 2.3% | 65% | 51% |
 
 ### Step 2 — serve-points-won by leverage, within each side
 
@@ -115,8 +115,8 @@ Per player (break−normal on each side, the pressure swing net of side):
 
 | side | normal | break pt | game pt | break−normal |
 |---|--:|--:|--:|--:|
-| deuce | 57% (199,856) | 55% (15,532) | 59% (26,764) | -2% |
-| ad | 57% (146,787) | 55% (48,305) | 57% (70,653) | -2% |
+| deuce | 57% (199,326) | 55% (15,498) | 59% (26,689) | -2% |
+| ad | 57% (146,396) | 55% (48,202) | 57% (70,469) | -2% |
 
 Per player (break−normal on each side, the pressure swing net of side):
 
@@ -124,8 +124,8 @@ Per player (break−normal on each side, the pressure swing net of side):
 
 | side | normal | break pt | game pt | break−normal |
 |---|--:|--:|--:|--:|
-| deuce | 63% (3,464) | 60% (188) | 64% (544) | -3% |
-| ad | 62% (2,538) | 60% (689) | 63% (1,269) | -2% |
+| deuce | 64% (3,442) | 60% (187) | 64% (542) | -3% |
+| ad | 62% (2,523) | 60% (681) | 63% (1,265) | -2% |
 
 **Iga Swiatek**
 
@@ -145,23 +145,23 @@ Per player (break−normal on each side, the pressure swing net of side):
 
 | side | normal | break pt | game pt | break−normal |
 |---|--:|--:|--:|--:|
-| deuce | 62% (2,206) | 57% (134) | 62% (318) | -4% |
-| ad | 60% (1,593) | 58% (476) | 60% (829) | -3% |
+| deuce | 62% (2,179) | 57% (133) | 61% (314) | -5% |
+| ad | 60% (1,572) | 58% (470) | 60% (819) | -3% |
 
 ### Step 3 — serve+1 (server's first groundstroke), by side
 
-*FH share = how often the serve+1 is a forehand; attempt = winner or unforced error; claims stay in server-wing / side terms (no returner handedness assumed).*
+*FH share = how often the serve+1 is a forehand; aggressive = the aggressive shot frequency — the +1 was a winner, an unforced error, or forced the reply out — and convert = the share of those that paid; claims stay in server-wing / side terms (no returner handedness assumed).*
 
-| player | side | serve+1 | FH share | attempt rate | convert |
+| player | side | serve+1 | FH share | aggressive | convert |
 |---|---|--:|--:|--:|--:|
-| Serena Williams | deuce | 3,017 | 50% | 23% | 43% |
-|  | ad | 2,868 | 40% | 23% | 48% |
-| Iga Swiatek | deuce | 5,037 | 57% | 20% | 50% |
-|  | ad | 4,643 | 49% | 21% | 51% |
-| Martina Navratilova | deuce | 910 | 46% | 16% | 57% |
-|  | ad | 762 | 45% | 24% | 69% |
-| Steffi Graf | deuce | 2,355 | 63% | 19% | 42% |
-|  | ad | 2,296 | 64% | 18% | 38% |
+| Serena Williams | deuce | 2,996 | 50% | 30% | 56% |
+|  | ad | 2,849 | 40% | 29% | 57% |
+| Iga Swiatek | deuce | 5,037 | 57% | 26% | 61% |
+|  | ad | 4,643 | 49% | 27% | 62% |
+| Martina Navratilova | deuce | 910 | 46% | 26% | 74% |
+|  | ad | 762 | 45% | 32% | 77% |
+| Steffi Graf | deuce | 2,324 | 62% | 25% | 56% |
+|  | ad | 2,268 | 64% | 23% | 52% |
 
 ![serve side](figures/serve_side.png)
 

@@ -1,12 +1,19 @@
-"""Shot-making triggers: attempt rate (winner+unforced) and conversion per lead-up.
+"""Shot-making triggers: aggressive shot frequency and conversion per lead-up.
 
 Run:  python experiments/shot_triggers/run.py
 
-Recasts shot_patterns' separate winner/error books as one decision (the attempt)
-plus execution (conversion). Per player: trigger contexts (attempt-rate lift),
-green lights vs traps (conversion vs their own baseline), the winner-vs-error
-context correlation (are the two books the same book?), and a pattern-immunity
-score (attempt-rate overdispersion vs binomial noise).
+Recasts shot_patterns' separate winner/error books as one decision (the aggressive
+shot) plus execution (conversion). An **aggressive shot** is a stroke that ends the
+point on the player's own racquet (winner, own unforced error) or forces the reply
+into an error; **aggressive shot frequency** is how often a rally stroke is one, and
+**conversion** is the share that paid (winner or induced forced error). Per player:
+trigger contexts (frequency lift), green lights vs traps (conversion vs their own
+baseline), the winner-vs-error context correlation (are the two books the same
+book?), and a pattern-immunity score (frequency overdispersion vs binomial noise).
+
+A section near the end justifies the numerator against the narrower **finishing
+shot frequency** (winner + own unforced error, no induced forced errors) that this
+experiment used through 2026-08-05, on split-half reliability.
 
 The pooled contexts above average over the serve side. A final section splits the
 first-four-ply openings — the return, serve+1 and return+1 — by deuce/ad court,
@@ -15,10 +22,12 @@ rally stays pooled. Each opening context is scored against the player's own norm
 for that same shot and side.
 
 Writes reports/shot_triggers.md, reports/shot_triggers.csv,
-reports/shot_triggers_openings.csv, reports/figures/shot_triggers.png.
+reports/shot_triggers_openings.csv, reports/figures/shot_triggers.png and
+reports/figures/shot_triggers_definitions.png.
 """
 
 import sys
+import zlib
 from collections import defaultdict
 from pathlib import Path
 
@@ -36,15 +45,15 @@ from tokens import point_tokens, pretty  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
-from match_charting_project.shots.notation import parse_point  # noqa: E402
+from match_charting_project.shots.notation import aggressive_shot, parse_point  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
 
 K = 2               # context = the K shots before the player's stroke
 MIN_SHOTS = 4000    # a player needs this many contextful strokes to be ranked
 MIN_CTX = 60        # a context needs this many of the player's strokes
-MIN_ATT = 12        # ...and this many attempts for conversion to mean anything
+MIN_ATT = 12        # ...and this many aggressive shots for conversion to mean anything
 PHI_MIN_CTX = 20    # contexts needed for the immunity (dispersion) score
-TRIGGER_LIFT = 1.5  # attempt lift that counts as a trigger context
+TRIGGER_LIFT = 1.5  # frequency lift that counts as a trigger context
 TOP = 4
 GLABEL = {"M": "Men", "W": "Women"}
 MARQUEE = {
@@ -53,31 +62,36 @@ MARQUEE = {
 }
 
 
-# Opening plies to split by serve side: the attempt sits in the first four plies
-# (serve, return, and the +1 shots), so context + attempt stay inside the opening.
+# Opening plies to split by serve side: the aggressive shot sits in the first four
+# plies (serve, return, and the +1 shots), so context + shot stay inside the opening.
 # (stroke index 0-based, anchor label, serving/returning role). The context is the
 # up-to-K prior strokes, so every one of these stays within plies 1-4.
 OPEN_ANCHORS = ((1, "return", "return"),      # returner's ball, ctx = (serve,)
                 (2, "serve+1", "serve"),      # server's +1,      ctx = (serve, return)
                 (3, "return+1", "return"))    # returner's +1,    ctx = (return, serve+1)
 OPEN_MIN_BASE = 200   # per (player, side, anchor): strokes needed for a stable baseline
+MIN_HALF = 25         # strokes a context needs in *each* half to enter the split-half test
 
 
 def collect(con, gender: str) -> "tuple[dict, dict]":
     """Pooled per-player context tables (all plies) plus side-split opening tables.
 
-    ``acc``: player -> {n, w, e, ctx:{context: [n, winners, unforced]}} (forced
-    excluded) over every ply, sides pooled — unchanged from before.
-    ``openings``: (player, side, anchor) -> {base:[n,w,e], ctx:{context:[n,w,e]}}
-    for the first-four-ply attempts only, split by deuce/ad.
+    ``acc``: player -> {n, w, e, f, ctx:{context: [n, w, e, f]}, half:{(h, context):
+    [n, w, e, f]}} over every ply, sides pooled. ``half`` buckets the same counts by
+    a random split of the player's matches, which is what the definitions comparison
+    correlates across; matches (not points) are the split unit so a charter's
+    judgment lands wholly on one side.
+    ``openings``: (player, side, anchor) -> {base:[n,w,e,f], ctx:{context:[n,w,e,f]}}
+    for the first-four-ply aggressive shots only, split by deuce/ad.
     """
-    acc: dict = defaultdict(lambda: {"n": 0, "w": 0, "e": 0,
-                                     "ctx": defaultdict(lambda: [0, 0, 0])})
-    openings: dict = defaultdict(lambda: {"base": [0, 0, 0],
-                                          "ctx": defaultdict(lambda: [0, 0, 0])})
+    acc: dict = defaultdict(lambda: {"n": 0, "w": 0, "e": 0, "f": 0,
+                                     "ctx": defaultdict(lambda: [0, 0, 0, 0]),
+                                     "half": defaultdict(lambda: [0, 0, 0, 0])})
+    openings: dict = defaultdict(lambda: {"base": [0, 0, 0, 0],
+                                          "ctx": defaultdict(lambda: [0, 0, 0, 0])})
     sql = (
-        "SELECT m.player1, m.player2, p.svr, p.pts, p.first_serve, p.second_serve, "
-        "       p.pt_winner "
+        "SELECT m.match_id, m.player1, m.player2, p.svr, p.pts, p.first_serve, "
+        "       p.second_serve, p.pt_winner "
         "FROM points p JOIN matches m USING (match_id) "
         "WHERE p.svr IN (1,2) AND p.pt_winner IN (1,2) AND m.gender = ?"
     )
@@ -86,68 +100,82 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
         batch = cur.fetchmany(100_000)
         if not batch:
             break
-        for p1, p2, svr, pts, fs, ss, win in batch:
+        for mid, p1, p2, svr, pts, fs, ss, win in batch:
             pt = parse_point(fs, ss, svr, win)
             if not pt.parse_ok:
                 continue
             toks = point_tokens(pt)
             names = {1: p1, 2: p2}
+            n_sh = len(pt.shots)
+            half = zlib.crc32(str(mid).encode()) & 1   # stable across runs
 
             # Side-split openings first — these include short points that end on
             # the return (rally <= K), which the pooled loop below skips.
             side = serve_side(pts)
             if side in ("deuce", "ad"):
                 for idx, anchor, _role in OPEN_ANCHORS:
-                    if idx >= len(pt.shots):
+                    if idx >= n_sh:
                         break
                     s = pt.shots[idx]
                     rec = openings[(names[s.hitter], side, anchor)]
                     ctx = tuple(toks[max(0, idx - K):idx])
-                    rec["base"][0] += 1
-                    c = rec["ctx"][ctx]
-                    c[0] += 1
-                    if s.terminal == "*":
-                        rec["base"][1] += 1
-                        c[1] += 1
-                    elif s.terminal == "@":
-                        rec["base"][2] += 1
-                        c[2] += 1
+                    w, e, f = aggressive_shot(pt.shots, idx, n_sh)
+                    for bucket in (rec["base"], rec["ctx"][ctx]):
+                        bucket[0] += 1
+                        bucket[1] += w
+                        bucket[2] += e
+                        bucket[3] += f
 
-            if len(pt.shots) <= K:
+            if n_sh <= K:
                 continue
-            for i in range(K, len(pt.shots)):
+            for i in range(K, n_sh):
                 a = acc[names[pt.shots[i].hitter]]
+                ctx = tuple(toks[i - K:i])
+                w, e, f = aggressive_shot(pt.shots, i, n_sh)
                 a["n"] += 1
-                c = a["ctx"][tuple(toks[i - K:i])]
-                c[0] += 1
-                term = pt.shots[i].terminal
-                if term == "*":
-                    a["w"] += 1
-                    c[1] += 1
-                elif term == "@":
-                    a["e"] += 1
-                    c[2] += 1
+                a["w"] += w
+                a["e"] += e
+                a["f"] += f
+                for bucket in (a["ctx"][ctx], a["half"][(half, ctx)]):
+                    bucket[0] += 1
+                    bucket[1] += w
+                    bucket[2] += e
+                    bucket[3] += f
     return acc, openings
 
 
 def context_table(a: dict) -> "pd.DataFrame":
-    """Per qualifying context: attempt rate/lift, conversion, winner/error rates."""
-    base_att = (a["w"] + a["e"]) / a["n"]
-    base_conv = a["w"] / (a["w"] + a["e"]) if (a["w"] + a["e"]) else 0.0
+    """Per qualifying context: aggressive shot frequency/lift, conversion, w/e rates.
+
+    Carries the narrower *finishing shot* columns (``fin_*``: winner + own unforced
+    error, no induced forced errors) alongside, so the definitions comparison can be
+    computed from the same tables the report is built from rather than a second pass.
+    """
+    agg = a["w"] + a["e"] + a["f"]
+    fin = a["w"] + a["e"]
+    base_att = agg / a["n"]
+    base_conv = (a["w"] + a["f"]) / agg if agg else 0.0
+    base_fin = fin / a["n"]
+    base_fin_conv = a["w"] / fin if fin else 0.0
     rows = []
-    for ctx, (n, w, e) in a["ctx"].items():
+    for ctx, (n, w, e, f) in a["ctx"].items():
         if n < MIN_CTX:
             continue
-        att = w + e
+        att, fatt = w + e + f, w + e
         rows.append({
             "context": ctx, "n": n, "attempts": att,
             "att_rate": att / n, "att_lift": (att / n) / base_att if base_att else 0.0,
-            "conv": w / att if att else np.nan,
-            "w_rate": w / n, "e_rate": e / n,
+            "conv": (w + f) / att if att else np.nan,
+            "w_rate": w / n, "e_rate": e / n, "f_rate": f / n,
+            "fin_attempts": fatt, "fin_rate": fatt / n,
+            "fin_lift": (fatt / n) / base_fin if base_fin else 0.0,
+            "fin_conv": w / fatt if fatt else np.nan,
         })
     df = pd.DataFrame(rows)
     df.attrs["base_att"] = base_att
     df.attrs["base_conv"] = base_conv
+    df.attrs["base_fin"] = base_fin
+    df.attrs["base_fin_conv"] = base_fin_conv
     return df
 
 
@@ -159,12 +187,12 @@ def we_correlation(df: "pd.DataFrame") -> float:
 
 
 def dispersion(df: "pd.DataFrame") -> float:
-    """sigma: true between-context sd of the attempt rate, in probability points.
+    """sigma: true between-context sd of aggressive shot frequency, in prob. points.
 
     Beta-binomial method of moments — the binomial noise floor is subtracted,
     so heavily-charted players aren't penalized for having tighter estimates:
     E[(k - n*p)^2] = n*p*q + n*(n-1)*sigma^2  summed over contexts.
-    0 = the go-for-it decision looks context-blind; large = strongly cue-driven.
+    0 = the decision looks context-blind; large = strongly cue-driven.
     """
     if len(df) < PHI_MIN_CTX:
         return np.nan
@@ -175,14 +203,22 @@ def dispersion(df: "pd.DataFrame") -> float:
 
 
 def tag_contexts(df: "pd.DataFrame") -> "pd.DataFrame":
-    """Label each context: trigger + green light / trap, by conversion vs baseline."""
-    base_conv = df.attrs["base_conv"]
+    """Label each context: trigger + green light / trap, by conversion vs baseline.
+
+    Tagged twice — once on aggressive shots (``tag``, what the report and the site
+    ship) and once on the narrower finishing shots (``fin_tag``), so the definitions
+    section can show how many cues the switch reclassifies.
+    """
     out = df.copy()
-    out["conv_delta"] = out.conv - base_conv
-    out["tag"] = "neutral"
-    trig = (out.att_lift >= TRIGGER_LIFT) & (out.attempts >= MIN_ATT)
-    out.loc[trig & (out.conv_delta >= 0), "tag"] = "green"
-    out.loc[trig & (out.conv_delta < 0), "tag"] = "trap"
+    for pre, lift, att, conv, base in (("", "att_lift", "attempts", "conv", "base_conv"),
+                                       ("fin_", "fin_lift", "fin_attempts", "fin_conv",
+                                        "base_fin_conv")):
+        delta = out[conv] - df.attrs[base]
+        out[f"{pre}conv_delta"] = delta
+        out[f"{pre}tag"] = "neutral"
+        trig = (out[lift] >= TRIGGER_LIFT) & (out[att] >= MIN_ATT)
+        out.loc[trig & (delta >= 0), f"{pre}tag"] = "green"
+        out.loc[trig & (delta < 0), f"{pre}tag"] = "trap"
     out.attrs = df.attrs
     return out
 
@@ -195,26 +231,140 @@ def player_block(md, player, df):
     base_att, base_conv = df.attrs["base_att"], df.attrs["base_conv"]
     n_all = int(df.n.sum())
     md.append(f"### {player}")
-    md.append(f"*goes for it on {base_att:.1%} of strokes, converting {base_conv:.0%}; "
+    md.append(f"*aggressive on {base_att:.1%} of strokes, converting {base_conv:.0%}; "
               f"{n_all:,} contextful strokes*\n")
     trig = df[df.tag != "neutral"].sort_values("att_lift", ascending=False)
-    md.append("**Trigger sequences** (lead-ups that most raise their attempt rate):")
+    md.append("**Trigger sequences** (lead-ups that most raise the frequency):")
     for r in trig.head(TOP).itertuples():
         kind = "✅ converts" if r.tag == "green" else "⚠️ trap"
-        md.append(f"- `{_ctx_str(r.context)}` → goes for it {r.att_rate:.0%} "
+        md.append(f"- `{_ctx_str(r.context)}` → aggressive {r.att_rate:.0%} "
                   f"({r.att_lift:.1f}×), converts {r.conv:.0%} "
                   f"({r.conv_delta:+.0%} vs their norm) {kind} (n={r.n})")
     traps = df[df.tag == "trap"].sort_values("conv_delta")
     if len(traps):
-        md.append("\n**Worst traps** (pulled into attempts they don't convert):")
+        md.append("\n**Worst traps** (pulled into aggressive shots they don't convert):")
         for r in traps.head(3).itertuples():
-            md.append(f"- `{_ctx_str(r.context)}` → attempts {r.att_lift:.1f}× their norm "
+            md.append(f"- `{_ctx_str(r.context)}` → aggressive {r.att_lift:.1f}× their norm "
                       f"but converts only {r.conv:.0%} vs {base_conv:.0%} baseline (n={r.n})")
     else:
-        md.append("\n**No trap contexts** — every sequence that raises their attempt rate "
+        md.append("\n**No trap contexts** — every sequence that raises the frequency "
                   "also meets or beats their usual conversion. Unbaitable (at this "
                   "resolution).")
     md.append("")
+
+
+def split_half_pairs(a: dict) -> "list":
+    """Per context, the two definitions' frequencies measured on each half separately.
+
+    A context only qualifies where both halves carry ``MIN_HALF`` strokes, so the
+    comparison is never between a well-measured half and a rumour. Correlating these
+    across contexts estimates what share of the apparent between-context spread is
+    real: it is the reliability of the statistic, and it is the test that decides
+    which numerator to ship.
+    """
+    h0 = {c: v for (h, c), v in a["half"].items() if h == 0 and v[0] >= MIN_HALF}
+    h1 = {c: v for (h, c), v in a["half"].items() if h == 1 and v[0] >= MIN_HALF}
+    pairs = []
+    for ctx in h0.keys() & h1.keys():
+        n0, w0, e0, f0 = h0[ctx]
+        n1, w1, e1, f1 = h1[ctx]
+        pairs.append({
+            "agg0": (w0 + e0 + f0) / n0, "agg1": (w1 + e1 + f1) / n1,
+            "fin0": (w0 + e0) / n0, "fin1": (w1 + e1) / n1,
+        })
+    return pairs
+
+
+def definition_block(md: list, defs: "pd.DataFrame", pairs: "pd.DataFrame",
+                     flips: "pd.DataFrame") -> "pd.DataFrame":
+    """Report section: why the numerator counts induced forced errors.
+
+    Returns the per-player reliability frame so the figure can draw it.
+    """
+    per = []
+    for (p, g), sub in pairs.groupby(["player", "gender"]):
+        if len(sub) < 15:      # a correlation over a dozen contexts is not a number
+            continue
+        per.append((p, g, sub.agg0.corr(sub.agg1), sub.fin0.corr(sub.fin1)))
+    per = pd.DataFrame(per, columns=["player", "gender", "r_agg", "r_fin"]).dropna()
+
+    r_agg, r_fin = pairs.agg0.corr(pairs.agg1), pairs.fin0.corr(pairs.fin1)
+    md.append("## Why the numerator counts induced forced errors")
+    md.append("")
+    md.append("Through 2026-08-05 this experiment counted only shots that ended the "
+              "point on the player's own racquet — a winner or their own unforced "
+              "error. Call that the **finishing shot frequency**. The wider and "
+              "standard reading also credits a shot that forced the reply into an "
+              "error, which is the **aggressive shot frequency** shipped above. The "
+              "worry about widening it is that the forced/unforced call is the most "
+              "charter-subjective field in the notation, so the extra events might be "
+              "mostly noise. They are not.")
+    md.append("")
+    md.append("Each player's matches are split at random into halves and every "
+              f"well-supported context (≥{MIN_HALF} strokes in *both* halves) is "
+              "measured twice. The correlation between the two measurements is the "
+              "share of the apparent between-context spread that replicates. Because "
+              "the split is by match, charters disagreeing with each other lands "
+              "inside the noise term this is testing.")
+    md.append("")
+    md.append("| | finishing (w+ue) | aggressive (+induced FE) |")
+    md.append("|---|--:|--:|")
+    md.append(f"| split-half r, all {len(pairs):,} contexts | {r_fin:+.3f} | "
+              f"**{r_agg:+.3f}** |")
+    md.append(f"| per-player median r ({len(per)} players) | {per.r_fin.median():+.3f} | "
+              f"**{per.r_agg.median():+.3f}** |")
+    md.append(f"| players it is more reliable for | {(per.r_fin > per.r_agg).mean():.0%} | "
+              f"**{(per.r_agg > per.r_fin).mean():.0%}** |")
+    md.append(f"| mean base frequency | {defs.base_fin.mean():.1%} | "
+              f"{defs.base_agg.mean():.1%} |")
+    md.append(f"| mean conversion | {defs.conv_fin.mean():.1%} | "
+              f"{defs.conv_agg.mean():.1%} |")
+    md.append("")
+    md.append("The wider numerator wins, and it wins against a handicap: a base rate "
+              f"moving from {defs.base_fin.mean():.1%} to {defs.base_agg.mean():.1%} "
+              "raises the binomial noise floor by about a fifth, so a numerator made "
+              "of noise would have *lost* this test. The extra events carry structure.")
+    md.append("")
+    md.append("Two things follow. First, the player ranking barely moves — the two "
+              f"frequencies correlate {defs.base_fin.corr(defs.base_agg):+.3f} across "
+              "players — so this is not a rewrite of who is aggressive. Second, the "
+              "*composition* moves a lot, and not at random: induced forced errors "
+              f"are {defs.fe_share.mean():.0%} of the numerator on average but range "
+              f"from {defs.fe_share.min():.0%} to {defs.fe_share.max():.0%}. The "
+              "narrow definition systematically under-credited players whose "
+              "aggression works by pressure rather than by clean winners.")
+    md.append("")
+    md.append("| most under-credited by the old numerator | induced FE share | "
+              "least |  induced FE share |")
+    md.append("|---|--:|---|--:|")
+    hi = defs.nlargest(5, "fe_share").reset_index()
+    lo = defs.nsmallest(5, "fe_share").reset_index()
+    for i in range(5):
+        h, m = hi.iloc[i], lo.iloc[i]
+        md.append(f"| {h.player} ({h.gender}) | {h.fe_share:.0%} | {m.player} "
+                  f"({m.gender}) | {m.fe_share:.0%} |")
+    md.append("")
+    both = flips[(flips.tag != "neutral") | (flips.fin_tag != "neutral")]
+    n_agg = int((flips.tag != "neutral").sum())
+    n_fin = int((flips.fin_tag != "neutral").sum())
+    md.append(f"The cue lists move more than the leaderboard does. Of the "
+              f"{len(both):,} contexts either definition flags, they agree on "
+              f"{(both.tag == both.fin_tag).mean():.0%}; the old numerator flagged "
+              f"{n_fin:,} and this one flags {n_agg:,}. Traps fall from "
+              f"{int((flips.fin_tag == 'trap').sum()):,} to "
+              f"{int((flips.tag == 'trap').sum()):,}, which is the substantive "
+              "correction: a shot that forced an error used to count as neither a "
+              "success nor an aggressive shot, so a cue that reliably produced them "
+              "read as low-conversion and got labelled a trap it had not earned.")
+    md.append("")
+    md.append("![definitions](figures/shot_triggers_definitions.png)")
+    md.append("")
+    md.append("**What this test does not cover.** Split-half catches charters "
+              "disagreeing with each other, not a bias they share. If the tour's "
+              "charters collectively over-call *forced* for one kind of player, both "
+              "definitions inherit it and this comparison would not show it.")
+    md.append("")
+    return per
 
 
 def _role_of(anchor: str) -> str:
@@ -226,28 +376,28 @@ def opening_rows(openings: dict, gender: str, qualifying: set) -> list:
     same shot and side* (their deuce serve+1 norm, their ad return+1 norm, ...).
 
     Only non-neutral (trigger) rows survive, matching the pooled analysis: a
-    context clears ``MIN_CTX`` strokes, lifts the attempt rate ``TRIGGER_LIFT``x
-    over that baseline on ``MIN_ATT``+ attempts, then splits green (conversion
-    holds) vs trap (conversion falls). Side is a grouping key, so on the deuce
+    context clears ``MIN_CTX`` strokes, lifts the frequency ``TRIGGER_LIFT``x
+    over that baseline on ``MIN_ATT``+ aggressive shots, then splits green
+    (conversion holds) vs trap (conversion falls). Side is a grouping key, so on the deuce
     side a ``serve wide`` context is a deuce-wide serve — the disambiguation the
     pooled tables can't make."""
     rows = []
     for (player, side, anchor), rec in openings.items():
         if player not in qualifying:
             continue
-        bn, bw, be = rec["base"]
-        batt = bw + be
+        bn, bw, be, bf = rec["base"]
+        batt = bw + be + bf
         if bn < OPEN_MIN_BASE or batt == 0:
             continue
-        base_att, base_conv = batt / bn, bw / batt
-        for ctx, (n, w, e) in rec["ctx"].items():
-            att = w + e
+        base_att, base_conv = batt / bn, (bw + bf) / batt
+        for ctx, (n, w, e, f) in rec["ctx"].items():
+            att = w + e + f
             if n < MIN_CTX or att < MIN_ATT:
                 continue
             att_lift = (att / n) / base_att if base_att else 0.0
             if att_lift < TRIGGER_LIFT:
                 continue
-            conv = w / att
+            conv = (w + f) / att
             conv_delta = conv - base_conv
             rows.append({
                 "player": player, "gender": gender, "side": side, "anchor": anchor,
@@ -278,11 +428,11 @@ def opening_player_block(md: list, player: str, prows: list) -> None:
                 continue
             md.append(f"**{role.capitalize()}, {side} court**")
             for r in greens:
-                md.append(f"- ✅ `{r['context']}` → {r['anchor']} attempt {r['att_rate']:.0%} "
+                md.append(f"- ✅ `{r['context']}` → {r['anchor']} aggressive {r['att_rate']:.0%} "
                           f"({r['att_lift']:.1f}×), converts {r['conversion']:.0%} "
                           f"({r['conv_delta']:+.0%} vs norm) (n={r['n']})")
             for r in traps:
-                md.append(f"- ⚠️ `{r['context']}` → {r['anchor']} attempt {r['att_rate']:.0%} "
+                md.append(f"- ⚠️ `{r['context']}` → {r['anchor']} aggressive {r['att_rate']:.0%} "
                           f"({r['att_lift']:.1f}×) but converts only {r['conversion']:.0%} "
                           f"({r['conv_delta']:+.0%} vs norm) (n={r['n']})")
             md.append("")
@@ -290,28 +440,43 @@ def opening_player_block(md: list, player: str, prows: list) -> None:
 
 def main() -> None:
     con = connect(read_only=True)
-    md = ["# Shot-making triggers — attempts, conversion, traps, immunity", ""]
-    md.append("*Generated by `experiments/shot_triggers/run.py`. An **attempt** = the "
-              "player's stroke is a winner or an unforced error (they pulled the "
-              "trigger); **conversion** = winners / attempts. Per player, contexts (two "
-              "prior shots) are tagged **green light** (attempts up, conversion holds) "
-              "or **trap** (attempts up, conversion below their norm). σ measures how "
-              "context-driven the go-for-it decision is (0 = context-blind), with "
-              "binomial sampling noise subtracted.*")
+    md = ["# Shot-making triggers — aggressive shot frequency, conversion, traps, immunity",
+          ""]
+    md.append("*Generated by `experiments/shot_triggers/run.py`. An **aggressive shot** = "
+              "the player's stroke ended the point on their own racquet (winner, own "
+              "unforced error) or forced the reply into an error; **aggressive shot "
+              "frequency** = how often a rally stroke is one; **conversion** = the share "
+              "that paid, meaning a winner or an induced forced error. Per player, contexts "
+              "(two prior shots) are tagged **green light** (frequency up, conversion "
+              "holds) or **trap** (frequency up, conversion below their norm). σ measures "
+              "how context-driven the decision is (0 = context-blind), with binomial "
+              "sampling noise subtracted. The numerator is justified against the narrower "
+              "finishing-shot reading in its own section below.*")
     md.append("")
     csv_rows, player_rows = [], []
     corr_all, phi_rows = [], []
     open_rows, open_by_gender = [], {}
+    def_rows, pair_rows, flip_rows = [], [], []
     for g in ("M", "W"):
         acc, openings = collect(con, g)
         tables = {}
         for player, a in acc.items():
-            if a["n"] < MIN_SHOTS or (a["w"] + a["e"]) == 0:
+            if a["n"] < MIN_SHOTS or (a["w"] + a["e"] + a["f"]) == 0:
                 continue
             df = tag_contexts(context_table(a))
             if not len(df):
                 continue
             tables[player] = df
+            agg_n = a["w"] + a["e"] + a["f"]
+            def_rows.append({
+                "player": player, "gender": g,
+                "base_agg": df.attrs["base_att"], "base_fin": df.attrs["base_fin"],
+                "conv_agg": df.attrs["base_conv"], "conv_fin": df.attrs["base_fin_conv"],
+                "fe_share": a["f"] / agg_n,
+            })
+            for pair in split_half_pairs(a):
+                pair_rows.append({"player": player, "gender": g, **pair})
+            flip_rows += df[["tag", "fin_tag"]].to_dict("records")
             r = we_correlation(df)
             phi = dispersion(df)
             if not np.isnan(r):
@@ -322,6 +487,8 @@ def main() -> None:
                 "player": player, "gender": g,
                 "att_rate": round(df.attrs["base_att"], 3),
                 "conversion": round(df.attrs["base_conv"], 3),
+                "fin_rate": round(df.attrs["base_fin"], 3),
+                "fin_conversion": round(df.attrs["base_fin_conv"], 3),
                 "sigma": round(phi, 4) if not np.isnan(phi) else None,
                 "n_ctx": len(df), "n_traps": int((df.tag == "trap").sum()),
                 "n_greens": int((df.tag == "green").sum()),
@@ -362,14 +529,21 @@ def main() -> None:
               "chance pushes this correlation negative. Sequences that precede winners "
               "also precede errors because both mark the same decision — going for the "
               "finish. `shot_patterns`' green/trouble split partly conflates decision "
-              "with execution; attempt + conversion separates them.")
+              "with execution; frequency + conversion separates them.")
     md.append("")
+
+    # -- which numerator? -----------------------------------------------------
+    defs = pd.DataFrame(def_rows)
+    pairs = pd.DataFrame(pair_rows)
+    flips = pd.DataFrame(flip_rows)
+    per_rel = definition_block(md, defs, pairs, flips)
+
     md.append("## Pattern-immunity leaderboard (σ)")
     md.append("")
-    md.append("σ = the true between-context spread of a player's go-for-it rate, in "
-              "probability points, after subtracting binomial sampling noise (so "
-              "charting volume doesn't distort the comparison). 0 would mean the "
-              "decision to attempt ignores the lead-up entirely.")
+    md.append("σ = the true between-context spread of a player's aggressive shot "
+              "frequency, in probability points, after subtracting binomial sampling "
+              "noise (so charting volume doesn't distort the comparison). 0 would mean "
+              "the decision ignores the lead-up entirely.")
     md.append("")
     md.append("| most cue-driven | σ (pp) | most pattern-immune | σ (pp) |")
     md.append("|---|---|---|---|")
@@ -388,8 +562,8 @@ def main() -> None:
     md.append("The pooled tables above average over the court the point was served to, "
               "but the first four plies mean different things on the two sides: a wide "
               "serve opens the forehand in the deuce court and the backhand in the ad "
-              "court. Here the opening attempts — the return, the serve+1, and the "
-              "return+1 — are split by side and scored against the player's own norm "
+              "court. Here the opening aggressive shots — the return, the serve+1, and "
+              "the return+1 — are split by side and scored against the player's own norm "
               "*for that same shot and side*. Everything deeper in the rally stays "
               "pooled (above). Full rows in `reports/shot_triggers_openings.csv`; "
               f"{sum(r['tag'] == 'green' for r in open_rows)} green / "
@@ -412,8 +586,9 @@ def main() -> None:
     a1.legend(fontsize=8)
     a2.hist(phi.phi * 100, bins=25, color="#b0512e", alpha=0.8)
     a2.axvline(0, color="gray", lw=1, label="0 = context-blind")
-    a2.set_xlabel("between-context spread of attempt rate σ (prob. points, noise-corrected)")
-    a2.set_title("How cue-driven is the go-for-it decision?")
+    a2.set_xlabel("between-context spread of aggressive shot frequency σ\n"
+                  "(prob. points, noise-corrected)")
+    a2.set_title("How cue-driven is the decision?")
     a2.legend(fontsize=8)
     fig.suptitle("Shot-making triggers: one decision, two outcomes")
     fig.tight_layout()
@@ -421,6 +596,44 @@ def main() -> None:
     figp.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(figp, dpi=110)
     plt.close(fig)
+
+    # -- definitions figure ----------------------------------------------------
+    # Left: the paired reliability test, one dot per player, against the identity
+    # line — the claim is "the mass sits above the line", which is what a reader
+    # should be able to check by eye rather than take on a summary statistic.
+    # Right: the spread of the induced-FE share, which is the "and it isn't a wash"
+    # half of the argument. Two panels, one series each, so neither needs a legend.
+    fig2, (b1, b2) = plt.subplots(1, 2, figsize=(11, 4.4))
+    lim = [min(per_rel.r_fin.min(), per_rel.r_agg.min()) - 0.03,
+           max(per_rel.r_fin.max(), per_rel.r_agg.max()) + 0.03]
+    b1.plot(lim, lim, color="#9aa0a6", ls="--", lw=1, zorder=1)
+    b1.scatter(per_rel.r_fin, per_rel.r_agg, s=22, color="#1a7f4b", alpha=0.55,
+               linewidths=0, zorder=2)
+    b1.set_xlim(lim)
+    b1.set_ylim(lim)
+    b1.set_aspect("equal")
+    b1.set_xlabel("split-half r — finishing shots\n(winner + own unforced error)")
+    b1.set_ylabel("split-half r — aggressive shots\n(+ induced forced errors)")
+    b1.set_title("Reliability of the two numerators, per player")
+    b1.annotate(f"above the line: {(per_rel.r_agg > per_rel.r_fin).mean():.0%} of players",
+                xy=(0.04, 0.93), xycoords="axes fraction", fontsize=9, color="#1a7f4b")
+    b2.hist(defs.fe_share * 100, bins=25, color="#b0512e", alpha=0.8)
+    b2.axvline(defs.fe_share.mean() * 100, color="black", ls="--", lw=1,
+               label=f"mean {defs.fe_share.mean():.0%}")
+    b2.set_xlabel("induced forced errors, % of a player's aggressive shots")
+    b2.set_ylabel("players")
+    b2.set_title("What the old numerator was discarding")
+    b2.legend(fontsize=8)
+    for ax in (b1, b2):
+        ax.grid(alpha=0.18, lw=0.6)
+        ax.set_axisbelow(True)
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+    fig2.suptitle("Which numerator? The wider one replicates better")
+    fig2.tight_layout()
+    fig2p = PROJECT_ROOT / "reports" / "figures" / "shot_triggers_definitions.png"
+    fig2.savefig(fig2p, dpi=110)
+    plt.close(fig2)
 
     pd.DataFrame(csv_rows).to_csv(PROJECT_ROOT / "reports" / "shot_triggers.csv", index=False)
     pd.DataFrame(player_rows).to_csv(PROJECT_ROOT / "reports" / "shot_triggers_players.csv",
@@ -435,7 +648,10 @@ def main() -> None:
           f"| positive: {(corr.r > 0).mean():.0%}")
     print("phi extremes:", phi.head(3)[["player", "phi"]].values.tolist(),
           phi.tail(3)[["player", "phi"]].values.tolist())
-    print(f"wrote reports/shot_triggers.md + .csv ({len(csv_rows)} trigger rows) + figure")
+    print(f"wrote reports/shot_triggers.md + .csv ({len(csv_rows)} trigger rows) + figures")
+    print(f"definitions: split-half r  aggressive {pairs.agg0.corr(pairs.agg1):+.3f}  vs  "
+          f"finishing {pairs.fin0.corr(pairs.fin1):+.3f}  "
+          f"({(per_rel.r_agg > per_rel.r_fin).mean():.0%} of players favour aggressive)")
     print(f"wrote reports/shot_triggers_openings.csv ({len(open_rows)} side-split rows)")
 
 

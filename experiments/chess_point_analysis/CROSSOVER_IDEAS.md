@@ -37,7 +37,8 @@ naturally; this would make the whole style space explicit.
 ### 3. Tactical motif mining  *(chess: forks, pins, recurring motifs)*
 **Status: partially built** — `../shot_patterns` mines per-player finishing/breakdown
 contexts (2-shot lead-ups → winner/error) over the `shot_language` tokens, and
-`../shot_triggers` unifies the two books into attempt/conversion (+ traps, immunity).
+`../shot_triggers` unifies the two books into aggressive shot frequency/conversion
+(+ traps, immunity).
 Named-motif detection (serve+1, serve-and-volley, wrong-foot) is still open.
 Detect recurring high-value stroke patterns via n-gram / regex over point strings:
 serve+1 inside-out forehand, serve-and-volley, the wrong-foot, the ad-court kick to the

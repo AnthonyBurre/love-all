@@ -13,7 +13,7 @@ from the game score (``shots/score.py``) and reports:
   Step 2  side vs pressure — serve-points-won by leverage bucket *within* each
           side, isolating the pressure effect from the side effect (break points
           are mostly, but not only, ad-court points).
-  Step 3  serve+1 — the forehand share and attempt rate of the server's first
+  Step 3  serve+1 — the forehand share and aggressive shot frequency of the server's first
           groundstroke, split by side, where a side split is most likely to
           change the story.
 
@@ -37,7 +37,11 @@ from model import pressure  # noqa: E402  (reuse the score-aware leverage bucket
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
-from match_charting_project.shots.notation import SHOT_LETTERS, parse_point  # noqa: E402
+from match_charting_project.shots.notation import (
+    SHOT_LETTERS,
+    aggressive_shot,
+    parse_point,  # noqa: E402
+)
 from match_charting_project.shots.score import serve_side  # noqa: E402
 
 MIN_SIDE_POINTS = 300     # per-side charting floor for a player to be ranked
@@ -121,9 +125,9 @@ def collect(con, gender: str):
                 c = sp1[(server, side)]
                 c[0] += 1
                 c[1] += 1 if s.side == "FH" else 0
-                if s.terminal in ("*", "@"):
-                    c[2] += 1
-                    c[3] += 1 if s.terminal == "*" else 0
+                w, e, f = aggressive_shot(pt.shots, 2, len(pt.shots))
+                c[2] += w + e + f
+                c[3] += w + f
     return tour, players, press, sp1
 
 
@@ -206,7 +210,7 @@ def pressure_block(md, press, scope_label, scope_key):
 
 
 def sp1_block(md, sp1, gender):
-    md.append("| player | side | serve+1 | FH share | attempt rate | convert |")
+    md.append("| player | side | serve+1 | FH share | aggressive | convert |")
     md.append("|---|---|--:|--:|--:|--:|")
     rows = []
     for player in MARQUEE[gender]:
@@ -274,9 +278,11 @@ def main():
             press_rows += pressure_block(md, press, player, player)
 
         md.append("### Step 3 — serve+1 (server's first groundstroke), by side\n")
-        md.append("*FH share = how often the serve+1 is a forehand; attempt = winner or "
-                  "unforced error; claims stay in server-wing / side terms (no returner "
-                  "handedness assumed).*\n")
+        md.append("*FH share = how often the serve+1 is a forehand; aggressive = the "
+                  "aggressive shot frequency — the +1 was a winner, an unforced error, or "
+                  "forced the reply out — and convert = the share of those that paid; "
+                  "claims stay in server-wing / side terms (no returner handedness "
+                  "assumed).*\n")
         sp1_rows += sp1_block(md, sp1, g)
 
     con.close()

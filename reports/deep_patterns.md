@@ -4,48 +4,66 @@
 
 | | gold patterns | K=3 | K=4 | players with ≥1 |
 |---|---|---|---|---|
-| Men | 57 | 50 | 7 | 23 |
-| Women | 8 | 8 | 0 | 7 |
+| Men | 64 | 60 | 4 | 23 |
+| Women | 8 | 8 | 0 | 5 |
 
 ## Men
 
-### Roger Federer — 10 gold patterns
-- `FH slice→2 · FH drive→3 · BH drive→3` → goes for it 29% vs 15% without the first shot(s) (1.9× the parent), converts 56% ✅ (n=85)
-- `BH drive→2 · BH drive→2 · FH drive→3 · BH drive→3` → goes for it 22% vs 12% without the first two shot(s) (1.9× the parent), converts 35% ⚠️ (n=104)
-- `BH slice→2 · FH drive→1 · FH drive→3` → goes for it 26% vs 14% without the first shot(s) (1.8× the parent), converts 76% ✅ (n=81)
-- `FH slice→2 · FH drive→1 · FH drive→2` → goes for it 41% vs 24% without the first shot(s) (1.7× the parent), converts 65% ✅ (n=75)
-- `FH slice→2 · FH drive→3 · BH drive→2` → goes for it 42% vs 24% without the first shot(s) (1.7× the parent), converts 71% ✅ (n=84)
+### Roger Federer — 13 gold patterns
+- `FH slice→2 · FH drive→1 · FH drive→2` → aggressive 59% vs 31% without the first shot(s) (1.9× the parent), converts 75% ✅ (n=75)
+- `FH slice→2 · FH drive→3 · BH drive→3` → aggressive 35% vs 20% without the first shot(s) (1.8× the parent), converts 63% ✅ (n=85)
+- `BH slice→2 · FH drive→1 · FH drive→3` → aggressive 32% vs 18% without the first shot(s) (1.8× the parent), converts 81% ✅ (n=81)
+- `serve wide · BH drive→3 · BH drive→2 · FH drive→1` → aggressive 23% vs 13% without the first two shot(s) (1.7× the parent), converts 50% ⚠️ (n=142)
+- `FH slice→2 · FH drive→3 · BH drive→2` → aggressive 51% vs 33% without the first shot(s) (1.6× the parent), converts 77% ✅ (n=84)
 
-### Novak Djokovic — 6 gold patterns
-- `BH drive→3 · BH drive→3 · FH drive→1 · FH drive→1` → goes for it 25% vs 12% without the first two shot(s) (2.1× the parent), converts 35% ⚠️ (n=67)
-- `BH slice→2 · FH drive→1 · FH drive→3` → goes for it 19% vs 9% without the first shot(s) (2.0× the parent), converts 67% ✅ (n=145)
-- `FH slice→2 · FH drive→3 · BH drive→2` → goes for it 26% vs 14% without the first shot(s) (1.9× the parent), converts 65% ✅ (n=117)
-- `FH slice→2 · FH drive→3 · BH drive→3` → goes for it 22% vs 13% without the first shot(s) (1.7× the parent), converts 66% ✅ (n=132)
-- `BH slice→2 · FH drive→3 · BH drive→2` → goes for it 20% vs 14% without the first shot(s) (1.5× the parent), converts 56% ✅ (n=220)
+### Novak Djokovic — 10 gold patterns
+- `BH slice→2 · FH drive→1 · FH drive→3` → aggressive 30% vs 13% without the first shot(s) (2.2× the parent), converts 79% ✅ (n=145)
+- `FH slice→3 · BH drive→3 · BH drive→3` → aggressive 31% vs 15% without the first shot(s) (2.0× the parent), converts 42% ⚠️ (n=61)
+- `FH slice→2 · FH drive→3 · BH drive→3` → aggressive 32% vs 17% without the first shot(s) (1.8× the parent), converts 76% ✅ (n=132)
+- `serve wide · FH drive→1 · FH drive→3 · BH drive→3` → aggressive 25% vs 14% without the first two shot(s) (1.8× the parent), converts 58% ⚠️ (n=134)
+- `FH slice→2 · FH drive→3 · BH drive→2` → aggressive 35% vs 20% without the first shot(s) (1.8× the parent), converts 73% ✅ (n=117)
 
-### Rafael Nadal — 8 gold patterns
-- `BH slice→2 · FH drive→3 · BH drive→1` → goes for it 20% vs 10% without the first shot(s) (2.1× the parent), converts 62% ✅ (n=79)
-- `FH slice→2 · FH drive→3 · BH drive→2` → goes for it 28% vs 14% without the first shot(s) (2.0× the parent), converts 62% ✅ (n=75)
-- `BH slice→2 · FH drive→3 · FH drive→3 · BH drive→3` → goes for it 32% vs 17% without the first two shot(s) (2.0× the parent), converts 57% ✅ (n=65)
-- `BH slice→2 · FH drive→1 · FH drive→2` → goes for it 30% vs 16% without the first shot(s) (1.9× the parent), converts 62% ✅ (n=80)
-- `BH slice→3 · FH drive→1 · FH drive→2` → goes for it 29% vs 16% without the first shot(s) (1.8× the parent), converts 48% ⚠️ (n=79)
+### Rafael Nadal — 3 gold patterns
+- `BH slice→2 · FH drive→1 · FH drive→2` → aggressive 40% vs 23% without the first shot(s) (1.7× the parent), converts 72% ✅ (n=80)
+- `serve wide · FH drive→3 · BH drive→3` → aggressive 30% vs 18% without the first shot(s) (1.7× the parent), converts 60% ⚠️ (n=191)
+- `BH drive→2 · BH drive→2 · FH drive→1` → aggressive 17% vs 11% without the first shot(s) (1.6× the parent), converts 45% ⚠️ (n=359)
 
 ## Women
 
-### Serena Williams — 1 gold patterns
-- `serve T · BH drive→2 · FH drive→1` → goes for it 29% vs 17% without the first shot(s) (1.7× the parent), converts 8% ⚠️ (n=86)
+### Iga Swiatek — 1 gold patterns
+- `FH drive→2 · BH drive→2 · BH drive→3` → aggressive 31% vs 19% without the first shot(s) (1.7× the parent), converts 32% ⚠️ (n=80)
 
 ![deep patterns](figures/deep_patterns.png)
 
 ## Side heterogeneity (deuce vs ad)
 
-Discovery stays pooled — halving every sample by court before mining costs more power than it buys. Instead, each gold pattern's occurrences whose K-shot window reaches into the first four plies (where the notation is side-relative) are split deuce/ad, and Fisher exact tests ask whether the attempt rate or the conversion differs between courts, Holm-corrected across the whole family. A flagged pattern behaves differently by court and is shown split; the rest keep their pooled estimate with evidence that pooling is justified. Full per-side rows in `reports/deep_patterns_side.csv`.
+Discovery stays pooled — halving every sample by court before mining costs more power than it buys. Instead, each gold pattern's occurrences whose K-shot window reaches into the first four plies (where the notation is side-relative) are split deuce/ad, and Fisher exact tests ask whether the aggressive shot frequency or the conversion differs between courts, Holm-corrected across the whole family. A flagged pattern behaves differently by court and is shown split; the rest keep their pooled estimate with evidence that pooling is justified. Full per-side rows in `reports/deep_patterns_side.csv`.
 
-88 tests across 65 gold patterns (54 attempt-rate, 34 conversion; the rest lacked per-side support) → **1 pattern with a real side difference** at Holm-adjusted p<0.05.
+93 tests across 72 gold patterns (52 aggressive-shot-frequency, 41 conversion; the rest lacked per-side support) → **0 patterns with a real side difference** at Holm-adjusted p<0.05.
 
-### Jannik Sinner — `FH slice→2 · FH drive→3 · BH drive→3` ✅
-- differs by court in **attempt rate**: deuce fires 50% converting 64% (n=22), ad fires 4% converting 0% (n=24)
+No pattern shows a court-side difference that survives the correction — every gold pattern's pooled estimate stands.
+
+## Does the numerator change the gold set?
+
+The switch from the narrower **finishing shot** reading (winner + own unforced error) to the **aggressive shot** reading shipped here (which also credits a shot that forced the reply into an error) was validated in `shot_triggers` on K=2 contexts. Nothing about that test covers the K=3/4 patterns mined here — those contexts are rarer and sit nearer their support floor. So the whole gold screen is re-run on the narrower tally from the same stroke-by-stroke counts, and the two survivor sets are compared. Widening pulls the gates in opposite directions: more events per context makes the support and binomial gates easier, while raising the parent rate the child must beat by 1.3x makes the lift gate harder.
+
+| | aggressive (shipped) | finishing (narrow) |
+|---|--:|--:|
+| gold patterns | 72 | 65 |
+| K=3 | 68 | 58 |
+| K=4 | 4 | 7 |
+| players with ≥1 | 28 | 30 |
+
+**Overlap: 38 of 99 patterns in the union are found by both** (38% Jaccard). 34 are aggressive-only, 27 finishing-only.
+
+Gate the narrow numerator failed on the aggressive-only patterns: **binomial** (29), **lift** (4), **support** (1).
+Of those 29 binomial failures, 27 land within 10× the p<0.005 threshold (median p=0.014) — mostly a power difference at the cutoff rather than a different story about the pattern.
+
+Gate the wide numerator failed on the finishing-only patterns: **binomial** (25), **lift** (2).
+Of those 25 binomial failures, 25 land within 10× the p<0.005 threshold (median p=0.013) — mostly a power difference at the cutoff rather than a different story about the pattern.
+
+Among the 38 shared patterns, the green/trap tag flips on **1** (3%) — the numerator decides which shots count as paying off, so a pattern can survive both screens and still be read differently.
 
 ## Verdict
 
-**Viable as a gold-star tier.** 65 deep patterns survive the triple gate across 30 players (median 1 per covered player). These are exactly the "only visible with huge coverage" sequences worth a ⭐ in the drawer — shipped via the insights build, shown only when a player has them.
+**Viable as a gold-star tier.** 72 deep patterns survive the triple gate across 28 players (median 1 per covered player). These are exactly the "only visible with huge coverage" sequences worth a ⭐ in the drawer — shipped via the insights build, shown only when a player has them.

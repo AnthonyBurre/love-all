@@ -14,8 +14,10 @@ Shape (verified against the live endpoint):
 
 import json
 import re
+import sys
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 from match_charting_project.analysis.tiers import (
     CITIES_1000,
@@ -23,11 +25,19 @@ from match_charting_project.analysis.tiers import (
     MASTERS_1000,
     classify_tier,
 )
-from match_charting_project.live import feeds, levels
+from match_charting_project.live import UA, feeds, levels
 from match_charting_project.paths import PROJECT_ROOT
 
 _SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/tennis/{league}/scoreboard"
 _CACHE = PROJECT_ROOT / "data" / "live"
+_FETCHED_AT = "_fetched_at"     # our key, added to the cached copy only — not ESPN's shape
+# Scores only move while a draw is being played, so that is the only time we poll on the
+# hourly schedule. Off-week the cache is served untouched and one probe a day is enough to
+# notice the next event — a request budget that tracks the tour rather than the clock.
+_PROBE = timedelta(days=1)
+# Keep polling this far past an event's end so the final lands in the archive, and this far
+# before its start so a draw published early is picked up.
+_GRACE = timedelta(days=1)
 _SINGLES = {"mens-singles": "M", "womens-singles": "W"}
 _TARGET_TIERS = (GRAND_SLAM, MASTERS_1000, levels.TOUR_500)
 # Round display-name -> sortable rank (main draw only; qualifying excluded).
@@ -65,21 +75,79 @@ class Tournament:
     best_of: int
     matches: list
     city: str = ""      # venue city — how the charted db names tournaments, unlike the feed
+    fetched_at: str = ""  # ISO minute this draw's scoreboard actually came off the wire
 
 
-def _fetch(league: str) -> dict:
+def _iso(value: "str | None") -> "datetime | None":
+    try:
+        when = datetime.fromisoformat((value or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
+
+
+def _playing(raw: dict, now: datetime) -> bool:
+    """Is a draw in this scoreboard being played (within the grace margin) right now?
+
+    Read off the *cached* copy, which is the only thing we know without spending a request.
+    Every uncertainty resolves to True: no cache, no events, unparseable dates. A gate that
+    guesses wrong in the open direction costs one request; guessing wrong the other way
+    takes the site dark for a tournament.
+    """
+    windows = [(_iso(e.get("date")), _iso(e.get("endDate"))) for e in raw.get("events", [])]
+    windows = [(s, e) for s, e in windows if s and e]
+    if not windows:
+        return True
+    return any(s - _GRACE <= now <= e + _GRACE for s, e in windows)
+
+
+def _cached_copy(path) -> "tuple[dict, str] | None":
+    """Our stored scoreboard and the stamp we wrote on it, or None if there isn't one."""
+    if not path.exists():
+        return None
+    try:
+        raw = json.loads(path.read_text())
+    except ValueError:
+        return None
+    stamp = raw.pop(_FETCHED_AT, "") or datetime.fromtimestamp(
+        path.stat().st_mtime, timezone.utc).isoformat(timespec="minutes")
+    return raw, stamp
+
+
+def _fetch(league: str, now: "datetime | None" = None) -> "tuple[dict, str]":
+    """Scoreboard JSON, plus the ISO minute it actually came off the wire.
+
+    That second value is what the site dates itself by. Stamping the *build* time instead
+    would date a cache fallback as though it were fresh — the one failure mode that looks
+    exactly like success.
+    """
+    now = now or datetime.now(timezone.utc)
     url = _SCOREBOARD.format(league=league)
     cached = _CACHE / f"{league}_scoreboard.json"
+
+    prior = _cached_copy(cached)
+    if prior:
+        raw, stamp = prior
+        last = _iso(stamp)
+        if not _playing(raw, now) and last and now - last < _PROBE:
+            return raw, stamp             # between events, probed recently — no request
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "match-charting-project"})
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
         with urllib.request.urlopen(req, timeout=20) as r:
             raw = json.load(r)
+        fetched_at = now.isoformat(timespec="minutes")
         _CACHE.mkdir(parents=True, exist_ok=True)
-        cached.write_text(json.dumps(raw))
-        return raw
-    except Exception:
-        if cached.exists():
-            return json.loads(cached.read_text())   # graceful fallback to last-good
+        # Stamped into our own copy so the age survives a file move, unlike an mtime.
+        cached.write_text(json.dumps({**raw, _FETCHED_AT: fetched_at}))
+        return raw, fetched_at
+    except Exception as exc:
+        if prior:
+            # Graceful fallback to last-good — but say so on stderr and date it. Silently
+            # serving a stale cache reads exactly like a working fetch, which is how a
+            # days-old draw reaches the site looking live.
+            print(f"warning: ESPN {league} fetch failed ({type(exc).__name__}: {exc}); "
+                  f"using cache fetched {prior[1]}", file=sys.stderr)
+            return prior
         raise
 
 
@@ -133,9 +201,10 @@ def _side(comp: dict) -> Side:
                 sets=[ls.get("value") for ls in comp.get("linescores", [])])
 
 
-def parse(raw: dict, cal: "dict | None" = None) -> "list[Tournament]":
+def parse(raw: dict, cal: "dict | None" = None, fetched_at: str = "") -> "list[Tournament]":
     """Scoreboard JSON -> the singles draws we serve. ``cal`` is the calendar feed used to
-    decide tour level; it's read from the cache when not supplied."""
+    decide tour level; it's read from the cache when not supplied. ``fetched_at`` stamps each
+    draw with the age of the scoreboard it came from."""
     out = []
     cal = feeds.load_calendar() if cal is None else cal
     for event in raw.get("events", []):
@@ -163,7 +232,8 @@ def parse(raw: dict, cal: "dict | None" = None) -> "list[Tournament]":
                 venue = (event.get("venue") or {}).get("displayName", "")
                 out.append(Tournament(id=str(event.get("id")), name=event.get("name", ""),
                                       tier=tier, gender=gender, best_of=best_of,
-                                      matches=matches, city=levels.city(venue)))
+                                      matches=matches, city=levels.city(venue),
+                                      fetched_at=fetched_at))
     return out
 
 
@@ -171,7 +241,8 @@ def current_tournaments() -> "list[Tournament]":
     """Current Slam / 1000 / 500 singles draws from both tours (deduped by id+gender)."""
     seen, out = set(), []
     for league in ("atp", "wta"):
-        for t in parse(_fetch(league)):
+        raw, fetched_at = _fetch(league)
+        for t in parse(raw, fetched_at=fetched_at):
             key = (t.id, t.gender)
             if key not in seen:
                 seen.add(key)
