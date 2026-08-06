@@ -12,8 +12,13 @@ A final section is a side refinement pass over the survivors: each gold
 pattern's occurrences whose K-shot window reaches into the first four plies are
 split by deuce/ad court, and Fisher exact tests (Holm-corrected across the whole
 family) ask whether the aggressive shot frequency or conversion differs between courts.
-Discovery itself stays pooled. Writes reports/deep_patterns.{md,csv},
-reports/deep_patterns_side.csv + figure.
+Discovery itself stays pooled.
+
+A shadow pass then re-runs the entire gold screen on the narrower *finishing
+shot* numerator (winner + own unforced error, no induced forced errors) from the
+same counts, and reports how much the survivor set moves. Writes
+reports/deep_patterns.{md,csv}, reports/deep_patterns_side.csv,
+reports/deep_patterns_numerator.csv + figure.
 """
 
 import sys
@@ -43,6 +48,16 @@ MIN_CTX, MIN_ATT = 60, 12          # production support floor
 PARENT_LIFT = 1.3       # deep aggressive shot frequency must be >= this x its parent's
 P_MAX = 0.005           # exact binomial tail vs the parent rate
 HALF_N = 15             # per-half support for the replication gate
+
+# Counter layout. Every context tallies both numerators at once so the whole
+# gold screen can be re-run on the narrower one without a second pass over the
+# points: N strokes, then (attempts, converted) for each reading.
+N, ATT, WIN, FATT, FWIN = 0, 1, 2, 3, 4
+HALF = 5                # slots per match-hash half; half 1 starts at index HALF
+NUMERATORS = {          # label -> (attempt slot, converted slot)
+    "aggressive": (ATT, WIN),    # winner + own unforced + induced forced (shipped)
+    "finishing": (FATT, FWIN),   # winner + own unforced only (pre-2026-08-05)
+}
 GLABEL = {"M": "Men", "W": "Women"}
 MARQUEE = {"M": ["Roger Federer", "Novak Djokovic", "Rafael Nadal"],
            "W": ["Serena Williams", "Iga Swiatek"]}
@@ -62,7 +77,11 @@ def candidates(con, gender: str) -> set:
 
 
 def collect(con, gender: str, pool: set):
-    """Per candidate: base [n,att,win]x2 halves + context tables for K=2..4.
+    """Per candidate: base [n,att,win,fatt,fwin]x2 halves + context tables for K=2..4.
+
+    The ``f*`` slots are the shadow tally: the same strokes scored under the
+    narrower *finishing shot* reading (winner + own unforced error, no induced
+    forced errors), so ``mine`` can run the identical gold screen twice.
 
     Also builds ``side_tabs``: for each deep context, the [n, att, win] counts of
     its *opening-touching* occurrences — those whose K-shot window reaches into
@@ -70,8 +89,8 @@ def collect(con, gender: str, pool: set):
     is side-relative — split by deuce/ad. These feed the heterogeneity pass over
     the pooled gold survivors; mid-rally occurrences are never side-split.
     """
-    base = defaultdict(lambda: [0, 0, 0, 0, 0, 0])
-    tabs = {k: defaultdict(lambda: [0, 0, 0, 0, 0, 0]) for k in (2, *DEPTHS)}
+    base = defaultdict(lambda: [0] * (2 * HALF))
+    tabs = {k: defaultdict(lambda: [0] * (2 * HALF)) for k in (2, *DEPTHS)}
     side_tabs = {k: defaultdict(lambda: [0, 0, 0]) for k in DEPTHS}  # (pl, ctx, side)
     sql = (
         "SELECT p.match_id, m.player1, m.player2, p.svr, p.pts, p.first_serve, "
@@ -91,7 +110,7 @@ def collect(con, gender: str, pool: set):
                 continue
             toks = point_tokens(pt)
             names = {1: p1, 2: p2}
-            h3 = 3 * (zlib.crc32(str(mid).encode()) & 1)
+            h = HALF * (zlib.crc32(str(mid).encode()) & 1)
             side = serve_side(pts)
             n_sh = len(pt.shots)
             for i in range(2, n_sh):
@@ -103,16 +122,24 @@ def collect(con, gender: str, pool: set):
                 _w, _e, _f = aggressive_shot(pt.shots, i, n_sh)
                 att = _w + _e + _f
                 w = _w + _f
+                # shadow tally: the narrower reading drops the induced forced
+                # error from both the numerator and what counts as paying off.
+                fatt = _w + _e
+                fw = _w
                 b = base[pl]
-                b[h3] += 1
-                b[h3 + 1] += att
-                b[h3 + 2] += w
+                b[h + N] += 1
+                b[h + ATT] += att
+                b[h + WIN] += w
+                b[h + FATT] += fatt
+                b[h + FWIN] += fw
                 for k in tabs:
                     if i >= k:
                         c = tabs[k][(pl, tuple(toks[i - k:i]))]
-                        c[h3] += 1
-                        c[h3 + 1] += att
-                        c[h3 + 2] += w
+                        c[h + N] += 1
+                        c[h + ATT] += att
+                        c[h + WIN] += w
+                        c[h + FATT] += fatt
+                        c[h + FWIN] += fw
                 if side in ("deuce", "ad"):
                     for k in DEPTHS:
                         # window toks[i-k:i] reaches into plies 1-4 (shots 0..3)
@@ -133,40 +160,67 @@ def binom_tail(k: int, n: int, p: float) -> float:
     return sum(comb(n, j) * p**j * (1 - p) ** (n - j) for j in range(k, n + 1))
 
 
-def mine(base, tabs) -> list:
-    """Gold survivors: beat parent, replicate, meet the support floor."""
+def score(base, tabs, k: int, key: tuple, numerator: str):
+    """Run the three gold gates over one (player, context) under one numerator.
+
+    Returns ``(row, None, p)`` when it earns gold, else ``(None, gate, p)`` naming
+    the first gate it failed. The comparison pass needs the failure reason and,
+    for a binomial failure, how far past the threshold it landed — a p of 0.006
+    and a p of 0.4 are very different kinds of miss. ``p`` is None when the
+    pattern failed before the test was reached.
+    """
+    ai, wi = NUMERATORS[numerator]
+    c = tabs[k].get(key)
+    if c is None:
+        return None, "absent", None
+    pl, ctx = key
+    n = c[N] + c[HALF + N]
+    att = c[ai] + c[HALF + ai]
+    win = c[wi] + c[HALF + wi]
+    if n < MIN_CTX or att < MIN_ATT:
+        return None, "support", None
+    parent = tabs[k - 1].get((pl, ctx[1:]))
+    if not parent:
+        return None, "no parent", None
+    pn, patt = parent[N] + parent[HALF + N], parent[ai] + parent[HALF + ai]
+    if pn == 0 or patt == 0:
+        return None, "no parent", None
+    p_rate = patt / pn
+    if att / n < PARENT_LIFT * p_rate:
+        return None, "lift", None
+    pval = binom_tail(att, n, p_rate)
+    if pval >= P_MAX:
+        return None, "binomial", pval
+    if not (c[N] >= HALF_N and c[HALF + N] >= HALF_N
+            and c[ai] / c[N] > p_rate and c[HALF + ai] / c[HALF + N] > p_rate):
+        return None, "replication", pval
+    b = base[pl]
+    b_att, b_win = b[ai] + b[HALF + ai], b[wi] + b[HALF + wi]
+    base_conv = b_win / b_att if b_att else 0.0
+    conv = win / att
+    return {
+        "player": pl, "depth": k, "context": ctx, "n": n, "attempts": att,
+        "att_rate": att / n, "parent_rate": p_rate,
+        "parent_lift": (att / n) / p_rate,
+        "conversion": conv, "conv_delta": conv - base_conv,
+        "tag": "green" if conv >= base_conv else "trap",
+        "strokes": b[N] + b[HALF + N],
+    }, None, pval
+
+
+def mine(base, tabs, numerator: str = "aggressive") -> list:
+    """Gold survivors under one numerator.
+
+    ``numerator`` picks which tally the whole screen runs on. Every gate reads
+    the same slots, so passing ``"finishing"`` reproduces the pre-2026-08-05
+    screen exactly rather than approximating it.
+    """
     out = []
     for k in DEPTHS:
-        for (pl, ctx), c in tabs[k].items():
-            n, att, win = c[0] + c[3], c[1] + c[4], c[2] + c[5]
-            if n < MIN_CTX or att < MIN_ATT:
-                continue
-            parent = tabs[k - 1].get((pl, ctx[1:]))
-            if not parent:
-                continue
-            pn, patt = parent[0] + parent[3], parent[1] + parent[4]
-            if pn == 0 or patt == 0:
-                continue
-            p_rate = patt / pn
-            if att / n < PARENT_LIFT * p_rate:
-                continue
-            if binom_tail(att, n, p_rate) >= P_MAX:
-                continue
-            if not (c[0] >= HALF_N and c[3] >= HALF_N
-                    and c[1] / c[0] > p_rate and c[4] / c[3] > p_rate):
-                continue
-            b = base[pl]
-            b_att, b_win = b[1] + b[4], b[2] + b[5]
-            base_conv = b_win / b_att if b_att else 0.0
-            conv = win / att
-            out.append({
-                "player": pl, "depth": k, "context": ctx, "n": n, "attempts": att,
-                "att_rate": att / n, "parent_rate": p_rate,
-                "parent_lift": (att / n) / p_rate,
-                "conversion": conv, "conv_delta": conv - base_conv,
-                "tag": "green" if conv >= base_conv else "trap",
-                "strokes": b[0] + b[3],
-            })
+        for key in tabs[k]:
+            row, _, _ = score(base, tabs, k, key, numerator)
+            if row:
+                out.append(row)
     return out
 
 
@@ -238,20 +292,114 @@ def _ctx_str(ctx) -> str:
     return " · ".join(pretty(t) for t in ctx)
 
 
+def _key(r) -> tuple:
+    return (r["gender"], r["depth"], r["player"], r["context"])
+
+
+def numerator_comparison(shipped: list, shadow: list, data_by_gender: dict) -> list:
+    """How the gold set moves when the numerator widens.
+
+    ``shot_triggers`` established that the wider reading is more reliable at K=2,
+    on contexts with far more support than these. That evidence does not carry
+    to K=3/4 by itself: widening moves the child rate *and* the parent rate it is
+    measured against, so the 1.3x lift gate can get harder even as the support
+    and binomial gates get easier. This compares the two survivor sets directly
+    and, for every pattern only one numerator finds, names the gate the other
+    one failed.
+    """
+    ship = {_key(r): r for r in shipped}
+    shad = {_key(r): r for r in shadow}
+    both = ship.keys() & shad.keys()
+    ship_only, shad_only = ship.keys() - shad.keys(), shad.keys() - ship.keys()
+
+    why = {"ship_only": defaultdict(int), "shad_only": defaultdict(int)}
+    pvals = {"ship_only": [], "shad_only": []}
+    for keys, other, bucket in ((ship_only, "finishing", "ship_only"),
+                                (shad_only, "aggressive", "shad_only")):
+        for g, k, pl, ctx in keys:
+            base, tabs = data_by_gender[g]
+            _, gate, p = score(base, tabs, k, (pl, ctx), other)
+            why[bucket][gate] += 1
+            if gate == "binomial":
+                pvals[bucket].append(p)
+
+    flips = sum(1 for k in both if ship[k]["tag"] != shad[k]["tag"])
+    union = len(both) + len(ship_only) + len(shad_only)
+
+    md = ["## Does the numerator change the gold set?", ""]
+    md.append(
+        "The switch from the narrower **finishing shot** reading (winner + own "
+        "unforced error) to the **aggressive shot** reading shipped here (which "
+        "also credits a shot that forced the reply into an error) was validated "
+        "in `shot_triggers` on K=2 contexts. Nothing about that test covers the "
+        "K=3/4 patterns mined here — those contexts are rarer and sit nearer "
+        "their support floor. So the whole gold screen is re-run on the narrower "
+        "tally from the same stroke-by-stroke counts, and the two survivor sets "
+        "are compared. Widening pulls the gates in opposite directions: more "
+        "events per context makes the support and binomial gates easier, while "
+        "raising the parent rate the child must beat by "
+        f"{PARENT_LIFT}x makes the lift gate harder.")
+    md.append("")
+    md.append("| | aggressive (shipped) | finishing (narrow) |")
+    md.append("|---|--:|--:|")
+    agg_k = {k: sum(1 for r in shipped if r["depth"] == k) for k in DEPTHS}
+    fin_k = {k: sum(1 for r in shadow if r["depth"] == k) for k in DEPTHS}
+    md.append(f"| gold patterns | {len(shipped)} | {len(shadow)} |")
+    for k in DEPTHS:
+        md.append(f"| K={k} | {agg_k[k]} | {fin_k[k]} |")
+    md.append(f"| players with ≥1 | {len({r['player'] for r in shipped})} | "
+              f"{len({r['player'] for r in shadow})} |")
+    md.append("")
+    md.append(f"**Overlap: {len(both)} of {union} patterns in the union are found by "
+              f"both** ({len(both) / union:.0%} Jaccard). {len(ship_only)} are "
+              f"aggressive-only, {len(shad_only)} finishing-only.")
+    md.append("")
+    for keys, bucket, who, other in (
+            (ship_only, "ship_only", "narrow", "aggressive-only"),
+            (shad_only, "shad_only", "wide", "finishing-only")):
+        if not keys:
+            continue
+        md.append(f"Gate the {who} numerator failed on the {other} patterns: "
+                  + ", ".join(f"**{g}** ({n})" for g, n in
+                              sorted(why[bucket].items(), key=lambda x: -x[1])) + ".")
+        ps = sorted(pvals[bucket])
+        if ps:
+            near = sum(1 for p in ps if p < 10 * P_MAX)
+            verdict = ("mostly a power difference at the cutoff rather than a "
+                       "different story about the pattern"
+                       if near > len(ps) / 2 else
+                       "these are decisive misses, not threshold accidents")
+            md.append(f"Of those {len(ps)} binomial failures, {near} land within 10× "
+                      f"the p<{P_MAX} threshold (median p={ps[len(ps) // 2]:.3f}) — "
+                      f"{verdict}.")
+        md.append("")
+    if both:
+        md.append(f"Among the {len(both)} shared patterns, the green/trap tag flips on "
+                  f"**{flips}** ({flips / len(both):.0%}) — the numerator decides "
+                  "which shots count as paying off, so a pattern can survive both "
+                  "screens and still be read differently.")
+        md.append("")
+    return md
+
+
 def main():
     con = connect(read_only=True)
     all_rows = []
+    shadow_rows = []
     side_tabs_by_gender = {}
+    data_by_gender = {}
     pool_sizes = {}
     for g in ("M", "W"):
         pool = candidates(con, g)
         pool_sizes[g] = len(pool)
         base, tabs, side_tabs = collect(con, g, pool)
         side_tabs_by_gender[g] = side_tabs
-        rows = mine(base, tabs)
-        for r in rows:
-            r["gender"] = g
-        all_rows += rows
+        data_by_gender[g] = (base, tabs)
+        for numerator, sink in (("aggressive", all_rows), ("finishing", shadow_rows)):
+            rows = mine(base, tabs, numerator)
+            for r in rows:
+                r["gender"] = g
+            sink += rows
     con.close()
     n_tests = side_heterogeneity(all_rows, side_tabs_by_gender)
     df = pd.DataFrame(all_rows)
@@ -356,6 +504,9 @@ def main():
                       "correction — every gold pattern's pooled estimate stands.")
             md.append("")
 
+    # -- numerator shadow pass ---------------------------------------------------
+    md += numerator_comparison(all_rows, shadow_rows, data_by_gender)
+
     scols = ["player", "gender", "depth", "context", "n", "attempts", "tag",
              "n_deuce", "att_deuce", "win_deuce", "n_ad", "att_ad", "win_ad",
              "att_rate_deuce", "att_rate_ad", "conv_deuce", "conv_ad",
@@ -367,11 +518,22 @@ def main():
     else:
         scsv = pd.DataFrame(columns=scols)
     scsv.to_csv(PROJECT_ROOT / "reports" / "deep_patterns_side.csv", index=False)
-    return md, df, pool_sizes, n_tests
+
+    # per-pattern membership for the shadow pass, so the comparison is auditable
+    ship, shad = {_key(r) for r in all_rows}, {_key(r) for r in shadow_rows}
+    ncsv = pd.DataFrame([
+        {"player": pl, "gender": g, "depth": k, "context": _ctx_str(ctx),
+         "aggressive_gold": key in ship, "finishing_gold": key in shad}
+        for key in sorted(ship | shad, key=lambda x: (x[0], x[2], x[1]))
+        for g, k, pl, ctx in [key]
+    ], columns=["player", "gender", "depth", "context",
+                "aggressive_gold", "finishing_gold"])
+    ncsv.to_csv(PROJECT_ROOT / "reports" / "deep_patterns_numerator.csv", index=False)
+    return md, df, pool_sizes, n_tests, shadow_rows
 
 
 if __name__ == "__main__":
-    md, df, pools, n_tests = main()
+    md, df, pools, n_tests, shadow = main()
     md.append("## Verdict")
     md.append("")
     if len(df) >= 20:
@@ -402,5 +564,7 @@ if __name__ == "__main__":
         print(df.groupby(['gender', 'depth']).size())
         print(f"side heterogeneity: {n_tests} tests, "
               f"{int((df.side_diff != '').sum())} patterns differ by court")
+    print(f"numerator shadow pass: {len(df)} gold under aggressive vs "
+          f"{len(shadow)} under finishing")
     print("wrote reports/deep_patterns.md + .csv + figure "
-          "+ deep_patterns_side.csv")
+          "+ deep_patterns_side.csv + deep_patterns_numerator.csv")

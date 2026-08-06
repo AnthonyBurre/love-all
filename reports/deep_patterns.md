@@ -43,6 +43,27 @@ Discovery stays pooled — halving every sample by court before mining costs mor
 
 No pattern shows a court-side difference that survives the correction — every gold pattern's pooled estimate stands.
 
+## Does the numerator change the gold set?
+
+The switch from the narrower **finishing shot** reading (winner + own unforced error) to the **aggressive shot** reading shipped here (which also credits a shot that forced the reply into an error) was validated in `shot_triggers` on K=2 contexts. Nothing about that test covers the K=3/4 patterns mined here — those contexts are rarer and sit nearer their support floor. So the whole gold screen is re-run on the narrower tally from the same stroke-by-stroke counts, and the two survivor sets are compared. Widening pulls the gates in opposite directions: more events per context makes the support and binomial gates easier, while raising the parent rate the child must beat by 1.3x makes the lift gate harder.
+
+| | aggressive (shipped) | finishing (narrow) |
+|---|--:|--:|
+| gold patterns | 72 | 65 |
+| K=3 | 68 | 58 |
+| K=4 | 4 | 7 |
+| players with ≥1 | 28 | 30 |
+
+**Overlap: 38 of 99 patterns in the union are found by both** (38% Jaccard). 34 are aggressive-only, 27 finishing-only.
+
+Gate the narrow numerator failed on the aggressive-only patterns: **binomial** (29), **lift** (4), **support** (1).
+Of those 29 binomial failures, 27 land within 10× the p<0.005 threshold (median p=0.014) — mostly a power difference at the cutoff rather than a different story about the pattern.
+
+Gate the wide numerator failed on the finishing-only patterns: **binomial** (25), **lift** (2).
+Of those 25 binomial failures, 25 land within 10× the p<0.005 threshold (median p=0.013) — mostly a power difference at the cutoff rather than a different story about the pattern.
+
+Among the 38 shared patterns, the green/trap tag flips on **1** (3%) — the numerator decides which shots count as paying off, so a pattern can survive both screens and still be read differently.
+
 ## Verdict
 
 **Viable as a gold-star tier.** 72 deep patterns survive the triple gate across 28 players (median 1 per covered player). These are exactly the "only visible with huge coverage" sequences worth a ⭐ in the drawer — shipped via the insights build, shown only when a player has them.

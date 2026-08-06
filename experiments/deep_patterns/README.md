@@ -45,6 +45,23 @@ showed side carries no extra signal once the rally state is known. The K≤2
 openings (serve, return, and the +1 shots) live in `shot_triggers`. Full
 per-side rows in `reports/deep_patterns_side.csv`.
 
+## The numerator shadow pass
+
+`shot_triggers` justified counting induced forced errors in the numerator, but
+it did that on K=2 contexts with far more support than anything mined here, so
+the result doesn't transfer on its own. Every stroke is therefore tallied twice
+during the single pass over the points — once as an aggressive shot, once under
+the narrower finishing-shot reading (winner + own unforced error) — and the
+whole gold screen runs on both. The shipped set is the aggressive one; the
+narrow set exists only to measure what the choice costs.
+
+The two sets are nearly the same size but are **not** the same patterns: 38 of
+the 99 in the union clear both screens. Almost all of the disagreement is the
+exact binomial gate firing at the cutoff — the misses cluster just past p<0.005
+in both directions, so this is the screen's power moving with the event count,
+not the numerator disagreeing about which sequences matter. Per-pattern
+membership in `reports/deep_patterns_numerator.csv`.
+
 ## Honest limitations
 
 - Still multiple testing: a 160k-stroke player has thousands of candidate deep
@@ -54,7 +71,10 @@ per-side rows in `reports/deep_patterns_side.csv`.
   here. A Federer 2004 pattern and a 2015 one can blend.
 - The ≥10k-point tier is charting-coverage-defined, so it skews to the
   marquee names charted across many years.
+- Which patterns earn gold is sensitive to the numerator even though how many
+  do is not (see the shadow pass above). Read the displayed set as one honest
+  draw from the patterns that clear the bar, not as the definitive list.
 
 Run: `python experiments/deep_patterns/run.py` → `reports/deep_patterns.md`,
 `reports/deep_patterns.csv`, `reports/deep_patterns_side.csv`,
-`reports/figures/deep_patterns.png`.
+`reports/deep_patterns_numerator.csv`, `reports/figures/deep_patterns.png`.
