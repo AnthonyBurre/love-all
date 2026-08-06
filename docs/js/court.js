@@ -11,10 +11,15 @@
 // with court.py; that module stays the canonical renderer for reports.
 //
 // Presentation has deliberately diverged, though: these draw at ~96px in a panel, where
-// court.py's reports draw at full size. So this file adds a terminal arrowhead, a dashed
-// neutral treatment for a ball the profiled player received, and a tinted half marking
-// whose side is whose — cues that earn their place only at thumbnail scale. Geometry is
-// shared; styling is not, and nothing here needs porting back.
+// court.py's reports draw at full size. So this file adds arrowheads, bounce rings, a
+// dashed neutral treatment for a ball the opponent hit, and a tinted half marking whose
+// side is whose — cues that earn their place only at thumbnail scale. Geometry is shared;
+// styling is not, and nothing here needs porting back.
+//
+// Both renderers use that one vocabulary, so a drawing means the same thing wherever it
+// appears: tint = the profiled player's half, solid and coloured = a ball they hit, dashed
+// and neutral = one the opponent hit, ring = the bounce the drawing turns on. pairSvg
+// knows those roles from its shape; rallySvg has to work them out — see the note there.
 
 // --- court geometry (a 150 x 190 field; matches court.py and the notation-key courts) ---
 const LEFT = 20, RIGHT = 130, TOP = 10, BOTTOM = 180, NET = 95, HALF = NET - TOP;
@@ -79,17 +84,17 @@ function head(x1, y1, x2, y2, cls) {
 
 // One drawn ball: the line plus its direction marks. Exported so the notation-key courts
 // in matchup.js draw their example shots the same way as a real ball path.
-// `arrow` swaps the mid-line chevrons for a single head at the far end (the last stroke);
-// `incoming` marks a ball the profiled player received rather than hit, which the CSS
-// draws dashed and neutral so the two roles never have to be told apart by weight alone.
+// `incoming` marks a ball the opponent hit rather than the profiled player, which the CSS
+// draws dashed and neutral: whose ball it is is the one thing every drawing here encodes
+// the same way, so it never has to be read off weight or position.
+// `arrow` swaps the mid-line chevrons for a single head at the far end; `bare` drops both,
+// for a ball whose direction its own endpoints already give away.
 export function shotLine(x1, y1, x2, y2,
-  { faint = false, shot = null, arrow = false, incoming = false } = {}) {
+  { faint = false, shot = null, arrow = false, incoming = false, bare = false } = {}) {
   const mods = (faint ? " faint" : "") + (incoming ? " incoming" : "");
   const idx = shot == null ? "" : ` data-shot="${shot}"`;
   const line = `<line${idx} x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" class="ct-shot${mods}" fill="none"/>`;
-  // An incoming ball runs from the opponent's marker to the bounce ring, so its direction
-  // is already fixed by its endpoints — chevrons would only add noise to the dashes.
-  if (incoming) return line;
+  if (bare) return line;
   return line + (arrow
     ? head(x1, y1, x2, y2, "ct-head" + mods)
     : tips(x1, y1, x2, y2, "ct-tip" + mods).join(""));
@@ -118,6 +123,12 @@ function serveX(dir, court) {
 
 const serveOriginX = (court) => (serveLeft(court) ? LANE_MID + 20 : LANE_MID - 20);
 
+// The wash marking the profiled player's half. Drawn before the court, so the lines and
+// the balls sit over it rather than under.
+const tintHalf = (top) =>
+  `<rect x="${LEFT}" y="${top ? TOP : NET}" width="${RIGHT - LEFT}" ` +
+  `height="${top ? NET - TOP : BOTTOM - NET}" class="ct-mine"/>`;
+
 // The static court: sidelines, service boxes, centre marks, net. Identical every render.
 const COURT = [
   `<rect x="${LEFT}" y="${TOP}" width="${RIGHT - LEFT}" height="${BOTTOM - TOP}" class="ct-line"/>`,
@@ -143,17 +154,36 @@ function bounces(tokens, court) {
 }
 
 // Render a token list ("svW", "Bs3", ...) as a court SVG string, css-classed for the site.
+//
+// Who hit what isn't fixed here the way it is in pairSvg. A trigger's tokens are the K
+// strokes *before* the player's aggressive shot and hitters alternate, so ownership runs
+// backwards from the end: the last token is always the ball the opponent sent them — the
+// one they attacked, and the reason the sequence is in the panel — and every second token
+// before it is theirs. That makes token 1 the player's own when K is even (every shipped
+// 2-shot trigger) and the opponent's when it is odd (the K=3 deep patterns, which are most
+// of them), and it puts the player's half wherever the last ball lands.
+//
+// Everything else follows from that one fact, in pairSvg's vocabulary: their half tinted,
+// their own balls solid and in their colour, the opponent's dashed and neutral, and a
+// hollow ring where the last one bounced. The ring is the pivot the sequence exists to set
+// up — the aggressive shot played from it is what the numbers beside the drawing measure,
+// and it is deliberately not drawn, because a stored pattern never says where it went.
 export function rallySvg(tokens, court = "deuce") {
   const bs = bounces(tokens, court);
-  let px = serveOriginX(court), py = BOTTOM - 4;         // server's contact, anchors stroke 1
-  const els = [`<circle cx="${f(px)}" cy="${f(py)}" r="2.3" fill="none" class="ct-player"/>`];
+  if (!bs.length) return "";
+  const mineTop = bs.length % 2 === 1;
+  const isMine = (i) => i % 2 === bs.length % 2;
+  let px = serveOriginX(court), py = BOTTOM - 4;         // opening contact, anchors stroke 1
+  const els = [isMine(0)
+    ? `<circle cx="${f(px)}" cy="${f(py)}" r="2.3" class="ct-player"/>`
+    : `<circle cx="${f(px)}" cy="${f(py)}" r="2.6" class="ct-them"/>`];
   bs.forEach((b, i) => {
-    // The final stroke is drawn bold and arrow-headed, the lead-up faint and chevroned.
-    const last = i === bs.length - 1;
-    els.push(shotLine(px, py, b.x, b.y, { faint: !last, arrow: last, shot: i + 1 }));
+    els.push(shotLine(px, py, b.x, b.y, { incoming: !isMine(i), shot: i + 1 }));
     px = b.x; py = b.y;
   });
-  return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${COURT}${els.join("")}</svg>`;
+  const end = bs[bs.length - 1];
+  els.push(`<circle cx="${f(end.x)}" cy="${f(end.y)}" r="3" class="ct-bounce"/>`);
+  return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${tintHalf(mineTop)}${COURT}${els.join("")}</svg>`;
 }
 
 // --- pattern string -> tokens (the inverse of shot_language.tokens.pretty) --------------
@@ -201,13 +231,15 @@ export function pairSvg(incCode, respCode, depth = "") {
   };
   const out = { x: laneX(String(respCode), true), y: depthY(DEPTH_DEFAULT, true) };
   const ox = LANE_MID, oy = TOP + 4;      // opponent's contact, anchors the incoming ball
-  // Tint goes under the court lines; the balls go over them.
-  const mine = `<rect x="${LEFT}" y="${NET}" width="${RIGHT - LEFT}" height="${BOTTOM - NET}" class="ct-mine"/>`;
+  // Two balls with fixed roles: the player always receives and always answers, so their
+  // half is always the near one — no parity to work out, unlike rallySvg.
   const els = [
     `<circle cx="${f(ox)}" cy="${f(oy)}" r="2.6" class="ct-them"/>`,
-    shotLine(ox, oy, inc.x, inc.y, { incoming: true, shot: 1 }),
+    // This one ball runs marker-to-ring, so its endpoints already say which way it went;
+    // rallySvg's opponent balls sit mid-chain and keep their chevrons.
+    shotLine(ox, oy, inc.x, inc.y, { incoming: true, bare: true, shot: 1 }),
     `<circle cx="${f(inc.x)}" cy="${f(inc.y)}" r="3" class="ct-bounce"/>`,
     shotLine(inc.x, inc.y, out.x, out.y, { arrow: true, shot: 2 }),
   ];
-  return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${mine}${COURT}${els.join("")}</svg>`;
+  return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${tintHalf(false)}${COURT}${els.join("")}</svg>`;
 }

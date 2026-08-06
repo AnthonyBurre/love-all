@@ -958,9 +958,13 @@ function notationHelp() {
       <div><code>→1/2/3</code> where it was hit, seen from the hitter: zone 1 is a
         right-hander's forehand side, 3 their backhand side (<code>→·</code> =
         direction not charted).</div>
-      <div>On a court-pattern drawing the tinted half is the profiled player's side.
-        The dashed neutral line is the ball arriving at them, the ring is where it
-        bounced, and the solid arrow in their colour is the answer they play.</div>
+      <div>Every court drawing reads the same way: the tinted half is the profiled
+        player's side, a solid line in their colour is a ball they hit, a dashed grey one
+        is the opponent's, and the ring is the bounce the drawing turns on. On a court
+        pattern that ring is the ball they answered, and the arrow is the answer. On a
+        trigger it is the ball they attacked — the shot they went for is what the numbers
+        beside it measure, and it isn't drawn, because the notation never says where it
+        went.</div>
       <div>Court patterns name zones by the player's own hands (a lefty's FH corner
         is a righty's BH corner), so "drive into the BH corner → crosscourt BH slice"
         at <b>1.6×</b> means they answer that ball with the crosscourt slice 1.6× as
