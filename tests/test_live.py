@@ -281,3 +281,89 @@ def test_serialize_carries_the_event_labels_so_the_archive_freezes_them():
     assert payload["event"]["common_name"] == "Canadian Open"
     assert payload["event"]["level"] == "ATP 1000"
     assert payload["name"] == t.name                    # the sponsor's name is still there
+
+
+# --- the request budget: poll while a draw is being played, probe daily between ----------
+
+def _scoreboard(start: datetime, end: datetime) -> dict:
+    """A scoreboard carrying one event's window — all `_playing` reads."""
+    return {"events": [{"id": "421-2026", "name": "National Bank Open",
+                        "date": start.isoformat().replace("+00:00", "Z"),
+                        "endDate": end.isoformat().replace("+00:00", "Z")}]}
+
+
+def _seed_cache(tmp_path, doc: dict, fetched_ago: timedelta) -> None:
+    stamp = (datetime.now(timezone.utc) - fetched_ago).isoformat(timespec="minutes")
+    (tmp_path / "live").mkdir(exist_ok=True)
+    (tmp_path / "live" / "atp_scoreboard.json").write_text(
+        json.dumps({**doc, "_fetched_at": stamp}))
+
+
+def _attempts(monkeypatch) -> list:
+    """Record outbound attempts without making one. ``_fetch`` catches a failed request and
+    falls back to the cache, so the count — not a raised error — is what tells us whether a
+    request was spent."""
+    seen = []
+
+    def spy(req, *a, **k):
+        seen.append(req.full_url)
+        raise OSError("no network in tests")
+
+    monkeypatch.setattr(espn.urllib.request, "urlopen", spy)
+    return seen
+
+
+def test_between_events_a_recent_probe_costs_no_request(tmp_path, monkeypatch):
+    now = datetime.now(timezone.utc)
+    _seed_cache(tmp_path, _scoreboard(now - timedelta(days=20), now - timedelta(days=6)),
+                fetched_ago=timedelta(hours=3))
+    seen = _attempts(monkeypatch)
+
+    raw, stamp = espn._fetch("atp")               # serves the cache, unchanged
+    assert seen == []                             # the point: no request at all
+    assert raw["events"][0]["id"] == "421-2026"
+    assert stamp                                  # dated by the fetch, not by this build
+
+
+def test_between_events_we_still_probe_once_a_day(tmp_path, monkeypatch):
+    now = datetime.now(timezone.utc)
+    _seed_cache(tmp_path, _scoreboard(now - timedelta(days=20), now - timedelta(days=6)),
+                fetched_ago=timedelta(days=1, hours=1))
+    seen = _attempts(monkeypatch)
+
+    espn._fetch("atp")                            # a probe is due — this is how a new event
+    assert len(seen) == 1                         # gets noticed at all
+
+
+def test_a_draw_in_progress_is_polled_every_run(tmp_path, monkeypatch):
+    now = datetime.now(timezone.utc)
+    _seed_cache(tmp_path, _scoreboard(now - timedelta(days=2), now + timedelta(days=5)),
+                fetched_ago=timedelta(minutes=2))  # probed moments ago, still polls
+    seen = _attempts(monkeypatch)
+
+    espn._fetch("atp")
+    assert len(seen) == 1
+
+
+def test_with_no_cache_at_all_we_fetch(tmp_path, monkeypatch):
+    seen = _attempts(monkeypatch)
+    try:
+        espn._fetch("atp")                        # nothing cached to fall back to
+    except OSError:
+        pass
+    assert len(seen) == 1
+
+
+def test_the_grace_margin_keeps_polling_until_the_final_is_archived():
+    now = datetime.now(timezone.utc)
+    ended = _scoreboard(now - timedelta(days=14), now - timedelta(hours=6))
+    assert espn._playing(ended, now) is True       # inside the grace day, still polling
+    assert espn._playing(_scoreboard(now - timedelta(days=20),
+                                     now - timedelta(days=3)), now) is False
+
+
+def test_an_unreadable_window_polls_rather_than_going_dark():
+    now = datetime.now(timezone.utc)
+    assert espn._playing({}, now) is True                          # no events
+    assert espn._playing({"events": [{"id": "x"}]}, now) is True   # undated
+    assert espn._playing({"events": [{"date": "soon", "endDate": "later"}]}, now) is True
