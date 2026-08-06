@@ -20,7 +20,7 @@ import json
 import urllib.request
 from datetime import date, datetime, timedelta, timezone
 
-from match_charting_project.live import brackets, espn
+from match_charting_project.live import UA, brackets, espn
 from match_charting_project.paths import PROJECT_ROOT
 
 HISTORY = PROJECT_ROOT / "data" / "history.json"
@@ -126,7 +126,7 @@ def prune(store: list, today: "date | None" = None) -> list:
 
 def _fetch(league: str, day: str) -> dict:
     url = _SCOREBOARD.format(league=league, d=day)
-    req = urllib.request.Request(url, headers={"User-Agent": "match-charting-project"})
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=25) as r:
         return json.load(r)
 
