@@ -2,7 +2,11 @@ name: CI
 
 # Test gate for the library + experiments. The DB-integration tests skip themselves
 # when no tennis.duckdb is present, so this runs the pure-unit suite — fast and
-# data-free. Matrix covers the supported floor (3.11) and the local dev version (3.14).
+# data-free.
+#
+# The matrix covers two versions that mean different things:
+#   .python-version  — the one we ship on: dev, live.yml and insights.yml all read it.
+#   3.11             — the floor `requires-python` advertises.
 #
 # Runs on every branch push (no PR needed): the workflow is branch → push → green
 # check → merge to main. Branch protection on main requires these checks, so this
@@ -12,12 +16,22 @@ on:
     branches: ["**"]
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      shipped: ${{ steps.py.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: py
+        run: echo "version=$(cat .python-version)" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: version
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.14"]
+        python-version: ["3.11", "${{ needs.version.outputs.shipped }}"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
