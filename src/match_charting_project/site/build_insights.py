@@ -138,6 +138,54 @@ def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
     return serve, rows
 
 
+PATTERN_COLS = ["player", "gender", "family", "state", "response", "state_depth",
+                "inc_code", "resp_code", "lift", "count", "n_state", "evidence",
+                "win_rate", "tour_win_rate"]
+# Extra columns the return family carries and the rally family has no meaning for.
+# The panel draws the serve from them, so they must survive the trip as strings —
+# an all-empty rally column would otherwise read back as NaN and print "nan".
+PATTERN_SIDE_COLS = ["tier", "serve_side", "serve_dir"]
+
+
+def _patterns() -> pd.DataFrame:
+    """The two pattern families, from the two experiments that own them.
+
+    ``rally`` is court_response's: a player's answer to an incoming ball, sides
+    pooled because a mid-rally ball has no side. ``ret`` is serve_plus_one's: the
+    server's third ball, with the service court and the serve's direction in the
+    state wherever the player's charting funds them.
+
+    serve_plus_one is optional. It is the newer of the two, and a stale checkout or
+    a half-run pipeline should ship the panel with court_response's pooled return
+    rows rather than with no return section at all.
+    """
+    # The code columns are read as text, never inferred. They are digits, and a column
+    # with any blank in it infers as float — which turns serve direction "6" into "6.0",
+    # matches none of the renderer's cases, and silently drops the serve from the drawing.
+    codes = {c: str for c in ("inc_code", "resp_code", "serve_dir", "serve_side", "tier")}
+    cr = pd.read_csv(REPORTS / "court_response_players.csv", dtype=codes)
+    sp_path = REPORTS / "serve_plus_one_players.csv"
+    if sp_path.exists():
+        ret = pd.read_csv(sp_path, dtype=codes)
+        ret = ret[ret.family == "ret"]
+        cr = cr[cr.family != "ret"]
+    else:
+        ret = cr[cr.family == "ret"].copy()
+        cr = cr[cr.family != "ret"]
+        ret["tier"] = "pooled"
+        ret["serve_side"] = ""
+        ret["serve_dir"] = ""
+
+    for col in PATTERN_SIDE_COLS:
+        cr[col] = ""
+    patterns = pd.concat([cr[PATTERN_COLS + PATTERN_SIDE_COLS],
+                          ret[PATTERN_COLS + PATTERN_SIDE_COLS]], ignore_index=True)
+    for col in ("inc_code", "resp_code", *PATTERN_SIDE_COLS):
+        patterns[col] = patterns[col].fillna("").astype(str)
+    patterns["state_depth"] = patterns["state_depth"].fillna("")
+    return patterns
+
+
 def build() -> int:
     """(Re)create ``insights.duckdb`` from the DB + experiment CSVs. Returns player count."""
     con = duckdb.connect(str(DB_PATH), read_only=True)
@@ -172,17 +220,17 @@ def build() -> int:
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
     summary = summary.merge(lang, on=["player", "gender"], how="left")
 
-    # Court-state response profiles (court_response experiment): the player's stable,
-    # hand-normalized answers to a given incoming ball, plus the return-depth family.
-    # These replaced the old signature pairs, which mostly surfaced generic rally
-    # geometry and handedness artifacts — see experiments/court_response.
-    patterns = pd.read_csv(REPORTS / "court_response_players.csv")[
-        ["player", "gender", "family", "state", "response", "state_depth",
-         "inc_code", "resp_code", "lift", "count", "n_state", "evidence",
-         "win_rate", "tour_win_rate"]]
-    for col in ("inc_code", "resp_code"):
-        patterns[col] = patterns[col].astype(str)
-    patterns["state_depth"] = patterns["state_depth"].fillna("")
+    # Court-state response profiles: the player's stable, hand-normalized answers to a
+    # given incoming ball. These replaced the old signature pairs, which mostly surfaced
+    # generic rally geometry and handedness artifacts — see experiments/court_response.
+    #
+    # Two experiments feed one table, split by family. The rally family is
+    # court_response's. The return family — the server's third ball — comes from
+    # serve_plus_one instead, which asks the same question with the service court and
+    # the serve's direction in the state, at whatever resolution each player's charting
+    # funds. court_response still computes its own ret family for its report; it just
+    # does not ship it, since the two would describe one shot two ways on one page.
+    patterns = _patterns()
 
     crw = _collapse(pd.read_csv(REPORTS / "class_relative_wpa.csv")
                     [["player", "gender", "class_rel_z", "accuracy", "avg_wpa_lost"]])
