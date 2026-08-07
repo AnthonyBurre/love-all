@@ -243,3 +243,46 @@ export function pairSvg(incCode, respCode, depth = "") {
   ];
   return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${tintHalf(false)}${COURT}${els.join("")}</svg>`;
 }
+
+// --- serve+1 (the "off the return" family) ------------------------------------------------
+// The same picture with the serve that started the point in front of it, because for this
+// family the serve *is* the state: the serve_plus_one experiment exists on the finding that
+// a wide serve opens the forehand in the deuce court and the backhand in the ad court, and
+// a drawing that begins at the return cannot show that. Here the server is the profiled
+// player, so the near half is theirs in the same way pairSvg's is.
+//
+// The serve is drawn faint. It is context — the reason the return arrived where it did —
+// while the ball the numbers beside the drawing actually measure is the third one, which
+// keeps the arrowhead. Without the fade all three balls read as equally the point.
+//
+// Three levels, matching the three tiers a pattern can be surfaced at, so the drawing never
+// claims more than the row behind it knows:
+//   both court and direction  a serve, struck from the right side, landing where it landed
+//   court only                no serve line; the two players just stand on the correct sides
+//   neither                   pairSvg, unchanged — there is nothing to add
+export function retSvg(court, serveDir, incCode, respCode, depth = "") {
+  const side = String(court || "").toLowerCase();
+  if (side !== "deuce" && side !== "ad") return pairSvg(incCode, respCode, depth);
+  const dir = String(serveDir || "");
+  const known = dir === "4" || dir === "5" || dir === "6";
+
+  const inc = {
+    x: laneX(String(incCode), false),
+    y: depthY(PAIR_DEPTH[depth] ?? DEPTH_DEFAULT, false),
+  };
+  const out = { x: laneX(String(respCode), true), y: depthY(DEPTH_DEFAULT, true) };
+  // With no charted direction this is the middle of the correct service box, which says
+  // which side the point was played from without asserting a placement inside it.
+  const land = { x: serveX(known ? dir : null, side), y: depthY(SERVE_DEPTH_F, true) };
+  const sx = serveOriginX(side), sy = BOTTOM - 4;
+
+  const els = [
+    `<circle cx="${f(sx)}" cy="${f(sy)}" r="2.3" class="ct-player"/>`,
+    known ? shotLine(sx, sy, land.x, land.y, { faint: true, bare: true, shot: 1 }) : "",
+    `<circle cx="${f(land.x)}" cy="${f(land.y)}" r="2.6" class="ct-them"/>`,
+    shotLine(land.x, land.y, inc.x, inc.y, { incoming: true, bare: true, shot: 2 }),
+    `<circle cx="${f(inc.x)}" cy="${f(inc.y)}" r="3" class="ct-bounce"/>`,
+    shotLine(inc.x, inc.y, out.x, out.y, { arrow: true, shot: 3 }),
+  ];
+  return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="serve and third ball">${tintHalf(false)}${COURT}${els.join("")}</svg>`;
+}

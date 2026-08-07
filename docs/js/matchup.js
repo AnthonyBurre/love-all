@@ -2,7 +2,7 @@
 // all queried from insights.duckdb via DuckDB-WASM.
 import { query, leagueMu, serveGates, tourSpread } from "./db.js";
 import { preMatchWP } from "./winprob.js";
-import { patternSvg, pairSvg, shotLine } from "./court.js";
+import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -65,7 +65,7 @@ async function playerData(name, gender) {
   try {
     patterns = await query(
       "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
-      "win_rate, tour_win_rate " +
+      "win_rate, tour_win_rate, serve_side, serve_dir " +
       "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
       [name, gender]);
   } catch (e) { /* stale insights db: show the card without patterns */ }
@@ -241,8 +241,14 @@ function patternCard(p) {
         : `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} vs tour</span>`);
     }
   }
+  // The return family is the serve+1: its state names the court and often the serve, so
+  // the drawing starts at the serve rather than at the return. retSvg falls back to the
+  // pair drawing for a pattern surfaced with the sides pooled.
+  const court = p.family === "ret"
+    ? retSvg(p.serve_side, p.serve_dir, p.inc_code, p.resp_code, p.state_depth)
+    : pairSvg(p.inc_code, p.resp_code, p.state_depth);
   return `<div class="pcard2">
-    <div class="pcourt">${pairSvg(p.inc_code, p.resp_code, p.state_depth)}</div>
+    <div class="pcourt">${court}</div>
     <div class="pmeta">
       <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span></p>
       <p class="pdesc">${esc(p.state)}<b>→ ${esc(p.response)}</b></p>
@@ -1164,8 +1170,9 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
     section("court patterns", `their answer to an incoming ball, × how often the tour
       plays it from the same spot${COURT_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
-    section("off the return", `what they do with the returns they serve up, by return
-      depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
+    section("off the return", `what they do with the returns they serve up, by service
+      court and return depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2),
+      "cards") +
     section("shot-making triggers", `a lead-up that shifts their aggressive shot
       frequency — and whether it pays${meterLegend("their rate without the cue")}`,
       a, b, ta.main, tb.main, "text") +

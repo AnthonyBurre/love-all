@@ -1,11 +1,19 @@
 """Tests for the projections that ship to the site's insights DB.
 
-The serve-placement projection is the one with a real failure mode: the source
-CSV carries both a career mix and a recency-weighted one under similar names, so
-a build that renames one onto the other's column ships duplicate columns with the
-wrong values winning — silently, since both are plausible percentages. These
-tests pin which number lands in which column, and that the reliability gate the
-experiment computes survives the trip.
+Two projections here have real failure modes, and both fail *quietly* — the build
+succeeds and the panel renders, just with the wrong picture.
+
+The serve-placement CSV carries both a career mix and a recency-weighted one under
+similar names, so a build that renames one onto the other's column ships duplicate
+columns with the wrong values winning; both are plausible percentages, so nothing
+looks wrong. These tests pin which number lands in which column, and that the
+reliability gate the experiment computes survives the trip.
+
+The pattern projection joins two experiments into one table, and the return family
+carries three columns the rally family has no meaning for. Blanks in those columns
+make pandas infer a float dtype, which turns serve direction "6" into "6.0" —
+matching none of the renderer's cases, so the serve silently vanishes from every
+court drawing. These tests pin the codes as text and the two families as disjoint.
 """
 
 import pandas as pd
@@ -107,3 +115,76 @@ def test_missing_meta_still_ships_the_table(reports):
     _write(reports, meta=None)
     serve, meta = build_insights._serve_placement()
     assert len(serve) == 2 and meta == []
+
+
+# --- pattern families ------------------------------------------------------------------
+# court_response owns the rally family; serve_plus_one owns the return family and adds
+# tier/serve_side/serve_dir to it. Minimal rows: only the columns _patterns reads.
+CR_ROWS = [
+    {"player": "A Player", "gender": "M", "family": "rally", "state": "drive into the middle",
+     "response": "crosscourt FH drive", "state_depth": "", "inc_code": 2, "resp_code": 1,
+     "lift": 1.8, "count": 40, "n_state": 300, "evidence": 33.9,
+     "win_rate": 0.55, "tour_win_rate": 0.51},
+    {"player": "A Player", "gender": "M", "family": "ret", "state": "mid-depth drive return",
+     "response": "crosscourt FH drive", "state_depth": "mid-depth", "inc_code": 2, "resp_code": 1,
+     "lift": 1.7, "count": 30, "n_state": 200, "evidence": 23.0,
+     "win_rate": 0.57, "tour_win_rate": 0.52},
+]
+SP_ROWS = [
+    {"player": "A Player", "gender": "M", "family": "ret", "tier": "full",
+     "state": "deuce court, T serve · mid-depth drive return", "response": "crosscourt FH drive",
+     "serve_side": "deuce", "serve_dir": 6, "state_depth": "mid-depth",
+     "inc_code": 2, "resp_code": 1, "lift": 2.0, "count": 90, "n_state": 400, "evidence": 90.0,
+     "win_rate": 0.58, "tour_win_rate": 0.56},
+    {"player": "B Player", "gender": "W", "family": "ret", "tier": "pooled",
+     "state": "mid-depth drive return", "response": "BH drive down the line",
+     "serve_side": "", "serve_dir": "", "state_depth": "mid-depth",
+     "inc_code": 3, "resp_code": 3, "lift": 1.5, "count": 20, "n_state": 150, "evidence": 11.7,
+     "win_rate": 0.49, "tour_win_rate": 0.47},
+]
+
+
+def _write_patterns(reports, sp=SP_ROWS):
+    pd.DataFrame(CR_ROWS).to_csv(reports / "court_response_players.csv", index=False)
+    if sp is not None:
+        pd.DataFrame(sp).to_csv(reports / "serve_plus_one_players.csv", index=False)
+
+
+def test_return_family_comes_from_serve_plus_one(reports):
+    """Both experiments compute a ret family; only one of them may ship, or the panel
+    describes one shot twice under two different conditionings."""
+    _write_patterns(reports)
+    p = build_insights._patterns()
+    ret = p[p.family == "ret"]
+    assert len(ret) == 2                                  # serve_plus_one's, not the CSV's 1
+    assert set(ret.tier) == {"full", "pooled"}
+    assert "mid-depth drive return" == ret[ret.tier == "pooled"].iloc[0].state
+    assert len(p[p.family == "rally"]) == 1               # court_response's, untouched
+
+
+def test_serve_dir_survives_as_text_not_a_float(reports):
+    """The quiet one: a blank in the column infers float64, "6" becomes "6.0", and the
+    renderer's dir === "6" test fails, so the serve disappears from the drawing."""
+    _write_patterns(reports)
+    p = build_insights._patterns()
+    full = p[p.tier == "full"].iloc[0]
+    assert full.serve_dir == "6"
+    for col in ("inc_code", "resp_code", "serve_dir", "serve_side", "tier"):
+        assert p[col].map(type).eq(str).all(), col
+
+
+def test_rally_rows_carry_blanks_not_nan(reports):
+    """The rally family has no side. Those cells reach the panel as text either way, so
+    a NaN would print the string "nan" in a card."""
+    _write_patterns(reports)
+    rally = build_insights._patterns().query("family == 'rally'").iloc[0]
+    assert (rally.tier, rally.serve_side, rally.serve_dir) == ("", "", "")
+
+
+def test_falls_back_to_court_response_when_serve_plus_one_is_missing(reports):
+    """A stale checkout should ship the pooled return rows, not an empty section."""
+    _write_patterns(reports, sp=None)
+    p = build_insights._patterns()
+    ret = p[p.family == "ret"]
+    assert len(ret) == 1 and set(ret.tier) == {"pooled"}
+    assert (ret.iloc[0].serve_side, ret.iloc[0].serve_dir) == ("", "")

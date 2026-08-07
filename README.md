@@ -23,6 +23,7 @@ answers it, and what it found. They write their output to `reports/`.
 | [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive and face-valid. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, the textbook pressure point. |
 | [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, conversion rates, and **traps**, meaning cues that raise the frequency but sink conversion. Ships to the site. |
 | [`court_response`](experiments/court_response/) | What does a player do with a given incoming ball? | Enough stability to read as a scouting report: split-half r = 0.73 (men) / 0.69 (women) over ~43k state-response cells. Federer's crosscourt backhand slice, Djokovic's backhand down the line. |
+| [`serve_plus_one`](experiments/serve_plus_one/) | The server's third ball, with the service court in the state. | Pooling the courts was averaging two different shots. Nadal answers the same mid-depth return with a crosscourt forehand on the deuce side and a forehand down the line on the ad side. 602 such disagreements across 260 players. Each player is profiled at the finest state their charting funds. Ships to the site. |
 | [`context_length`](experiments/context_length/) | How many shots of history does charted data actually support? | **Two. The third actively hurts** held-out log-loss. And a player's top-5 signature list overlaps only J≈0.22 between halves of their own data, so much of any specific list is sampling luck. |
 | [`deep_patterns`](experiments/deep_patterns/) | For the most heavily charted players, do 3–4 shot patterns survive anyway? | 66 do, across 31 players, through a triple gate: beat your own parent pattern, replicate in both halves, clear a binomial test. Shipped as a gold-star tier. |
 | [`serve_side`](experiments/serve_side/) | Does deuce vs ad court hide structure? | Yes, and nothing else here conditioned on it. The direction codes mean **opposite wings** on the two sides, so serve analysis that ignores side is averaging two different shots together. |
@@ -50,7 +51,7 @@ The page themes and titles itself to whichever tournament you're looking at.
 
 | feed | source | what it gives | refresh |
 | --- | --- | --- | --- |
-| scores | ESPN scoreboard | matches, rounds, live scores | hourly |
+| scores | ESPN scoreboard | matches, rounds, live scores | hourly while a draw is on, daily between |
 | calendar | Wikipedia season pages | which events exist, tour level, surface | once a season |
 | draws | Wikipedia per-event draw pages | round-1 slot order, seeds, byes | once per event |
 | insights | Match Charting Project | per-player charted history | weekly |
@@ -59,6 +60,10 @@ ESPN is the only free source for scores, and it carries **no tour level and no d
 structure**, so everything structural comes from Wikipedia. Both Wikipedia feeds are cached
 under `data/` (gitignored, carried by CI as Release assets), so **no draw sheet is committed
 to the repo**, and the hourly build normally makes zero Wikipedia requests.
+
+ESPN is polled only while a draw is being played. Between events the cached scoreboard is
+served as-is and the build probes once a day, which is enough to notice the next event
+starting. Requests identify themselves as `love-all/0.1` and link back to this repo.
 
 Live draws show while play is on. Once an event finishes its draw is frozen into an archive
 so it stays in the dropdown, keeping the last two years of slams plus the two most recent
@@ -103,7 +108,7 @@ Nothing either workflow generates is committed:
 - **`.github/workflows/insights.yml`** (weekly, or manual) rebuilds the compact
   `insights.duckdb`, one row per charted player plus the recent charted-match index the site
   flags finished matches against, and publishes it as a Release asset.
-- **`.github/workflows/live.yml`** (hourly) fetches current scores, picks up any
+- **`.github/workflows/live.yml`** (hourly) fetches current scores while a draw is on, picks up any
   newly-published draw sheet, refreshes the tour calendar when the season turns, folds any
   newly-finished event into the draw-history asset, reuses the insights DB, and deploys
   `docs/` to Pages. The calendar and draw caches persist as a `feeds-cache` Release asset.
