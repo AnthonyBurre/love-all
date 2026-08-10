@@ -718,11 +718,10 @@ function coverageSide(d, tag) {
   // "charted:" is stated rather than implied: these counts are how much of the player exists
   // in the data, not how much tennis they have played.
   const years = s.year_min == null ? "" : s.year_min === s.year_max
-    ? ` · ${s.year_min}` : ` · ${s.year_min}–${s.year_max}`;
+    ? `${s.year_min}` : `${s.year_min}–${s.year_max}`;
   return `<div class="pbside ${tag}" data-side="${tag}">
-    <p class="pbchart">charted: ${s.matches_charted} matches ·
-      ${Number(s.points_charted).toLocaleString()} points${years}</p>
-  </div>`;
+    <p class="pbchart">${years}: ${s.matches_charted} matches ·
+      ${Number(s.points_charted).toLocaleString()} points</p></div>`;
 }
 
 function profileBand(da, db) {
@@ -791,8 +790,7 @@ function profileSide(d, tag) {
 // recent-form window rather than a career total, and a subtitle that covers the body has to
 // be true of every section in it. The section says which window in its own caption.
 //
-const CHARTED_TITLE = `<p class="tapetitle">Charted history
-    <span>— their charted matches, not this one</span></p>`;
+const CHARTED_TITLE = `<p class="tapetitle">Charted history</p>`;
 
 // The asterisk on "Charted history": these are a sample assembled by volunteers picking
 // matches worth charting, not a random one, so it isn't the player's record. It reads once
