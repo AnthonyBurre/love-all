@@ -64,16 +64,25 @@ export async function serveGates() {
   return out;
 }
 
-// The whole charted tour, per gender, as the pairs the matchup panel's one field plots: how
-// varied a player's shot mix is, against how much the situation moves their shot selection.
-// A couple of hundred rows a tour, which is small enough to ship down whole.
+// Where the charted tour sits on the three figures the profile band prints: shot quality out
+// of 100, variety in bits, and shot selection as a σ in percentage points. None of the three
+// has a scale a reader arrives knowing, so each is printed against the band the middle half of
+// that tour occupies — which is what tells you whether 3.2 bits is ordinary or remarkable.
 //
-// Only players charted enough for both. A player with one coordinate cannot stand anywhere on
-// a field, and is not part of the crowd the two in this match are being placed against.
+// Shot quality is in here despite wearing a "/100" that looks like it settles the question. It
+// doesn't: the score is an exponential map of conceded win probability, and the charted tour
+// lands between about 49 and 73 of that nominal hundred. A reader who takes 63/100 for a
+// middling mark on a full scale has it wrong in both directions at once.
 //
-// The name rides along so every mark in that crowd can say who it is on hover. Without it the
-// field draws a population and then refuses to name any of it, which is the difference between
-// a reference the reader can check and a wash behind the two marks that matter.
+// The quartiles are cut in SQL rather than by shipping the players down and cutting them here.
+// This used to send every charted player's coordinates to draw a crowd of them behind the two
+// in the match; with the crowd gone, that is a couple of hundred rows fetched per tour to
+// derive four numbers from.
+//
+// Each metric is measured over its own qualifying players rather than over the players who
+// have both — they are separate experiments with separate thresholds, and intersecting them
+// would quote a band for one metric computed off the other's cut. quantile_cont skips nulls
+// per column, so the two bands are independent by construction.
 //
 // Cached as the promise rather than the value, so two panels opening at once share one
 // query — the panel awaits this on every open.
@@ -87,14 +96,25 @@ async function loadSpread() {
   const out = { M: {}, W: {} };
   try {
     const rows = await query(
-      `SELECT gender, player, bits, sigma FROM player_summary
-       WHERE bits IS NOT NULL AND sigma IS NOT NULL`);
+      `SELECT gender,
+         count(bits) AS n_bits, count(sigma) AS n_sigma, count(accuracy) AS n_acc,
+         quantile_cont(bits, 0.25) AS b_lo, quantile_cont(bits, 0.75) AS b_hi,
+         quantile_cont(sigma, 0.25) AS s_lo, quantile_cont(sigma, 0.75) AS s_hi,
+         quantile_cont(accuracy, 0.25) AS a_lo, quantile_cont(accuracy, 0.75) AS a_hi
+       FROM player_summary GROUP BY gender`);
     for (const r of rows) {
-      const g = out[r.gender];
-      if (!g) continue;
-      (g.pairs || (g.pairs = [])).push([Number(r.bits), Number(r.sigma), String(r.player)]);
+      if (!out[r.gender]) continue;
+      // A band needs a population behind it to be worth quoting. Below that the metric still
+      // prints — it is the player's own number — it just goes without a tour to read it against.
+      const band = (n, lo, hi) => Number(n) >= 40 && lo != null && hi != null
+        ? { lo: Number(lo), hi: Number(hi), n: Number(n) } : null;
+      out[r.gender] = {
+        bits: band(r.n_bits, r.b_lo, r.b_hi),
+        sigma: band(r.n_sigma, r.s_lo, r.s_hi),
+        accuracy: band(r.n_acc, r.a_lo, r.a_hi),
+      };
     }
-  } catch (e) { /* stale insights db: the panel drops the field */ }
+  } catch (e) { /* stale insights db: the figures print without their tour band */ }
   return out;
 }
 

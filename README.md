@@ -140,9 +140,13 @@ It opens on a **profile band**: what kind of player each of them is, which hand 
 racket in, their shot-quality rating, and how much of them the charting actually has. All four
 are read through by everything below — the counts are the denominator of every number in the
 drawer, and the court drawings two sections down name their zones by the player's own hand, so
-a lefty's forehand corner is a righty's backhand corner. The rating is a 0–100 score of shot
-execution, printed with whether the player beats or falls short of what their own style
-fingerprint predicts — which is a comparison the raw score can't make.
+a lefty's forehand corner is a righty's backhand corner. The rating is the chess accuracy score
+ported over: a win-probability model evaluates the position after every stroke, the score
+averages the win probability a player concedes per stroke, and an exponential curve maps that
+average onto 0–100. Only the nominal ends are 0 and 100 — the charted tour lands between about
+49 and 73, so the middle of the printed scale is not the middle of the field. It is printed
+with whether the player beats or falls short of what their own style fingerprint predicts,
+which is a comparison the raw score can't make.
 
 Then **serve direction**: where their first serve goes on each court side,
 laid out the way the server sees the two boxes. Only wide and T are shown, so
@@ -162,22 +166,23 @@ point or two, which is why each player's figure stands on their own side of the 
 their arc climbs.
 
 Only those two get rings, because a ring only works for a number with a real zero and a
-reachable ceiling. **How guessable they are** — variety (how much a player's shot mix moves)
-and shot selection (how much the situation moves it) — has neither, and the two are
-independent besides: across the built table they correlate +0.21 on the men's side and −0.24
-on the women's, and all four quadrants around their medians fill about evenly. Independence is
-what a field is for, so those two share one, variety across in bits and shot selection up in
-percentage points, both axes ticked in their own units with a drawn arrow showing which way
-they grow.
+reachable ceiling. Two more figures print beside them, in each player's own column under their
+shot-quality score: **variety**, how far their shot choices stray from tour norms, in bits, and
+**shot selection**, how much their aggression swings with the situation they are in, as a
+standard deviation in percentage points. They are per-player facts rather than comparisons, so
+they sit with the player rather than on a shared scale, and each appears on its own — the two
+come from different experiments with different qualification bars, and a player can clear one
+and not the other.
 
-Every charted player on that tour is drawn behind them, one light grey × each; the two players
-in this match are open rings in their own colours. That crowd is the part that makes raw units
-readable — half the tour sits inside a band about a third of a bit wide, and you can see the
-band rather than being told about it, so "3.2 bits" means something without a percentile
-standing in for it. Hovering any × names the player it is. Nothing is restated in text beside
-the field: the axes carry the values, and the legend carries the only thing the drawing can't
-say, which is who is who. A player charted enough for one axis but not the other can't stand
-anywhere, so the coordinate we do have is ticked on its own axis instead.
+Neither is a unit anyone arrives knowing, so the section can open a note that defines all three
+figures, glosses the two units they are measured in, and says where the charted tour sits on
+each: half of it falls inside a band about a third of a bit wide, which is what makes "3.2 bits"
+mean something. The bits gloss is the one that earns its place, because bits compound — every
+extra bit is a shot half as likely again, so a gap that looks small is not. Those bands are
+read off the built table when the panel opens rather than written into the prose, so they
+cannot go stale against a rebuild. Nothing is converted to a rank or a percentile: the figures
+print in the units they are measured in, so the distance between two players is the distance
+you read.
 
 Below the rings come **court patterns**, written in plain English:
 `drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
