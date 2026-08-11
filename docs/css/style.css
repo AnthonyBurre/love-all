@@ -769,6 +769,23 @@ a { color: var(--acc-d); }
 .pbq em { display: block; margin-top: 1px; font-style: normal; font-size: 10px;
   font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .pbnote { margin: 3px 0 0; font-size: 10.5px; line-height: 1.45; color: var(--muted); }
+/* Variety and shot selection, a tier under the shot-quality figure — see profileSide(). They
+   are the same kind of thing, so they get the same furniture at a smaller size rather than a
+   second pattern; set at 22px like their neighbour they would be three headline numbers in one
+   column and no hierarchy at all.
+   Label inline rather than stacked under, unlike .pbq: these run one per line, and half a phone
+   column is not wide enough for "shot selection" to sit under a figure without wrapping. */
+.pbfig { margin: 7px 0 0; line-height: 1.2; display: flex; align-items: baseline; gap: 4px; }
+.pbfig b { font-size: 14px; font-weight: 700; color: var(--ink); }
+.pbfig span { font-size: 10px; color: var(--muted); }
+.pbfig em { font-style: normal; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted); }
+/* Mirrored with the rest of the column: side B reads in from the right edge, so its figure
+   has to lead from that edge too or it floats off the rule capping the column. */
+.pbside[data-side="b"] .pbfig { justify-content: flex-end; }
+/* The first one carries the gap off whatever sits above it, which is the shot-quality note on
+   a fully-charted player and the hand line on a player the ratings never reached. */
+.pbq + .pbfig, .pbnote + .pbfig { margin-top: 10px; }
 /* Leads the column now — see profileSide() — so it takes the top margin the rule's
    padding-top already covers, and gives its own gap below instead of above. */
 .pbchart { margin: 0 0 9px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -888,91 +905,26 @@ a { color: var(--acc-d); }
 /* zero, cut into the ring — see dnOrigin() for why it is the card's colour and not a mark */
 .dorigin { stroke: var(--card); stroke-width: 2.2; stroke-linecap: butt; }
 
-/* --- variety against shot selection, on one field, in its own section (varietySection) -----
-   Its own sechead/secnote now — see .msec/.sechead below — rather than a wide cell sharing the
-   rings' "side by side" title, which never described a scatter against the tour. */
-
-/* The field and its furniture, on one grid so the tick labels line up with the drawing they
-   belong to without either of them knowing a pixel size. Column 1 is the y name, column 2 the
-   y tick labels, column 3 the plot; the x ticks and the x name sit under column 3 only. */
-/* Capped, not filled to the row: both axes are square-scaled and there is no second thing to
-   put beside them now the figures have gone. The cap is generous rather than tidy — 164 marks
-   in a dense band separate in proportion to the field's width, so every pixel here is
-   legibility in the one place the chart is hardest to read. */
-.vfield { display: grid; width: min(100%, 440px); margin: 12px auto 0;
-  grid-template-columns: auto auto minmax(0, 1fr); }
-.vfplot { grid-column: 3; grid-row: 1; position: relative; }
-.vfplot svg { display: block; width: 100%; aspect-ratio: 1; height: auto; }
-/* Tick labels are HTML over the drawing, positioned by the same percentages the marks are —
-   see varyField(). Type inside a viewBox scales with the box and comes out under 7px on a
-   phone; out here it keeps the panel's own size at any width. */
-.vfyt { grid-column: 2; grid-row: 1; position: relative; width: 30px; }
-.vfyt span { position: absolute; right: 5px; transform: translateY(-50%); }
-.vfxt { grid-column: 3; grid-row: 2; position: relative; height: 14px; }
-.vfxt span { position: absolute; top: 2px; transform: translateX(-50%); }
-.vfyt span, .vfxt span { font-size: 9px; color: var(--muted); opacity: .85;
-  font-variant-numeric: tabular-nums; line-height: 1.2; white-space: nowrap; }
-/* Each axis says which way it grows, what it measures, and in what — the drawn arrow on the
-   axis itself carries the direction, so the words don't have to borrow a → to gesture at it. */
-.vfname { margin: 0; font-size: 9.5px; font-weight: 600; color: var(--muted);
-  letter-spacing: .01em; line-height: 1.3; }
-.vfname.x { grid-column: 3; grid-row: 3; margin-top: 2px; text-align: center; }
-/* Rotated bottom-to-top, which is the direction the axis runs and the way its arrow points. */
-.vfname.y { grid-column: 1; grid-row: 1; writing-mode: vertical-rl; transform: rotate(180deg);
-  display: flex; align-items: center; justify-content: center; }
-
-/* Every stroke on the field is non-scaling, which means the widths below are rendered pixels
-   rather than viewBox units. That distinction is the bug this section had: the field is a
-   100×100 viewBox drawn at ~330px, so a stroke-width of 1 came out 3px and a "2px ring" came
-   out 6px — a hairline grid that read as a heavy rule, and a ring that read as a border drawn
-   around the mark. Radii are still viewBox units and are divided by hand. */
-.vx, .vgrid, .vring, .vrug, .vaxis { vector-effect: non-scaling-stroke; }
-.vplotbg { fill: color-mix(in srgb, var(--line) 12%, var(--card)); stroke: none; }
-/* solid hairlines one step off the surface — all a reference line is allowed to be */
-.vgrid { stroke: color-mix(in srgb, var(--ink) 9%, transparent); stroke-width: 1; }
-/* the two axes and their heads: the shaft is a stroke, the head a filled triangle */
-.vaxis { stroke: color-mix(in srgb, var(--ink) 38%, transparent); stroke-width: 1.2; fill: none; }
-.vhead { fill: color-mix(in srgb, var(--ink) 38%, transparent); stroke: none; }
-/* The crowd: one light grey × a player. Two crossing strokes rather than a dot, so a pile-up
-   stays see-through instead of filling in, and so the shape itself is different from the two
-   rings rather than a smaller version of them. */
-/* Light, and light on purpose: half the charted tour sits inside a band about a third of a
-   bit wide, so at any real weight that band stops being a hundred players and becomes one
-   black smear. Thin and pale, the overlaps accumulate into tone — the density reads as
-   density, which is the thing the crowd is here to show. */
-.vx { stroke: color-mix(in srgb, var(--ink) 24%, transparent); stroke-width: 1;
-  stroke-linecap: round; fill: none; }
-/* The two players: open rings in their own colours, hollow. A surface fill made the ring a
-   token sitting on top of the crowd — it occluded whichever players it happened to land on,
-   which is the one thing a mark placed *in* a distribution should not do, and at the size it
-   needed to carry that fill it read as the subject of the chart rather than a position in it.
-   Hollow and smaller, it is a circle drawn around a spot on the field and the crowd inside it
-   stays readable. Colour and the closed shape are what tell it from an ×, not bulk. */
-.vring { fill: none; stroke-width: 2.5; }
-.vring.a { stroke: var(--a); }
-.vring.b { stroke: var(--b); }
-/* half a position: the one coordinate we have, ticked on its own axis */
-.vrug { stroke-width: 3; stroke-linecap: butt; }
-.vrug.a { stroke: var(--a); }
-.vrug.b { stroke: var(--b); }
-
-/* The legend, and the only thing left where two columns of restated figures used to be: with
-   the axes ticked and labelled, the drawing already carries the values, and what it cannot say
-   is which ring is which player. Each key wears the mark it identifies. */
-.vlegend { grid-column: 1 / -1; grid-row: 4; display: flex; flex-wrap: wrap;
-  justify-content: center; gap: 4px 14px; margin: 9px 0 0; font-size: 10px; color: var(--muted); }
-.vkey { display: inline-flex; align-items: center; gap: 5px; }
-.vkey i { flex: none; width: 11px; height: 11px; border-radius: 50%;
-  border: 2px solid var(--shot, var(--muted)); }
-.vkey.a { --shot: var(--a); }
-.vkey.b { --shot: var(--b); }
-/* the crowd's key wears a × drawn in borders rather than a ring */
-.vkey.peer i { width: 9px; height: 9px; border: 0; border-radius: 0;
-  background:
-    linear-gradient(to bottom right, transparent 43%, color-mix(in srgb, var(--ink) 42%, transparent) 43% 57%, transparent 57%),
-    linear-gradient(to bottom left, transparent 43%, color-mix(in srgb, var(--ink) 42%, transparent) 43% 57%, transparent 57%); }
-
 .tapenote { margin: 12px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
+/* The figure definitions, closing the side-by-side box (figureKey). It borrows .notekey's look
+   wholesale, because it is the same object as the notation key at the foot of the panel and a
+   second disclosure style would only make the reader learn the convention twice.
+   Ruled off rather than merely spaced: everything above it in this box is about these two
+   players and this is about the measuring, and inside a bordered box a margin on its own reads
+   as a gap rather than as a change of subject. */
+.figkey { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+/* The unit glossary closing that key (figureKey). Ruled off from the definitions above it,
+   because the subject changes: those say what is measured, these say what it is measured in,
+   and without the rule they read as three more paragraphs of the same kind.
+   Selected as "the first .unitdef after something that isn't one" rather than :first-of-type,
+   which counts divs and would land on the first definition instead. There is always a
+   definition ahead of it — a unit only prints when the figure using it does. */
+.figkey .keytext div:not(.unitdef) + .unitdef { margin-top: 10px; padding-top: 9px;
+  border-top: 1px solid var(--line); }
+/* The unit is the subject of its own line, so it leads in its own right rather than as the
+   bolded first words of a sentence — and it is set in the same lowercase the figures print it
+   in, so "bits" here is visibly the "bits" beside the number up there. */
+.figkey .unitdef b { color: var(--ink); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
 .segkey.deep { background: color-mix(in srgb, var(--muted) 60%, #000); }
@@ -1216,10 +1168,6 @@ a { color: var(--acc-d); }
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
   .tape { padding: 11px 12px 12px; }
-  /* The field needs no phone layout of its own: it is a square with its labels on two sides
-     and a legend under it, and every one of those is sized off the field rather than off the
-     panel. It just gets narrower. The y tick column tightens, being the one fixed width in it. */
-  .vfyt { width: 26px; }
   /* The court sections stay two-up. Stacking them puts a player's three drawings a
      screen and a half from the three they are meant to be read against, which is the
      section — so the card gives up its side-by-side layout instead, and the comparison
