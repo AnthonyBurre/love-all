@@ -212,9 +212,13 @@ def build() -> int:
     # ones whose label flipped wholesale when a fifth of a percent of the corpus moved,
     # so shipping the name without the flag would be shipping the unstable half as
     # though it were the stable half.
+    # avg_rally_len travels with the archetype because it is the same measurement pass:
+    # mean strokes in the points the player appeared in, keyed by the same era entity. It
+    # replaced the shot-quality score in the panel's profile column — see the note on
+    # class_rel_z below for why that score could not carry the weight it was given.
     clusters = _collapse(pd.read_csv(REPORTS / "player_style_clusters.csv")
                          [["player", "gender", "archetype", "style_margin",
-                           "style_confident"]])
+                           "style_confident", "avg_rally_len"]])
     summary = summary.merge(clusters, on=["player", "gender"], how="left")
 
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
@@ -232,6 +236,19 @@ def build() -> int:
     # does not ship it, since the two would describe one shot two ways on one page.
     patterns = _patterns()
 
+    # Class-relative shot quality. ``class_rel_z`` is the only part of this the panel shows,
+    # as a three-band verdict. The 0-100 ``accuracy`` score it is the residual of used to be
+    # the profile column's headline figure, and is no longer displayed anywhere: WPA
+    # telescopes within a point, so avg_wpa_lost is identically (win probability conceded per
+    # point) / (strokes per point), and the second factor dominates. Measured over the built
+    # table: it correlates -0.84 (men) / -0.76 (women) with rally length, the style
+    # fingerprint predicts 91% (men) / 85% (women) of it out-of-fold, and against a split-half
+    # reliability of 0.93 that leaves at most 2% / 8% of its spread as reliable non-style
+    # signal. It ranked Santoro and Wilander over Laver and Karlovic, which is a rally-length
+    # ranking wearing a quality label.
+    #
+    # Both columns still ship. ``accuracy`` is what ``class_rel_z`` is computed from, so
+    # dropping it here would leave the surviving verdict with no stated origin.
     crw = _collapse(pd.read_csv(REPORTS / "class_relative_wpa.csv")
                     [["player", "gender", "class_rel_z", "accuracy", "avg_wpa_lost"]])
     summary = summary.merge(crw, on=["player", "gender"], how="left")

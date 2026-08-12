@@ -15,6 +15,24 @@ Honest caveat (documented, not hidden): unlike a chess engine, this has no oracl
 for the best stroke. A negative WPA blends shot *selection*, *execution*, and the
 pressure the opponent applied. We lean on the charted forced/unforced flag to
 isolate the cleanest, most self-inflicted losses (unforced errors).
+
+The bigger caveat, and the reason ``avg_wpa_lost`` must not be read as a quality
+ranking on its own: WPA telescopes within a point (the strokes sum to result minus
+the pre-serve value), so the total swing per point is near-fixed while the
+denominator here is the stroke count. That makes the metric identically
+
+    avg_wpa_lost  ==  (win probability conceded per point) / (strokes per point)
+
+and the second factor dominates. Measured over the charted tour it correlates about
+-0.85 with average rally length, the player_styles fingerprint predicts ~0.9 of it
+out-of-fold, and against a split-half reliability of ~0.94 that leaves at most a few
+percent of its spread as reliable signal that is not style. It ranks grinders over
+big servers end to end. It is a real and stable measurement -- of how a player's
+risk is spread across their strokes, which is style, not skill.
+
+So: use it as an input to a style-relative comparison (see
+``experiments/class_relative_wpa``, which quantifies all of the above on every run),
+not as a standalone score. The site prints no figure derived from it.
 """
 
 import math
@@ -69,7 +87,15 @@ def find_demo_points(model, points, n: int = 3, min_len: int = 6) -> list:
 
 
 def accuracy_score(avg_loss: float, scale: float = 6.0) -> float:
-    """Map average win-prob conceded per stroke to a 0-100 score (higher=better)."""
+    """Map average win-prob conceded per stroke to a 0-100 score (higher=better).
+
+    Strictly monotone in ``avg_loss``, so it reorders nobody and carries exactly the
+    information ``avg_loss`` carries -- rescaling it (wider spread, percentiles, a
+    different ``scale``) changes no comparison, and cannot fix what the module
+    docstring describes. The 0 and 100 are nominal: the charted tour occupies roughly
+    49 to 73, so the midpoint of the printed range is nowhere near the middle of the
+    field.
+    """
     return 100.0 * math.exp(-scale * avg_loss)
 
 

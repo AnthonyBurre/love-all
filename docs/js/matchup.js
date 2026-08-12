@@ -604,7 +604,8 @@ const FIGS = [
 //
 // It moved into "side by side" from its own band under "Charted history" — the counts up there
 // are what every number in the panel is measured against and earn the title to themselves;
-// style, hand, and shot quality are the first *comparison*, which is what this section is for.
+// style, hand, and the figures here are the first *comparison*, which is what this section is
+// for.
 // Empty for an uncharted player: the invitation to go chart them already ran under "Charted
 // history", and a second empty box here would only repeat it.
 function profileSide(d, tag) {
@@ -621,21 +622,24 @@ function profileSide(d, tag) {
   // "Between styles" is the true statement, and unlike the name it doesn't move.
   const arch = s.archetype
     ? (Number(s.style_confident) === 0 ? "Between styles" : s.archetype) : "";
-  // Shot quality, raw and out of the hundred it is scored against. The qualifier under it is
-  // the class_relative_wpa experiment's reading — how they do against what their own style
-  // fingerprint predicts — which is a comparison the score itself can't make.
+  // Rally length leads the column, where the 0-100 shot-quality score used to. That score was
+  // a reliable measurement of the wrong thing: WPA telescopes inside a point, so the average
+  // win probability conceded per stroke is identically the concession per point divided by the
+  // strokes per point, and the second factor runs the figure. It correlated -0.84 with rally
+  // length, the style fingerprint predicted 91% of it out-of-fold, and set against a 0.93
+  // split-half reliability that left about 2% of its spread as reliable non-style signal. It
+  // put Santoro and Wilander at the top and Laver and Karlovic at the bottom, which is a
+  // rally-length table with a quality label on it. So the panel prints the rally length.
   //
-  // One decimal, though the score is a coarse thing: rounded to a whole number the two players
-  // print the same figure often, since the charted tour spends most of its range in the fifties
-  // and sixties. Neither figure is set as the leader, unlike the rings below — this is a
-  // per-player fact in a per-player band, and 60.7 against 60.8 is not a finding.
-  const acc = num(s.accuracy);
-  const quality = acc == null ? "" : `
-    <p class="pbq"><b>${acc.toFixed(1)}</b><span>/100</span>
-      <em>shot quality</em></p>
-    ${ratingLabel(s.class_rel_z)
-      ? `<p class="pbnote">${esc(ratingLabel(s.class_rel_z))}</p>` : ""}`;
-  // The secondary tier, and deliberately a tier down: shot quality is the figure this band
+  // Strokes in the whole point, both players, averaged over the points this player appeared in
+  // — so it is as much a fact about who they play as about them, which is what the section
+  // note says. One decimal: the tour's middle half spans about 0.8 of a stroke, and whole
+  // numbers would collapse most of the field onto "5".
+  const rally = num(s.avg_rally_len);
+  const rallyFig = rally == null ? "" : `
+    <p class="pbq"><b>${rally.toFixed(1)}</b><span>shots</span>
+      <em>avg rally</em></p>`;
+  // The secondary tier, and deliberately a tier down: rally length is the figure this band
   // leads on, and three numbers all set at 22px would be three headlines and no hierarchy.
   // Each prints on its own line rather than two-up — "shot selection" is a two-word label, and
   // in half a phone column beside a figure it wraps to two lines and buys nothing for it.
@@ -648,11 +652,24 @@ function profileSide(d, tag) {
     return v == null ? "" : `<p class="pbfig"><b>${f.fmt(v)}</b><span>${esc(f.unit)}</span>
       <em>${esc(f.label)}</em></p>`;
   }).join("");
-  if (!arch && !hand && !quality && !figs) return "";
+  // The one surviving quality claim, and it closes the column rather than riding under a
+  // number. It used to be a caption beneath the shot-quality score, which is the only place it
+  // could sit while that score was there; with the score gone it has to name its own subject,
+  // or "beats their style" is a verdict on nothing the reader can see. So it takes the same
+  // shape as every other item here — the finding, then the label for it — and the label says
+  // shot quality, because that is what is being judged.
+  //
+  // A verdict rather than a figure, because that is the resolution it survives at: the
+  // style-adjusted residual splits half-to-half at r≈0.34 (men) / 0.53 (women), which will
+  // carry three bands and would not carry a decimal.
+  const verdict = ratingLabel(s.class_rel_z);
+  const quality = verdict ? `<p class="pbverdict"><b>${esc(verdict)}</b>
+    <em>shot quality</em></p>` : "";
+  if (!arch && !hand && !rallyFig && !figs && !quality) return "";
   return `<div class="pbside ${tag}" data-side="${tag}">
     ${arch ? `<p class="pbstyle">${esc(arch)}</p>` : ""}
     ${hand ? `<p class="pbhand">${esc(hand)}</p>` : ""}
-    ${quality}${figs}
+    ${rallyFig}${figs}${quality}
   </div>`;
 }
 
@@ -712,33 +729,29 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
 function figureKey(sa, sb, spread) {
   const has = (k) => [sa, sb].some((s) => s && num(s[k]) != null);
   // The unit rides on the upper bound only: "between 2.9 bits and 3.2 bits" says bits twice
-  // for one range. Shot quality has no unit and passes the same formatter twice.
+  // for one range.
   const band = (f) => {
     const b = spread && spread[f.k];
     return b ? ` Half the charted tour sits between ${esc(f.fmt(b.lo))} and
       ${esc(f.say(b.hi))}.` : "";
   };
-  const ACC = { k: "accuracy", fmt: (v) => v.toFixed(1), say: (v) => v.toFixed(1) };
+  const RALLY = {
+    k: "avg_rally_len", fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} shots`,
+  };
   const defs = [
-    !has("accuracy") ? "" : `<div><b>Shot quality</b> is the chess accuracy score, ported to
-      tennis. A win-probability model evaluates the position after every stroke, and the swing
-      a stroke causes is what it added or cost. Only the costly ones count here: the score
-      averages the win probability a player concedes per stroke, then puts that average through
-      an exponential curve to land on 0–100. The curve is steepest at the top, so the same
-      conceded probability costs a good player more points than a poor one. Unlike a chess
-      engine there is no oracle for the best shot available, so a low score blends shot
-      selection, execution, and the pressure the opponent was applying. A player needs 1,500
-      charted strokes.${band(ACC)} The scale is nominal at both ends — nobody is near 0 or
-      100.</div>`,
-    !has("class_rel_z") ? "" : `<div><b>The line under the score</b> is what the score alone
-      cannot say. It measures a player against a benchmark fitted to their own style
-      fingerprint rather than against the tour, so a high-variance stylist is not marked down
-      for the style itself, only for being worse at it. The gap is read as a standard
-      deviation: past half of one either way it says they beat or fall short of their style,
-      and inside that, typical. The benchmark is fitted smoothly rather than taken from their
-      archetype's average, because an archetype boundary makes the whole figure a step
-      function — players who never changed style had their verdict flip when the charting
-      corpus moved by a fraction of a percent, and it was the benchmark that had moved.</div>`,
+    !has("avg_rally_len") ? "" : `<div><b>Avg rally</b> is how many strokes the average point
+      lasts, counting both players and the serve, over every charted point this player appeared
+      in. It is as much a fact about the tennis they get drawn into as about them, since both
+      players in a point share its length — but it separates the tour sharply anyway, from
+      big servers near three strokes to grinders near seven, and it is the plainest thing on
+      this panel to check against a match you have watched.${band(RALLY)}</div>`,
+    !has("class_rel_z") ? "" : `<div><b>Shot quality</b> A win-probability model evaluates the 
+      position after every stroke, which
+      gives the win probability a player concedes on an average stroke; that figure is then
+      measured against a benchmark fitted to the player's own style fingerprint, so a
+      high-variance stylist is not marked down for the style itself, only for being worse at
+      it. The gap is read as a standard deviation, and past half of one either way it says
+      they beat or fall short of their style. </div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from
       tour norms. A model built on the whole tour predicts each next shot from the two before
       it, and variety is how surprised that model is by this player, averaged over their shots

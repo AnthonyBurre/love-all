@@ -137,16 +137,25 @@ drawer says so in a line under the heading, and it is worth keeping in mind for 
 below.
 
 It opens on a **profile band**: what kind of player each of them is, which hand they hold the
-racket in, their shot-quality rating, and how much of them the charting actually has. All four
-are read through by everything below — the counts are the denominator of every number in the
-drawer, and the court drawings two sections down name their zones by the player's own hand, so
-a lefty's forehand corner is a righty's backhand corner. The rating is the chess accuracy score
-ported over: a win-probability model evaluates the position after every stroke, the score
-averages the win probability a player concedes per stroke, and an exponential curve maps that
-average onto 0–100. Only the nominal ends are 0 and 100 — the charted tour lands between about
-49 and 73, so the middle of the printed scale is not the middle of the field. It is printed
-with whether the player beats or falls short of what their own style fingerprint predicts,
-which is a comparison the raw score can't make.
+racket in, how long their average point runs, and how much of them the charting actually has.
+All four are read through by everything below — the counts are the denominator of every number
+in the drawer, and the court drawings two sections down name their zones by the player's own
+hand, so a lefty's forehand corner is a righty's backhand corner. Shot quality appears here too,
+but as a verdict rather than a score: whether the player beats, matches, or falls short of what
+their own style fingerprint predicts.
+
+That used to be a 0–100 rating, and the rating is gone. It was the chess accuracy score ported
+over — average win probability conceded per stroke, mapped onto a hundred — and it was a
+reliable measurement of the wrong thing. Win probability telescopes inside a point, so the
+average conceded *per stroke* is identically the concession per point divided by the strokes
+per point, and the second factor runs the figure: it correlates −0.84 with rally length, the
+style fingerprint predicts 91% of it out-of-fold, and against a 0.93 split-half reliability
+that leaves about 2% of its spread as reliable signal that isn't style. It ranked Santoro and
+Wilander above Laver and Karlovic, which is a rally-length table wearing a quality label. So
+the panel prints the rally length in strokes, which is what the number was mostly saying, and
+keeps the quality claim only where it survives the style correction — at three bands, because
+the corrected residual splits half-to-half at about 0.34 (men) and 0.53 (women), which will
+carry a verdict and would not carry a decimal.
 
 Then **serve direction**: where their first serve goes on each court side,
 laid out the way the server sees the two boxes. Only wide and T are shown, so
@@ -167,17 +176,17 @@ their arc climbs.
 
 Only those two get rings, because a ring only works for a number with a real zero and a
 reachable ceiling. Two more figures print beside them, in each player's own column under their
-shot-quality score: **variety**, how far their shot choices stray from tour norms, in bits, and
+rally length: **variety**, how far their shot choices stray from tour norms, in bits, and
 **shot selection**, how much their aggression swings with the situation they are in, as a
 standard deviation in percentage points. They are per-player facts rather than comparisons, so
 they sit with the player rather than on a shared scale, and each appears on its own — the two
 come from different experiments with different qualification bars, and a player can clear one
 and not the other.
 
-Neither is a unit anyone arrives knowing, so the section can open a note that defines all three
-figures, glosses the two units they are measured in, and says where the charted tour sits on
-each: half of it falls inside a band about a third of a bit wide, which is what makes "3.2 bits"
-mean something. The bits gloss is the one that earns its place, because bits compound — every
+Neither is a unit anyone arrives knowing, so the section can open a note that defines every
+figure in the column, glosses the two units they are measured in, and says where the charted
+tour sits on each: half of it falls inside a band about a third of a bit wide, which is what
+makes "3.2 bits" mean something. The bits gloss is the one that earns its place, because bits compound — every
 extra bit is a shot half as likely again, so a gap that looks small is not. Those bands are
 read off the built table when the panel opens rather than written into the prose, so they
 cannot go stale against a rebuild. Nothing is converted to a rank or a percentile: the figures

@@ -246,10 +246,17 @@ def main() -> None:
     md.append("```\n" + annotated + "\n```")
     md.append("\n## Decision quality: win-probability conceded per stroke\n")
     md.append("Lower `avg_wpa_lost` = gives away less per stroke (the centipawn-loss "
-              "analogue); `accuracy` rescales it 0–100. `unforced_lost_share` is how "
-              "much of the loss came from charted *unforced* errors — the most "
-              "self-inflicted. **Caveat:** this blends shot selection, execution, and "
-              "opponent pressure; there is no oracle for the best stroke.\n")
+              "analogue); `accuracy` rescales it 0–100, monotonically, so it reorders "
+              "nobody. `unforced_lost_share` is how much of the loss came from charted "
+              "*unforced* errors — the most self-inflicted.\n")
+    md.append("**Read this leaderboard as style, not skill.** There is no oracle for the "
+              "best stroke, so a loss blends selection, execution, and opponent pressure "
+              "— and worse, WPA telescopes within a point, so the per-stroke average is "
+              "identically *(concession per point) / (strokes per point)*. That second "
+              "factor dominates: the metric correlates ≈ −0.85 with rally length and is "
+              "≈ 0.9 predictable from style out-of-fold, which leaves almost none of its "
+              "spread as skill. `experiments/class_relative_wpa` measures this every run "
+              "and is where the metric gets corrected into something reportable.\n")
     for g in ("M", "W"):
         md.append(f"### {'Men' if g=='M' else 'Women'} — Slams & Masters, 2010+\n")
         md.append(leaderboard_md(boards[g]))

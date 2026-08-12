@@ -64,15 +64,16 @@ export async function serveGates() {
   return out;
 }
 
-// Where the charted tour sits on the three figures the profile band prints: shot quality out
-// of 100, variety in bits, and shot selection as a σ in percentage points. None of the three
+// Where the charted tour sits on the three figures the profile band prints: rally length in
+// strokes, variety in bits, and shot selection as a σ in percentage points. None of the three
 // has a scale a reader arrives knowing, so each is printed against the band the middle half of
 // that tour occupies — which is what tells you whether 3.2 bits is ordinary or remarkable.
 //
-// Shot quality is in here despite wearing a "/100" that looks like it settles the question. It
-// doesn't: the score is an exponential map of conceded win probability, and the charted tour
-// lands between about 49 and 73 of that nominal hundred. A reader who takes 63/100 for a
-// middling mark on a full scale has it wrong in both directions at once.
+// Rally length replaced the 0-100 shot-quality score here, and the band is the reason the
+// swap is not a downgrade: that score was an exponential map of conceded win probability that
+// correlated -0.84 with rally length and was 91% predicted by the style fingerprint, so a
+// reader comparing two players on it was mostly comparing their rally lengths through a
+// scale that hid what it was doing. This says the same thing in the unit it is actually in.
 //
 // The quartiles are cut in SQL rather than by shipping the players down and cutting them here.
 // This used to send every charted player's coordinates to draw a crowd of them behind the two
@@ -97,10 +98,11 @@ async function loadSpread() {
   try {
     const rows = await query(
       `SELECT gender,
-         count(bits) AS n_bits, count(sigma) AS n_sigma, count(accuracy) AS n_acc,
+         count(bits) AS n_bits, count(sigma) AS n_sigma, count(avg_rally_len) AS n_rally,
          quantile_cont(bits, 0.25) AS b_lo, quantile_cont(bits, 0.75) AS b_hi,
          quantile_cont(sigma, 0.25) AS s_lo, quantile_cont(sigma, 0.75) AS s_hi,
-         quantile_cont(accuracy, 0.25) AS a_lo, quantile_cont(accuracy, 0.75) AS a_hi
+         quantile_cont(avg_rally_len, 0.25) AS r_lo,
+         quantile_cont(avg_rally_len, 0.75) AS r_hi
        FROM player_summary GROUP BY gender`);
     for (const r of rows) {
       if (!out[r.gender]) continue;
@@ -111,7 +113,7 @@ async function loadSpread() {
       out[r.gender] = {
         bits: band(r.n_bits, r.b_lo, r.b_hi),
         sigma: band(r.n_sigma, r.s_lo, r.s_hi),
-        accuracy: band(r.n_acc, r.a_lo, r.a_hi),
+        avg_rally_len: band(r.n_rally, r.r_lo, r.r_hi),
       };
     }
   } catch (e) { /* stale insights db: the figures print without their tour band */ }
