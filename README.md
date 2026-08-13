@@ -136,13 +136,22 @@ and that weights the numbers toward big occasions rather than sampling a career 
 drawer says so in a line under the heading, and it is worth keeping in mind for every number
 below.
 
-It opens on a **profile band**: what kind of player each of them is, which hand they hold the
-racket in, how long their average point runs, and how much of them the charting actually has.
-All four are read through by everything below — the counts are the denominator of every number
-in the drawer, and the court drawings two sections down name their zones by the player's own
-hand, so a lefty's forehand corner is a righty's backhand corner. Shot quality appears here too,
-but as a verdict rather than a score: whether the player beats, matches, or falls short of what
-their own style fingerprint predicts.
+It opens on **charted history**: how much of each player the charting actually has, as a total
+and as a bar per season. The total alone cannot tell a breakout year from a decade of steady
+work — "195 matches, 2014–2026" reads the same either way — and the difference matters, because
+those counts are the denominator of every number below. The bars are charted points, both
+players on one axis and one height scale, so a season lines up with the same season across the
+gap and the two shapes are directly comparable. Hover a bar for that season's exact counts.
+
+Under it, a **profile band**: what kind of player each of them is, which hand they hold the
+racket in, how good their shot-making is, and how long their average point runs. All of it is
+read through by everything below — the court drawings further down name their zones by the
+player's own hand, so a lefty's forehand corner is a righty's backhand corner. Shot quality
+leads, and it is a verdict rather than a score: whether the player is ahead of, level with, or
+behind what their own style fingerprint predicts. It says "similar players" rather than naming a
+style, because the benchmark is fitted smoothly across the whole style space rather than
+averaged within an archetype — so it means the same thing for the third of players whose
+archetype is too borderline to name, whom the band labels "between styles".
 
 That used to be a 0–100 rating, and the rating is gone. It was the chess accuracy score ported
 over — average win probability conceded per stroke, mapped onto a hundred — and it was a
@@ -155,7 +164,9 @@ Wilander above Laver and Karlovic, which is a rally-length table wearing a quali
 the panel prints the rally length in strokes, which is what the number was mostly saying, and
 keeps the quality claim only where it survives the style correction — at three bands, because
 the corrected residual splits half-to-half at about 0.34 (men) and 0.53 (women), which will
-carry a verdict and would not carry a decimal.
+carry a verdict and would not carry a decimal. The rally length is labelled **shots per point**,
+because that is exactly what it is: the strokes in an average point, both players and the serve
+included, over every charted point that player appeared in.
 
 Then **serve direction**: where their first serve goes on each court side,
 laid out the way the server sees the two boxes. Only wide and T are shown, so
@@ -176,7 +187,7 @@ their arc climbs.
 
 Only those two get rings, because a ring only works for a number with a real zero and a
 reachable ceiling. Two more figures print beside them, in each player's own column under their
-rally length: **variety**, how far their shot choices stray from tour norms, in bits, and
+shots per point: **variety**, how far their shot choices stray from tour norms, in bits, and
 **shot selection**, how much their aggression swings with the situation they are in, as a
 standard deviation in percentage points. They are per-player facts rather than comparisons, so
 they sit with the player rather than on a shared scale, and each appears on its own — the two
@@ -193,7 +204,10 @@ cannot go stale against a rebuild. Nothing is converted to a rank or a percentil
 print in the units they are measured in, so the distance between two players is the distance
 you read.
 
-Below the rings come **court patterns**, written in plain English:
+Below the rings the sections run in the order a point does. **Off the return** comes first —
+what the server does with the ball their serve comes back as, split by service court and return
+depth — since it is built out of the serve the section above it just described. Then **court
+patterns**, the mid-rally exchange, written in plain English:
 `drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
 **shot-making triggers** are written in shot tokens: `serve wide · BH slice→3`, with a bar
 under each cue: its length is how often that cue makes them go for a finishing shot, the
@@ -216,9 +230,9 @@ how often the player picks that response to how often the tour picks it **from t
 spot**, so `1.6×` on a crosscourt slice means a genuine preference rather than just that
 slices happen. The payoff (`wins 52% ▲5 vs tour`) is a separate claim: how often the point
 ends up theirs after that response, next to the tour's rate playing the same ball. The
-multiplier is the choice, the payoff is what it earns. Two families appear: rally patterns,
-and **off the return**, which is what the server does with their first ball after the serve,
-split by the charted depth of the return (short / mid / deep).
+multiplier is the choice, the payoff is what it earns. Two families appear: **off the return**,
+which is what the server does with their first ball after the serve, split by the charted depth
+of the return (short / mid / deep), and the rally patterns that follow it.
 
 Zones in a pattern are named by the **player's own hands**: "the BH corner" is that
 player's backhand corner whether they are left- or right-handed. Run-around shots get their

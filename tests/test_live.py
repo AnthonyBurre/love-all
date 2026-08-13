@@ -3,6 +3,8 @@
 import json
 from datetime import date, datetime, timedelta, timezone
 
+import duckdb
+
 from match_charting_project.live import brackets, espn, feeds, levels, players
 
 
@@ -367,3 +369,43 @@ def test_an_unreadable_window_polls_rather_than_going_dark():
     assert espn._playing({}, now) is True                          # no events
     assert espn._playing({"events": [{"id": "x"}]}, now) is True   # undated
     assert espn._playing({"events": [{"date": "soon", "endDate": "later"}]}, now) is True
+
+
+# --- charted coverage, whole and by season ---------------------------------------------
+# The panel prints both: a total per player, and a bar per season under it. They come from
+# one SQL body with two GROUP BYs (players._COVERAGE_ROWS) precisely because a second copy
+# of the player1/player2 union is how the two come to disagree — and a breakdown that does
+# not add up to the total beside it is wrong in a way nothing on the page can show.
+def _cov_db():
+    con = duckdb.connect()
+    con.execute("CREATE TABLE matches (match_id VARCHAR, gender VARCHAR, "
+                "player1 VARCHAR, player2 VARCHAR, year INTEGER)")
+    con.execute("CREATE TABLE points (match_id VARCHAR, svr INTEGER)")
+    rows = [("m1", "M", "Ann", "Bo", 2023, 4), ("m2", "M", "Ann", "Cy", 2023, 3),
+            ("m3", "M", "Ann", "Bo", 2025, 5),
+            # A column-shifted row: charted, counted in the total, unplaceable on an axis.
+            ("m4", "M", "Ann", "Bo", None, 2)]
+    for mid, g, p1, p2, yr, n in rows:
+        con.execute("INSERT INTO matches VALUES (?, ?, ?, ?, ?)", [mid, g, p1, p2, yr])
+        for _ in range(n):
+            con.execute("INSERT INTO points VALUES (?, 1)", [mid])
+        con.execute("INSERT INTO points VALUES (?, 0)", [mid])   # not a served point
+    return con
+
+
+def test_coverage_by_year_adds_up_to_the_totals_it_is_drawn_under():
+    con = _cov_db()
+    total = players.coverage(con)[("M", "Ann")]
+    by_year = {y: (m, p) for g, pl, y, m, p in players.coverage_by_year(con)
+               if (g, pl) == ("M", "Ann")}
+    assert by_year == {2023: (2, 7), 2025: (1, 5)}
+    # The dated seasons account for the whole of the total bar the one undated match, and
+    # the span the chart is drawn across is the one the totals line claims.
+    assert sum(m for m, _ in by_year.values()) == total["matches"] - 1
+    assert sum(p for _, p in by_year.values()) == total["points"] - 2
+    assert (min(by_year), max(by_year)) == (total["year_min"], total["year_max"])
+
+
+def test_coverage_by_year_drops_matches_with_no_year():
+    con = _cov_db()
+    assert all(y is not None for _g, _p, y, _m, _pt in players.coverage_by_year(con))

@@ -5,6 +5,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Love All</title>
+  <!-- Inline, so there is nothing to fetch and nothing to 404. A browser with no rel="icon"
+       to go on asks for /favicon.ico on every load, which is a request this site has never
+       served — and on GitHub Pages that is a 404 on the critical path of a cold load. The mark
+       is the site's own: the header band's field, closed by the corner wedge every tier chip
+       and match card wears. -->
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231c6b45'/%3E%3Cpath d='M0 0h15L0 15Z' fill='%23cdf24a'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./css/style.css" />
 </head>
 
@@ -27,11 +34,13 @@
     <select class="tourselect" id="tourSelect" aria-label="Choose a tournament"></select>
     <div class="seg" id="genderTabs"></div>
     <div class="seg" id="viewTabs"></div>
+    <!-- Placeholder only; updateLegend() in app.js rewrites this per draw. Kept in the same
+         low-to-high order it renders in, so the markup doesn't disagree with the shipped key. -->
     <div class="legend" id="legend">
-      <span class="chip t-rich">deep charting</span>
-      <span class="chip t-some">decent</span>
-      <span class="chip t-thin">thin</span>
       <span class="chip t-none">uncharted</span>
+      <span class="chip t-thin">thin</span>
+      <span class="chip t-some">decent</span>
+      <span class="chip t-rich">deep</span>
     </div>
   </nav>
 

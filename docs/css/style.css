@@ -168,6 +168,13 @@ a { color: var(--acc-d); }
 .legend .chip.t-some { --tier: var(--cov-some); }
 .legend .chip.t-thin { --tier: var(--cov-thin); }
 .legend .chip.t-none { --tier: var(--cov-none); }
+/* What stands in the legend's place while the depth scale is unknown — the insights database
+   is a separate fetch that lands after the first paint, and on a cold or offline load may not
+   land at all. Deliberately not a chip: a chip is a sample of a mark the draw is wearing, and
+   the point of this line is that the draw is not wearing one yet. Same size and colour as the
+   chips' text so the row doesn't change height when they replace it. */
+.legendwait { font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--muted); opacity: .75; padding: 5px 0; }
 
 .status { padding: 40px 0; color: var(--muted); font-size: 15px; }
 
@@ -723,9 +730,15 @@ a { color: var(--acc-d); }
 /* --dn-size is the drawn diameter of one ring, set here because the box it sits in is what
    there is to divide up. The rings stack one per row now at every width (see .tapemain), so
    the ring no longer shares its row with a second one below 761px either — it can spend the
-   width that used to buy two rings side by side on one, larger ring instead. */
+   width that used to buy two rings side by side on one, larger ring instead.
+   Sized against measured slack rather than guessed at. A ring's row is shrink-to-fit inside a
+   centred track (.dn has min-width:0 in a centre-aligned column), so the flanking figures are
+   not squeezed as the ring grows — the row simply widens until it fills its track, and the
+   track is 336px narrow / 340px wide against a row that was using 255 / 271. These sizes spend
+   part of that and leave ~58px / ~46px still standing, so the longest qualifier on the panel
+   ("10.4% aces") keeps its own line at either width. */
 .tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0;
-  --dn-size: 132px; }
+  --dn-size: 156px; }
 /* The first thing in the scroll, right under a header that just named this match — so
    without a label over them, the numbers below default to reading as this match's. They're
    the opposite, which is what the "not this one" half says outright rather than trusting
@@ -759,7 +772,7 @@ a { color: var(--acc-d); }
 .pbhand { margin: 1px 0 0; font-size: 11px; color: var(--muted); }
 /* The column's headline figure — rally length, where the shot-quality score used to be; see
    profileSide() for why that score is no longer a number. The unit is set small and the name
-   smaller still: the figure is what is being read, and "shots" and "avg rally" are both there
+   smaller still: the figure is what is being read, and "shots" and "per point" are both there
    to tell you what it is once. */
 .pbq { margin: 9px 0 0; line-height: 1.1; }
 /* Proportional figures, not tabular. Equal-width digits are for numbers that have to line up
@@ -787,21 +800,71 @@ a { color: var(--acc-d); }
    has to lead from that edge too or it floats off the rule capping the column. */
 .pbside[data-side="b"] .pbfig { justify-content: flex-end; }
 /* The first one carries the gap off whatever sits above it, which is the headline figure on a
-   fully-charted player and the hand line on a player the ratings never reached. */
-.pbq + .pbfig { margin-top: 10px; }
-/* The shot-quality verdict, closing the column. It takes .pbq's shape — finding first, label
+   fully-charted player and the hand line on a player the ratings never reached. The verdict is
+   the third case: a player with a shot-quality band but no rally length, where these follow the
+   verdict's block label directly and .pbfig's own 7px would set them against it. */
+.pbq + .pbfig, .pbverdict + .pbfig { margin-top: 10px; }
+/* The verdict's label is a block, so the figure under it needs more air than .pbq's own 9px —
+   which was sized to sit under a one-line hand note, not under a two-part item. */
+.pbverdict + .pbq { margin-top: 13px; }
+/* The shot-quality verdict, leading the figures. It takes .pbq's shape — finding first, label
    under it — at a smaller size, because it is a finding of the same kind and not a footnote to
-   the figure above it: the score it used to caption is gone, so it stands on its own subject
+   the figure below it: the score it used to caption is gone, so it stands on its own subject
    now and the label under it is what says which subject that is.
+   Deliberately not set at .pbq's 22px even though it now comes first. It is a phrase, not a
+   digit, and at that size it is a headline sentence over three lines in half a phone column —
+   so the one number in the column stays the one thing set large, and order rather than size is
+   what puts the judgement first.
    The finding is a phrase rather than a digit, so it wraps; line-height and a block label are
-   what let it do that without colliding with the figure above. */
-.pbverdict { margin: 12px 0 0; line-height: 1.25; }
+   what let it do that without colliding with the hand line above. */
+.pbverdict { margin: 10px 0 0; line-height: 1.25; }
 .pbverdict b { font-size: 13px; font-weight: 700; color: var(--ink); }
 .pbverdict em { display: block; margin-top: 1px; font-style: normal; font-size: 9.5px;
   font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 /* Leads the column now — see profileSide() — so it takes the top margin the rule's
    padding-top already covers, and gives its own gap below instead of above. */
 .pbchart { margin: 0 0 9px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* --- charted history, by season (coverageChart) ---------------------------------------
+   HTML bars rather than SVG, and deliberately. This has to be full-column-wide at every
+   viewport, and an SVG that stretches to its box stretches its own coordinate system with
+   it — bar widths, gaps and hairlines all come out at whatever ratio the column happens to
+   be, and none of them are the length they were drawn as. Flex items sized in percent are
+   laid out in real pixels at whatever width the column resolves to, which is the same
+   arithmetic done by the thing that actually knows the answer.
+   Left to right in both columns. Everything else in a "b" column is mirrored to hang on its
+   own edge, but a time axis that ran right to left on one side of the panel would be the one
+   mirrored thing here that changes what it says. */
+.cchart { margin: 0; text-align: left; }
+.cbars { display: flex; align-items: flex-end; gap: 1px; height: 34px;
+  border-bottom: 1px solid var(--line); }
+/* Taller once the column is, because the column roughly trebles in width across that
+   breakpoint — half a phone is ~175px and half the open panel is ~415px — and a strip held at
+   its phone height there is a 12:1 box in which every season's difference from the next is a
+   couple of pixels. The extra height is resolution, not decoration. */
+@media (min-width: 761px) { .cbars { height: 46px; } }
+/* Each season's slot. Equal shares of the row, so a bar's x position is its year in both
+   columns and a season lines up with the same season across the gap. */
+.cbars > i { flex: 1 1 0; min-width: 0; }
+/* A charted season, in the column's own player colour — the same one capping the column
+   above it. Kept at full strength: this is the data, not furniture. */
+.cy { background: var(--shot); }
+/* The floor, in pixels rather than as a share of the row. One charted match against a peak
+   season of nine thousand points is 2% of the height, which rounds to nothing — and "barely
+   charted" reading identically to "not charted" is the one confusion this chart exists to
+   prevent. See coverageChart(). */
+.cy { min-height: 2px; }
+/* A season with no charted match holds its place and draws nothing. It is not a zero bar:
+   a zero bar at the floor above would be a season with a match in it. */
+.cy.none { background: none; }
+/* The two ends of the axis, and nothing in between — a tick per season is unreadable at this
+   width, and the tooltip on each bar carries the exact year for anyone who wants one. Both
+   columns print both ends, rather than one shared axis under the pair: the two charts are
+   read as a pair but each has to stand up on its own on a phone, where the columns are half
+   a screen apart. */
+.cyears { display: flex; justify-content: space-between; margin: 3px 0 0; font-size: 9px;
+  letter-spacing: .04em; color: var(--muted); opacity: .85;
+  font-variant-numeric: tabular-nums; }
 .pbnone { margin: 0; font-size: 11.5px; color: var(--warn); line-height: 1.45; }
 /* the per-column dot, used where a stacked phone column has to name its own player */
 .tdot { flex: none; width: 9px; height: 9px; }
@@ -838,37 +901,48 @@ a { color: var(--acc-d); }
   .dnstack { align-self: center; }
   /* Room to spend, now the rings have a track of their own instead of sharing a row with a
      second ring: the wider a ring is drawn, the more its arc can say. */
-  .tape { --dn-size: 148px; }
+  .tape { --dn-size: 172px; }
 }
 .dn { min-width: 0; }
-/* The two ends of the ring's scale, at the two ends of the ring: zero under the foot both
-   sweeps leave from, the ceiling over the top they climb toward. Printed rather than assumed,
-   because the two do not share one — "67%" against an arc at two thirds says nothing without
-   it — and printed here rather than in a caption above, because this is where a reader looks
-   to find out what an arc has reached. */
-/* The negative margins pull them in over the blank the viewBox leaves outside the ring —
-   about 10px at this size — so each cap sits against the arc it belongs to instead of
-   floating a gap away from it. Nothing is drawn out there to collide with. */
-.dncap { display: block; font-size: 9px; letter-spacing: .04em; color: var(--muted);
-  opacity: .85; font-variant-numeric: tabular-nums; line-height: 1.3; }
-.dnring .dncap:first-child { margin-bottom: -7px; }
-.dnring .dncap:last-child { margin-top: -7px; }
+/* The two ends of the ring's scale, at the two ends of the ring: zero at the foot both sweeps
+   leave from, the ceiling at the top they climb toward. Printed rather than assumed, because
+   the two rings do not share one — "67%" against an arc at two thirds says nothing without it
+   — and printed on the drawing rather than in a caption above it, because this is where a
+   reader looks to find out what an arc has reached.
+   Set inside the hole, hard against the band's inner edge — the end of the scale each one
+   marks. They used to sit outside, in a row above and a row below, which cost the stack two
+   lines of height per ring for twelve characters and left the ceiling floating a whole label
+   away from the arc climbing toward it.
+   19% is where the hole starts. The band's inner edge is DN_R - DN_W/2 = 31 of the viewBox's
+   100 units from the centre, and the centre is at 50, so the hole's top is at 19 and its foot
+   at 81. Percentages here resolve against .dnring, which is exactly --dn-size square, so the
+   same two numbers hold at every ring size — as they must, since the geometry they come from
+   is written in viewBox units and those scale with the drawing.
+   Nothing is under them: the hole is empty but for the ring's name, which is centred and about
+   25px clear of either cap at the smallest size this renders at. */
+.dncap { position: absolute; left: 50%; transform: translateX(-50%); font-size: 9px;
+  letter-spacing: .04em; color: var(--muted); opacity: .85;
+  font-variant-numeric: tabular-nums; line-height: 1.3; pointer-events: none; }
+.dncap.top { top: calc(19% + 2px); }
+.dncap.zero { bottom: calc(19% + 2px); }
 /* The ring on the panel's own centre line, with a player either side of it. Equal outer
    tracks rather than tracks sized to their contents: the two qualifiers are rarely the same
    length, and sized to them the ring would sit off-centre by half the difference — which is
    the one thing this layout exists to avoid. */
 .dnrow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center; gap: 10px; }
-.dnring { width: var(--dn-size); display: flex; flex-direction: column; align-items: center;
-  gap: 1px; }
-.dnringin { position: relative; }
-.dnring svg { display: block; width: var(--dn-size); height: var(--dn-size); }
-/* The ring's name, moved into its own hole rather than set as a line of print over the row —
-   see donut(). Shrunk and shortened (VARY... no, tapeRows' `short`) to fit the ~72px of clear
-   space the ring's stroke leaves at its centre; centred over the svg it sits inside, not over
-   the caps either side of it. */
+/* The ring is now one box exactly the drawing's size, with everything else laid over it: the
+   two scale ends and the name all sit in the hole. It was a flex column stacking a cap, the
+   drawing and a cap, which made its height the drawing plus two lines of type — so the row it
+   sits in, and the stack of rows, carried that twice over for no picture. */
+.dnring { position: relative; width: var(--dn-size); height: var(--dn-size); }
+.dnring svg { display: block; width: 100%; height: 100%; }
+/* The ring's name, in its own hole rather than set as a line of print over the row — see
+   donut(). Shrunk and shortened (tapeRows' `short`) to fit the clear space the ring's stroke
+   leaves at its centre, and centred there, which keeps it clear of the two scale ends tucked
+   against the top and foot of the same hole. */
 .dnttl { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  margin: 0; width: 58px; text-align: center; font-size: 9px; font-weight: 700;
+  margin: 0; width: 64px; text-align: center; font-size: 9px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .03em; line-height: 1.25; color: var(--muted);
   pointer-events: none; }
 /* Each player's pair reads outward from the ring: the number against it, the qualifier
@@ -917,6 +991,13 @@ a { color: var(--acc-d); }
 .dtick { stroke: var(--card); stroke-width: 1.8; stroke-linecap: butt; }
 /* zero, cut into the ring — see dnOrigin() for why it is the card's colour and not a mark */
 .dorigin { stroke: var(--card); stroke-width: 2.2; stroke-linecap: butt; }
+/* The two ends of the scale — see dnEnds(). Ink, and the only mark on the band that is laid on
+   rather than drained out of it: the tick and the seam are a reference and a gap, these are the
+   frame the arcs are read against.
+   1.1 units against the seam's 2.2, so at the foot it sits inside that gap with white showing
+   either side rather than filling it. Thin enough to stay a hairline at the sizes this renders
+   at — 1.1 of the viewBox's 100 is about 1.7px on a phone and 1.9px on the desktop ring. */
+.dend { stroke: var(--ink); stroke-width: 1.1; stroke-linecap: butt; }
 
 .tapenote { margin: 12px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 /* The figure definitions, closing the side-by-side box (figureKey). It borrows .notekey's look

@@ -76,19 +76,32 @@ async function playerData(name, gender) {
       "FROM player_serve WHERE player = ? AND gender = ? AND reliable = 1",
       [name, gender]);
   } catch (e) { /* stale insights db: show the card without serve direction */ }
-  return { s: s[0], triggers, patterns, serve };
+  let years = [];
+  try {
+    years = await query(
+      "SELECT year, matches, points FROM player_years WHERE player = ? AND gender = ? " +
+      "ORDER BY year", [name, gender]);
+  } catch (e) { /* stale insights db: the coverage band prints its counts without the chart */ }
+  return { s: s[0], triggers, patterns, serve, years };
 }
 
-// The benchmark is no longer the mean of the archetype a player was sorted into — it is
-// what their own style fingerprint predicts, fitted smoothly across the style space — so
-// the wording names the style rather than the box. It also has to stay true for a player
-// whose archetype is withheld: "below their archetype" reads oddly beside a card that
-// declines to say which archetype that is, and this trio doesn't depend on one.
+// The benchmark is no longer the mean of the archetype a player was sorted into — it is what
+// their own style fingerprint predicts, fitted smoothly across the style space. So the
+// comparison group is the players who sit near them in that space, and the wording says that
+// rather than naming a style.
+//
+// It used to say "their style", which broke on exactly the players the panel is most careful
+// about: for about a third of them the archetype is withheld and the column reads "Between
+// styles", and "beats their style" directly above that is a verdict measured against a style
+// the same column has just declined to name. The fingerprint is continuous and every player
+// has one, so "similar players" is true for all of them and points at something real — the
+// people who play like this — instead of at a box. See figureKey() for the same point made at
+// length, since a three-word label can't carry it.
 function ratingLabel(z) {
   if (z == null) return "";
-  if (z <= -0.5) return "beats their style";
-  if (z >= 0.5) return "below their style";
-  return "typical for their style";
+  if (z <= -0.5) return "ahead of similar players";
+  if (z >= 0.5) return "behind similar players";
+  return "typical for similar players";
 }
 
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
@@ -444,10 +457,12 @@ function dnArc(deg, segs, side) {
   return `<g transform="${spin}">${parts}</g>`;
 }
 
-// A spoke across the ring at `deg`, `out` units past its edges. Used twice: for the tour
-// average, and for the origin seam at the foot.
-function dnSpoke(deg, out, cls) {
-  const [x1, y1] = dnPoint(deg, DN_R - DN_W / 2 - out);
+// A spoke across the ring at `deg`, reaching `out` units past its outer edge and `inn` past
+// its inner one. The two default to the same, which is what a mark laid across the band wants;
+// the scale ends below pass `inn: 0` because they share the hole with a label and a spoke that
+// reached into it would be a line through the top of the type.
+function dnSpoke(deg, out, cls, inn = out) {
+  const [x1, y1] = dnPoint(deg, DN_R - DN_W / 2 - inn);
   const [x2, y2] = dnPoint(deg, DN_R + DN_W / 2 + out);
   return `<line class="${cls}" x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}"` +
     ` x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}"/>`;
@@ -465,6 +480,26 @@ const dnTick = (deg) => dnSpoke(deg, 1.6, "dtickhalo") + dnSpoke(deg, 1.6, "dtic
 // that stood between the two bars, and it is drawn in the card's own colour so it reads as a
 // gap in the ring rather than as one more mark laid on top of it.
 const dnOrigin = () => dnSpoke(180, 0.5, "dorigin");
+
+// The two ends of the scale, marked on the drawing: 12 o'clock, where both sweeps finish, and
+// 6 o'clock, where they start. The numbers naming them now sit inside the hole, and a number
+// floating in a hole says what the end is worth without saying where it is — an arc that stops
+// a few degrees short of the top is not visibly short of anything until the top is a mark.
+//
+// Ink, where every other mark on the band is the card's own colour. That is the distinction
+// being drawn: the tour tick and the origin seam are drained out of the ring, and read as
+// absences in it, which is right for a reference value and for a gap. These are the frame the
+// arcs are measured in, so they are laid on rather than cut out.
+//
+// At the foot this lands inside the origin seam, which is 2.2 units of card colour to this
+// line's 1.1 — so the seam keeps a hairline of white either side and gains a definite edge
+// instead of competing for the same spot. Drawn after it, for exactly that stacking.
+//
+// `inn: 0` stops it flush with the inner edge of the band. The scale labels sit about 1.3
+// units further in (see .dncap), and the tour tick's 1.6 of inward reach would put an ink line
+// through the top of "100%".
+const DN_END_OUT = 1.2;
+const dnEnds = () => dnSpoke(0, DN_END_OUT, "dend", 0) + dnSpoke(180, DN_END_OUT, "dend", 0);
 
 // One player's number and its qualifier, on that player's side of the ring. No colour chip —
 // position says whose it is, the way it did when these were bars.
@@ -508,23 +543,28 @@ function donut(r, sa, sb) {
   // finish at the top, so those are the only two places the numbers could go and mean
   // anything — and put there they are read off the picture rather than remembered from a
   // caption above it.
+  //
+  // Inside the ring rather than above and below it, which is where they used to sit. The hole
+  // is empty space the drawing already owns; the two rows outside it were height spent on
+  // twelve characters, and they pushed the ceiling a whole label away from the arc that climbs
+  // toward it. Tucked just inside the band, each number sits against the end of the scale it
+  // marks, and the ring is one object instead of three stacked ones. They join the ring's own
+  // name in there, spaced clear of it — see .dncap in the stylesheet for the geometry.
   return dnCell(
     dnFlank(item(va, sa, "a"), "a"),
     `<div class="dnring">
-      <span class="dncap">${esc(r.top)}</span>
-      <div class="dnringin">
-        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img"
-          aria-label="${esc(`${r.label} — ${say(va)} against ${say(vb)}`)}">
-          <circle class="dtrack" cx="${DN_C}" cy="${DN_C}" r="${DN_R}"/>
-          ${arc(va, sa, "a")}${arc(vb, sb, "b")}${dnOrigin()}
-          ${/* one per side, and only where that side has a sweep to read it against — a lone
-               tick on an empty half is a reference for a number that isn't there */""}
-          ${r.avg == null || va == null ? "" : dnTick(dnAt(at(r.avg), "a"))}
-          ${r.avg == null || vb == null ? "" : dnTick(dnAt(at(r.avg), "b"))}
-        </svg>
-        ${title}
-      </div>
-      <span class="dncap">0</span>
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img"
+        aria-label="${esc(`${r.label} — ${say(va)} against ${say(vb)}`)}">
+        <circle class="dtrack" cx="${DN_C}" cy="${DN_C}" r="${DN_R}"/>
+        ${arc(va, sa, "a")}${arc(vb, sb, "b")}${dnOrigin()}${dnEnds()}
+        ${/* one per side, and only where that side has a sweep to read it against — a lone
+             tick on an empty half is a reference for a number that isn't there */""}
+        ${r.avg == null || va == null ? "" : dnTick(dnAt(at(r.avg), "a"))}
+        ${r.avg == null || vb == null ? "" : dnTick(dnAt(at(r.avg), "b"))}
+      </svg>
+      <span class="dncap top">${esc(r.top)}</span>
+      ${title}
+      <span class="dncap zero">0</span>
     </div>`,
     dnFlank(item(vb, sb, "b"), "b"));
 }
@@ -539,26 +579,104 @@ function donut(r, sa, sb) {
 // declared by the split rule under that header, its left half player A and its right half
 // player B; the rule across the top of each half here is the same colour, and it is the same
 // mark that caps each column further down.
-function coverageSide(d, tag) {
+// --- the charted-history chart -------------------------------------------------------------
+// "2015–2024: 61 matches" is a span and a total, and a span and a total cannot tell those two
+// apart: sixty matches in one breakout season, or six a year for ten. They read the same on the
+// line and they are not the same denominator — the first is a snapshot of one year's form
+// wearing a decade's date range, and every pattern, trigger and rate in the panel below is
+// drawn from it. So the counts get a shape as well as a sum: one bar per season, its height the
+// points charted in it.
+//
+// Points rather than matches, because points are what the rest of the panel is actually built
+// out of — a trigger needs strokes, not fixtures — and a three-setter and a five-setter are one
+// match each. The match count is the number people say out loud, so it rides in each bar's
+// tooltip rather than being lost.
+//
+// Both players are drawn on one domain and one height scale, set across the pair. Two charts
+// each fitted to their own data would put a lightly-charted player's best season at the same
+// height as a heavily-charted one's, in a band whose whole subject is that the two are not
+// equally known — and the bars sit at equal x positions in two equal-width columns, so a season
+// lines up with the same season across the gap.
+function yearScale(...rowsets) {
+  let lo = Infinity, hi = -Infinity, max = 0;
+  for (const rows of rowsets) {
+    for (const r of rows || []) {
+      const y = Number(r.year);
+      if (!Number.isFinite(y)) continue;
+      if (y < lo) lo = y;
+      if (y > hi) hi = y;
+      max = Math.max(max, Number(r.points) || 0);
+    }
+  }
+  return lo <= hi && max > 0 ? { lo, hi, max } : null;
+}
+
+// One player's bars across the shared domain. A season with no charted match is an empty slot
+// rather than a missing one: the columns only line up if every year holds a place, and the gap
+// itself is the finding on a player the charting picked up late or dropped.
+//
+// Height is a percentage of the row, floored in CSS rather than here (see .cy) so the floor is
+// a pixel count and not a share of whatever height the row happens to be. Without it a season
+// of one charted match against a peak of nine thousand points draws two thirds of a pixel, and
+// "barely charted" and "not charted at all" become the same mark — which is the one distinction
+// this chart exists to make.
+function coverageChart(rows, sc) {
+  if (!sc || !rows || !rows.length) return "";
+  const by = new Map(rows.map((r) => [Number(r.year), r]));
+  const bars = [];
+  let peak = null;
+  for (let y = sc.lo; y <= sc.hi; y++) {
+    const r = by.get(y);
+    if (!r) { bars.push(`<i class="cy none"></i>`); continue; }
+    const pts = Number(r.points) || 0, mt = Number(r.matches) || 0;
+    if (!peak || pts > peak.pts) peak = { y, pts, mt };
+    const label = `${y} — ${mt} ${mt === 1 ? "match" : "matches"} · ${pts.toLocaleString()} points`;
+    bars.push(`<i class="cy" style="height:${(pts / sc.max * 100).toFixed(1)}%"
+      title="${esc(label)}"></i>`);
+  }
+  // One label per end of the axis, and only those two. A tick per season is unreadable at this
+  // size, and the years in between are recoverable by counting along from either end — which is
+  // what the per-bar tooltip is for when a reader wants an exact one.
+  const say = `charted points by season, ${sc.lo} to ${sc.hi}` +
+    (peak ? `; busiest ${peak.y}, ${peak.mt} matches` : "");
+  return `<div class="cchart">
+    <div class="cbars" role="img" aria-label="${esc(say)}">${bars.join("")}</div>
+    <p class="cyears"><span>${sc.lo}</span><span>${sc.hi}</span></p>
+  </div>`;
+}
+
+function coverageSide(d, tag, sc) {
   if (!d) {
     return `<div class="pbside ${tag}" data-side="${tag}">
       <p class="pbnone">not charted yet —
         <a href="${CHART_GUIDE}" target="_blank" rel="noopener">chart a match →</a></p></div>`;
   }
   const s = d.s;
-  // "charted:" is stated rather than implied: these counts are how much of the player exists
-  // in the data, not how much tennis they have played.
-  const years = s.year_min == null ? "" : s.year_min === s.year_max
-    ? `${s.year_min}` : `${s.year_min}–${s.year_max}`;
+  const chart = coverageChart(d.years, sc);
+  // The span goes wherever it is actually being carried, and never in both places at once.
+  // With the chart drawn, the years belong to it — it has an axis, and the axis is labelled at
+  // both ends. Printed here as well, they were a second date range forty pixels above a
+  // different one (the axis spans *both* players, so a player charted from 2014 sits under a
+  // "2013"), and two ranges that near each other read as a contradiction rather than as two
+  // facts. Without a chart — a stale database with no player_years table — this line is the
+  // only thing that can say when, so it says it.
+  const span = s.year_min == null || chart ? "" : (s.year_min === s.year_max
+    ? `${s.year_min}: ` : `${s.year_min}–${s.year_max}: `);
+  // These counts are how much of the player exists in the data, not how much tennis they have
+  // played — which is what the title above them and the note at the foot of the panel are for.
   return `<div class="pbside ${tag}" data-side="${tag}">
-    <p class="pbchart">${years}: ${s.matches_charted} matches ·
-      ${Number(s.points_charted).toLocaleString()} points</p></div>`;
+    <p class="pbchart">${span}${s.matches_charted} matches ·
+      ${Number(s.points_charted).toLocaleString()} points</p>
+    ${chart}</div>`;
 }
 
 function profileBand(da, db) {
   if (!da && !db) return "";
+  // The scale is computed once, over both players, and handed down — so neither column can
+  // quietly draw itself against a different axis than its neighbour.
+  const sc = yearScale(da && da.years, db && db.years);
   return `<div class="pband">
-    ${coverageSide(da, "a")}${coverageSide(db, "b")}</div>`;
+    ${coverageSide(da, "a", sc)}${coverageSide(db, "b", sc)}</div>`;
 }
 
 // Variety and shot selection, as the two figures they are. They had a section and a scatter of
@@ -622,23 +740,28 @@ function profileSide(d, tag) {
   // "Between styles" is the true statement, and unlike the name it doesn't move.
   const arch = s.archetype
     ? (Number(s.style_confident) === 0 ? "Between styles" : s.archetype) : "";
-  // Rally length leads the column, where the 0-100 shot-quality score used to. That score was
-  // a reliable measurement of the wrong thing: WPA telescopes inside a point, so the average
-  // win probability conceded per stroke is identically the concession per point divided by the
+  // Strokes in the whole point, both players and the serve, averaged over the points this
+  // player appeared in — so it is as much a fact about who they play as about them, which is
+  // what the key says. One decimal: the tour's middle half spans about 0.8 of a stroke, and
+  // whole numbers would collapse most of the field onto "5".
+  //
+  // Labelled "per point" rather than "avg rally", because that is exactly what it is — average
+  // hits per point — and "rally" invites the reader to assume the serve and the return are
+  // excluded from a figure that counts both. The unit above it already says "shots", so the
+  // label only has to say what they are counted over.
+  //
+  // It stands where the 0-100 shot-quality score used to. That score was a reliable
+  // measurement of the wrong thing: WPA telescopes inside a point, so the average win
+  // probability conceded per stroke is identically the concession per point divided by the
   // strokes per point, and the second factor runs the figure. It correlated -0.84 with rally
   // length, the style fingerprint predicted 91% of it out-of-fold, and set against a 0.93
   // split-half reliability that left about 2% of its spread as reliable non-style signal. It
   // put Santoro and Wilander at the top and Laver and Karlovic at the bottom, which is a
   // rally-length table with a quality label on it. So the panel prints the rally length.
-  //
-  // Strokes in the whole point, both players, averaged over the points this player appeared in
-  // — so it is as much a fact about who they play as about them, which is what the section
-  // note says. One decimal: the tour's middle half spans about 0.8 of a stroke, and whole
-  // numbers would collapse most of the field onto "5".
   const rally = num(s.avg_rally_len);
   const rallyFig = rally == null ? "" : `
     <p class="pbq"><b>${rally.toFixed(1)}</b><span>shots</span>
-      <em>avg rally</em></p>`;
+      <em>per point</em></p>`;
   // The secondary tier, and deliberately a tier down: rally length is the figure this band
   // leads on, and three numbers all set at 22px would be three headlines and no hierarchy.
   // Each prints on its own line rather than two-up — "shot selection" is a two-word label, and
@@ -652,12 +775,19 @@ function profileSide(d, tag) {
     return v == null ? "" : `<p class="pbfig"><b>${f.fmt(v)}</b><span>${esc(f.unit)}</span>
       <em>${esc(f.label)}</em></p>`;
   }).join("");
-  // The one surviving quality claim, and it closes the column rather than riding under a
-  // number. It used to be a caption beneath the shot-quality score, which is the only place it
-  // could sit while that score was there; with the score gone it has to name its own subject,
-  // or "beats their style" is a verdict on nothing the reader can see. So it takes the same
-  // shape as every other item here — the finding, then the label for it — and the label says
-  // shot quality, because that is what is being judged.
+  // The one surviving quality claim, and it now leads the figures rather than closing them.
+  // It is the only judgement in the column — everything under it is a measurement, and a
+  // reader who takes one thing from this band should take the judgement — and it belongs
+  // beside the style line it is measured against, not three items away from it with the
+  // descriptive figures in between.
+  //
+  // It keeps the smaller type it had when it closed the column. The verdict is a phrase, and
+  // a phrase set at the rally figure's 22px is a headline sentence that wraps to three lines
+  // in half a phone column; the rally figure stays the one number set large, so the column
+  // still has a hierarchy rather than two competing tops.
+  //
+  // It takes the same shape as every other item here — the finding, then the label for it —
+  // and the label says shot quality, because that is what is being judged.
   //
   // A verdict rather than a figure, because that is the resolution it survives at: the
   // style-adjusted residual splits half-to-half at r≈0.34 (men) / 0.53 (women), which will
@@ -669,7 +799,7 @@ function profileSide(d, tag) {
   return `<div class="pbside ${tag}" data-side="${tag}">
     ${arch ? `<p class="pbstyle">${esc(arch)}</p>` : ""}
     ${hand ? `<p class="pbhand">${esc(hand)}</p>` : ""}
-    ${rallyFig}${figs}${quality}
+    ${quality}${rallyFig}${figs}
   </div>`;
 }
 
@@ -739,19 +869,31 @@ function figureKey(sa, sb, spread) {
     k: "avg_rally_len", fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} shots`,
   };
   const defs = [
-    !has("avg_rally_len") ? "" : `<div><b>Avg rally</b> is how many strokes the average point
-      lasts, counting both players and the serve, over every charted point this player appeared
-      in. It is as much a fact about the tennis they get drawn into as about them, since both
-      players in a point share its length — but it separates the tour sharply anyway, from
-      big servers near three strokes to grinders near seven, and it is the plainest thing on
-      this panel to check against a match you have watched.${band(RALLY)}</div>`,
-    !has("class_rel_z") ? "" : `<div><b>Shot quality</b> A win-probability model evaluates the 
-      position after every stroke, which
-      gives the win probability a player concedes on an average stroke; that figure is then
-      measured against a benchmark fitted to the player's own style fingerprint, so a
-      high-variance stylist is not marked down for the style itself, only for being worse at
-      it. The gap is read as a standard deviation, and past half of one either way it says
-      they beat or fall short of their style. </div>`,
+    // Shot quality leads the key because it now leads the column. The two are ordered
+    // together deliberately: a reader who opens the key is looking for the thing they just
+    // read, and a key in a different order than the figures is a second thing to search.
+    !has("class_rel_z") ? "" : `<div><b>Shot quality</b> A win-probability model evaluates the
+      position after every stroke, which gives the win probability a player concedes on an
+      average stroke; that figure is then measured against a benchmark fitted to the player's
+      own style fingerprint, so a high-variance stylist is not marked down for the style
+      itself, only for being worse at it. The gap is read as a standard deviation, and past
+      half of one either way it says they are ahead of or behind similar players.
+      ${/* The point the three-word verdict cannot make on its own, and the reason it says
+           "similar players" rather than naming a style: the benchmark is a smooth fit across
+           the whole style space, not the average of the archetype a player was sorted into.
+           So it is defined for a player whose archetype the panel withholds ("Between
+           styles") in exactly the way it is for everyone else. Without this the reader is
+           left to reconcile a verdict about similar players with a column that has just
+           said it cannot place this one. */""}
+      "Similar players" means the ones nearest them in that style space, not the ones in the
+      same named archetype — the benchmark is fitted across the whole space, so it exists
+      even for the players this panel declines to give a style name.</div>`,
+    !has("avg_rally_len") ? "" : `<div><b>Shots per point</b> is how many strokes the average
+      point lasts, counting both players and the serve, over every charted point this player
+      appeared in. It is as much a fact about the tennis they get drawn into as about them,
+      since both players in a point share its length — but it separates the tour sharply
+      anyway, from big servers near three strokes to grinders near seven, and it is the
+      plainest thing on this panel to check against a match you have watched.${band(RALLY)}</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from
       tour norms. A model built on the whole tour predicts each next shot from the two before
       it, and variety is how surprised that model is by this player, averaged over their shots
@@ -1112,6 +1254,12 @@ function headHtml(m, t, round) {
 // it is the shortest section in the panel — so it reads as an opening rather than as something
 // to scroll past.
 //
+// The three pattern sections then run in the order a point does: where the serve goes, what the
+// server does with the ball it comes back as ("off the return"), and only then the mid-rally
+// exchange ("court patterns"). Off the return is built out of the service court and the serve's
+// own direction, so it continues the section above it — it used to sit below court patterns,
+// which put a mid-rally ball between the serve and the shot the serve sets up.
+//
 // The title is gated on there being a player under it. With neither side charted the body is
 // the invitation to go and chart one, and "Charted history" over "Neither player has Match
 // Charting history yet" heads a section with the word "history" twice and no history in it.
@@ -1127,12 +1275,12 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
     section("serve direction", `recency weighted measures of first serve direction by court side`, a, b,
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
     none +
-    section("court patterns", `their answer to an incoming ball, × how often the tour
-      plays it from the same spot${COURT_LEGEND}`, a, b,
-      familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("off the return", `what they do with the returns they serve up, by service
       court and return depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2),
       "cards") +
+    section("court patterns", `their answer to an incoming ball, × how often the tour
+      plays it from the same spot${COURT_LEGEND}`, a, b,
+      familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("shot-making triggers", `a lead-up that shifts their aggressive shot
       frequency — and whether it pays${meterLegend("their rate without the cue")}`,
       a, b, ta.main, tb.main, "text") +

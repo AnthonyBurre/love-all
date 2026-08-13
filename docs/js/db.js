@@ -1,11 +1,20 @@
 // DuckDB-WASM data layer — loads the shipped insights.duckdb once and exposes query().
 // The whole site (coverage badges, matchup insights) reads through this.
-import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
+//
+// The library is the site's one cross-origin dependency, and it is fetched on demand rather
+// than at module scope. A static `import` of a CDN URL is part of the module graph: if that
+// fetch fails — offline, blocked, CDN down — every module that transitively imports this one
+// fails to evaluate along with it. app.js imports this file, so a failure there took down the
+// draw as well, and the page sat on "Loading current draws…" with the whole bracket already
+// on disk in ./data/brackets.json, never asked for. Deferred to the first query, the failure
+// is contained to the parts that genuinely need a database: the tier shading and the panel.
+const DUCKDB_ESM = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
 
 let _conn = null;
 let _initing = null;
 
 async function _init() {
+  const duckdb = await import(/* @vite-ignore */ DUCKDB_ESM);
   const bundles = duckdb.getJsDelivrBundles();
   const bundle = await duckdb.selectBundle(bundles);
   // The bundle worker is cross-origin (CDN); wrap it in a same-origin Blob so the
@@ -31,7 +40,12 @@ async function _init() {
 
 export async function initDB() {
   if (_conn) return _conn;
-  if (!_initing) _initing = _init();
+  // The in-flight promise is cached so one page load instantiates one database, and it is
+  // dropped again if that attempt fails. The usual reason it fails is a network that wasn't
+  // there, and a network that wasn't there is often there a minute later — held, a rejected
+  // promise would answer every panel opened for the rest of the session with the failure of
+  // the first one.
+  if (!_initing) _initing = _init().catch((e) => { _initing = null; throw e; });
   return _initing;
 }
 
