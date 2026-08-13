@@ -6,6 +6,14 @@ quality (avg win-prob conceded per stroke); we then compare each player against 
 their own style predicts** instead of against the whole field — so high-variance
 stylists aren't penalized for their style, only for being worse *at* it.
 
+> **Read the validation section of the report first.** The raw metric this is built on
+> is not a quality measure. `avg_wpa_lost` is reliable (split-half ≈0.94) but it is
+> ~0.85 correlated with rally length and ~0.9 predictable from the style fingerprint
+> out-of-fold, which leaves at most 3% (men) / 11% (women) of its spread as reliable
+> signal that isn't style. The correction below is therefore doing nearly all the work,
+> and what survives it is coarse. `run.py` recomputes all of these numbers every run —
+> see "Does it measure quality?" below.
+
 ### The benchmark is a surface, not a class mean
 
 It used to be the mean of the archetype a player was sorted into. That made the metric
@@ -46,10 +54,40 @@ uv run python experiments/class_relative_wpa/run.py    # needs player_style_clus
   for calibrating λ), `style_expected` (the smooth benchmark actually used),
   `class_rel_z` (<0 = better than their style predicts), `rank_overall`,
   `rank_in_archetype`.
-- **`reports/class_relative_wpa.md`** — top class-relative overperformers + best-in-class.
+- **`reports/class_relative_wpa.md`** — the validation section, then top class-relative
+  overperformers + best-in-class.
 
 It re-ranks the style-penalized: e.g. Lendl, Medvedev, Roddick, Davenport, Barty look
-mid-pack on the raw board but top their own archetypes — skill, separated from style.
+mid-pack on the raw board but top their own archetypes.
+
+## Does it measure quality? Mostly not, and the report says so
+
+`run.py` recomputes this every run rather than stating it in prose, because prose numbers
+go stale against a rebuild. Three findings, all in `reports/class_relative_wpa.md`:
+
+**The raw metric is arithmetic on rally length.** WPA telescopes inside a point — the
+strokes sum to (result − pre-serve value) — so the total swing per point is near-fixed
+and dividing by strokes makes `avg_wpa_lost` identically *(concession per point) /
+(strokes per point)*. The second factor runs it: r ≈ −0.85 with `avg_rally_len`. The raw
+ranking is grinders over servebots at both ends, in both tours (Wilander, Simon, Borg,
+Santoro at the top; Karlovic, Opelka, Eubanks at the bottom; Wozniacki and Sorribes Tormo
+over Ostapenko and Parks). Nobody thinks that is a shot-execution ranking.
+
+**Almost none of its spread is skill.** Split-half reliability ≈0.94 (men) / 0.93
+(women) — it measures something stable. But the style fingerprint predicts 0.91 / 0.82 of
+it *out-of-fold*, so the most that could be reliable non-style signal is the difference:
+**0.03 / 0.11**.
+
+**The correction's own signal is coarse.** `class_rel_z` splits half-to-half at ≈0.9,
+which flatters it — λ is deliberately solved to absorb only as much variance as the class
+means did, so much of the style is still inside the residual, stabilising it. Strip all
+the style the fingerprint can reach and the residual splits at **0.43 (men) / 0.60
+(women)**. That is a three-band verdict's worth of signal and not a score's, which is why
+the site prints it as one and stopped printing the 0–100 `accuracy` figure at all.
+
+None of this makes the class-relative comparison wrong — it is the only part of the
+metric with a skill claim in it. It makes the *raw* number unusable on its own, and it
+caps how finely the corrected one can be reported.
 
 *Caveat:* the women's net/slicer archetype has only 4 players. That no longer poisons
 `class_rel_z` — the smooth benchmark never divides by a four-player group's spread — but

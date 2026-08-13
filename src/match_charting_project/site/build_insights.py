@@ -15,7 +15,12 @@ from datetime import date
 import duckdb
 import pandas as pd
 
-from match_charting_project.live.players import coverage, normalize, tourn_key
+from match_charting_project.live.players import (
+    coverage,
+    coverage_by_year,
+    normalize,
+    tourn_key,
+)
 from match_charting_project.paths import DB_PATH, PROJECT_ROOT
 from match_charting_project.winprob_match import current_strength
 
@@ -191,6 +196,8 @@ def build() -> int:
     con = duckdb.connect(str(DB_PATH), read_only=True)
     strength, mu = current_strength(con)
     cov = coverage(con)
+    cov_years = pd.DataFrame(coverage_by_year(con),
+                             columns=["gender", "player", "year", "matches", "points"])
     charted = _charted_matches(con)
     facts = _player_facts(con)
     con.close()
@@ -206,15 +213,26 @@ def build() -> int:
 
     summary = summary.merge(facts, on=["player", "gender"], how="left")
 
+    # The same coverage the summary carries as four numbers, cut by season, for the panel's
+    # charted-history chart. Inner-joined to the summary so the table only holds players the
+    # site can actually open a panel for — the charting corpus reaches a long tail of players
+    # who never appear in a draw, and their year rows would be most of the file.
+    years = cov_years.merge(summary[["gender", "player"]], on=["gender", "player"])
+    years = years.astype({"year": "int32", "matches": "int32", "points": "int32"})
+
     # style_confident travels with the archetype, and the panel is required to respect
     # it: style is a continuum, the clustering's silhouette sits near 0.12, and for a
     # third of entities the nearest two archetypes fit about equally well. Those are the
     # ones whose label flipped wholesale when a fifth of a percent of the corpus moved,
     # so shipping the name without the flag would be shipping the unstable half as
     # though it were the stable half.
+    # avg_rally_len travels with the archetype because it is the same measurement pass:
+    # mean strokes in the points the player appeared in, keyed by the same era entity. It
+    # replaced the shot-quality score in the panel's profile column — see the note on
+    # class_rel_z below for why that score could not carry the weight it was given.
     clusters = _collapse(pd.read_csv(REPORTS / "player_style_clusters.csv")
                          [["player", "gender", "archetype", "style_margin",
-                           "style_confident"]])
+                           "style_confident", "avg_rally_len"]])
     summary = summary.merge(clusters, on=["player", "gender"], how="left")
 
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
@@ -232,6 +250,19 @@ def build() -> int:
     # does not ship it, since the two would describe one shot two ways on one page.
     patterns = _patterns()
 
+    # Class-relative shot quality. ``class_rel_z`` is the only part of this the panel shows,
+    # as a three-band verdict. The 0-100 ``accuracy`` score it is the residual of used to be
+    # the profile column's headline figure, and is no longer displayed anywhere: WPA
+    # telescopes within a point, so avg_wpa_lost is identically (win probability conceded per
+    # point) / (strokes per point), and the second factor dominates. Measured over the built
+    # table: it correlates -0.84 (men) / -0.76 (women) with rally length, the style
+    # fingerprint predicts 91% (men) / 85% (women) of it out-of-fold, and against a split-half
+    # reliability of 0.93 that leaves at most 2% / 8% of its spread as reliable non-style
+    # signal. It ranked Santoro and Wilander over Laver and Karlovic, which is a rally-length
+    # ranking wearing a quality label.
+    #
+    # Both columns still ship. ``accuracy`` is what ``class_rel_z`` is computed from, so
+    # dropping it here would leave the surviving verdict with no stated origin.
     crw = _collapse(pd.read_csv(REPORTS / "class_relative_wpa.csv")
                     [["player", "gender", "class_rel_z", "accuracy", "avg_wpa_lost"]])
     summary = summary.merge(crw, on=["player", "gender"], how="left")
@@ -285,7 +316,7 @@ def build() -> int:
     OUT.unlink(missing_ok=True)     # fresh file: dropped tables must not ship forever
     out = duckdb.connect(str(OUT))
     tables = [("player_summary", summary), ("player_triggers", triggers),
-              ("player_patterns", patterns), ("meta", meta),
+              ("player_patterns", patterns), ("player_years", years), ("meta", meta),
               ("charted_matches", charted)]
     if serve is not None:
         tables.append(("player_serve", serve))

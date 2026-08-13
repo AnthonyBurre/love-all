@@ -6,7 +6,11 @@ import { openMatchup, closeMatchup } from "./matchup.js";
 import { query } from "./db.js";
 
 let data = null;
-const cov = {};                 // "G|player" -> charted match count
+// "G|player" -> charted match count, or null while that is genuinely unknown — which is every
+// load until the insights database answers, and the whole of one where it never does. An empty
+// object would have been a table saying every player is uncharted; see matchTier in bracket.js.
+let cov = null;
+let covState = "loading";       // "loading" | "ready" | "down"
 // view: null = auto — full draw early in an event, by-quarter from the round of 16 on.
 // section: which slice of the draw is unfolded below the quarter view's chip row. How many
 // there are depends on the draw — eight sixteenths on a slam, four quarters on a 32 — so it
@@ -32,9 +36,9 @@ const glabel = (t) => (t.completed ? `${ename(t)} ${t.season}` : ename(t));
 // Championships" is Queen's, on grass) and often has no city in it at all. Slams are
 // matched on name first — their city is the one that would mislead ("London", "Paris").
 const CLAY = ["madrid", "rome", "monte", "hamburg", "charleston", "barcelona", "munich",
-              "rio de janeiro", "stuttgart", "strasbourg"];
+  "rio de janeiro", "stuttgart", "strasbourg"];
 const GRASS = ["london", "halle", "eastbourne", "bad homburg", "berlin",
-               "'s-hertogenbosch"];
+  "'s-hertogenbosch"];
 const AUS = ["melbourne", "brisbane", "adelaide"];
 function themeFor(t) {
   const name = (t.name || "").toLowerCase();
@@ -237,15 +241,32 @@ function billing(t) {
 
 // A finished draw with charting reads as a plain charted / not-charted split; everything
 // else keeps the four-step coverage scale.
+//
+// Read left to right the chips climb: uncharted, thin, decent, deep. A key is a scale, and a
+// scale that starts at its top end asks the reader to run it backwards against every other
+// left-to-right ramp on the page — the tier colours themselves, the slices view's notch count,
+// and the ordering the CSS ramp is written in.
 function updateLegend(t) {
+  // Per-match charting rides in the draw feed, so this pair is known as soon as the page has
+  // a draw to show — it never waits on the database and never has to say it is missing.
   const perMatch = t.rounds.some((r) => r.matches.some((m) => m.charted != null));
-  $("legend").innerHTML = perMatch
-    ? `<span class="chip t-rich">charted</span>
-       <span class="chip t-none">not charted yet</span>`
-    : `<span class="chip t-rich">deep charting</span>
-       <span class="chip t-some">decent</span>
-       <span class="chip t-thin">thin</span>
-       <span class="chip t-none">uncharted</span>`;
+  if (perMatch) {
+    $("legend").innerHTML = `<span class="chip t-none">not charted yet</span>
+       <span class="chip t-rich">charted</span>`;
+    return;
+  }
+  // The four-step scale is read out of the insights database, which lands after the first
+  // paint and sometimes not at all. Until it does, no card is wearing a tier, and four chips
+  // over an unshaded draw are a key to a scale nothing on screen is using.
+  if (!cov) {
+    $("legend").innerHTML = `<span class="legendwait">${covState === "down"
+      ? "charting depth unavailable" : "charting depth loading…"}</span>`;
+    return;
+  }
+  $("legend").innerHTML = `<span class="chip t-none">uncharted</span>
+     <span class="chip t-thin">thin</span>
+     <span class="chip t-some">decent</span>
+     <span class="chip t-rich">deep</span>`;
 }
 
 function render() {
@@ -296,14 +317,23 @@ function render() {
   }
 }
 
+// The draw does not wait on this. It is rendered from ./data/brackets.json, which is
+// same-origin and already on disk; the depth shading is the one thing on the page that needs
+// the database, so it arrives when it arrives and the page says which of the two states it is
+// in meanwhile. A failure is re-rendered rather than only logged: the legend has to stop
+// promising a scale the cards are not wearing.
 async function loadCoverage() {
   try {
     const rows = await query("SELECT gender, player, matches_charted FROM player_summary");
-    for (const r of rows) cov[r.gender + "|" + r.player] = Number(r.matches_charted);
-    render();                   // re-render to shade the match tiers
+    const next = {};
+    for (const r of rows) next[r.gender + "|" + r.player] = Number(r.matches_charted);
+    cov = next;
+    covState = "ready";
   } catch (e) {
+    covState = "down";
     console.warn("insights db unavailable:", e);
   }
+  render();
 }
 
 function wireDrawer() {

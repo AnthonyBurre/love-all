@@ -38,7 +38,12 @@ reusable infrastructure now, not experiment-local:
   Tests in `tests/test_winprob.py`.
 - `match_charting_project.shots.quality` — WPA → annotation marks, annotated-point
   renderer, and per-player decision quality (`avg_wpa_lost`, an `accuracy` 0–100
-  rescale, forced/unforced split).
+  rescale, forced/unforced split). The port works; the *leaderboard* it produces does
+  not mean what the chess original means. WPA telescopes within a point, so a per-stroke
+  average is arithmetically (concession per point) / (strokes per point), and rally
+  length ends up running it — see the caveat in that module and the measurements in
+  `../class_relative_wpa`. Treat `avg_wpa_lost` as an input to a style-relative
+  comparison, never as a standalone ranking.
 
 What stays here is the demo driver:
 

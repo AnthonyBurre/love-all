@@ -1,6 +1,44 @@
 # Class-relative shot quality
 
-*Decision quality (avg win-prob conceded per stroke, lower = better) measured with one style-blind eval, then compared **within each style archetype**. `class_rel_z` < 0 means a player concedes less than typical for their style — skill, not style. CSV has every player; below are the highlights.*
+*Decision quality (avg win-prob conceded per stroke, lower = better) measured with one style-blind eval, then compared against what a player's own style predicts. `class_rel_z` < 0 means a player concedes less than their style predicts. Read the validation section first — the raw metric is mostly style, and only the class-relative residual carries any skill claim at all. CSV has every player; below are the highlights.*
+
+## Is `avg_wpa_lost` measuring shot quality?
+
+Mostly not. WPA telescopes inside a point, so the total swing is near-fixed and the per-stroke average is identically *(win probability conceded per point) / (strokes per point)* — the second factor does most of the work.
+
+| | players | reliability | r with rally length | style CV R² | reliable non-style |
+|---|---|---|---|---|---|
+| Men | 241 | 0.94 | -0.87 | 0.91 | **0.03** |
+| Women | 152 | 0.93 | -0.83 | 0.82 | **0.11** |
+
+Reliability is split-half by match hash, Spearman-Brown corrected. Style R² is out-of-fold over the 12 fingerprint features, so it is variance style genuinely predicts rather than variance it can be fitted to. The last column is reliability minus that: the most of the metric's spread that could be skill rather than style or noise.
+
+The residual — the part `class_rel_z` reports — is the only place a skill claim can live, and it is much weaker than the raw metric:
+
+| | `class_rel_z` reliability | against a full style fit |
+|---|---|---|
+| Men | +0.91 | +0.43 |
+| Women | +0.88 | +0.60 |
+
+The two columns differ because λ is solved to absorb only as much variance as the four class means did (see `style_benchmark`), which is a third to a half of the total — so a good deal of style is still sitting inside the published residual and lending it stability that is not skill. The right column removes every bit of style the fingerprint can reach, and is the honest ceiling. Either way it is a verdict's worth of signal, not a score's, which is what the site prints it as.
+
+What the raw metric ranks, most to least (accuracy score, with the average rally length of the points they played):
+
+| Men: top | acc | rally | bottom | acc | rally |
+|---|---|---|---|---|---|
+| Mats Wilander | 72.8 | 6.7 | Christopher Eubanks | 52.6 | 3.5 |
+| Gilles Simon | 70.7 | 6.3 | Ivo Karlovic | 53.8 | 3.1 |
+| Bjorn Borg | 70.7 | 5.9 | Reilly Opelka | 54.8 | 3.5 |
+| Fabrice Santoro | 70.6 | 5.9 | Goran Ivanisevic (1995–2001) | 55.1 | 3.0 |
+
+| Women: top | acc | rally | bottom | acc | rally |
+|---|---|---|---|---|---|
+| Caroline Wozniacki | 73.1 | 5.7 | Alycia Parks | 48.7 | 3.6 |
+| Sara Sorribes Tormo | 72.5 | 7.1 | Jelena Ostapenko | 54.5 | 3.7 |
+| Sara Errani | 71.2 | 5.9 | Dayana Yastremska | 55.4 | 4.4 |
+| Agnieszka Radwanska | 71.1 | 5.5 | Sabine Lisicki | 56.1 | 4.0 |
+
+That is a grinder-to-servebot ordering. It is why the site stopped printing the 0–100 score as a figure and prints rally length plus the three-band class-relative verdict instead.
 
 ## Men
 

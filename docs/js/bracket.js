@@ -13,6 +13,13 @@ const el = (tag, cls, text) => {
 // Completed draws that have any charting shade per *match* instead — charted or not —
 // which is the signal that matters once the result is in (`m.charted` is a bool then,
 // null otherwise). A finished draw with nothing charted yet falls back to the coverage view.
+//
+// `cov` is null until the insights database answers, and stays null if it never does. Absent
+// coverage is not zero coverage: with the table treated as empty, every named player scored 0
+// and the whole draw painted itself "uncharted", which is a claim about the data made out of
+// not having the data. It flashed on every load and stuck permanently on a load where the
+// database didn't arrive at all — see db.js on why that used to take the page with it. The per-
+// match branch above is unaffected: `m.charted` rides in the draw feed, not in the database.
 export function matchTier(m, gender, cov) {
   if (m.bye) return { cls: "t-tbd", note: "bye — through to the next round unplayed" };
   if (m.placeholder) return { cls: "t-tbd", note: "path to this match — not decided yet" };
@@ -21,6 +28,7 @@ export function matchTier(m, gender, cov) {
       ? { cls: "t-rich", note: "charted — open to view the full chart" }
       : { cls: "t-none", note: "not charted yet — open to help chart it" };
   }
+  if (!cov) return { cls: "t-tbd", note: "" };
   const n = (s) => (s.matched ? cov[gender + "|" + s.matched] || 0 : s.name && s.name !== "TBD" ? 0 : null);
   const [na, nb] = [n(m.a), n(m.b)];
   if (na == null || nb == null) return { cls: "t-tbd", note: "opponent not decided yet" };
@@ -424,17 +432,50 @@ export function renderQuarters(t, root, cov, onClick, section) {
     if (hot) p.setAttribute("class", "hot");
     svg.appendChild(p);
   };
+  // Below the chip row, the hot line used to stop dead. It traced the picked section down from
+  // the final, fanned out of the chip, and then everything under it was drawn the same weight —
+  // so the half of the picture that actually answers "how did these two get here" was the half
+  // with no thread through it.
+  //
+  // It runs on once the section's own match has two named players: from there each of them is
+  // followed back down round by round, and the wire into the match they actually played is hot.
+  // Two threads, not one — that is what a match is — and they never cross, since the only place
+  // the two subtrees meet is the match at the top they are being traced from.
+  //
+  // Followed by name rather than by slot arithmetic. Position gives the *pair* of matches that
+  // feed a slot, not which of the pair a given player came through; that is a fact about who won,
+  // and the only place it is written down is the names on the cards.
+  //
+  // Both players named is the gate, not both played. A semifinal with two names in it has two
+  // players who each won their way there, whether or not it has been played — and while either
+  // side is still TBD there is no second thread to draw and the fan-out already says which
+  // section is open.
+  const chipMatch = rows[head - 1].matches[selected];
+  const tracked = below.length && chipMatch &&
+                  isEntrant(chipMatch.a) && isEntrant(chipMatch.b)
+    ? new Set([chipMatch.a.name, chipMatch.b.name]) : null;
+  // Which matches of each row below the chips hold one of the two. Null for the rows above,
+  // which have their own rule. A name that stops appearing — an incompletely filled draw —
+  // simply ends its thread there rather than guessing the rest of it.
+  const threaded = rows.map((row, i) => (!tracked || i < head ? null : new Set(
+    row.matches.flatMap((m, j) =>
+      (tracked.has(m.a.name) || tracked.has(m.b.name) ? [j] : [])))));
+
   rows.forEach((row, i) => {
     const next = rows[i + 1];
     if (!next) return;
     if (next.matches.length === row.matches.length * 2) {
       // A tree step: the next row's matches 2j and 2j+1 feed this row's match j.
-      // Above the chips, the picked section's path up to the final is hot.
       row.matches.forEach((_, j) => {
+        // Above the chips, the picked section's path up to the final is hot.
+        const toSection = below.length > 0 && i < head - 1;
+        const pickedFeeder = Math.floor((selected * next.matches.length) / sections);
         for (const k of [2 * j, 2 * j + 1]) {
-          const hot = below.length > 0 && i < head - 1 &&
-                      k === Math.floor((selected * next.matches.length) / sections);
-          wire(cards[i][j], cards[i + 1][k], hot);
+          // Below them, a player's own path: this match holds one of the two, and so does the
+          // feeder — which is only true of the feeder they actually came through.
+          const onThread = !!(threaded[i] && threaded[i + 1] &&
+                              threaded[i].has(j) && threaded[i + 1].has(k));
+          wire(cards[i][j], cards[i + 1][k], (toSection && k === pickedFeeder) || onThread);
         }
       });
     } else if (row.pick) {
