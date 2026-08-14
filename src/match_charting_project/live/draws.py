@@ -12,6 +12,7 @@ where they're not — with ``feeds``/``slot``/``seed`` filled in structurally, s
 the site can draw the complete path to the final from day one.
 """
 
+from collections import Counter
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 
@@ -32,6 +33,7 @@ class Placeholder:
     b: Side
     state: str = "pre"
     detail: str = ""
+    date: str = ""       # the day its round is down for — see ``_round_day``
     feeds: "str | None" = None
     slot: int = 0
     placeholder: bool = field(default=True)
@@ -65,6 +67,19 @@ def _bye_slots(fixture) -> dict:
         if len(named) == 1:
             out[entry["slot"]] = named[0]
     return out
+
+
+def _round_day(matches: list) -> str:
+    """The day a round is down for, read off its live matches.
+
+    A slot with no match mapped to it still has a date to give: whichever day the round it
+    belongs to is being played. ESPN stamps every unscheduled match of a round with the same
+    day marker, so the modal value *is* that day; a round split across two sessions takes the
+    busier one, which is the most an empty slot can honestly claim. "" when the feed has
+    dated nothing in the round.
+    """
+    stamps = [m.date for m in matches if getattr(m, "date", "")]
+    return Counter(stamps).most_common(1)[0][0] if stamps else ""
 
 
 def _lookup(norm: str, table: dict, cutoff: float = 0.85):
@@ -136,7 +151,11 @@ def slot_rounds(tournament, fixture) -> "list | None":
                                 round_label=label[rank],
                                 a=Side(through or "TBD", None, False, []),
                                 b=Side(BYE if through else "TBD", None, False, []),
-                                bye=bool(through))
+                                bye=bool(through),
+                                # A bye is never played, so it takes no date; an undecided
+                                # slot takes its round's, which is the whole reason the far
+                                # half of a scaffolded draw used to read as dateless.
+                                date="" if through else _round_day(by_rank[rank]))
             m.slot = slot
             m.feeds = f"slot-{round_no + 1}-{(slot - 1) // 2 + 1}" if round_no < n_rounds else None
             for s in (m.a, m.b):

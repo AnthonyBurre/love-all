@@ -3,11 +3,12 @@
 from match_charting_project.live import draws, espn
 
 
-def _m(id, rank, label, a, b, winner=None):
+def _m(id, rank, label, a, b, winner=None, date=""):
     def side(n):
         return espn.Side(name=n, country=None, winner=(n == winner), sets=[])
     return espn.Match(id=id, round_rank=rank, round_label=label,
-                      state="post" if winner else "pre", detail="", a=side(a), b=side(b))
+                      state="post" if winner else "pre", detail="", a=side(a), b=side(b),
+                      date=date)
 
 
 def _tour(matches):
@@ -129,6 +130,49 @@ def test_byes_only_apply_to_round_one():
     for m in out[1]["matches"]:
         assert not getattr(m, "bye", False)
         assert (m.a.name, m.b.name) == ("TBD", "TBD")
+
+
+def test_placeholders_take_the_day_their_round_is_played():
+    # ESPN dates the rounds it has not scheduled yet, but only on the matches themselves — a
+    # slot with nothing mapped to it has no date of its own, which is what left the far half
+    # of a scaffolded draw undated. It takes its round's day instead.
+    t = _tour([
+        _m("f", 100, "Final", "TBD", "TBD", date="2026-08-23T04:00Z"),
+        _m("s1", 99, "Semifinal", "TBD", "TBD", date="2026-08-22T04:00Z"),
+        _m("s2", 99, "Semifinal", "TBD", "TBD", date="2026-08-22T04:00Z"),
+        _m("r1", 1, "Round 1", "Ann Alpha", "Bea Beta", date="2026-08-13T15:10Z"),
+        _m("r2", 1, "Round 1", "Cara Gamma", "Dana Delta", date="2026-08-14T04:00Z"),
+        _m("r3", 1, "Round 1", "Eve Epsilon", "Faye Zeta", date="2026-08-14T04:00Z"),
+        _m("r4", 1, "Round 1", "Gail Eta", "Hope Theta", date="2026-08-14T04:00Z"),
+    ])
+    out = draws.slot_rounds(t, FX)
+
+    sf = out[1]["matches"]
+    # Two undecided semifinals and two empty slots: neither is safely adoptable, so both
+    # become placeholders — and both still know when they are due.
+    assert all(getattr(m, "placeholder", False) for m in sf)
+    assert [m.date for m in sf] == ["2026-08-22T04:00Z"] * 2
+    # The lone final is adopted, so it keeps its own date rather than a round-level one.
+    assert out[2]["matches"][0].id == "f"
+
+    # A round split across two days takes the busier one — the most an empty slot can claim.
+    assert draws._round_day(t.matches[3:]) == "2026-08-14T04:00Z"
+    assert draws._round_day([_m("x", 1, "Round 1", "A", "B")]) == ""
+
+
+def test_byes_take_no_date():
+    # A bye is never played, so dating it would put a day on a match that does not exist.
+    t = _tour([
+        _m("f", 100, "Final", "TBD", "TBD", date="2026-08-23T04:00Z"),
+        _m("s1", 99, "Semifinal", "Ann Alpha", "TBD", date="2026-08-22T04:00Z"),
+        _m("s2", 99, "Semifinal", "TBD", "Gail Eta", date="2026-08-22T04:00Z"),
+        _m("r2", 1, "Round 1", "Cara Gamma", "Dana Delta", date="2026-08-14T04:00Z"),
+        _m("r3", 1, "Round 1", "Eve Epsilon", "Faye Zeta", date="2026-08-14T04:00Z"),
+    ])
+    r1 = draws.slot_rounds(t, FX_BYES)[0]["matches"]
+    assert r1[0].bye and r1[0].date == ""
+    assert r1[3].bye and r1[3].date == ""
+    assert r1[1].date == "2026-08-14T04:00Z"          # the played match keeps its own
 
 
 def test_bye_slots_reads_only_one_sided_entries():

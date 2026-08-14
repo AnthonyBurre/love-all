@@ -2,6 +2,8 @@
 // between their feeders, SVG wires), a phone round-list, and the by-quarter view
 // (one top-down grid of the draw, sliced by selector chips).
 
+import { dayShort } from "./schedule.js";
+
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -132,8 +134,14 @@ function matchCard(m, t, cov, onClick, wide) {
   }
   if (m.state === "in") {
     card.append(el("div", "detail live", "● " + (m.detail || "Live")));
-  } else if (m.state === "pre" && m.detail && m.detail !== "TBD") {
-    card.append(el("div", "detail", m.detail));
+  } else if (m.state === "pre") {
+    // ESPN only writes a start time into `detail` once a match has a court and a session;
+    // until then it reads "TBD" while the date beside it already knows the day. Preferring
+    // the detail keeps the exact time where there is one, and falling back to the day is
+    // the difference between a draw that is dated to the final and one that goes blank
+    // after the round currently being played.
+    const when = m.detail && m.detail !== "TBD" ? m.detail : dayShort(m.date);
+    if (when) card.append(el("div", "detail", when));
   }
   // A tile that opens the panel is a button, whatever element it is made of: reachable by
   // Tab, activated by Enter or Space. It is also where focus goes back to when the panel
