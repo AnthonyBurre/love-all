@@ -3,6 +3,7 @@
 import { query, leagueMu, serveGates, tourSpread } from "./db.js";
 import { preMatchWP } from "./winprob.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
+import { dayLong } from "./schedule.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1172,16 +1173,20 @@ function eyebrow(t, round) {
   return [esc(event), round ? esc(round.label) : ""].filter(Boolean).join(" · ");
 }
 
-// When. A match that hasn't been played carries its date and start time inside ESPN's
-// detail string already, so printing the long date beside it just says the day twice —
-// which is what the old single line did. A finished one says only the day: the state it
+// When. A scheduled match carries its date and start time inside ESPN's detail string once
+// it has a court and a session, so printing the long date beside that would just say the day
+// twice. Before that the detail is the literal word "TBD" — which used to win here, because
+// it is a non-empty string, and printed itself over a date the feed already knew — so an
+// unscheduled match falls back to its day. A finished one says only the day: the state it
 // is in is already on the scoreboard, in the caret against the winner's name, and a word
 // for it beside the date was the same fact a second time in weaker type. ESPN's detail
 // here is only ever "Final" or "Retired", so nothing else is being dropped with it.
 function whenLine(m) {
   if (m.state === "in") return `<span class="live">● ${esc(m.detail || "Live")}</span>`;
+  if (m.state !== "post") {
+    return esc(m.detail && m.detail !== "TBD" ? m.detail : dayLong(m.date));
+  }
   const day = matchDate(m.date);
-  if (m.state !== "post") return esc(m.detail || day || "");
   return day ? esc(day) : "";
 }
 
@@ -1275,7 +1280,7 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
     section("serve direction", `recency weighted measures of first serve direction by court side`, a, b,
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
     none +
-    section("off the return", `what they do with the returns they serve up, by service
+    section("serve + 1", `what they do with the returns they serve up, by service
       court and return depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2),
       "cards") +
     section("court patterns", `their answer to an incoming ball, × how often the tour

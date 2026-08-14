@@ -1,0 +1,82 @@
+name: Backfill past draws
+
+# Manual, run-when-you-need-it: pull a finished slam out of ESPN's *dated* feed and add it
+# to the archive the site reads. This is the only way to reach an event that finished before
+# the site was watching — `live.yml` catches every event from its final onwards, and the
+# one-time seed in that workflow only ever takes a single slam (the most recent finished one)
+# and then never runs again, which is why the 2026 Australian Open and Roland Garros are
+# missing while Wimbledon is there.
+#
+# Cost: harvesting walks a generous per-slam window a day at a time, over both tours — about
+# 70 requests for the Australian Open, 50 for Roland Garros. That is fine for a job run by
+# hand and is why it is not on a schedule.
+#
+# It does not deploy. The hourly `live.yml` reads this same Release asset, so a backfill
+# reaches the site on the next run — within the hour, without two workflows contending for
+# the Pages deployment.
+on:
+  workflow_dispatch:
+    inputs:
+      events:
+        description: 'Comma-separated "event:year" pairs (the four slams are supported)'
+        required: true
+        default: "australian open:2026,roland garros:2026"
+
+permissions:
+  contents: write             # the archive lives on the brackets-history Release
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The version we ship on lives in .python-version
+      - id: py
+        run: echo "version=$(cat .python-version)" >> "$GITHUB_OUTPUT"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ steps.py.outputs.version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Start from whatever the archive currently holds, so harvest can see what is already
+      # there and skip it rather than re-walking the feed for a draw we have.
+      - name: Fetch the current archive (from the Release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          gh release download brackets-history --pattern history.json --dir data --clobber \
+            || echo "no history release yet — starting from an empty archive"
+
+      - name: Harvest each requested draw
+        run: |
+          IFS=',' read -ra PAIRS <<< "${{ inputs.events }}"
+          for pair in "${PAIRS[@]}"; do
+            event="${pair%:*}"; year="${pair##*:}"
+            event="$(echo "$event" | xargs)"; year="$(echo "$year" | xargs)"
+            echo "::group::$event $year"
+            uv run match-charting-project history harvest --event "$event" --year "$year"
+            echo "::endgroup::"
+          done
+
+      # The hourly deploy rewrites this same asset, and a harvest takes minutes. Re-reading
+      # the Release now and merging into it means an upload that landed while we worked is
+      # kept rather than overwritten.
+      - name: Merge into the archive as it stands now
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv data/history.json /tmp/backfilled.json
+          gh release download brackets-history --pattern history.json --dir data --clobber \
+            || echo "no history release — the harvest stands alone"
+          uv run match-charting-project history merge --from /tmp/backfilled.json
+
+      - name: Persist the archive (to the Release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create brackets-history --title "Draw history" \
+            --notes "Completed draws, accumulated as events finish" 2>/dev/null || true
+          gh release upload brackets-history data/history.json --clobber

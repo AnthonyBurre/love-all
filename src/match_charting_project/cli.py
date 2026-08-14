@@ -143,6 +143,35 @@ def _history_harvest(event: str, year: int) -> None:
     print(f"  archive now holds {len(store)} draws -> {history.HISTORY}")
 
 
+def _history_merge(path: str) -> None:
+    """Fold another archive file into data/history.json, union by (id, gender).
+
+    The backfill job harvests into a copy and merges it back at the end, because the hourly
+    deploy is reading and rewriting the same stored archive the whole time: harvesting
+    straight into it means a deploy that starts mid-harvest uploads the pre-harvest copy over
+    the top. Merging last narrows that window from minutes to seconds, and re-running is
+    harmless either way — an entry already held is left exactly as it is.
+    """
+    import json
+    from pathlib import Path
+
+    from match_charting_project.live import history
+
+    incoming = json.loads(Path(path).read_text())
+    store = history.load()
+    have = {(e["id"], e["gender"]) for e in store}
+    added = [e for e in incoming if (e["id"], e["gender"]) not in have]
+    store.extend(added)
+    history.prune(store)
+    history.save(store)
+    kept = {(e["id"], e["gender"]) for e in store}
+    for e in added:
+        note = "" if (e["id"], e["gender"]) in kept else " (pruned by retention)"
+        print(f"  merged {e['name']} {e.get('season')} {e['gender']}{note}")
+    print(f"  {len(added)} of {len(incoming)} incoming were new; "
+          f"archive now holds {len(store)} draws -> {history.HISTORY}")
+
+
 def _ingest(what: str, force: bool, provenance: bool) -> None:
     from match_charting_project.ingest import build as build_mod
     from match_charting_project.ingest import download as download_mod
@@ -267,6 +296,9 @@ def main(argv: list[str] | None = None) -> None:
     hv.add_argument("--event", required=True, help='slam name, e.g. "Wimbledon"')
     hv.add_argument("--year", type=int, required=True)
     hsub.add_parser("seed", help="one-time: archive the most recent finished slam (auto-picked)")
+    hm = hsub.add_parser("merge", help="fold another archive file into data/history.json")
+    hm.add_argument("--from", dest="from_path", required=True, metavar="FILE",
+                    help="archive file to merge in (history.json shape)")
     fd = sub.add_parser("feeds", help="refresh the Wikipedia-sourced feeds (calendar, draws)")
     fdsub = fd.add_subparsers(dest="feeds_cmd", required=True)
     fc = fdsub.add_parser("calendar", help="re-read both tours' season pages (tier + surface)")
@@ -302,6 +334,8 @@ def main(argv: list[str] | None = None) -> None:
             _history_harvest(args.event, args.year)
         elif args.history_cmd == "seed":
             _history_seed()
+        elif args.history_cmd == "merge":
+            _history_merge(args.from_path)
     elif args.cmd == "feeds":
         if args.feeds_cmd == "calendar":
             _feeds_calendar(args.season, args.if_stale)
