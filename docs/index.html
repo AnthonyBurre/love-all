@@ -50,7 +50,17 @@
   </main>
 
   <aside id="matchup" class="matchup" hidden role="dialog" aria-modal="true" tabindex="-1">
-    <button class="close" id="matchupClose" aria-label="Close">×</button>
+    <!-- The X is drawn, not typed. Every other control on the site wears an SVG glyph built
+         from rects and 45° cuts (the view toggles, the quarter selector, the picker's
+         caret); a font's × among them is a different hand, and it arrives at whatever
+         weight the typeface feels like rather than the one the mark wants. Two bars on the
+         same 45° the chrome is cut on. -->
+    <button class="close" id="matchupClose" aria-label="Close" title="Close">
+      <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
+        <rect x="-1.2" y="4.95" width="14.4" height="2.1" transform="rotate(45 6 6)"/>
+        <rect x="-1.2" y="4.95" width="14.4" height="2.1" transform="rotate(-45 6 6)"/>
+      </svg>
+    </button>
     <header class="mtop" id="matchupHead"></header>
     <div class="mbody" id="matchupBody"></div>
   </aside>

@@ -133,7 +133,8 @@ function matchCard(m, t, cov, onClick, wide) {
     card.append(sideRow(m.a, m.b), sideRow(m.b, m.a));
   }
   if (m.state === "in") {
-    card.append(el("div", "detail live", "● " + (m.detail || "Live")));
+    // the dot in front is drawn in CSS, and square — see .detail.live::before
+    card.append(el("div", "detail live", m.detail || "Live"));
   } else if (m.state === "pre") {
     // ESPN only writes a start time into `detail` once a match has a court and a session;
     // until then it reads "TBD" while the date beside it already knows the day. Preferring

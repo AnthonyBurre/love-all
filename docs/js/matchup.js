@@ -1103,15 +1103,25 @@ function notationHelp() {
 // yet, since that's exactly when Match Charting Project volunteers sign up to chart one.
 // Only a slot still waiting on an opponent has nothing to invite: there's no pairing yet
 // for anyone to sign up for.
+//
+// The mark on the end is drawn for the same reason the close button's is: this is a
+// control, and the site's controls carry SVG glyphs, not characters. A font's → is also
+// the wrong weight beside 700 uppercase at 9.5px — it is drawn for running text and comes
+// out a hairline. fill: currentColor, so the state that colours the label colours it too.
+// The ✓ that used to lead the charted label is gone: no other mark on the site is a
+// checkmark, and the two states already read apart on their words and their colour.
+const GO_ICON = `<svg class="gly" viewBox="0 0 11 8" width="11" height="8" aria-hidden="true">
+  <rect x="0" y="2.9" width="7.4" height="2.2"/><path d="M6.4 0.4 11 4 6.4 7.6z"/></svg>`;
+
 function chartButton(m) {
   if (m.a.name === "TBD" || m.b.name === "TBD") return "";
   if (m.chart_id) {
     const url = `https://www.tennisabstract.com/charting/${encodeURIComponent(m.chart_id)}.html`;
     return `<a class="mchartbtn charted" href="${url}" target="_blank" rel="noopener">
-      ✓ View the chart →</a>`;
+      View the chart${GO_ICON}</a>`;
   }
   return `<a class="mchartbtn uncharted" href="${CHART_GUIDE}" target="_blank" rel="noopener">
-    Chart this match →</a>`;
+    Chart this match${GO_ICON}</a>`;
 }
 
 // The scoreline that sits between the two names, the higher of each set bolded — so the
@@ -1181,10 +1191,14 @@ function eyebrow(t, round) {
 // is in is already on the scoreboard, in the caret against the winner's name, and a word
 // for it beside the date was the same fact a second time in weaker type. ESPN's detail
 // here is only ever "Final" or "Retired", so nothing else is being dropped with it.
+// The live dot is drawn in CSS now rather than typed as ●, and it is a square: nothing on
+// this site is round. ESPN's own hyphen between the day and the time becomes the middot the
+// rest of the page separates with, so the header's two chrome lines punctuate alike.
 function whenLine(m) {
-  if (m.state === "in") return `<span class="live">● ${esc(m.detail || "Live")}</span>`;
+  if (m.state === "in") return `<span class="live">${esc(m.detail || "Live")}</span>`;
   if (m.state !== "post") {
-    return esc(m.detail && m.detail !== "TBD" ? m.detail : dayLong(m.date));
+    const d = m.detail && m.detail !== "TBD" ? m.detail.replace(/ - /g, " · ") : dayLong(m.date);
+    return esc(d);
   }
   const day = matchDate(m.date);
   return day ? esc(day) : "";

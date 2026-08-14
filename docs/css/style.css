@@ -396,13 +396,21 @@ a { color: var(--acc-d); }
 
 .match .detail { margin-top: 4px; font-size: 11px; color: var(--muted); }
 .match .detail.live { color: var(--warn); font-weight: 700; }
+/* The live mark, on a draw card and in the panel's header alike: a square, because nothing
+   on this site is round — the same reason the close button's chip isn't a circle. Drawn
+   here rather than typed as a ● in front of the text, which arrived at whatever size and
+   weight the typeface felt like and was a different one in each of the two places. */
+.match .detail.live::before, .mstate .live::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px;
+  background: currentColor; }
 
 /* matchup panel: a centered dialog over a blurred scrim (bottom sheet on phones).
    The panel opts out of the tournament palette the rest of the site wears. Everything
    inside it is keyed to the two players, and a header in a third colour — a blue one, on
    the hard-court themes — competed with that key instead of framing it. So the header
    band is neutral, and the only colours in it are the players' own. */
-.matchup { --hd-bg: #f5f7f8; --hd-ink: #1b2226; --hd-mut: #6d777f; --hd-line: #dde3e7; }
+.matchup { --hd-bg: #f5f7f8; --hd-ink: #1b2226; --hd-mut: #6d777f; --hd-line: #dde3e7;
+  --pad-l: 20px; --pad-r: 20px; }
 .scrim { position: fixed; inset: 0; background: rgba(12,18,15,.45); backdrop-filter: blur(2.5px); z-index: 20; }
 .matchup { position: fixed; z-index: 21; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: min(880px, 94vw); max-height: min(88vh, 860px);
@@ -415,20 +423,50 @@ a { color: var(--acc-d); }
 /* A full 44px target — this is the one control on the panel, and on a phone it sits in the
    corner a thumb reaches worst — around a mark much smaller than that. The hit area is for
    the thumb; the glyph only has to be found, and at 26px it was the largest thing in a
-   corner whose job is to stay out of the way. The shape that comes up under it on hover
-   is drawn at the size the mark reads, not the size of the box — and it takes the same
-   cut corners as the rest of the chrome, since a circle here was the last round thing
-   left in the panel. */
-.matchup { --close-size: 44px; --close-inset: 6px; }
-.matchup .close { position: absolute; top: 4px; right: var(--close-inset); z-index: 3;
+   corner whose job is to stay out of the way.
+   The chip under it is now there at rest, not only under the pointer. Every control on the
+   page behind the panel — the quarter selector, the view toggles, the tournament picker —
+   is a hairline chip of card over its ground, and this one was a bare character floating in
+   a corner that grew a shape when touched: the one control on the panel, and the only one
+   on the site that didn't look like one. Same 8px cut as the rest, since a circle here was
+   the last round thing left in the panel.
+   --close-chip is the visible box; --close-size stays the touch target, and --close-lane
+   still measures off that, because what a name has to keep clear of is the thing you can
+   press, not the part of it that is painted.
+   Sized as a peer of the corner chips opposite it (24 against their ~20) rather than as
+   the biggest thing in the band, and inset so that the chip's own right edge lands on
+   --pad-l — the same edge the event chip starts on and the chart button ends on, so the
+   band's three corners line up on one pair of margins instead of three. The touch box is
+   what carries the inset, so the number here is the visible edge less the transparent
+   margin around it, and neither the target nor the lane changes when the chip is resized. */
+.matchup { --close-size: 44px; --close-chip: 24px;
+  --close-inset: calc(var(--pad-l) - (var(--close-size) - var(--close-chip)) / 2); }
+/* top is set so the *chip* centres on the band's first row — the event and date chips
+   expanded, the two names once the band condenses, since that is the row the corner
+   collapses into. Left where it was, a chip that used to be an invisible character hung
+   below the shortened names and into the split rule closing the band. */
+.matchup .close { position: absolute; top: 2px; right: var(--close-inset); z-index: 3;
   border: 0; background: none;
   width: var(--close-size); height: var(--close-size);
   display: flex; align-items: center; justify-content: center;
-  padding: 0; font-size: 19px; line-height: 1; cursor: pointer; color: var(--hd-mut); }
-.matchup .close::before { content: ""; position: absolute; width: 30px; height: 30px;
-  clip-path: var(--chip-clip); transition: background .12s ease; }
+  padding: 0; line-height: 1; cursor: pointer; color: var(--hd-mut);
+  transition: top .18s ease; }
+/* Negative, because the 44px touch box is much taller than the row it is centring on; the
+   panel clips the few pixels that overhang, and the part that is painted is well inside. */
+.matchup.cond .close { top: -4px; }
+.matchup .close::before { content: ""; position: absolute;
+  width: var(--close-chip); height: var(--close-chip);
+  background: var(--card); border: 1px solid var(--hd-line); clip-path: var(--chip-clip);
+  transition: background .12s ease, border-color .12s ease; }
+/* the ::before is positioned and the glyph isn't, so without this the chip paints over it */
+.matchup .close svg { position: relative; display: block; fill: currentColor; }
 .matchup .close:hover { color: var(--hd-ink); }
-.matchup .close:hover::before { background: color-mix(in srgb, var(--hd-mut) 15%, transparent); }
+.matchup .close:hover::before { background: color-mix(in srgb, var(--hd-mut) 9%, var(--card));
+  border-color: color-mix(in srgb, var(--hd-mut) 45%, var(--hd-line)); }
+/* The panel traps Tab, so a keyboard arrives here with nothing to show for it. Rectangular
+   against a cut chip, like every other outline on the site — an outline follows the border
+   box, not the clip. */
+.matchup .close:focus-visible { outline: 2px solid var(--hd-ink); outline-offset: -8px; }
 
 /* scoreboard header (non-scrolling), read top-down: event/draw/round, then the two
    players either side of the scoreline, then when. It never scrolls away, so it is also
@@ -445,9 +483,12 @@ a { color: var(--acc-d); }
    the condensed name, 34px of padding on the phone — which is three chances to move the
    button and leave one of them behind. */
 /* --pad-l is a variable and not a literal for the chart button's sake: the button hangs
-   off the right edge, and the inset it has to match is this one, on the other side. */
+   off the right edge, and the inset it has to match is this one, on the other side.
+   Declared on the panel and not on the band, because the close button is a sibling of the
+   band, not a child of it, and it now takes its inset from the same pair — a custom
+   property substitutes against the element it is *declared* on, so one written down here
+   would resolve to nothing up there. */
 .mtop { flex: none; position: relative;
-  --pad-l: 20px; --pad-r: 20px;
   --close-lane: calc(var(--close-inset) + var(--close-size) - var(--pad-l) + 8px);
   padding: 14px var(--pad-r) 15px var(--pad-l);
   color: var(--hd-ink); background: var(--hd-bg); transition: padding .18s ease; }
@@ -456,23 +497,36 @@ a { color: var(--acc-d); }
    page's diagonal; at 3px there was no room to angle it, so it gets 8. */
 .mtop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px;
   background: linear-gradient(96deg, var(--a) 0 50%, var(--b) 50% 100%); }
-/* The upper-right corner of chrome — which event this is, and when it was played — is the
-   only chrome in the panel that belongs to the tournament rather than to the two players,
-   so it's the only thing that wears its colour. Boxed and small, the trace of green or
-   clay-red frames the scoreboard without competing with the violet and red inside it,
-   which still have the width to themselves. The two lines stack rather than bracketing
-   the score from opposite corners, freeing the lower-left for the chart button — the one
-   thing there is to *do* about this match, as opposed to chrome describing it.
-   Pill-shaped, because that is the shape chrome takes everywhere else on the site — the
-   tabs, the round chips, the coverage legend — and these are the panel's only pieces of it. */
+/* The panel's chrome: which event and round this is, when it was played, and the one thing
+   there is to *do* about the match. None of the three is the header — the two names and the
+   score are — so all three are built from the parts the rest of the site builds chrome from,
+   and none of them invents its own.
+   That family, everywhere else on the page (the coverage legend, the quarter selector, the
+   view toggles, the tournament picker): a chip of card lifted off the ground it sits on, one
+   hairline around it, the 8px cut, and a label in uppercase 700 at .1em. Colour is a signal
+   carried in the stroke and the ink — the only *filled* chips on the site are the on-state
+   of a real toggle, and none of these is one.
+   What they were instead: pastel washes of the event's accent, in three different type
+   treatments (uppercase, sentence case, and sentence case again), which is three voices in
+   the two corners of a band whose own note says it stays neutral so the players' violet and
+   red can own it. The event's colour is on the page behind the panel — the band, the wedge,
+   every chip up in the controls row — and reading it a fourth time in here bought nothing
+   the title above the draw hadn't already said.
+   The two lines share the top-left corner rather than bracketing the score from opposite
+   ends, freeing the lower right for the chart button. */
 /* margin:0 because these are <p>, and a paragraph's default 1em top and bottom does not
    collapse inside a flex line — it is measured into the line's height. So a 22px pill was
    claiming 46px of corner, and the padding that shapes the pill was not the number setting
    the space around it. The condensed state was already zeroing these on its way out, which
    is the only reason it ever closed all the way. */
-.mevent, .mstate { width: fit-content; margin: 0; padding: 2px 11px; clip-path: var(--chip-clip);
-  color: var(--acc-d); background: color-mix(in srgb, var(--acc) 9%, transparent);
-  border: 1px solid color-mix(in srgb, var(--acc) 20%, transparent); }
+/* One rule for all three, so the corner and the foot can't drift into different chips. The
+   cut sides carry no stroke — a clip-path takes the border off the diagonals — which is
+   exactly what the legend chips up in the controls row look like, and the reason the
+   hairline reads as a pair of rules rather than a box. */
+.mevent, .mstate, .mchartbtn { width: fit-content; margin: 0; padding: 3px 11px;
+  clip-path: var(--chip-clip); font-size: 9.5px; font-weight: 700; line-height: 1.3;
+  text-transform: uppercase; letter-spacing: .1em;
+  color: var(--hd-mut); background: var(--card); border: 1px solid var(--hd-line); }
 /* Top left, which is where you start reading — the event and round say which match this is
    before the names say who is in it. It leaves the top right to the close button alone, so
    this row no longer has to keep out of --close-lane; the lane is still what the condensed
@@ -486,7 +540,10 @@ a { color: var(--acc-d); }
 .mcorner { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start;
   gap: 6px; width: fit-content; margin: 0 auto 2px 0;
   transition: gap .18s ease, margin-bottom .18s ease; }
-.mevent { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+/* The event and round lead, so they take the fuller ink; the date follows in the muted one.
+   Both are the same chip and the same type — the ranking is the only difference between
+   them, and one step of grey is enough to say it. */
+.mevent { color: var(--hd-ink); }
 
 /* Condensed header, once the body has scrolled: the four or five screens below it are
    the panel, and a fixed band naming the two players you just tapped shouldn't hold a
@@ -510,7 +567,7 @@ a { color: var(--acc-d); }
 .matchup.cond .sg { font-size: 14px; }
 .matchup.cond .mflag { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) {
-  .mtop, .mcorner, .mevent, .mstate, .mp { transition: none; }
+  .mtop, .mcorner, .mevent, .mstate, .mp, .matchup .close { transition: none; }
 }
 /* Two staggered lines, each a player: their name at their own end and their games run
    along it, with both scorelines sharing the middle column so a set still reads down a
@@ -618,9 +675,13 @@ a { color: var(--acc-d); }
    instead of down — there is no boundary left to draw. */
 .mrule { grid-column: 1 / -1; grid-row: 1 / span 2; align-self: center;
   height: 1px; background: color-mix(in srgb, var(--hd-mut) 28%, transparent); }
-.mstate { font-size: 10.5px; }
-/* a live match answers "when" with itself, and that beats the event's colour to it */
-.mstate .live { color: var(--warn); font-weight: 700; }
+/* A live match answers "when" with itself, and it is the one thing in this corner with any
+   urgency to it — so now that the chips are neutral, it is also the only coloured one, and
+   the colour lands instead of being one tint among three. The stroke takes it too: the chip
+   is the mark, not just the words in it. */
+.mstate:has(.live) { color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--hd-line)); }
+.mstate .live { color: inherit; }
 /* --pad-t is the sticky section headings' business as much as this box's: they pin
    against the content edge, not the panel edge, so they have to pull back by exactly
    this much to sit flush under the scoreboard. Kept in one place so the two can't drift. */
@@ -652,20 +713,26 @@ a { color: var(--acc-d); }
    the row's far end once it shares a flex row instead of being the row's only content. */
 .mfoot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .mfoot .mstate { margin: 2px 0 0; }
-.mchartbtn { display: flex; width: fit-content;
+/* Chip geometry and type come from the shared rule up with the corner pills; what is left
+   here is the layout and the two states. */
+.mchartbtn { display: flex; align-items: center; gap: 6px;
   margin: 2px calc(var(--pad-l) - var(--pad-r)) 0 auto;
-  padding: 3px 12px; clip-path: var(--chip-clip); font-size: 10.5px; font-weight: 700;
-  text-decoration: none; white-space: nowrap; border: 1px solid transparent;
-  max-height: 3em; overflow: hidden;
-  transition: background .12s ease, border-color .12s ease, max-height .18s ease,
-    opacity .14s ease, margin .18s ease, padding .18s ease; }
-.mchartbtn.charted { color: var(--acc-d); background: color-mix(in srgb, var(--acc) 9%, transparent);
-  border-color: color-mix(in srgb, var(--acc) 20%, transparent); }
-.mchartbtn.charted:hover { background: color-mix(in srgb, var(--acc) 17%, transparent); }
-.mchartbtn.uncharted { color: color-mix(in srgb, var(--warn) 65%, var(--hd-ink));
-  background: color-mix(in srgb, var(--warn) 9%, transparent);
-  border-color: color-mix(in srgb, var(--warn) 26%, transparent); }
-.mchartbtn.uncharted:hover { background: color-mix(in srgb, var(--warn) 17%, transparent); }
+  text-decoration: none; white-space: nowrap; max-height: 3em; overflow: hidden;
+  transition: color .12s ease, background .12s ease, border-color .12s ease,
+    max-height .18s ease, opacity .14s ease, margin .18s ease, padding .18s ease; }
+.mchartbtn .gly { flex: none; display: block; fill: currentColor; }
+/* The two states, told apart in the ink and the stroke rather than in a fill. Charted is
+   neutral: the chart exists, and going to look at it is an ordinary control. Uncharted is
+   the invitation, and wears --warn — the colour this site already uses for "thin data" and
+   for a live match, always as ink or a stroke, never as a wash. */
+.mchartbtn.charted { color: var(--hd-ink); }
+.mchartbtn.charted:hover { border-color: color-mix(in srgb, var(--hd-mut) 45%, var(--hd-line));
+  background: color-mix(in srgb, var(--hd-mut) 9%, var(--card)); }
+.mchartbtn.uncharted { color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--hd-line)); }
+.mchartbtn.uncharted:hover { border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 9%, var(--card)); }
+.mchartbtn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .matchup.cond .mchartbtn { max-height: 0; opacity: 0; margin: 0;
   padding-top: 0; padding-bottom: 0; border-width: 0; }
 @media (prefers-reduced-motion: reduce) {
@@ -1240,7 +1307,9 @@ a { color: var(--acc-d); }
   .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; animation: sheet .2s ease-out; }
   /* three columns in a phone's width: the first name goes to an initial before any name
      has to wrap, and the seed badge drops — it is in the draw behind the panel anyway */
-  .mtop { --pad-l: 14px; --pad-r: 34px; padding: 13px var(--pad-r) 12px var(--pad-l); }
+  /* the pair rides on the panel, not the band — the close button reads it too */
+  .matchup { --pad-l: 14px; --pad-r: 34px; }
+  .mtop { padding: 13px var(--pad-r) 12px var(--pad-l); }
   /* Names back to the outer ends instead of pulled in toward the score. Pulling them in
      is a wide-panel move — it buys a scoreboard out of width the header was wasting. At
      this size there is no spare width to buy it with: the names already meet in the
