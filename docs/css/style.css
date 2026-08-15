@@ -1432,6 +1432,20 @@ a { color: var(--acc-d); }
   .msec.text .seccol { display: block; grid-row: auto; }
   .seccol { padding-left: 8px; }
   .msec.text .colwho { display: flex; }
+  /* Serve direction stays two-up like the court sections above, all the way down: it is
+     the shortest text section in the panel and the boxes read fine at a phone's width, so
+     stacking them would only add a scroll with nothing gained. :has(.srv) is how this one
+     text section is told apart from the others (triggers, deep patterns), which do stack. */
+  .msec.text:has(.srv) .seccols { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(var(--rows, 1), auto); row-gap: 0; }
+  .msec.text:has(.srv) .seccol { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; }
+  .msec.text:has(.srv) .colwho { display: none; }
+  /* Doubling up to four boxes across a phone's width leaves each zone ~35px, not the
+     ~70px it was built for — the number was overflowing its own zone at 14px. Shrunk
+     and re-padded so "100%" still clears the zone at the narrowest width this ever runs. */
+  .msec.text:has(.srv) .srvzone { padding: 2px 4px 0; min-height: 46px; }
+  .msec.text:has(.srv) .srvzone b { font-size: 11.5px; }
+  .msec.text:has(.srv) .srvzone .zl { font-size: 9.5px; }
+  .msec.text:has(.srv) .srvlabel { padding: 0 4px; font-size: 10px; }
   .msec.cards .pcard2 { display: block; margin-bottom: 14px; }
   /* Stacked, the court has the whole column to itself and was using half of it — 92px of
      drawing with 70px of nothing beside it, on the screen where the drawing is hardest to
