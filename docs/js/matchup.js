@@ -86,24 +86,19 @@ async function playerData(name, gender) {
   return { s: s[0], triggers, patterns, serve, years };
 }
 
-// The benchmark is no longer the mean of the archetype a player was sorted into — it is what
-// their own style fingerprint predicts, fitted smoothly across the style space. So the
-// comparison group is the players who sit near them in that space, and the wording says that
-// rather than naming a style.
+// The shot-quality verdict used to print here — "ahead of / typical for / behind similar
+// players", banded off class_rel_z at ±0.5. It is gone, for the same reason and by the same
+// test as the 0-100 score it was the residual of (see profileSide below): measured on the
+// built table it correlates -0.99 with that score, 66% of its variance is rally length, and
+// it says no male serve-volleyer has ever been ahead of similar players against half of all
+// grinders. The residual is not orthogonal to the benchmark it is taken against — the ridge
+// λ is bisected to match the class means' R², which buys that R² by explaining a shrunken
+// copy of the whole style axis and leaves the rest of it in the residual.
 //
-// It used to say "their style", which broke on exactly the players the panel is most careful
-// about: for about a third of them the archetype is withheld and the column reads "Between
-// styles", and "beats their style" directly above that is a verdict measured against a style
-// the same column has just declined to name. The fingerprint is continuous and every player
-// has one, so "similar players" is true for all of them and points at something real — the
-// people who play like this — instead of at a box. See figureKey() for the same point made at
-// length, since a three-word label can't carry it.
-function ratingLabel(z) {
-  if (z == null) return "";
-  if (z <= -0.5) return "ahead of similar players";
-  if (z >= 0.5) return "behind similar players";
-  return "typical for similar players";
-}
+// class_rel_z still ships in player_summary; nothing renders it. Restoring it means
+// orthogonalising against style_expected first, which moves 45% (men) / 41% (women) of the
+// verdicts — Karlovic behind→ahead, Sorribes Tormo ahead→behind — and even then the
+// style-stripped split-half is 0.43/0.60, which will not carry three bands.
 
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
 // drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
@@ -384,6 +379,23 @@ function trigSets(d) {
 // direction wins.
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const num = (v) => (v == null ? null : Number(v));
+
+// The coverage floor the serve and return rates have to clear before this panel will print
+// them, in charted points — the same 2,000 the win probability's confidence bands already
+// used as their lower edge, now enforced rather than described.
+//
+// It was the one number here with no gate at all, which had it backwards: variety is withheld
+// below 800 charted strokes, the serve mix below ~862 effective serves, ace rate below 200
+// service points, and the two figures a reader looks at first were printed off a single match.
+// A one-match entrant was reading 70.9% of serve points won — near the best server in the
+// table — from 173 points, and the rings say nothing about how many points are behind them.
+//
+// 2,000 points is roughly a dozen charted matches. It is a floor on obvious nonsense rather
+// than a claim that everything above it is precise: these rates are career-long, shrunk toward
+// the tour mean by 100 points, and never adjusted for the opponents a volunteer chose to
+// chart, so the number above the floor is still a charted rate and not a true one.
+const RATE_MIN_PTS = 2000;
+const wellCharted = (d) => !!d && (Number(d.s.points_charted) || 0) >= RATE_MIN_PTS;
 
 function tapeRows(mu) {
   return [
@@ -704,14 +716,15 @@ const FIGS = [
       extra bit is a shot half as likely again — the scale multiplies rather than adds, so
       the step from 3.0 to 3.2 is a bigger claim than it looks.`,
   },
-  {
-    k: "sigma", label: "shot selection", unit: "pp",
-    fmt: (v) => (v * 100).toFixed(1), say: (v) => `${(v * 100).toFixed(1)}pp`,
-    unitDef: `is percentage points, the plain gap between two percentages. Going for the
-      finish 30% of the time after one lead-up and 36% after another is a gap of 6 percentage
-      points, not of 6%. Shot selection is built out of gaps like that, so it carries their
-      unit.`,
-  },
+  // "shot selection" (sigma) stood here and is gone, cut by the test that retired the
+  // shot-quality score: it correlates -0.81 (men) / -0.59 (women) with rally length. Two
+  // thirds of the men's spread is the player's own baseline aggressive shot frequency, which
+  // the shot-making triggers section prints in plain percent further down, and the top of the
+  // leaderboard is a serve-volley artifact — restricted to rally-only lead-ups Rafter falls
+  // from 14.9pp, top of the tour, to a below-median 3.8pp. It is also independent of whether
+  // the extra aggression pays (rho = -0.07 with trap count), so one number described an
+  // adaptive player and a baited one identically. The triggers section answers the same
+  // question concretely, with a direction, and keeps it.
 ];
 
 // Who these two players are: what kind of player this is, which hand they hold the racket in,
@@ -776,31 +789,16 @@ function profileSide(d, tag) {
     return v == null ? "" : `<p class="pbfig"><b>${f.fmt(v)}</b><span>${esc(f.unit)}</span>
       <em>${esc(f.label)}</em></p>`;
   }).join("");
-  // The one surviving quality claim, and it now leads the figures rather than closing them.
-  // It is the only judgement in the column — everything under it is a measurement, and a
-  // reader who takes one thing from this band should take the judgement — and it belongs
-  // beside the style line it is measured against, not three items away from it with the
-  // descriptive figures in between.
-  //
-  // It keeps the smaller type it had when it closed the column. The verdict is a phrase, and
-  // a phrase set at the rally figure's 22px is a headline sentence that wraps to three lines
-  // in half a phone column; the rally figure stays the one number set large, so the column
-  // still has a hierarchy rather than two competing tops.
-  //
-  // It takes the same shape as every other item here — the finding, then the label for it —
-  // and the label says shot quality, because that is what is being judged.
-  //
-  // A verdict rather than a figure, because that is the resolution it survives at: the
-  // style-adjusted residual splits half-to-half at r≈0.34 (men) / 0.53 (women), which will
-  // carry three bands and would not carry a decimal.
-  const verdict = ratingLabel(s.class_rel_z);
-  const quality = verdict ? `<p class="pbverdict"><b>${esc(verdict)}</b>
-    <em>shot quality</em></p>` : "";
-  if (!arch && !hand && !rallyFig && !figs && !quality) return "";
+  // The column now carries no judgement at all — style, hand, and two measurements. The
+  // shot-quality verdict that used to lead it was the one thing here that graded a player,
+  // and it graded them on rally length; see the note above ratingLabel's grave for the
+  // numbers. Nothing replaces it, because the honest version of that claim does not exist at
+  // this resolution yet.
+  if (!arch && !hand && !rallyFig && !figs) return "";
   return `<div class="pbside ${tag}" data-side="${tag}">
     ${arch ? `<p class="pbstyle">${esc(arch)}</p>` : ""}
     ${hand ? `<p class="pbhand">${esc(hand)}</p>` : ""}
-    ${quality}${rallyFig}${figs}
+    ${rallyFig}${figs}
   </div>`;
 }
 
@@ -832,10 +830,10 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
 // from its neighbours: every other section gives each player a column, and this is the one
 // place the two are measured on a shared axis.
 //
-// Two rings, where there were six. The four that left were not deleted — variety and shot
-// selection are figures in the two style columns here, and winners-and-errors is the first bar
-// in each player's column under shot-making triggers, which is where the numbers it should be
-// held against already were.
+// Two rings, where there were six. Of the four that left, variety is a figure in the two style
+// columns here and winners-and-errors is the first bar in each player's column under
+// shot-making triggers, which is where the numbers it should be held against already were;
+// shot selection and shot quality have since been cut outright rather than moved.
 //
 // The rings stack rather than sit side by side, and the two style columns flank the stack
 // instead of sitting in a row above it, wide enough allowing: three tracks (style, rings,
@@ -870,25 +868,8 @@ function figureKey(sa, sb, spread) {
     k: "avg_rally_len", fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} shots`,
   };
   const defs = [
-    // Shot quality leads the key because it now leads the column. The two are ordered
-    // together deliberately: a reader who opens the key is looking for the thing they just
-    // read, and a key in a different order than the figures is a second thing to search.
-    !has("class_rel_z") ? "" : `<div><b>Shot quality</b> A win-probability model evaluates the
-      position after every stroke, which gives the win probability a player concedes on an
-      average stroke; that figure is then measured against a benchmark fitted to the player's
-      own style fingerprint, so a high-variance stylist is not marked down for the style
-      itself, only for being worse at it. The gap is read as a standard deviation, and past
-      half of one either way it says they are ahead of or behind similar players.
-      ${/* The point the three-word verdict cannot make on its own, and the reason it says
-           "similar players" rather than naming a style: the benchmark is a smooth fit across
-           the whole style space, not the average of the archetype a player was sorted into.
-           So it is defined for a player whose archetype the panel withholds ("Between
-           styles") in exactly the way it is for everyone else. Without this the reader is
-           left to reconcile a verdict about similar players with a column that has just
-           said it cannot place this one. */""}
-      "Similar players" means the ones nearest them in that style space, not the ones in the
-      same named archetype — the benchmark is fitted across the whole space, so it exists
-      even for the players this panel declines to give a style name.</div>`,
+    // The key follows the column, so it opens on the figure the column now leads with. The
+    // shot-quality entry that used to head it went when the verdict did.
     !has("avg_rally_len") ? "" : `<div><b>Shots per point</b> is how many strokes the average
       point lasts, counting both players and the serve, over every charted point this player
       appeared in. It is as much a fact about the tennis they get drawn into as about them,
@@ -901,13 +882,6 @@ function figureKey(sa, sb, spread) {
       and measured in bits. It rewards uncommon shot types about as much as uncommon order, so
       slicers and serve-volleyers score high. A player needs 800 charted strokes to
       get one.${band(FIGS[0])}</div>`,
-    !has("sigma") ? "" : `<div><b>Shot selection</b> is how much the situation drives their
-      aggression. For every two-shot lead-up they face, we measure how often they go for a
-      finishing shot; shot selection is how much that rate swings from one lead-up to the
-      next, as a standard deviation in percentage points. Near zero means the decision looks
-      much the same whatever came before it. Sampling noise is subtracted, so a heavily
-      charted player is not rewarded for having steadier numbers. A player needs 4,000 charted
-      strokes spread over at least 20 lead-ups.${band(FIGS[1])}</div>`,
   ].filter(Boolean);
   if (!defs.length) return "";
   // The units, after the figures that use them. They come last because a reader who wants to
@@ -924,20 +898,34 @@ function figureKey(sa, sb, spread) {
 }
 
 function tape(da, db, mu, spread) {
-  const sa = da && da.s, sb = db && db.s;
-  if (!sa && !sb) return "";
-  const cells = tapeRows(mu).map((r) => donut(r, sa, sb)).join("");
+  // The rings take only the sides that clear the coverage floor; the profile columns beside
+  // them take the player whole, since every figure in them carries its own gate already. A
+  // side held back leaves its half of the ring empty, which is the shape the drawing already
+  // has for a player the rates simply do not exist for — and the note says which it is, so an
+  // empty half is never left reading as "no charting" when it means "not enough of it".
+  const sa = wellCharted(da) ? da.s : null, sb = wellCharted(db) ? db.s : null;
+  const cells = sa || sb ? tapeRows(mu).map((r) => donut(r, sa, sb)).join("") : "";
   const sideA = profileSide(da, "a"), sideB = profileSide(db, "b");
   if (!cells && !sideA && !sideB) return "";
   const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
+  // Named, not just omitted. A blank half beside a full one is the panel making a claim about
+  // the thin player, and the claim it should make is about the charting rather than the
+  // tennis.
+  const thin = [[da, sa], [db, sb]]
+    .filter(([d, s]) => d && !s).map(([d]) => last(d.s.player));
+  const thinNote = thin.length
+    ? `<p class="tapenote">Serve and return rates need ${RATE_MIN_PTS.toLocaleString()}
+       charted points to print; ${esc(thin.join(" and "))}
+       ${thin.length > 1 ? "are" : "is"} below that.</p>` : "";
   return `<section class="msec">
     <h3 class="sechead">side by side</h3>
     <section class="tape">
     <div class="tapemain">${sideA}${rings}${sideB}</div>
     ${cells ? `<p class="tapenote">
-      <span class="tickkey"></span> this draw's tour average ·
+      <span class="tickkey"></span> charted tour average ·
       <span class="segkey deep"></span> aces, within serve points won</p>` : ""}
-    ${figureKey(sa, sb, spread)}
+    ${thinNote}
+    ${figureKey(sa || (da && da.s), sb || (db && db.s), spread)}
   </section></section>`;
 }
 
@@ -1000,11 +988,18 @@ const meterLegend = (baseline) => `<span class="meterkey">
   <span class="segkey"></span> landed <span class="segkey miss"></span> missed, out of the
   balls the cue provokes · <span class="tickkey"></span> ${baseline}</span>`;
 
+// Only two bands survive, because the third one is now the gate. "low — one side is thinly
+// charted" used to ride under a percentage that printed regardless, and that was the whole
+// problem: measured against real results, matchups where a player had fewer than three prior
+// charted matches score 0.80 log-loss and 52.6% accuracy — worse than a coin flip — and where
+// the model printed 85% or better the favourite won 62.4%. It was also the regime the site
+// mostly ships in: 41 of 58 upcoming matchups in the current brackets sat in it, and it
+// printed its boldest numbers there, because a thin player's rate is dragged far from the
+// tour mean by a single charted match and the score tree amplifies small per-point gaps.
+// So below the floor there is no number to put a caveat under.
 function confidence(pa, pb) {
   const minPts = Math.min(Number(pa.s.points_charted) || 0, Number(pb.s.points_charted) || 0);
-  if (minPts >= 10000) return "high";
-  if (minPts >= 2000) return "moderate";
-  return "low — one side is thinly charted";
+  return minPts >= 10000 ? "high" : "moderate";
 }
 
 // Deliberately small print: the shot-sequence tendencies above are this site's
@@ -1561,11 +1556,19 @@ export async function openMatchup(m, t) {
   const wpslot = document.getElementById("wpslot");
   if (t.completed) {
     wpslot.innerHTML = "";              // result is in — no pre-match number to offer
-  } else if (pa && pb) {
+  } else if (pa && pb && wellCharted(pa) && wellCharted(pb)) {
     const wpA = preMatchWP(
       { serve: pa.s.serve_rate, ret: pa.s.return_rate },
       { serve: pb.s.serve_rate, ret: pb.s.return_rate }, mu, t.best_of);
     wpslot.innerHTML = wpBar(m.a.name, m.b.name, wpA, confidence(pa, pb));
+  } else if (pa && pb) {
+    // Both charted, one of them barely. The model is fed career serve and return rates with
+    // no opponent adjustment, so a player charted once — in the televised loss that got them
+    // charted — reads as far below tour average, and the number that comes out is confident
+    // and wrong rather than uncertain.
+    wpslot.innerHTML = `<p class="wp-note">No pre-match number here: it needs
+      ${RATE_MIN_PTS.toLocaleString()} charted points for each player, and one of these two is
+      below that. Under it the number is not a rougher guess, it is a worse one.</p>`;
   } else {
     wpslot.innerHTML = `<p class="wp-note">A win probability needs charting history for both players.</p>`;
   }

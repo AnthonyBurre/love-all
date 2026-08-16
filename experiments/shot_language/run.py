@@ -29,7 +29,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from ngram import NGramModel  # noqa: E402
-from tokens import START, point_tokens, pretty  # noqa: E402
+from tokens import START, hand_map, point_tokens, pretty  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
@@ -43,8 +43,12 @@ MIN_SHOTS = 800     # players below this aren't ranked for unpredictability
 MIN_PAIR = 25       # min occurrences for a signature pattern
 
 
-def load(con, gender):
-    """Yield (ParsedPoint, {1: name, 2: name}) over a repeatable per-gender sample."""
+def load(con, gender, hands):
+    """Yield (ParsedPoint, {1: name, 2: name}, lefties) over a repeatable sample.
+
+    ``lefties`` is the set of hitter numbers whose zones need mirroring, resolved per
+    point because it depends on which two players are in it.
+    """
     sql = (
         "SELECT m.player1, m.player2, p.svr, p.first_serve, p.second_serve, p.pt_winner "
         "FROM points p JOIN matches m USING (match_id) "
@@ -54,14 +58,31 @@ def load(con, gender):
     for p1, p2, svr, fs, ss, win in con.execute(sql, [gender]).fetchall():
         pt = parse_point(fs, ss, svr, win)
         if pt.parse_ok and pt.server_won is not None and pt.shots:
-            yield pt, {1: p1, 2: p2}
+            names = {1: p1, 2: p2}
+            yield pt, names, {h for h in (1, 2) if hands.get(names[h]) == "L"}
 
 
 def analyze(con, gender):
+    # Zones are mirrored for left-handed hitters throughout, so a token names the shot
+    # rather than the half of the court it landed in. Without it this experiment does not
+    # measure variety: the direction codes name fixed thirds by the right-hander
+    # convention, an 87%-righty field model scores a lefty's ordinary crosscourt forehand
+    # as a rare shot, and handedness alone came to explain 56% of the variance — every
+    # left-hander in the corpus sat in the top quartile of their tour, and none of them
+    # anywhere else. Connors ranked fifth-most-varied man on tour with no slice game and
+    # no net game, which is the tell.
+    #
+    # Mirroring by the *hitter* rather than the receiver is what makes the token a word
+    # for a stroke: a crosscourt forehand is one shot, and it should not be two words
+    # depending on which hand played it. In a mixed-handed point the two players' zones
+    # are therefore mirrored under different rules, which is the same trade court_response
+    # already makes for the same reason.
+    hands = hand_map(con)
+
     # Pass 1 — fit the field language model and the point eval on the same sample.
     lm, ev = NGramModel(), WinProbModel()
-    for pt, _ in load(con, gender):
-        lm.add_point(point_tokens(pt))
+    for pt, _, lefties in load(con, gender, hands):
+        lm.add_point(point_tokens(pt, lefties))
         ev.add_point(pt)
 
     # Pass 2 — measure per-player surprise, signatures, and surprise vs WPA.
@@ -69,8 +90,8 @@ def analyze(con, gender):
     sig = defaultdict(Counter)       # name -> Counter((incoming, response))
     sigctx = defaultdict(Counter)    # name -> Counter(incoming)
     surp, wpa = [], []               # non-terminal shots only
-    for pt, names in load(con, gender):
-        toks = point_tokens(pt)
+    for pt, names, lefties in load(con, gender, hands):
+        toks = point_tokens(pt, lefties)
         surps = lm.point_surprises(toks)
         deltas = ev.shot_wpa(pt)
         for i, sh in enumerate(pt.shots):

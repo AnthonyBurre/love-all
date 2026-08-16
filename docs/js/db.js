@@ -112,9 +112,8 @@ async function loadSpread() {
   try {
     const rows = await query(
       `SELECT gender,
-         count(bits) AS n_bits, count(sigma) AS n_sigma, count(avg_rally_len) AS n_rally,
+         count(bits) AS n_bits, count(avg_rally_len) AS n_rally,
          quantile_cont(bits, 0.25) AS b_lo, quantile_cont(bits, 0.75) AS b_hi,
-         quantile_cont(sigma, 0.25) AS s_lo, quantile_cont(sigma, 0.75) AS s_hi,
          quantile_cont(avg_rally_len, 0.25) AS r_lo,
          quantile_cont(avg_rally_len, 0.75) AS r_hi
        FROM player_summary GROUP BY gender`);
@@ -126,7 +125,6 @@ async function loadSpread() {
         ? { lo: Number(lo), hi: Number(hi), n: Number(n) } : null;
       out[r.gender] = {
         bits: band(r.n_bits, r.b_lo, r.b_hi),
-        sigma: band(r.n_sigma, r.s_lo, r.s_hi),
         avg_rally_len: band(r.n_rally, r.r_lo, r.r_hi),
       };
     }
