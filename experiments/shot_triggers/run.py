@@ -41,7 +41,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from tokens import point_tokens, pretty  # noqa: E402
+from tokens import hand_map, point_tokens, pretty  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
@@ -76,7 +76,7 @@ MIN_HALF_ATT = 6      # aggressive shots a context needs in each half to carry a
 Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
 
 
-def collect(con, gender: str) -> "tuple[dict, dict]":
+def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     """Pooled per-player context tables (all plies) plus side-split opening tables.
 
     ``acc``: player -> {n, w, e, f, ctx:{context: [n, w, e, f]}, half:{(h, context):
@@ -86,6 +86,26 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
     judgment lands wholly on one side.
     ``openings``: (player, side, anchor) -> {base:[n,w,e,f], ctx:{context:[n,w,e,f]}}
     for the first-four-ply aggressive shots only, split by deuce/ad.
+
+    Cues are keyed in the *profiled player's* frame: for a left-hander every court third
+    in the lead-up is mirrored, so a cue names the shot rather than the half of the court
+    it landed in. The direction codes are the codebook's, which name fixed thirds by the
+    right-hander convention, so without this a lefty's cue string describes the mirror
+    image of what a right-hander's identical string describes — and the panel prints the
+    two as though they were one pattern.
+
+    Mirrored by the striker rather than by each shot's own hitter, because the cue
+    alternates hitters and a player's opponents are a mix of both hands; mirroring per
+    hitter would merge physically different opponent balls into one bucket. The whole
+    lead-up reads from the profiled player's side of the net, matching what
+    ``court_response`` does with hand-relative zones and what ``deep_patterns`` does with
+    the same tokens.
+
+    This changes no statistic. Every figure here — the lift against the player's own
+    pooled rate, the conversion against their own trigger class, the both-halves
+    replication, the FDR family — is computed within one player, so mirroring re-keys a
+    lefty's whole table consistently and every count comes out identical. It is a
+    labelling fix, and only a labelling fix.
     """
     acc: dict = defaultdict(lambda: {"n": 0, "w": 0, "e": 0, "f": 0,
                                      "ctx": defaultdict(lambda: [0, 0, 0, 0]),
@@ -107,8 +127,14 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
             pt = parse_point(fs, ss, svr, win)
             if not pt.parse_ok:
                 continue
-            toks = point_tokens(pt)
             names = {1: p1, 2: p2}
+            # One token stream per striker, in that striker's own frame. Passing both
+            # hitter numbers mirrors every rally shot in the point; the two streams are
+            # the same object whenever the strikers share a hand, which is most points.
+            plain = point_tokens(pt)
+            lefty = {w: hands.get(names[w]) == "L" for w in (1, 2)}
+            mirrored = point_tokens(pt, (1, 2)) if (lefty[1] or lefty[2]) else plain
+            toks_for = {w: (mirrored if lefty[w] else plain) for w in (1, 2)}
             n_sh = len(pt.shots)
             half = zlib.crc32(str(mid).encode()) & 1   # stable across runs
 
@@ -121,7 +147,7 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
                         break
                     s = pt.shots[idx]
                     rec = openings[(names[s.hitter], side, anchor)]
-                    ctx = tuple(toks[max(0, idx - K):idx])
+                    ctx = tuple(toks_for[s.hitter][max(0, idx - K):idx])
                     w, e, f = aggressive_shot(pt.shots, idx, n_sh)
                     for bucket in (rec["base"], rec["ctx"][ctx]):
                         bucket[0] += 1
@@ -133,7 +159,7 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
                 continue
             for i in range(K, n_sh):
                 a = acc[names[pt.shots[i].hitter]]
-                ctx = tuple(toks[i - K:i])
+                ctx = tuple(toks_for[pt.shots[i].hitter][i - K:i])
                 w, e, f = aggressive_shot(pt.shots, i, n_sh)
                 a["n"] += 1
                 a["w"] += w
@@ -541,8 +567,9 @@ def main() -> None:
     corr_all, phi_rows = [], []
     open_rows, open_by_gender = [], {}
     def_rows, pair_rows, flip_rows = [], [], []
+    hands = hand_map(con)
     for g in ("M", "W"):
-        acc, openings = collect(con, g)
+        acc, openings = collect(con, g, hands)
         tables = {}
         for player, a in acc.items():
             if a["n"] < MIN_SHOTS or (a["w"] + a["e"] + a["f"]) == 0:

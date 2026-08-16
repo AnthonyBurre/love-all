@@ -36,15 +36,15 @@
 *aggressive on 18.8% of strokes, converting 65%; across their trigger cues, 83%; 115,155 contextful strokes*
 
 **Trigger sequences** (lead-ups that most raise the frequency):
-- `FH drive→3 · BH shot→2` → aggressive 71% (3.8×), converts 96% (+14% vs their other cues) ✅ converts (n=214, 151 attempts)
-- `FH drive→3 · BH shot→1` → aggressive 70% (3.8×), converts 90% (+8% vs their other cues) ✅ converts (n=115, 81 attempts)
-- `FH drive→1 · FH shot→2` → aggressive 70% (3.7×), converts 93% (+11% vs their other cues) ✅ converts (n=145, 101 attempts)
-- `FH drive→1 · FH slice→3` → aggressive 68% (3.6×), converts 92% (+9% vs their other cues) ✅ converts (n=71, 48 attempts)
+- `FH drive→1 · BH shot→2` → aggressive 71% (3.8×), converts 96% (+14% vs their other cues) ✅ converts (n=214, 151 attempts)
+- `FH drive→1 · BH shot→3` → aggressive 70% (3.8×), converts 90% (+8% vs their other cues) ✅ converts (n=115, 81 attempts)
+- `FH drive→3 · FH shot→2` → aggressive 70% (3.7×), converts 93% (+11% vs their other cues) ✅ converts (n=145, 101 attempts)
+- `FH drive→3 · FH slice→1` → aggressive 68% (3.6×), converts 92% (+9% vs their other cues) ✅ converts (n=71, 48 attempts)
 
 **Worst traps** (pulled into aggressive shots they don't convert):
-- `BH slice→2 · BH slice→1` → aggressive 1.7× their norm but converts only 62% vs 83% across their other cues (n=67, 21 attempts)
-- `BH slice→3 · BH slice→1` → aggressive 1.6× their norm but converts only 62% vs 83% across their other cues (n=161, 48 attempts)
-- `BH drive→2 · BH slice→1` → aggressive 2.0× their norm but converts only 63% vs 83% across their other cues (n=73, 27 attempts)
+- `BH slice→2 · BH slice→3` → aggressive 1.7× their norm but converts only 62% vs 83% across their other cues (n=67, 21 attempts)
+- `BH slice→1 · BH slice→3` → aggressive 1.6× their norm but converts only 62% vs 83% across their other cues (n=161, 48 attempts)
+- `BH drive→2 · BH slice→3` → aggressive 2.0× their norm but converts only 63% vs 83% across their other cues (n=73, 27 attempts)
 
 ### Pete Sampras
 *aggressive on 32.8% of strokes, converting 65%; across their trigger cues, 82%; 34,406 contextful strokes*
@@ -218,15 +218,15 @@ The pooled tables above average over the court the point was served to, but the 
 
 **Serve, deuce court**
 - ✅ `serve wide · FH slice→2` → serve+1 aggressive 47% (2.6×), converts 81% (+16% vs norm) (n=77)
-- ✅ `serve T · BH slice→3` → serve+1 aggressive 46% (2.5×), converts 79% (+14% vs norm) (n=93)
-- ⚠️ `serve wide · BH drive→1` → serve+1 aggressive 30% (1.6×) but converts only 57% (-8% vs norm) (n=149)
+- ✅ `serve T · BH slice→1` → serve+1 aggressive 46% (2.5×), converts 79% (+14% vs norm) (n=93)
+- ⚠️ `serve wide · BH drive→3` → serve+1 aggressive 30% (1.6×) but converts only 57% (-8% vs norm) (n=149)
 
 **Serve, ad court**
-- ✅ `serve wide · BH slice→3` → serve+1 aggressive 45% (1.9×), converts 80% (+7% vs norm) (n=283)
+- ✅ `serve wide · BH slice→1` → serve+1 aggressive 45% (1.9×), converts 80% (+7% vs norm) (n=283)
 - ✅ `serve wide · BH slice→2` → serve+1 aggressive 45% (1.9×), converts 88% (+15% vs norm) (n=568)
 
 **Return, deuce court**
-- ✅ `FH drive→1 · FH drive→2` → return+1 aggressive 22% (1.5×), converts 79% (+18% vs norm) (n=87)
+- ✅ `FH drive→3 · FH drive→2` → return+1 aggressive 22% (1.5×), converts 79% (+18% vs norm) (n=87)
 
 ### Pete Sampras
 

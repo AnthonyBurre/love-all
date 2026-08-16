@@ -15,20 +15,20 @@ The false-discovery correction is the gate that does the work here, and it was m
 - `FH slice→2 · FH drive→1 · FH drive→2` → aggressive 59% vs 31% without the first shot(s) (1.9× the parent), converts 75% ✅ (n=75)
 - `FH slice→2 · FH drive→3 · BH drive→3` → aggressive 35% vs 20% without the first shot(s) (1.8× the parent), converts 63% ✅ (n=85)
 - `BH slice→2 · FH drive→1 · FH drive→3` → aggressive 32% vs 18% without the first shot(s) (1.8× the parent), converts 81% ✅ (n=81)
-- `serve wide · BH drive→3 · BH drive→2 · FH drive→1` → aggressive 23% vs 13% without the first two shot(s) (1.7× the parent), converts 50% ⚠️ (n=142)
+- `serve wide · BH drive→3 · BH drive→2 · FH drive→1` → aggressive 23% vs 13% without the first two shot(s) (1.7× the parent), converts 50% ✅ (n=142)
 - `FH slice→2 · FH drive→3 · BH drive→2` → aggressive 51% vs 33% without the first shot(s) (1.6× the parent), converts 77% ✅ (n=84)
 
 ### Novak Djokovic — 6 gold patterns
 - `BH slice→2 · FH drive→1 · FH drive→3` → aggressive 30% vs 13% without the first shot(s) (2.2× the parent), converts 79% ✅ (n=145)
 - `FH slice→2 · FH drive→3 · BH drive→3` → aggressive 32% vs 17% without the first shot(s) (1.8× the parent), converts 76% ✅ (n=132)
-- `serve wide · FH drive→1 · FH drive→3 · BH drive→3` → aggressive 25% vs 14% without the first two shot(s) (1.8× the parent), converts 58% ⚠️ (n=134)
+- `serve wide · FH drive→1 · FH drive→3 · BH drive→3` → aggressive 25% vs 14% without the first two shot(s) (1.8× the parent), converts 58% ✅ (n=134)
 - `FH slice→2 · FH drive→3 · BH drive→2` → aggressive 35% vs 20% without the first shot(s) (1.8× the parent), converts 73% ✅ (n=117)
-- `BH slice→2 · FH drive→3 · BH drive→3` → aggressive 26% vs 17% without the first shot(s) (1.5× the parent), converts 52% ⚠️ (n=269)
+- `BH slice→2 · FH drive→3 · BH drive→3` → aggressive 26% vs 17% without the first shot(s) (1.5× the parent), converts 52% ✅ (n=269)
 
 ### Rafael Nadal — 3 gold patterns
-- `BH slice→2 · FH drive→1 · FH drive→2` → aggressive 40% vs 23% without the first shot(s) (1.7× the parent), converts 72% ✅ (n=80)
-- `serve wide · FH drive→3 · BH drive→3` → aggressive 30% vs 18% without the first shot(s) (1.7× the parent), converts 60% ⚠️ (n=191)
-- `BH drive→2 · BH drive→2 · FH drive→1` → aggressive 17% vs 11% without the first shot(s) (1.6× the parent), converts 45% ⚠️ (n=359)
+- `BH slice→2 · FH drive→3 · FH drive→2` → aggressive 40% vs 23% without the first shot(s) (1.7× the parent), converts 72% ✅ (n=80)
+- `serve wide · FH drive→1 · BH drive→1` → aggressive 30% vs 18% without the first shot(s) (1.7× the parent), converts 60% ✅ (n=191)
+- `BH drive→2 · BH drive→2 · FH drive→3` → aggressive 17% vs 11% without the first shot(s) (1.6× the parent), converts 45% ⚠️ (n=359)
 
 ## Women
 
@@ -55,12 +55,12 @@ The switch from the narrower **finishing shot** reading (winner + own unforced e
 
 **Overlap: 15 of 39 patterns in the union are found by both** (38% Jaccard). 21 are aggressive-only, 3 finishing-only.
 
-Gate the narrow numerator failed on the aggressive-only patterns: **None** (10), **binomial** (9), **lift** (1), **support** (1).
+Gate the narrow numerator failed on the aggressive-only patterns: **None** (10), **binomial** (9), **support** (1), **lift** (1).
 Of those 9 binomial failures, 9 land within 10× the p<0.005 threshold (median p=0.012) — mostly a power difference at the cutoff rather than a different story about the pattern.
 
 Gate the wide numerator failed on the finishing-only patterns: **None** (3).
 
-Among the 15 shared patterns, the green/trap tag flips on **0** (0%) — the numerator decides which shots count as paying off, so a pattern can survive both screens and still be read differently.
+Among the 15 shared patterns, the green/trap tag flips on **4** (27%) — the numerator decides which shots count as paying off, so a pattern can survive both screens and still be read differently.
 
 ## Verdict
 

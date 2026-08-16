@@ -103,8 +103,8 @@ async function playerData(name, gender) {
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
 // drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
 // pattern has no chartable direction, so there's nothing to draw.
-function rallyDrawer(pattern) {
-  const svg = patternSvg(pattern);
+function rallyDrawer(pattern, mirror = false) {
+  const svg = patternSvg(pattern, mirror);
   return svg ? `<details class="rally"><summary>ball path</summary>
     <div class="court">${svg}</div></details>` : "";
 }
@@ -138,7 +138,11 @@ function trigMeter(t) {
   return `<div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i>${tick}</div>`;
 }
 
-function trigLine(t) {
+// `hand` is the player's, and every row here needs it: both trigger families store their
+// contexts in the player's own frame, mirrored for a left-hander so that one cue string
+// means one piece of tennis whoever plays it. The drawing is the one place that wants the
+// real court back, so it mirrors again on the way out.
+function trigLine(t, hand) {
   // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates across
   // halves of the player's data — only the hugely-charted earn these.
   const deep = Number(t.depth) > 2;
@@ -155,8 +159,8 @@ function trigLine(t) {
   // trap. Deep patterns keep their own reference, the shorter pattern they beat.
   const payoff = trap
     ? `converts only <b>${conv}%</b>${deep ? ' <span class="warnmark">⚠</span>' : ""}
-       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs ${deep ? "their norm"
-         : "their other cues"}</span>`
+       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs ${deep
+         ? "the shorter pattern" : "their other cues"}</span>`
     : `converts <b>${conv}%</b>`;
   const against = deep ? "the shorter pattern" : "their norm";
   // Two denominators, both printed. The frequency is over every stroke from this lead-up
@@ -173,7 +177,7 @@ function trigLine(t) {
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
       ${payoff} <span class="lift">${counts}</span></p>
     ${trigMeter(t)}
-    ${rallyDrawer(t.context)}</div>`;
+    ${rallyDrawer(t.context, hand === "L")}</div>`;
 }
 
 // Where they aim the first serve. Only wide and T are printed: the body share is
@@ -377,9 +381,12 @@ function trigSets(d) {
     && !d.triggers.some((t) => t.tag === "trap")
     ? `<div class="trig immune">no trap sequences — every lead-up that raises their
        aggressive shot frequency converts at least as well as their other cues do</div>` : "";
+  // Bound explicitly rather than passed to .map directly, which would hand trigLine the
+  // array index as its second argument and mirror every drawing on an odd row.
+  const hand = d.s.hand;
   return {
-    main: base + [...greens, ...traps].map(trigLine).join("") + immune,
-    gold: gold.map(trigLine).join(""),
+    main: base + [...greens, ...traps].map((t) => trigLine(t, hand)).join("") + immune,
+    gold: gold.map((t) => trigLine(t, hand)).join(""),
   };
 }
 

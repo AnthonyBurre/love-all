@@ -35,7 +35,7 @@ import matplotlib  # noqa: E402
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
-from tokens import point_tokens, pretty  # noqa: E402
+from tokens import hand_map, point_tokens, pretty  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
@@ -78,12 +78,30 @@ def candidates(con, gender: str) -> set:
     return {r[0] for r in rows}
 
 
-def collect(con, gender: str, pool: set):
+def collect(con, gender: str, pool: set, hands: dict):
     """Per candidate: base [n,att,win,fatt,fwin]x2 halves + context tables for K=2..4.
 
     The ``f*`` slots are the shadow tally: the same strokes scored under the
     narrower *finishing shot* reading (winner + own unforced error, no induced
     forced errors), so ``mine`` can run the identical gold screen twice.
+
+    Contexts are keyed in the *profiled player's* frame: for a left-hander every court
+    third in the sequence is mirrored, so a token names the shot rather than the half of
+    the court it happened to land in. Without it the same string means different tennis
+    for different players, and the panel prints it as though it were one pattern —
+    ``BH drive->2 . BH drive->2 . FH drive->1`` was starred for Rybakina, Andreeva and
+    Nadal, where Nadal's is the mirror image of the other two.
+
+    Mirrored by the striker's hand rather than each shot's own hitter, because the
+    context alternates hitters and a player's opponents are a mix of both hands: mirroring
+    each shot by whoever hit it would merge physically different opponent balls into one
+    bucket. This way the whole sequence reads from the profiled player's side of the net,
+    which is what court_response's hand-relative zones already do.
+
+    This changes no statistic. Every gate in ``score`` compares a context to its own
+    parent or to the same player's base counts, all within one player, so mirroring
+    re-keys a lefty's whole table consistently and the counts come out identical. It is
+    a labelling fix, and only a labelling fix.
 
     Also builds ``side_tabs``: for each deep context, the [n, att, win] counts of
     its *opening-touching* occurrences — those whose K-shot window reaches into
@@ -110,8 +128,15 @@ def collect(con, gender: str, pool: set):
             pt = parse_point(fs, ss, svr, win)
             if not pt.parse_ok or len(pt.shots) < 3:
                 continue
-            toks = point_tokens(pt)
             names = {1: p1, 2: p2}
+            # One token stream per striker, in that striker's own frame. Passing both
+            # hitter numbers mirrors every rally shot in the point, which is what "read
+            # the whole sequence from this player's side" means. The two streams are the
+            # same object whenever the strikers share a hand, which is most points.
+            plain = point_tokens(pt)
+            lefty = {w: hands.get(names[w]) == "L" for w in (1, 2)}
+            mirrored = point_tokens(pt, (1, 2)) if (lefty[1] or lefty[2]) else plain
+            toks_for = {w: (mirrored if lefty[w] else plain) for w in (1, 2)}
             h = HALF * (zlib.crc32(str(mid).encode()) & 1)
             side = serve_side(pts)
             n_sh = len(pt.shots)
@@ -119,6 +144,7 @@ def collect(con, gender: str, pool: set):
                 pl = names[pt.shots[i].hitter]
                 if pl not in pool:
                     continue
+                toks = toks_for[pt.shots[i].hitter]
                 # winner / own unforced error / forced the reply out: all three are
                 # aggressive shots, and everything but the middle one paid off.
                 _w, _e, _f = aggressive_shot(pt.shots, i, n_sh)
@@ -176,6 +202,7 @@ def score(base, tabs, k: int, key: tuple, numerator: str):
     if not parent:
         return None, "no parent", None
     pn, patt = parent[N] + parent[HALF + N], parent[ai] + parent[HALF + ai]
+    pwin = parent[wi] + parent[HALF + wi]
     if pn == 0 or patt == 0:
         return None, "no parent", None
     p_rate = patt / pn
@@ -196,12 +223,25 @@ def score(base, tabs, k: int, key: tuple, numerator: str):
     b_att, b_win = b[ai] + b[HALF + ai], b[wi] + b[HALF + wi]
     base_conv = b_win / b_att if b_att else 0.0
     conv = win / att
+    # Judged against the parent pattern, the same thing the frequency is judged against.
+    # It used to be judged against the player's rate over *every* stroke they hit, which
+    # is a different question from the one the frequency asks and a much lower bar to
+    # fall under: these are all contexts selected for making the player attack more than
+    # the shorter pattern did, and going for more converts less nearly by definition. So
+    # the tag was mostly reporting that fact about the selection, not about the sequence
+    # — 22 of 36 rows came out traps, and every single women's row did.
+    #
+    # Against the parent, "trap" means what the panel says it means: the extra shot in
+    # this sequence makes them go for it more than the shorter one did, and they convert
+    # it worse than they convert the shorter one. That is a claim about the third ball.
+    parent_conv = pwin / patt
     return {
         "player": pl, "depth": k, "context": ctx, "n": n, "attempts": att,
         "att_rate": att / n, "parent_rate": p_rate,
         "parent_lift": (att / n) / p_rate,
-        "conversion": conv, "conv_delta": conv - base_conv,
-        "tag": "green" if conv >= base_conv else "trap",
+        "conversion": conv, "conv_delta": conv - parent_conv,
+        "parent_conv": parent_conv, "base_conv": base_conv,
+        "tag": "green" if conv >= parent_conv else "trap",
         "strokes": b[N] + b[HALF + N],
     }, None, pval
 
@@ -404,10 +444,11 @@ def main():
     side_tabs_by_gender = {}
     data_by_gender = {}
     pool_sizes = {}
+    hands = hand_map(con)
     for g in ("M", "W"):
         pool = candidates(con, g)
         pool_sizes[g] = len(pool)
-        base, tabs, side_tabs = collect(con, g, pool)
+        base, tabs, side_tabs = collect(con, g, pool, hands)
         side_tabs_by_gender[g] = side_tabs
         data_by_gender[g] = (base, tabs)
         for numerator, sink in (("aggressive", all_rows), ("finishing", shadow_rows)):
