@@ -71,6 +71,7 @@ OPEN_ANCHORS = ((1, "return", "return"),      # returner's ball, ctx = (serve,)
                 (3, "return+1", "return"))    # returner's +1,    ctx = (return, serve+1)
 OPEN_MIN_BASE = 200   # per (player, side, anchor): strokes needed for a stable baseline
 MIN_HALF = 25         # strokes a context needs in *each* half to enter the split-half test
+MIN_HALF_ATT = 6      # aggressive shots a context needs in each half to carry a green/trap tag
 
 
 def collect(con, gender: str) -> "tuple[dict, dict]":
@@ -202,24 +203,87 @@ def dispersion(df: "pd.DataFrame") -> float:
     return float(np.sqrt(max(excess / denom, 0.0)))
 
 
-def tag_contexts(df: "pd.DataFrame") -> "pd.DataFrame":
-    """Label each context: trigger + green light / trap, by conversion vs baseline.
+def half_conversions(a: dict) -> dict:
+    """Per context, each half's (attempts, conversion) for both definitions.
+
+    Built from the same ``half`` buckets the definitions comparison uses, so the
+    replication gate below costs no extra pass over the corpus.
+    """
+    out = defaultdict(dict)
+    for (h, ctx), (n, w, e, f) in a["half"].items():
+        att, fatt = w + e + f, w + e
+        out[ctx][h] = {"attempts": att, "conv": (w + f) / att if att else np.nan,
+                       "fin_attempts": fatt, "fin_conv": w / fatt if fatt else np.nan}
+    return out
+
+
+def tag_contexts(df: "pd.DataFrame", halves: "dict | None" = None) -> "pd.DataFrame":
+    """Label each context: trigger + green light / trap, by conversion vs its class.
 
     Tagged twice — once on aggressive shots (``tag``, what the report and the site
     ship) and once on the narrower finishing shots (``fin_tag``), so the definitions
     section can show how many cues the switch reclassifies.
+
+    Two things here are deliberate and both were wrong before.
+
+    **The reference class is the player's other triggers, not all their strokes.**
+    Conditional on a lead-up raising the frequency at all, expected conversion already
+    sits about 16 points above the all-strokes baseline — the balls a player attacks on
+    are the ones they were well placed to attack. Measured against that baseline the
+    green/trap line therefore fell far below the middle of the class being split: 1,296
+    cues came out green against 115 traps, and a "trap" was mostly a trigger that had
+    landed in the low tail of a distribution whose whole body cleared the bar. Against
+    the trigger-class mean the sign means what it says — this cue converts worse than
+    the rest of this player's triggers do.
+
+    **A tag has to replicate.** Both halves of the player's matches must land on the
+    same side of that reference, on ``MIN_HALF_ATT``+ attempts each, or the context
+    stays neutral. Without it the tags were the top and bottom of an uncorrected
+    ranking over a median 40 candidate contexts: greens survived that (their
+    conversion edge held at about +15pp out of sample) but traps did not — out of
+    sample they converted *above* the player's own norm, and fewer than half kept a
+    negative sign, so the panel was shipping an inverted claim to 90 players.
+
+    ``halves`` is optional only so the definitions section can tag without it; the
+    shipped tables always pass it.
     """
     out = df.copy()
-    for pre, lift, att, conv, base in (("", "att_lift", "attempts", "conv", "base_conv"),
-                                       ("fin_", "fin_lift", "fin_attempts", "fin_conv",
-                                        "base_fin_conv")):
-        delta = out[conv] - df.attrs[base]
+    out.attrs = dict(df.attrs)
+    for pre, lift, att, conv, hatt, hconv in (
+            ("", "att_lift", "attempts", "conv", "attempts", "conv"),
+            ("fin_", "fin_lift", "fin_attempts", "fin_conv", "fin_attempts", "fin_conv")):
+        trig = (out[lift] >= TRIGGER_LIFT) & (out[att] >= MIN_ATT)
+        # The class mean: attempts-weighted conversion across this player's triggers, so
+        # a cue with 400 attempts sets the bar more than one with 13. With no qualifying
+        # trigger there is no class and nothing to tag.
+        tatt = out.loc[trig, att].sum()
+        base = float((out.loc[trig, conv] * out.loc[trig, att]).sum() / tatt) if tatt else np.nan
+        out.attrs[f"{pre}base_trig_conv"] = base
+        delta = out[conv] - base
         out[f"{pre}conv_delta"] = delta
         out[f"{pre}tag"] = "neutral"
-        trig = (out[lift] >= TRIGGER_LIFT) & (out[att] >= MIN_ATT)
-        out.loc[trig & (delta >= 0), f"{pre}tag"] = "green"
-        out.loc[trig & (delta < 0), f"{pre}tag"] = "trap"
-    out.attrs = df.attrs
+        if not np.isfinite(base):
+            continue
+        # Replication: same side of the class mean in both halves, each on real support.
+        # The bound arguments keep this honest about which definition it is testing —
+        # the loop rebinds hatt/hconv/base, and a closure over them would silently test
+        # the last one twice.
+        def _holds(ctx, want_green, _a=hatt, _c=hconv, _base=base):
+            h = (halves or {}).get(ctx)
+            if not h or 0 not in h or 1 not in h:
+                return False
+            for side in (0, 1):
+                if h[side][_a] < MIN_HALF_ATT or not np.isfinite(h[side][_c]):
+                    return False
+                if (h[side][_c] >= _base) != want_green:
+                    return False
+            return True
+
+        for want_green, tag in ((True, "green"), (False, "trap")):
+            cand = trig & ((delta >= 0) if want_green else (delta < 0))
+            for idx in out.index[cand]:
+                if _holds(out.at[idx, "context"], want_green):
+                    out.at[idx, f"{pre}tag"] = tag
     return out
 
 
@@ -229,27 +293,30 @@ def _ctx_str(ctx) -> str:
 
 def player_block(md, player, df):
     base_att, base_conv = df.attrs["base_att"], df.attrs["base_conv"]
+    trig_conv = df.attrs.get("base_trig_conv", float("nan"))
     n_all = int(df.n.sum())
     md.append(f"### {player}")
     md.append(f"*aggressive on {base_att:.1%} of strokes, converting {base_conv:.0%}; "
-              f"{n_all:,} contextful strokes*\n")
+              f"across their trigger cues, {trig_conv:.0%}; {n_all:,} contextful strokes*\n")
     trig = df[df.tag != "neutral"].sort_values("att_lift", ascending=False)
     md.append("**Trigger sequences** (lead-ups that most raise the frequency):")
     for r in trig.head(TOP).itertuples():
         kind = "✅ converts" if r.tag == "green" else "⚠️ trap"
         md.append(f"- `{_ctx_str(r.context)}` → aggressive {r.att_rate:.0%} "
                   f"({r.att_lift:.1f}×), converts {r.conv:.0%} "
-                  f"({r.conv_delta:+.0%} vs their norm) {kind} (n={r.n})")
+                  f"({r.conv_delta:+.0%} vs their other cues) {kind} "
+                  f"(n={r.n}, {r.attempts} attempts)")
     traps = df[df.tag == "trap"].sort_values("conv_delta")
     if len(traps):
         md.append("\n**Worst traps** (pulled into aggressive shots they don't convert):")
         for r in traps.head(3).itertuples():
             md.append(f"- `{_ctx_str(r.context)}` → aggressive {r.att_lift:.1f}× their norm "
-                      f"but converts only {r.conv:.0%} vs {base_conv:.0%} baseline (n={r.n})")
+                      f"but converts only {r.conv:.0%} vs {trig_conv:.0%} across their "
+                      f"other cues (n={r.n}, {r.attempts} attempts)")
     else:
-        md.append("\n**No trap contexts** — every sequence that raises the frequency "
-                  "also meets or beats their usual conversion. Unbaitable (at this "
-                  "resolution).")
+        md.append("\n**No trap contexts** — no cue that raises the frequency converts "
+                  "below the rest of their cues in *both* halves of their charted "
+                  "matches. Unbaitable (at this resolution).")
     md.append("")
 
 
@@ -463,7 +530,7 @@ def main() -> None:
         for player, a in acc.items():
             if a["n"] < MIN_SHOTS or (a["w"] + a["e"] + a["f"]) == 0:
                 continue
-            df = tag_contexts(context_table(a))
+            df = tag_contexts(context_table(a), half_conversions(a))
             if not len(df):
                 continue
             tables[player] = df

@@ -1231,12 +1231,18 @@ a { color: var(--acc-d); }
 .pmeta { min-width: 0; }
 .plift { margin: 0; font-size: 17px; font-weight: 800; color: var(--shot); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .plift span { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+/* the base the multiple is taken against, on its own line under it: a lift is only
+   readable next to the share it multiplies, and at 17px the two numbers would compete */
+.pshare { display: block; font-size: 10.5px; font-weight: 600; color: var(--muted); letter-spacing: 0; text-transform: none; }
 .pdesc { margin: 3px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
 .pdesc b { display: block; color: var(--ink); }
 .pfoot { margin: 3px 0 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pfoot b { color: var(--ink); }
-/* the comparison to the tour is one phrase — a narrow column mustn't break "▲5 vs tour"
-   across two lines and leave "tour" sitting alone */
+/* the denominator, dimmer than the count it qualifies — "277/970" should read as one
+   figure with a scale, not as two numbers of equal weight */
+.pof { opacity: .65; }
+/* the payoff comparison is one phrase — a narrow column mustn't break "▲5 vs their
+   other answers" mid-phrase and leave a word sitting alone */
 .up, .down, .lvl { white-space: nowrap; }
 .up { color: var(--up); font-weight: 700; }
 .down { color: var(--b); font-weight: 700; }
@@ -1337,6 +1343,9 @@ a { color: var(--acc-d); }
 
 /* the court glyph's key, stated where the glyph is first used */
 .courtkey { margin: 5px 0 0; display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 10.5px; }
+/* What the two figures on every pattern card mean. Its own line under the section note,
+   at the note's own weight — it is a gloss on the cards, not a second caption. */
+.paykey { display: block; margin: 4px 0 0; font-size: 10.5px; line-height: 1.45; }
 /* The cue bar's key. Ordinary inline flow, unlike .courtkey above: that one keys three
    glyphs with a word each and wants them spaced apart as three items, this one is a
    sentence with marks in it, and laid out as flex items its own clauses came apart. */

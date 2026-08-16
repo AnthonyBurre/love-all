@@ -145,7 +145,7 @@ def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
 
 PATTERN_COLS = ["player", "gender", "family", "state", "response", "state_depth",
                 "inc_code", "resp_code", "lift", "count", "n_state", "evidence",
-                "win_rate", "tour_win_rate"]
+                "win_rate", "tour_win_rate", "field_share", "state_win_rate"]
 # Extra columns the return family carries and the rally family has no meaning for.
 # The panel draws the serve from them, so they must survive the trip as strings —
 # an all-empty rally column would otherwise read back as NaN and print "nan".
@@ -275,14 +275,26 @@ def build() -> int:
               .groupby(["player", "gender"]).head(3))
     traps = (tr[tr.tag == "trap"].sort_values("conv_delta")
              .groupby(["player", "gender"]).head(3))
+    # ``attempts`` ships alongside ``n`` because they are the denominators of two
+    # different numbers on the card and the panel was printing only the first. ``n`` is
+    # the strokes played from that lead-up, which is what the frequency is over;
+    # ``attempts`` is the aggressive shots among them, which is what the conversion is
+    # over — and it is the smaller and more fragile of the two by roughly a factor of
+    # three, so a card labelled n=93 was resting its conversion claim on 33 shots.
     triggers = pd.concat([greens, traps])[
         ["player", "gender", "tag", "context", "att_rate", "att_lift",
-         "conversion", "conv_delta", "n"]]
+         "conversion", "conv_delta", "n", "attempts"]]
     triggers["depth"] = 2
 
-    # Gold-star deep patterns (deep_patterns experiment): 3-4 shot sequences that
-    # beat their own shorter parent and replicate — only the hugely-charted have them.
-    # att_lift for these rows is the lift vs the parent pattern, not vs base rate.
+    # Gold-star deep patterns (deep_patterns experiment): 3-4 shot sequences that beat
+    # their own shorter parent and clear Benjamini-Hochberg across every context that
+    # player was screened on — only the hugely-charted have them. att_lift for these
+    # rows is the lift vs the parent pattern, not vs base rate.
+    #
+    # The false-discovery correction landed 2026-08-16 and roughly halved this table
+    # (72 patterns over 28 players -> 36 over 15). What it removed were patterns picked
+    # out of hundreds of uncorrected binomial tests per player, at a rate the experiment
+    # itself now estimates: see the note at the head of reports/deep_patterns.md.
     dp_path = REPORTS / "deep_patterns.csv"
     if dp_path.exists():
         dp = pd.read_csv(dp_path).rename(columns={"parent_lift": "att_lift"})

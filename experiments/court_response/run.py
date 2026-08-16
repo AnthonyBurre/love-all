@@ -66,6 +66,22 @@ GLABEL = {"M": "Men", "W": "Women"}
 MIN_STATE = 80        # times a player must face a state to be profiled on it
 MIN_CELL = 10         # raw count behind any surfaced response
 MIN_FIELD = 500       # field observations of the state (minus the player's own)
+MIN_FIELD_ERA = 200   # field observations of a state *within one era* to price it there
+ERA_COV_MIN = 0.60    # share of a player's balls an era-matched field must cover to be used
+
+# The field a player is measured against is weighted to their own era. Tennis moves
+# enough inside the charted corpus that a pooled field is the wrong comparison for
+# anyone who played before most of it was recorded: among women answering a drive into
+# the backhand corner, the crosscourt backhand slice runs 23.6% pre-2000 against 5.7%
+# in the 2000s and 5.8% from 2010, and pre-2000 is a small fraction of all observations.
+# Measured against the pooled field, Graf's slice posts a 7.3x lift of which most is
+# simply the decade she played in — the shot was ordinary among the people she faced.
+#
+# So each cell's field share is the average of the per-era field shares, weighted by how
+# the player's own balls are distributed across eras (indirect standardization). The
+# question becomes "unusual among the people they actually played", which is the only
+# version of it a scouting number can mean.
+ERAS = ((0, 2000, "pre-2000"), (2000, 2010, "2000s"), (2010, 9999, "2010+"))
 K_SHRINK = 30         # pseudo-count pull toward the field distribution
 K_CONV = 20           # pseudo-count pull of a pattern's win rate toward the field's
 LIFT_MIN = 1.4        # shrunk lift needed to surface
@@ -134,32 +150,88 @@ def observations(pt, names, hands, funnel):
             yield name, hand, ("ret", kind, zone, prev.depth), resp, won
 
 
+def era_of(year) -> str:
+    y = int(year or 0)
+    for lo, hi, label in ERAS:
+        if lo <= y < hi:
+            return label
+    return ERAS[-1][2]
+
+
 def analyze(con, gender, hands):
     field = defaultdict(Counter)   # state -> Counter(resp)
     fieldw = defaultdict(Counter)  # state -> Counter(resp) of points won
     per = defaultdict(lambda: (defaultdict(Counter), defaultdict(Counter)))
     perw = defaultdict(lambda: (defaultdict(Counter), defaultdict(Counter)))
+    # The same tallies cut by era, for the standardized baseline. Kept beside the pooled
+    # ones rather than replacing them: the pooled counts still carry the support gates
+    # and the split-half check, and they are the fallback wherever an era is too thin to
+    # price a state on its own.
+    field_e = defaultdict(Counter)     # (state, era) -> Counter(resp)
+    fieldw_e = defaultdict(Counter)
+    per_e = defaultdict(lambda: defaultdict(Counter))    # name -> (state, era) -> Counter
+    perw_e = defaultdict(lambda: defaultdict(Counter))
     funnel = Counter()
     res = con.execute(
         "SELECT m.player1, m.player2, p.match_id, p.svr, p.first_serve, "
-        "p.second_serve, p.pt_winner "
+        "p.second_serve, p.pt_winner, m.year "
         "FROM points p JOIN matches m USING (match_id) "
         "WHERE p.svr IN (1,2) AND p.pt_winner IN (1,2) AND m.gender = ?", [gender])
     while batch := res.fetchmany(50_000):
-        for p1, p2, mid, svr, fs, ss, win in batch:
+        for p1, p2, mid, svr, fs, ss, win, year in batch:
             funnel["points"] += 1
             pt = parse_point(fs, ss, svr, win)
             if not pt.parse_ok:
                 continue
             funnel["parsed"] += 1
             half = zlib.crc32(str(mid).encode()) & 1
+            era = era_of(year)
             names = {1: p1, 2: p2}
             for name, hand, state, resp, won in observations(pt, names, hands, funnel):
                 field[state][resp] += 1
                 fieldw[state][resp] += won
                 per[name][half][state][resp] += 1
                 perw[name][half][state][resp] += won
-    return dict(field=field, fieldw=fieldw, per=per, perw=perw, funnel=funnel)
+                field_e[(state, era)][resp] += 1
+                fieldw_e[(state, era)][resp] += won
+                per_e[name][(state, era)][resp] += 1
+                perw_e[name][(state, era)][resp] += won
+    return dict(field=field, fieldw=fieldw, per=per, perw=perw, funnel=funnel,
+                field_e=field_e, fieldw_e=fieldw_e, per_e=per_e, perw_e=perw_e)
+
+
+def era_baseline(res, name, state, resp):
+    """The field's share and win rate for one cell, weighted to a player's era mix.
+
+    Returns ``(share, win_rate, covered)``. ``covered`` is how many of the player's
+    balls in this state fell in eras the field can price at all; a state whose eras are
+    mostly too thin falls back to the pooled baseline in ``profile``. The player's own
+    observations come out of the field in each era separately, exactly as they do from
+    the pooled one — otherwise a player who dominates a thin era is compared to himself.
+
+    The win rate carries its own weights: an era where the field never plays the
+    response has no win rate to contribute, and letting it weigh in at zero would read
+    as "the tour loses every one of these" rather than "the tour does not do this".
+    """
+    sh_num = sh_den = wr_num = wr_den = 0.0
+    for _lo, _hi, era in ERAS:
+        mine = res["per_e"][name].get((state, era))
+        if not mine:
+            continue
+        n_e = mine.total()
+        base = res["field_e"][(state, era)] - mine
+        bn = base.total()
+        if bn < MIN_FIELD_ERA:
+            continue
+        bf = base.get(resp, 0)
+        sh_num += n_e * (bf / bn)
+        sh_den += n_e
+        if bf:
+            mw = res["perw_e"][name].get((state, era), Counter()).get(resp, 0)
+            wr_num += n_e * ((res["fieldw_e"][(state, era)].get(resp, 0) - mw) / bf)
+            wr_den += n_e
+    return (sh_num / sh_den if sh_den else None,
+            wr_num / wr_den if wr_den else None, sh_den)
 
 
 def shrunk_lift(c, n, p_field, k=K_SHRINK):
@@ -168,14 +240,24 @@ def shrunk_lift(c, n, p_field, k=K_SHRINK):
 
 def profile(res, name):
     """A player's surfaced patterns:
-    (ev, lift, state, resp, n_state, c, l0, l1, conv, fconv).
+    (ev, lift, state, resp, n_state, c, l0, l1, conv, fconv, p_field, sconv).
 
     Ranked by evidence = count x log2(lift), the cell's contribution to the
     player's divergence from the field — raw lift alone crowns rare quirks
     (a 5x lift on 60 of 29,000 balls) over bread-and-butter tendencies.
     ``conv`` is the player's point-win rate playing that response (shrunk
     toward the field's by K_CONV pseudo-counts); ``fconv`` is the field's,
-    same state and response, the player's own points excluded.
+    same state and response, the player's own points excluded. ``p_field`` is
+    the share the lift is taken against, so a reader can be shown what the
+    player is unusual *relative to*. ``sconv`` is the player's own point-win
+    rate across every answer they give to this same ball.
+
+    ``sconv`` exists because ``conv`` against ``fconv`` is mostly a strength
+    comparison: the gap between the two correlates about +0.43 with a player's
+    overall serve-plus-return rate, so the strongest thirty players beat the tour
+    on nearly every pattern they have and the weakest thirty lose on nearly all
+    of theirs, whatever the tactic is worth. Both sides of ``conv`` vs ``sconv``
+    are the same player on the same incoming ball, so what is left is the choice.
     """
     h0, h1 = res["per"][name]
     h0w, h1w = res["perw"][name]
@@ -190,11 +272,29 @@ def profile(res, name):
         bn = base.total()
         if bn < MIN_FIELD:
             continue
+        # The player's own answer to this ball, over all their responses to it — the
+        # reference the payoff is read against. Shrunk toward the field's rate for the
+        # same state on the same pseudo-counts as `conv`, so the two are comparable.
+        mine_w = h0w[state] + h1w[state]
+        f_state = res["fieldw"][state] - mine_w
+        p_state = f_state.total() / bn
+        sconv = (mine_w.total() + K_CONV * p_state) / (n + K_CONV)
         for resp, c in mine.items():
             bf = base.get(resp, 0)
             if c < MIN_CELL or bf < 20:
                 continue
             p_field = bf / bn
+            fconv = (res["fieldw"][state].get(resp, 0)
+                     - (h0w[state][resp] + h1w[state][resp])) / bf
+            # Era-standardized where the eras this player played in are thick enough to
+            # price; pooled otherwise. A zero standardized share means the field of their
+            # own era never played this at all, which the lift cannot divide by — that
+            # falls back too rather than reporting an infinite lift.
+            e_share, e_fconv, covered = era_baseline(res, name, state, resp)
+            if e_share and covered >= ERA_COV_MIN * n:
+                p_field = e_share
+                if e_fconv is not None:
+                    fconv = e_fconv
             lift = shrunk_lift(c, n, p_field)
             if lift < LIFT_MIN:
                 continue
@@ -205,10 +305,9 @@ def profile(res, name):
             if min(l0, l1) < HALF_LIFT_MIN:
                 continue
             wins = h0w[state][resp] + h1w[state][resp]
-            fconv = (res["fieldw"][state].get(resp, 0) - wins) / bf
             conv = (wins + K_CONV * fconv) / (c + K_CONV)
             out.append((c * np.log2(lift), lift, state, resp, n, c, l0, l1,
-                        conv, fconv))
+                        conv, fconv, p_field, sconv))
     out.sort(reverse=True)
     rally = [p for p in out if p[2][0] == "rally"][:TOP_PER_PLAYER]
     ret = [p for p in out if p[2][0] == "ret"][:TOP_RETURN]
@@ -325,7 +424,8 @@ def main():
         r = results[g]
         for name in r["per"]:
             hand = hands[name]
-            for ev, lift, state, resp, n, c, l0, l1, conv, fconv in profile(r, name):
+            for (ev, lift, state, resp, n, c, l0, l1,
+                 conv, fconv, pf, sconv) in profile(r, name):
                 inc, out = physical_codes(state, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family=state[0],
@@ -337,6 +437,7 @@ def main():
                     n_state=n, count=c, lift=round(lift, 2),
                     evidence=round(ev, 1),
                     lift_h1=round(l0, 2), lift_h2=round(l1, 2),
+                    field_share=round(pf, 4), state_win_rate=round(sconv, 3),
                     win_rate=round(conv, 3), tour_win_rate=round(fconv, 3)))
     with open(REPORTS / "court_response_players.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
@@ -398,9 +499,11 @@ def main():
         md.append("")
         for name in vol[:8]:
             parts = [f"{state_name(st)} → **{resp_name(st, rp)}** "
-                     f"({lift:.1f}x, n={c}/{n}, halves {l0:.1f}/{l1:.1f}, "
-                     f"wins {cv:.0%} vs {fc:.0%})"
-                     for _ev, lift, st, rp, n, c, l0, l1, cv, fc in prof[name]
+                     f"({lift:.1f}x vs {pf:.0%} of the era-matched field, "
+                     f"n={c}/{n}, halves {l0:.1f}/{l1:.1f}, "
+                     f"wins {cv:.0%} vs {sc:.0%} on this ball overall, "
+                     f"tour {fc:.0%})"
+                     for _ev, lift, st, rp, n, c, l0, l1, cv, fc, pf, sc in prof[name]
                      if st[0] == "rally"]
             md.append(f"- **{name}** ({hands[name]}): " + "; ".join(parts))
         md.append("")
@@ -411,13 +514,14 @@ def main():
                   "depth — strongest evidence first, one per player):")
         md.append("")
         seen = set()
-        for (ev, lift, st, rp, n, c, l0, l1, cv, fc), name in rets:
+        for (ev, lift, st, rp, n, c, l0, l1, cv, fc, pf, sc), name in rets:
             if name in seen:
                 continue
             seen.add(name)
             md.append(f"- **{name}**: {state_name(st)} → **{resp_name(st, rp)}** "
-                      f"({lift:.1f}x, n={c}/{n}, halves {l0:.1f}/{l1:.1f}, "
-                      f"wins {cv:.0%} vs {fc:.0%})")
+                      f"({lift:.1f}x vs {pf:.0%} of the era-matched field, "
+                      f"n={c}/{n}, halves {l0:.1f}/{l1:.1f}, "
+                      f"wins {cv:.0%} vs {sc:.0%} on this ball overall, tour {fc:.0%})")
             if len(seen) >= 6:
                 break
         md.append("")

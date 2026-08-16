@@ -24,7 +24,7 @@ reports/deep_patterns_numerator.csv + figure.
 import sys
 import zlib
 from collections import defaultdict
-from math import comb
+from math import comb, exp, lgamma, log, log1p
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shot_language"))
@@ -48,6 +48,7 @@ MIN_CTX, MIN_ATT = 60, 12          # production support floor
 PARENT_LIFT = 1.3       # deep aggressive shot frequency must be >= this x its parent's
 P_MAX = 0.005           # exact binomial tail vs the parent rate
 HALF_N = 15             # per-half support for the replication gate
+Q_FDR = 0.10            # Benjamini-Hochberg false-discovery rate, within player
 
 # Counter layout. Every context tallies both numerators at once so the whole
 # gold screen can be re-run on the narrower one without a second pass over the
@@ -152,12 +153,55 @@ def collect(con, gender: str, pool: set):
 
 
 def binom_tail(k: int, n: int, p: float) -> float:
-    """Exact P(X >= k) for X ~ Binomial(n, p)."""
+    """P(X >= k) for X ~ Binomial(n, p), summed outward from the mode.
+
+    The straightforward ``sum(comb(n, j) * p**j * ...)`` is exact and fine while this
+    is only ever called on patterns that already cleared a lift gate; it overflows the
+    moment it is called on every context that has a parent, because ``comb`` on a few
+    thousand strokes is an integer far too large to convert to a float. Walking out
+    from the mode instead keeps every term inside double range: the largest term is
+    ``pmf(mode)``, which is about ``1/sqrt(2*pi*n*p*q)`` and cannot underflow, and each
+    neighbour follows from the one before by a ratio. Dividing by the mass actually
+    accumulated makes the result insensitive to where the walks are cut off.
+    """
     if p <= 0:
         return 0.0 if k > 0 else 1.0
     if p >= 1:
         return 1.0
-    return sum(comb(n, j) * p**j * (1 - p) ** (n - j) for j in range(k, n + 1))
+    if k <= 0:
+        return 1.0
+    if k > n:
+        return 0.0
+    mode = min(n, max(0, int((n + 1) * p)))
+    pm = exp(lgamma(n + 1) - lgamma(mode + 1) - lgamma(n - mode + 1)
+             + mode * log(p) + (n - mode) * log1p(-p))
+    r = p / (1.0 - p)
+    total = pm
+    tail = pm if mode >= k else 0.0
+    # Both walks stop once the remaining mass cannot move either figure. The tail gets
+    # its own test: cutting off when a term is negligible against `total` alone would
+    # flatten a genuinely tiny tail to zero before its first term was ever reached,
+    # which is the p-values of the very patterns this screen most wants to rank.
+    def spent(term, tail):
+        return term < total * 1e-18 and (tail > 0.0 and term < tail * 1e-16)
+
+    term = pm
+    for j in range(mode, n):                      # upward from the mode
+        term *= (n - j) / (j + 1) * r
+        total += term
+        if j + 1 >= k:
+            tail += term
+        if spent(term, tail):
+            break
+    term = pm
+    for j in range(mode, 0, -1):                  # downward from the mode
+        term *= j / ((n - j + 1) * r)
+        total += term
+        if j - 1 >= k:
+            tail += term
+        if spent(term, tail):
+            break
+    return min(1.0, tail / total)
 
 
 def score(base, tabs, k: int, key: tuple, numerator: str):
@@ -186,9 +230,14 @@ def score(base, tabs, k: int, key: tuple, numerator: str):
     if pn == 0 or patt == 0:
         return None, "no parent", None
     p_rate = patt / pn
-    if att / n < PARENT_LIFT * p_rate:
-        return None, "lift", None
+    # The tail is computed before the lift gate rather than after it, so every context
+    # that got as far as having a parent to be measured against carries a p — including
+    # the ones the lift gate turns away. Those are not free: the screen looked at them,
+    # and leaving them out of the multiplicity family would count a search over hundreds
+    # of contexts as a search over the handful that happened to clear 1.3x. See mine().
     pval = binom_tail(att, n, p_rate)
+    if att / n < PARENT_LIFT * p_rate:
+        return None, "lift", pval
     if pval >= P_MAX:
         return None, "binomial", pval
     if not (c[N] >= HALF_N and c[HALF + N] >= HALF_N
@@ -209,17 +258,45 @@ def score(base, tabs, k: int, key: tuple, numerator: str):
 
 
 def mine(base, tabs, numerator: str = "aggressive") -> list:
-    """Gold survivors under one numerator.
+    """Gold survivors under one numerator, false-discovery controlled within player.
 
     ``numerator`` picks which tally the whole screen runs on. Every gate reads
     the same slots, so passing ``"finishing"`` reproduces the pre-2026-08-05
     screen exactly rather than approximating it.
+
+    The binomial test in ``score`` is one test, and it is not run once. A heavily
+    charted player puts hundreds of contexts through it — 615 for Federer, 569 for
+    Djokovic, 406 for Nadal — so a raw p<0.005 threshold expects about three chance
+    survivors from Federer alone, against the thirteen he posts. Scaled over the pool
+    that is roughly 35-45 false positives among the ~72 patterns the screen used to
+    return: about half.
+
+    The replication gate below the test does not fix this, and it was doing far less
+    work than the README claimed. It re-uses the same pooled data that selected the
+    pattern, so once the pooled estimate sits a few standard errors above the parent
+    rate, both halves clear it almost automatically — it rejected none of the 35
+    patterns that cleared the binomial test across a re-run of eight players.
+
+    So the p-values are Benjamini-Hochberg adjusted across each player's *own*
+    candidate pool — every context of theirs that reached the binomial test, whether
+    it passed or failed — and only patterns clearing q=0.10 after that are gold. BH
+    within player is the right family: the claim on the panel is "this player has this
+    tendency", so the multiplicity that matters is how many tendencies were tried on
+    that player. It is also strictly tighter than the old fixed threshold at these pool
+    sizes, so every survivor is a pattern the previous screen would also have returned.
     """
-    out = []
+    tested = defaultdict(list)      # player -> [(pval, row_or_None)]
     for k in DEPTHS:
         for key in tabs[k]:
-            row, _, _ = score(base, tabs, k, key, numerator)
-            if row:
+            row, _gate, pval = score(base, tabs, k, key, numerator)
+            if pval is not None:    # reached the binomial test: a real candidate
+                tested[key[0]].append((pval, row))
+    out = []
+    for _pl, items in tested.items():
+        adj = bh([p for p, _ in items])
+        for (pval, row), q in zip(items, adj):
+            if row is not None and q <= Q_FDR:
+                row["p_raw"], row["p_bh"], row["n_candidates"] = pval, q, len(items)
                 out.append(row)
     return out
 
@@ -235,6 +312,19 @@ def fisher_two_sided(a: int, b: int, c: int, d: int) -> float:
     probs = [comb(r1, x) * comb(r2, c1 - x) / denom for x in range(lo, hi + 1)]
     p_obs = probs[a - lo]
     return min(1.0, sum(p for p in probs if p <= p_obs * (1 + 1e-9)))
+
+
+def bh(pvals: list) -> list:
+    """Benjamini-Hochberg adjusted p-values (step-up), returned in the input order."""
+    m = len(pvals)
+    if not m:
+        return []
+    order = sorted(range(m), key=lambda i: pvals[i], reverse=True)
+    adj, running = [1.0] * m, 1.0
+    for rank, i in enumerate(order):
+        running = min(running, min(1.0, m / (m - rank) * pvals[i]))
+        adj[i] = running
+    return adj
 
 
 def holm(pvals: list) -> list:
@@ -431,10 +521,22 @@ def main():
     md = ["# Deep patterns — 3–4 shot sequences for the heavily charted", ""]
     md.append("*Generated by `experiments/deep_patterns/run.py`. A deep context earns "
               "**gold** only if it beats its own (K−1)-shot parent (≥1.3×, exact "
-              f"binomial p<{P_MAX}), replicates above the parent in both match-hash "
-              "halves, and meets the production support floor. Candidate pool: "
-              f"{pool_sizes['M']} men + {pool_sizes['W']} women with "
-              f"≥{MIN_POINTS:,} charted points.*")
+              f"binomial p<{P_MAX}), survives Benjamini-Hochberg at q={Q_FDR:g} across "
+              "every one of that player's own candidate contexts, replicates above the "
+              "parent in both match-hash halves, and meets the production support "
+              f"floor. Candidate pool: {pool_sizes['M']} men + {pool_sizes['W']} women "
+              f"with ≥{MIN_POINTS:,} charted points.*")
+    md.append("")
+    md.append("The false-discovery correction is the gate that does the work here, and "
+              "it was missing until 2026-08-16. A heavily charted player puts hundreds "
+              "of contexts through the binomial test — the per-player candidate counts "
+              "are in `deep_patterns.csv` — so a fixed p<0.005 expected a few chance "
+              "survivors per player and returned 72 patterns across 28 players where "
+              "it now returns "
+              f"{len(df)} across {df.player.nunique() if len(df) else 0}. The "
+              "both-halves replication gate below the test does not substitute for it: "
+              "it re-reads the same pooled counts that selected the pattern, so it "
+              "rejects almost nothing.")
     md.append("")
     if len(df):
         n_players = df.groupby("gender").player.nunique()
@@ -553,8 +655,12 @@ if __name__ == "__main__":
     out_csv = df.copy()
     if len(out_csv):
         out_csv["context"] = out_csv.context.map(_ctx_str)
+        # p_raw/p_bh/n_candidates ride along so the correction is auditable from the
+        # CSV: a reader can see both what the pattern scored and how many of this
+        # player's contexts it was picked out of.
         cols = ["player", "gender", "depth", "context", "n", "attempts", "att_rate",
-                "parent_rate", "parent_lift", "conversion", "conv_delta", "tag"]
+                "parent_rate", "parent_lift", "conversion", "conv_delta", "tag",
+                "p_raw", "p_bh", "n_candidates"]
         out_csv[cols].round(4).to_csv(PROJECT_ROOT / "reports" / "deep_patterns.csv",
                                       index=False)
     (PROJECT_ROOT / "reports" / "deep_patterns.md").write_text("\n".join(md) + "\n")

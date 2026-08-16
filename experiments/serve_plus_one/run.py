@@ -245,6 +245,15 @@ def profile(res, name, tier) -> list:
     Every gate is court_response's, applied against the field in the *same* state,
     so a full-tier pattern is compared to the tour's answers to that same serve,
     into that same court, off that same return.
+
+    ``p_field`` and ``sconv`` ride along for the same reasons they do there: the card
+    needs to show what share of the field plays a response before "3.4x" means anything
+    (3.4x off a 27% base and 3.4x off a 0.4% base are different claims), and the
+    player's own win rate on this serve-and-return, across every third ball they hit
+    from it, is the only payoff comparison that is not mostly a statement about how
+    good they are. Unlike court_response this field is *not* era-standardized — the
+    serve+1 state already carries the service court and the serve's direction, which
+    thins each cell enough that a per-era baseline would price very few of them.
     """
     h0, h1 = res["per"][name]
     h0w, h1w = res["perw"][name]
@@ -256,6 +265,9 @@ def profile(res, name, tier) -> list:
         bn = base.total()
         if bn < MIN_FIELD:
             continue
+        mine_w = h0w[st] + h1w[st]
+        p_state = (res["fieldw"][st] - mine_w).total() / bn
+        sconv = (mine_w.total() + K_CONV * p_state) / (n + K_CONV) if n else p_state
         for resp, c in mine.items():
             bf = base.get(resp, 0)
             if c < MIN_CELL or bf < 20:
@@ -275,7 +287,8 @@ def profile(res, name, tier) -> list:
             wins = h0w[st][resp] + h1w[st][resp]
             fconv = (res["fieldw"][st].get(resp, 0) - wins) / bf
             conv = (wins + K_CONV * fconv) / (c + K_CONV)
-            out.append((c * np.log2(lift), lift, st, resp, n, c, l0, l1, conv, fconv))
+            out.append((c * np.log2(lift), lift, st, resp, n, c, l0, l1, conv, fconv,
+                        p_field, sconv))
     out.sort(key=lambda r: -r[0])
     return out[:TOP_PER_PLAYER]
 
@@ -422,9 +435,11 @@ def player_block(md, name, rows_by_player, tiers, flips):
         return
     md.append(f"**{name}** — tier: {TIER_WORD[tiers[name]]}\n")
     for r in rows:
-        md.append(f"- {r['state']} → **{r['response']}** ({r['lift']}x, "
+        md.append(f"- {r['state']} → **{r['response']}** ({r['lift']}x vs "
+                  f"{r['field_share']:.0%} of the field, "
                   f"n={r['count']}/{r['n_state']}, halves {r['lift_h1']}/{r['lift_h2']}, "
-                  f"wins {r['win_rate']:.0%} vs {r['tour_win_rate']:.0%})")
+                  f"wins {r['win_rate']:.0%} vs {r['state_win_rate']:.0%} on this ball "
+                  f"overall, tour {r['tour_win_rate']:.0%})")
     for st, rd, nd, ra, na in flips.get(name, [])[:2]:
         md.append(f"  - *courts disagree*: {state_name(st)} → "
                   f"{resp_name(st, rd)} on the deuce side (n={nd}), "
@@ -451,7 +466,8 @@ def main():
             tiers[name] = tier
             flips_by_g[g][name] = side_flips(res, name)
             hand = hands[name]
-            for ev, lift, st, resp, n, c, l0, l1, conv, fconv in profile(res, name, tier):
+            for (ev, lift, st, resp, n, c, l0, l1,
+                 conv, fconv, pf, sconv) in profile(res, name, tier):
                 inc, out = physical_codes(st, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family="ret", tier=tier,
@@ -463,6 +479,7 @@ def main():
                     inc_code=inc, resp_code=out,
                     n_state=n, count=c, lift=round(lift, 2), evidence=round(ev, 1),
                     lift_h1=round(l0, 2), lift_h2=round(l1, 2),
+                    field_share=round(pf, 4), state_win_rate=round(sconv, 3),
                     win_rate=round(conv, 3), tour_win_rate=round(fconv, 3)))
 
     surfaced = {g: Counter() for g in ("M", "W")}

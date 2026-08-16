@@ -59,14 +59,14 @@ async function playerData(name, gender) {
   let triggers = [];
   try {
     triggers = await query(
-      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, depth " +
+      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, attempts, depth " +
       "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
   } catch (e) { /* stale insights db: show the card without tendencies */ }
   let patterns = [];
   try {
     patterns = await query(
       "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
-      "win_rate, tour_win_rate, serve_side, serve_dir " +
+      "win_rate, tour_win_rate, field_share, state_win_rate, serve_side, serve_dir " +
       "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
       [name, gender]);
   } catch (e) { /* stale insights db: show the card without patterns */ }
@@ -147,17 +147,31 @@ function trigLine(t) {
   const conv = Math.round(t.conversion * 100);
   // A deep pattern already claims the ⭐, so a deep *trap* would otherwise lose its
   // warning entirely — it keeps a ⚠ on the number that makes it one.
+  // A shallow cue's conversion is now measured against the player's *other* cues, not
+  // against their all-strokes rate. Conditional on a lead-up raising the frequency at
+  // all, conversion already sits well above that rate — the balls you attack on are the
+  // ones you were well placed to attack — so the old comparison put the line far below
+  // the middle of the class it was splitting and called the bottom of a normal spread a
+  // trap. Deep patterns keep their own reference, the shorter pattern they beat.
   const payoff = trap
     ? `converts only <b>${conv}%</b>${deep ? ' <span class="warnmark">⚠</span>' : ""}
-       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs their norm</span>`
+       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs ${deep ? "their norm"
+         : "their other cues"}</span>`
     : `converts <b>${conv}%</b>`;
   const against = deep ? "the shorter pattern" : "their norm";
+  // Two denominators, both printed. The frequency is over every stroke from this lead-up
+  // (n); the conversion is over the aggressive shots among them (attempts), which runs
+  // about a third of n — and it was the unprinted one, so a conversion resting on 33
+  // shots read as though it rested on 93.
+  const att = num(t.attempts);
+  const counts = att == null ? `n=${Number(t.n)}`
+    : `n=${Number(t.n)}, ${att} attempt${att === 1 ? "" : "s"}`;
   return `<div class="trig ${cls}"${deep
     ? ` title="deep pattern: only visible with this player's huge charted history"` : ""}>
     <p class="tcue">after <code>${esc(t.context)}</code></p>
     <p class="tnum">aggressive <b>${Math.round(t.att_rate * 100)}%</b>
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
-      ${payoff} <span class="lift">n=${Number(t.n)}</span></p>
+      ${payoff} <span class="lift">${counts}</span></p>
     ${trigMeter(t)}
     ${rallyDrawer(t.context)}</div>`;
 }
@@ -235,33 +249,57 @@ function serveHtml(d, gates) {
 // disclosure, with the lift — the finding — promoted out of the parenthetical it used
 // to share with three other numbers.
 function patternCard(p) {
-  // Payoff: their point-win rate playing this response vs the tour's playing the same
-  // response to the same ball — the choice is the lift, this is what it earns. Level
-  // with the tour is stated rather than left blank, so a missing arrow always means
-  // the comparison is genuinely unavailable and never that the gap rounded to zero.
+  // Payoff: their point-win rate playing this response against their own rate answering
+  // the same incoming ball however else they answer it. It used to be measured against
+  // the tour's rate for the same response, which mostly ranked players rather than
+  // choices — that gap runs about +0.43 with a player's overall serve-plus-return rate,
+  // so the strongest thirty beat the tour on nearly every pattern they own and the
+  // weakest thirty trail on nearly all of theirs, whatever the shot is worth. Both
+  // numbers here are the same player on the same ball, so the difference is the choice.
+  // Level is stated rather than left blank, so a missing arrow always means the
+  // comparison is genuinely unavailable and never that the gap rounded to zero.
   let payoff = "";
   if (p.win_rate != null) {
     const w = `wins <b>${Math.round(p.win_rate * 100)}%</b>`;
-    if (p.tour_win_rate == null) {
+    // The reference prints as a figure rather than as a phrase. In a 160px column on a
+    // phone "▲5 vs their other answers" is three lines of card for one comparison, and
+    // it has to be nowrap or it breaks mid-phrase — so the card carries the two numbers
+    // and the section note above carries the sentence, once, for all six cards.
+    const ref = num(p.state_win_rate);
+    if (ref == null) {
       payoff = ` · ${w}`;
     } else {
-      const d = Math.round((p.win_rate - p.tour_win_rate) * 100);
-      payoff = ` · ${w} ` + (d === 0 ? `<span class="lvl">level with tour</span>`
-        : `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} vs tour</span>`);
+      const d = Math.round((p.win_rate - ref) * 100);
+      const r = `${Math.round(ref * 100)}%`;
+      payoff = ` · ${w} ` + (d === 0 ? `<span class="lvl">= their ${r}</span>`
+        : `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}
+           vs ${r}</span>`);
     }
   }
+  // What the lift is taken against. "3.4x the tour" is two very different claims off a
+  // 27% base and off a 0.4% one, and the card used to print only the multiple — so a
+  // mild over-index on the tour's own favourite shot and a genuine oddity looked alike.
+  const share = num(p.field_share);
+  const vs = share == null ? "" : ` <span class="pshare">tour ${share < 0.01
+    ? "under 1" : Math.round(share * 100)}%</span>`;
   // The return family is the serve+1: its state names the court and often the serve, so
   // the drawing starts at the serve rather than at the return. retSvg falls back to the
   // pair drawing for a pattern surfaced with the sides pooled.
   const court = p.family === "ret"
     ? retSvg(p.serve_side, p.serve_dir, p.inc_code, p.resp_code, p.state_depth)
     : pairSvg(p.inc_code, p.resp_code, p.state_depth);
+  // Both denominators. The count alone cannot say whether this is what they do with the
+  // ball or a corner of it: 277 answers looks the same printed on its own whether the
+  // ball came 970 times or 300. n_state is what the frequency claim is actually over.
+  const of = num(p.n_state);
+  const n = `n=${Number(p.count).toLocaleString()}${of
+    ? `<span class="pof">/${of.toLocaleString()}</span>` : ""}`;
   return `<div class="pcard2">
     <div class="pcourt">${court}</div>
     <div class="pmeta">
-      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span></p>
+      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span>${vs}</p>
       <p class="pdesc">${esc(p.state)}<b>→ ${esc(p.response)}</b></p>
-      <p class="pfoot">n=${Number(p.count).toLocaleString()}${payoff}</p>
+      <p class="pfoot">${n}${payoff}</p>
     </div>
   </div>`;
 }
@@ -292,11 +330,11 @@ function trigBase(d) {
     <p class="tcue">every rally stroke, no cue</p>
     <p class="tnum">aggressive <b>${(att * 100).toFixed(1)}%</b>${conv == null ? ""
       : ` · converts <b>${Math.round(conv * 100)}%</b>`}
-      ${/* Not quite the same number as the ticks below, and said so: each cue's tick is the
-           player's rate with that cue's own balls taken out, which moves it by a tenth of a
-           point on a career of twenty thousand. Near enough to read off, not near enough to
-           claim they are the same figure. */""}
-      <span class="lift">each tick below is this, without that cue's own balls</span></p>
+      ${/* This *is* the tick below, exactly: trigMeter draws it at att_rate / att_lift, and
+           att_lift is the cue's rate over this same pooled figure, so the division returns
+           it unchanged. The line used to claim the tick was this rate with that cue's own
+           balls removed, which is a different and better number that nothing computes. */""}
+      <span class="lift">the tick on each cue below marks this rate</span></p>
     <div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i></div>
   </div>`;
 }
@@ -320,9 +358,13 @@ function trigSets(d) {
     .sort((a, b) => a.conv_delta - b.conv_delta).slice(0, 2);
   const gold = d.triggers.filter((t) => Number(t.depth) > 2)
     .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
+  // The banner has to answer for the whole panel, not just the shallow tier. n_traps
+  // counts K=2 cues only, so a player with a deep trap starred two sections below was
+  // being told nothing baits them, directly above a ⚠ saying something does.
   const immune = d.s.n_traps != null && Number(d.s.n_traps) === 0
+    && !d.triggers.some((t) => t.tag === "trap")
     ? `<div class="trig immune">no trap sequences — every lead-up that raises their
-       aggressive shot frequency also meets their usual conversion</div>` : "";
+       aggressive shot frequency converts at least as well as their other cues do</div>` : "";
   return {
     main: base + [...greens, ...traps].map(trigLine).join("") + immune,
     gold: gold.map(trigLine).join(""),
@@ -970,6 +1012,13 @@ function section(title, note, a, b, aHtml, bHtml, kind = "cards") {
   </section>`;
 }
 
+// Said once per section rather than on each of six cards. Both figures the cards carry are
+// comparisons, and neither is self-describing: "n=277/970" needs to be read as a share, and
+// the win rate is against the player's own rate on the same ball — which is the whole point
+// of it, since measuring it against the tour's rate ranked players rather than choices.
+const PAYOFF_LEGEND = `<span class="paykey">n is how often they play it, out of how often
+  they face the ball; win rates are against their own rate answering that same ball</span>`;
+
 // The court glyph explained where it is first used, rather than only inside the collapsed
 // notation key — three cues is two more than a reader should have to go looking for.
 // A span, not a paragraph: this rides inside the section's <h3>, where a block element
@@ -1290,13 +1339,15 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
     none +
     section("serve + 1", `what they do with the returns they serve up, by service
-      court and return depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2),
-      "cards") +
+      court and return depth${PAYOFF_LEGEND}`, a, b,
+      familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
     section("court patterns", `their answer to an incoming ball, × how often the tour
-      plays it from the same spot${COURT_LEGEND}`, a, b,
+      of their own era plays it from the same
+      spot${COURT_LEGEND}${PAYOFF_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("shot-making triggers", `a lead-up that shifts their aggressive shot
-      frequency — and whether it pays${meterLegend("their rate without the cue")}`,
+      frequency — and whether it converts as well as their other cues
+      do${meterLegend("their rate with no cue")}`,
       a, b, ta.main, tb.main, "text") +
     section("deep patterns ⭐", `3–4 shot sequences only chartable at this player's
       coverage${meterLegend("the shorter pattern's rate")}`, a, b, ta.gold, tb.gold, "text") +
