@@ -30,7 +30,7 @@
 
 ![pca](figures/styles_pca_women.png)
 
-### 0. All-courter — 60 players
+### 0. Baseline all-rounder — 60 players
 - **Defining:** ↑fh_share  ↓serve_wide  ↑df_rate
 - **Exemplars:** Andrea Petkovic, Leylah Fernandez, Bianca Andreescu (2017–2022), Maria Sakkari, Eugenie Bouchard (2017–2023), Elise Mertens
 
@@ -56,7 +56,7 @@
 - **Alexander Bublik** (M) — 2017–2023: Net-rusher / serve-volleyer → 2024–2026: Big-serving baseliner
 - **Karen Khachanov** (M) — 2015–2022: Big-serving baseliner → 2023–2026: Baseline grinder / counterpuncher
 - **Michael Chang** (M) — 1989–1994: Baseline grinder / counterpuncher → 1995–1998: Big-serving baseliner
-- **Daria Kasatkina** (W) — 2015–2022: Baseline grinder / counterpuncher → 2023–2026: All-courter
-- **Jessica Pegula** (W) — 2015–2024: All-courter → 2025–2026: Baseline grinder / counterpuncher
+- **Daria Kasatkina** (W) — 2015–2022: Baseline grinder / counterpuncher → 2023–2026: Baseline all-rounder
+- **Jessica Pegula** (W) — 2015–2024: Baseline all-rounder → 2025–2026: Baseline grinder / counterpuncher
 
 **Stayed in one archetype (30):** Alexander Zverev (M), Andre Agassi (M), Andrey Rublev (M), Andy Murray (M), Benoit Paire (M), Boris Becker (M), David Ferrer (M), Feliciano Lopez (M), Goran Ivanisevic (M), Ivan Lendl (M), Jannik Sinner (M), Jimmy Connors (M), John Mcenroe (M), Juan Martin Del Potro (M), Lleyton Hewitt (M), Novak Djokovic (M), Pete Sampras (M), Rafael Nadal (M), Richard Krajicek (M), Roger Federer (M), Stefan Edberg (M), Stefanos Tsitsipas (M), Tim Henman (M), Tomas Berdych (M), Bianca Andreescu (W), Eugenie Bouchard (W), Karolina Pliskova (W), Magda Linette (W), Venus Williams (W), Victoria Azarenka (W)

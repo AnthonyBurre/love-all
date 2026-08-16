@@ -57,6 +57,7 @@ from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import parse_point, stroke_kind  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
+from match_charting_project.stats import bh, binom_tail  # noqa: E402
 
 REPORTS = PROJECT_ROOT / "reports"
 FIG = REPORTS / "figures"
@@ -73,6 +74,21 @@ LIFT_MIN = 1.4        # shrunk lift needed to surface
 HALF_LIFT_MIN = 1.15  # raw lift required in *both* halves of their matches
 HALF_MIN = 4          # raw count required in both halves
 TOP_PER_PLAYER = 2    # patterns surfaced per player (the panel shows two)
+Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
+
+# The lift gate above is a threshold on a point estimate, and a full-tier player is put
+# through it on the order of fifty to a hundred times — once per state x response cell
+# their charting funds. Without a correction that is a search, not a test: of the 770
+# rows this used to ship, 170 sat above an uncorrected p=0.001 against the field share
+# they were measured on, 57 above p=0.01 and 9 above p=0.05.
+#
+# So every cell that has a field baseline gets an exact binomial tail against that
+# baseline, and the tails are Benjamini-Hochberg adjusted across that player's own
+# candidate cells. Within player is the right family: the panel's claim is "this player
+# does this unusually often", so what has to be controlled is how many tendencies were
+# tried on them. This is the same correction deep_patterns applies, and it is applied
+# here for the same reason — the two sections sit one above the other in the panel and a
+# reader has no way to tell that one was screened and the other was not.
 
 # Tier assignment. Deliberately a coverage test, not a results test: a player earns
 # the finer state by having faced enough distinct situations in it, whatever those
@@ -257,7 +273,7 @@ def profile(res, name, tier) -> list:
     """
     h0, h1 = res["per"][name]
     h0w, h1w = res["perw"][name]
-    out = []
+    out, pending = [], []
     for st, n in tier_states(res, name, tier).items():
         c0, c1 = h0[st], h1[st]
         mine = c0 + c1
@@ -273,22 +289,32 @@ def profile(res, name, tier) -> list:
             if c < MIN_CELL or bf < 20:
                 continue
             p_field = bf / bn
+            # Every cell with a baseline is a test that was performed, whether or not it
+            # goes on to clear the lift gate — so the tail is taken here, before any of
+            # the surfacing gates, and the whole set forms the correction family.
+            pval = binom_tail(c, n, p_field)
             lift = ((c + K_SHRINK * p_field) / (n + K_SHRINK)) / p_field
-            if lift < LIFT_MIN:
-                continue
-            if min(c0[resp], c1[resp]) < HALF_MIN:
-                continue
+            surfaces = lift >= LIFT_MIN and min(c0[resp], c1[resp]) >= HALF_MIN
             n0, n1 = c0.total(), c1.total()
-            if not (n0 and n1):
-                continue
-            l0, l1 = (c0[resp] / n0) / p_field, (c1[resp] / n1) / p_field
-            if min(l0, l1) < HALF_LIFT_MIN:
+            if surfaces and n0 and n1:
+                l0, l1 = (c0[resp] / n0) / p_field, (c1[resp] / n1) / p_field
+                surfaces = min(l0, l1) >= HALF_LIFT_MIN
+            else:
+                l0 = l1 = 0.0
+                surfaces = False
+            if not surfaces:
+                pending.append((pval, None))
                 continue
             wins = h0w[st][resp] + h1w[st][resp]
             fconv = (res["fieldw"][st].get(resp, 0) - wins) / bf
             conv = (wins + K_CONV * fconv) / (c + K_CONV)
-            out.append((c * np.log2(lift), lift, st, resp, n, c, l0, l1, conv, fconv,
-                        p_field, sconv))
+            pending.append((pval, (c * np.log2(lift), lift, st, resp, n, c, l0, l1,
+                                   conv, fconv, p_field, sconv)))
+    # Adjust across the player's whole candidate set, then keep the survivors that also
+    # cleared the surfacing gates.
+    for (pval, row), q in zip(pending, bh([p for p, _ in pending])):
+        if row is not None and q <= Q_FDR:
+            out.append(row)
     out.sort(key=lambda r: -r[0])
     return out[:TOP_PER_PLAYER]
 

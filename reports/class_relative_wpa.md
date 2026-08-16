@@ -20,7 +20,7 @@ The residual — the part `class_rel_z` reports — is the only place a skill cl
 | Men | +0.91 | +0.43 |
 | Women | +0.88 | +0.60 |
 
-The two columns differ because λ is solved to absorb only as much variance as the four class means did (see `style_benchmark`), which is a third to a half of the total — so a good deal of style is still sitting inside the published residual and lending it stability that is not skill. The right column removes every bit of style the fingerprint can reach, and is the honest ceiling. Either way it is a verdict's worth of signal, not a score's, which is what the site prints it as.
+The left column looks strong, and that is the trap: λ is solved to absorb only as much variance as the four class means did (see `style_benchmark`), a third to a half of the total, so plenty of style is still sitting inside the published residual and lending it a stability that is not skill. The right column removes every bit of style the fingerprint can reach and is the honest ceiling on the skill claim — a verdict's worth of signal, not a score's, which is how the site prints it.
 
 What the raw metric ranks, most to least (accuracy score, with the average rally length of the points they played):
 
@@ -74,20 +74,20 @@ That is a grinder-to-servebot ordering. It is why the site stopped printing the 
 |---|---|---|---|---|
 | Caroline Wozniacki | Baseline grinder / counterpuncher | 0.052 | -2.60 | 1 |
 | Agnieszka Radwanska | Baseline grinder / counterpuncher | 0.057 | -1.94 | 4 |
-| Linda Fruhvirtova | All-courter | 0.060 | -1.87 | 6 |
+| Linda Fruhvirtova | Baseline all-rounder | 0.060 | -1.87 | 6 |
 | Sara Sorribes Tormo | Baseline grinder / counterpuncher | 0.054 | -1.73 | 2 |
 | Daria Kasatkina (2015–2022) | Baseline grinder / counterpuncher | 0.060 | -1.71 | 7 |
 | Sara Errani | Baseline grinder / counterpuncher | 0.057 | -1.67 | 3 |
 | Angelique Kerber | Baseline grinder / counterpuncher | 0.061 | -1.63 | 11 |
 | Martina Hingis | Baseline grinder / counterpuncher | 0.059 | -1.62 | 5 |
 | Magdalena Frech | Baseline grinder / counterpuncher | 0.061 | -1.59 | 10 |
-| Daria Kasatkina (2023–2026) | All-courter | 0.064 | -1.50 | 12 |
+| Daria Kasatkina (2023–2026) | Baseline all-rounder | 0.064 | -1.50 | 12 |
 | Katie Volynets | Baseline grinder / counterpuncher | 0.061 | -1.49 | 8 |
 | Flavia Pennetta | Baseline grinder / counterpuncher | 0.064 | -1.45 | 13 |
 
 **Best in each archetype:**
 
-- *All-courter* (60 players): **Linda Fruhvirtova** (0.060)
+- *Baseline all-rounder* (60 players): **Linda Fruhvirtova** (0.060)
 - *Baseline grinder / counterpuncher* (49 players): **Caroline Wozniacki** (0.052)
 - *Big serve / first-strike* (39 players): **Jennifer Brady** (0.070)
 - *Slice & net specialist* (4 players): **Tatjana Maria** (0.068)

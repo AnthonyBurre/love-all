@@ -37,14 +37,38 @@ def _base(entity: str) -> "tuple[str, int]":
     return (m["base"], int(m["y1"])) if m else (str(entity), 0)
 
 
-def _collapse(df: pd.DataFrame) -> pd.DataFrame:
-    """Collapse era entities to base names, keeping the latest era per (gender, player)."""
+def _collapse(df: pd.DataFrame, mean_over: "dict | None" = None) -> pd.DataFrame:
+    """Collapse era entities to base names, keeping the latest era per (gender, player).
+
+    Latest-era is right for the things this is mostly used for — an archetype and its
+    confidence flag are a claim about how someone plays, and for a split career the
+    current answer is the one worth printing.
+
+    It is wrong for a *measurement* the panel prints beside a career-wide denominator.
+    ``mean_over`` names columns to average across a player's eras instead, weighted by
+    the ``weight`` column, so the figure covers the same matches the coverage band
+    above it counts. Rally length needed this: Connors' two eras run 4.90 and 6.16, and
+    the panel printed 6.2 from 2,776 points directly beside a charted-history line
+    reading 7,309 — under a key claiming the figure covers every charted point the
+    player appeared in. Across the 35 split careers the two eras differ by 0.351 on
+    average, which is 44% of the tour's whole interquartile spread, and by up to 1.266.
+    """
     df = df.copy()
     parsed = [_base(p) for p in df["player"]]
     df["player"] = [b for b, _ in parsed]
     df["_y1"] = [y for _, y in parsed]
-    return df.sort_values("_y1").groupby(["gender", "player"], as_index=False).last().drop(
-        columns="_y1")
+    latest = df.sort_values("_y1").groupby(["gender", "player"], as_index=False).last()
+    if mean_over:
+        for col, weight in mean_over.items():
+            w = df[weight].fillna(0.0)
+            wsum = w.groupby([df.gender, df.player]).transform("sum")
+            # An all-zero-weight player would divide by zero; they keep the latest era,
+            # which is what the unweighted path would have given them anyway.
+            share = (w / wsum).where(wsum > 0, 0.0)
+            avg = (df[col] * share).groupby([df.gender, df.player]).sum()
+            avg = avg.where(wsum.groupby([df.gender, df.player]).first() > 0)
+            latest[col] = latest.set_index(["gender", "player"]).index.map(avg)
+    return latest.drop(columns="_y1")
 
 
 def _charted_matches(con) -> pd.DataFrame:
@@ -230,9 +254,14 @@ def build() -> int:
     # mean strokes in the points the player appeared in, keyed by the same era entity. It
     # replaced the shot-quality score in the panel's profile column — see the note on
     # class_rel_z below for why that score could not carry the weight it was given.
+    # avg_rally_len is point-weighted across a split career; the archetype and its
+    # confidence flag stay latest-era. The two want different things from the same row —
+    # see _collapse — and n_points is the weight because it is the denominator the figure
+    # was computed over in the first place.
     clusters = _collapse(pd.read_csv(REPORTS / "player_style_clusters.csv")
                          [["player", "gender", "archetype", "style_margin",
-                           "style_confident", "avg_rally_len"]])
+                           "style_confident", "avg_rally_len", "n_points"]],
+                         mean_over={"avg_rally_len": "n_points"}).drop(columns="n_points")
     summary = summary.merge(clusters, on=["player", "gender"], how="left")
 
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]

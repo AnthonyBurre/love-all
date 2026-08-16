@@ -82,6 +82,31 @@ export class MatchWP {
   preMatch() { return 0.5 * (this.matchWin(0, 0, true) + this.matchWin(0, 0, false)); }
 }
 
+// Calibration. The score tree is exact under its own assumption, but the two rates fed
+// into it are career charted rates with no opponent adjustment, and the tree is very
+// sensitive by design: a two-point-per-hundred change in serve strength moves the
+// printed number by several points. The result is a model that is reliably too sure of
+// itself. Scored against real charted results on matches where both players had 3+
+// prior charted matches, it printed 0.116 where the favourite actually went on to win
+// 0.240 of the time, 0.802 where the truth was 0.717, and 0.916 where it was 0.836.
+//
+// SHRINK is the multiplier on the printed edge that minimises log loss, fitted on
+// matches before 2020 and scored on 2020 onward: pooled test log loss 0.6449 -> 0.6294.
+// It is a monotone transform, so it reorders nothing and changes no favourite — it only
+// stops the tree from claiming more than its inputs can support.
+//
+// This is calibration, not a fix. The underlying problem is the inputs: a walk-forward
+// Elo built on nothing but the same charted results beats this model on both tours
+// (0.6031 vs 0.6242 men, 0.6251 vs 0.6770 women). Shrinking makes the number honest
+// about its own uncertainty; it does not make it a good number.
+// Applied by the caller rather than folded into preMatchWP below, so that this file
+// stays what its header says it is: a faithful port of winprob_match.py's tree. The
+// shrink is a statement about how much to trust the tree's inputs, which is the
+// presentation layer's business — see where matchup.js prints the bar.
+export const SHRINK = 0.61;
+
+export const shrinkWP = (p) => 0.5 + SHRINK * (p - 0.5);
+
 // a, b = {serve, ret} career rates; returns P(player a wins the match).
 export function preMatchWP(a, b, mu, bestOf = 3) {
   const [p1, p2] = matchupStrength(a.serve, a.ret, b.serve, b.ret, mu);

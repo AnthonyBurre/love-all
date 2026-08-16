@@ -153,7 +153,7 @@ Two things follow. First, the player ranking barely moves — the two frequencie
 | Mats Wilander (M) | 28% | Daniel Altmaier (M) | 16% |
 | Novak Djokovic (M) | 28% | Anett Kontaveit (W) | 16% |
 
-The cue lists move more than the leaderboard does. Of the 984 contexts either definition flags, they agree on 59%; the old numerator flagged 777 and this one flags 803. Traps fall from 352 to 351, which is the substantive correction: a shot that forced an error used to count as neither a success nor an aggressive shot, so a cue that reliably produced them read as low-conversion and got labelled a trap it had not earned.
+The cue lists move more than the leaderboard does. Of the 927 contexts either definition flags, they agree on 59%; the old numerator flagged 707 and this one flags 774. Traps fall from 317 to 337, which is the substantive correction: a shot that forced an error used to count as neither a success nor an aggressive shot, so a cue that reliably produced them read as low-conversion and got labelled a trap it had not earned.
 
 ![definitions](figures/shot_triggers_definitions.png)
 

@@ -1,7 +1,7 @@
 // The matchup drawer: experimental pre-match win probability + a card per player,
 // all queried from insights.duckdb via DuckDB-WASM.
 import { query, leagueMu, serveGates, tourSpread } from "./db.js";
-import { preMatchWP } from "./winprob.js";
+import { preMatchWP, shrinkWP } from "./winprob.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong } from "./schedule.js";
 
@@ -230,10 +230,22 @@ function serveHtml(d, gates) {
   // multiplicity correction is applied.
   let bp = "";
   const delta = d.s && d.s.serve_bp_wide_delta;
-  if (d.s && Number(d.s.serve_bp_sig) === 1 && delta != null) {
+  // Significant *and* big enough to act on. The experiment's test is correctly
+  // multiplicity-corrected, but significance on a player with a thousand charted break
+  // points certifies shifts of three or four points that no returner can prepare against —
+  // eleven of the fifty-eight lines this used to print were that. A returner adjusts to
+  // "he goes wider here", so the line only appears where the shift reaches five points.
+  const BP_MIN = 0.05;
+  if (d.s && Number(d.s.serve_bp_sig) === 1 && delta != null && Math.abs(delta) >= BP_MIN) {
     const pts = Math.round(Math.abs(delta) * 100);
+    // Its own window, said out loud. Everything else in this section is the recency-weighted
+    // window named in the caption above; this one is computed across the whole charted
+    // career, and sitting silently under "last 34 charted matches" it read as though it
+    // shared it.
     bp = `<p class="srvbp" title="a shift this size clears the experiment's significance
-      test; most players show nothing here">on break points, <b>${pts} points</b> ${delta > 0 ? "wider" : "less wide"} than their own norm</p>`;
+      test and is large enough to play against; most players show nothing here">on break
+      points, <b>${pts} points</b> ${delta > 0 ? "wider" : "less wide"} than their own norm
+      <span class="srvbpwin">across their whole charted career</span></p>`;
   }
   return `<div class="srv">
     <div class="srvcourt">${sorted.map(box).join("")}</div>
@@ -686,14 +698,19 @@ function coverageChart(rows, sc) {
     const pts = Number(r.points) || 0, mt = Number(r.matches) || 0;
     if (!peak || pts > peak.pts) peak = { y, pts, mt };
     const label = `${y} — ${mt} ${mt === 1 ? "match" : "matches"} · ${pts.toLocaleString()} points`;
+    // `title` is a mouse affordance and this layout is read on a phone, where hover does not
+    // exist and the season labels were simply unreachable. `data-lbl` carries the same string
+    // to a CSS readout that opens on press as well as on hover (see .cy[data-lbl]), so a
+    // thumb can get at it. The bars stay out of the tab order deliberately — a thirty-season
+    // career would otherwise put thirty stops inside a modal, twice over.
     bars.push(`<i class="cy" style="height:${(pts / sc.max * 100).toFixed(1)}%"
-      title="${esc(label)}"></i>`);
+      title="${esc(label)}" data-lbl="${esc(label)}"></i>`);
   }
   // One label per end of the axis, and only those two. A tick per season is unreadable at this
   // size, and the years in between are recoverable by counting along from either end — which is
   // what the per-bar tooltip is for when a reader wants an exact one.
   const say = `charted points by season, ${sc.lo} to ${sc.hi}` +
-    (peak ? `; busiest ${peak.y}, ${peak.mt} matches` : "");
+    (peak ? `; busiest ${peak.y}, ${peak.mt} ${peak.mt === 1 ? "match" : "matches"}` : "");
   return `<div class="cchart">
     <div class="cbars" role="img" aria-label="${esc(say)}">${bars.join("")}</div>
     <p class="cyears"><span>${sc.lo}</span><span>${sc.hi}</span></p>
@@ -719,8 +736,13 @@ function coverageSide(d, tag, sc) {
     ? `${s.year_min}: ` : `${s.year_min}–${s.year_max}: `);
   // These counts are how much of the player exists in the data, not how much tennis they have
   // played — which is what the title above them and the note at the foot of the panel are for.
+  //
+  // Singular where it is one. This line is at its most conspicuous on exactly the players it
+  // reads worst for: a qualifier with a single charted match got "1 matches" at the top of a
+  // panel whose entire subject is how little is known about them.
+  const mt = Number(s.matches_charted) || 0;
   return `<div class="pbside ${tag}" data-side="${tag}">
-    <p class="pbchart">${span}${s.matches_charted} matches ·
+    <p class="pbchart">${span}${mt} ${mt === 1 ? "match" : "matches"} ·
       ${Number(s.points_charted).toLocaleString()} points</p>
     ${chart}</div>`;
 }
@@ -856,7 +878,10 @@ function profileSide(d, tag) {
 // recent-form window rather than a career total, and a subtitle that covers the body has to
 // be true of every section in it. The section says which window in its own caption.
 //
-const CHARTED_TITLE = `<p class="tapetitle">Charted history</p>`;
+// The asterisk is the other half of COV_NOTE below, which opens with one. It had no
+// counterpart anywhere in the panel, so the note at the foot read as a footnote to nothing
+// and the caveat never attached to the counts it qualifies.
+const CHARTED_TITLE = `<p class="tapetitle">Charted history<span class="tapestar">*</span></p>`;
 
 // The asterisk on "Charted history": these are a sample assembled by volunteers picking
 // matches worth charting, not a random one, so it isn't the player's record. It reads once
@@ -1060,9 +1085,10 @@ function wpBar(a, b, wpA, conf) {
     <div class="wp-line"><span>${esc(last(a))} ${pa}%</span>
       <div class="wp-bar"><div class="pa" style="width:${wpA * 100}%"></div></div>
       <span>${100 - pa}% ${esc(last(b))}</span></div>
-    <div class="wp-note">Experimental, from charted serve and return rates only. Surface and
-      recent-form adjustments were tested and don't improve it at this data resolution, so
-      it stays deliberately simple. Charting confidence: ${conf}.</div>
+    <div class="wp-note">Experimental, from charted serve and return rates only, and pulled
+      toward even because the raw model is measurably overconfident against real results.
+      Surface and recent-form adjustments were tested and don't improve it at this data
+      resolution. Charting confidence: ${conf}.</div>
   </div>`;
 }
 
@@ -1608,9 +1634,13 @@ export async function openMatchup(m, t) {
   if (t.completed) {
     wpslot.innerHTML = "";              // result is in — no pre-match number to offer
   } else if (pa && pb && wellCharted(pa) && wellCharted(pb)) {
-    const wpA = preMatchWP(
+    // Shrunk toward even before it is printed. The tree is exact; its inputs are career
+    // charted rates with no opponent adjustment, and scored against real results it
+    // printed 0.92 where the truth was 0.84 and 0.12 where the truth was 0.24. See
+    // winprob.js for the fit.
+    const wpA = shrinkWP(preMatchWP(
       { serve: pa.s.serve_rate, ret: pa.s.return_rate },
-      { serve: pb.s.serve_rate, ret: pb.s.return_rate }, mu, t.best_of);
+      { serve: pb.s.serve_rate, ret: pb.s.return_rate }, mu, t.best_of));
     wpslot.innerHTML = wpBar(m.a.name, m.b.name, wpA, confidence(pa, pb));
   } else if (pa && pb) {
     // Both charted, one of them barely. The model is fed career serve and return rates with

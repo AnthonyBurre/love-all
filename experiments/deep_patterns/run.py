@@ -24,7 +24,7 @@ reports/deep_patterns_numerator.csv + figure.
 import sys
 import zlib
 from collections import defaultdict
-from math import comb, exp, lgamma, log, log1p
+from math import comb
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shot_language"))
@@ -41,6 +41,7 @@ from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import aggressive_shot, parse_point  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
+from match_charting_project.stats import bh, binom_tail, holm  # noqa: E402
 
 MIN_POINTS = 10_000     # charted points to enter the candidate pool
 DEPTHS = (3, 4)         # deep context lengths (production triggers use 2)
@@ -152,58 +153,6 @@ def collect(con, gender: str, pool: set):
     return base, tabs, side_tabs
 
 
-def binom_tail(k: int, n: int, p: float) -> float:
-    """P(X >= k) for X ~ Binomial(n, p), summed outward from the mode.
-
-    The straightforward ``sum(comb(n, j) * p**j * ...)`` is exact and fine while this
-    is only ever called on patterns that already cleared a lift gate; it overflows the
-    moment it is called on every context that has a parent, because ``comb`` on a few
-    thousand strokes is an integer far too large to convert to a float. Walking out
-    from the mode instead keeps every term inside double range: the largest term is
-    ``pmf(mode)``, which is about ``1/sqrt(2*pi*n*p*q)`` and cannot underflow, and each
-    neighbour follows from the one before by a ratio. Dividing by the mass actually
-    accumulated makes the result insensitive to where the walks are cut off.
-    """
-    if p <= 0:
-        return 0.0 if k > 0 else 1.0
-    if p >= 1:
-        return 1.0
-    if k <= 0:
-        return 1.0
-    if k > n:
-        return 0.0
-    mode = min(n, max(0, int((n + 1) * p)))
-    pm = exp(lgamma(n + 1) - lgamma(mode + 1) - lgamma(n - mode + 1)
-             + mode * log(p) + (n - mode) * log1p(-p))
-    r = p / (1.0 - p)
-    total = pm
-    tail = pm if mode >= k else 0.0
-    # Both walks stop once the remaining mass cannot move either figure. The tail gets
-    # its own test: cutting off when a term is negligible against `total` alone would
-    # flatten a genuinely tiny tail to zero before its first term was ever reached,
-    # which is the p-values of the very patterns this screen most wants to rank.
-    def spent(term, tail):
-        return term < total * 1e-18 and (tail > 0.0 and term < tail * 1e-16)
-
-    term = pm
-    for j in range(mode, n):                      # upward from the mode
-        term *= (n - j) / (j + 1) * r
-        total += term
-        if j + 1 >= k:
-            tail += term
-        if spent(term, tail):
-            break
-    term = pm
-    for j in range(mode, 0, -1):                  # downward from the mode
-        term *= j / ((n - j + 1) * r)
-        total += term
-        if j - 1 >= k:
-            tail += term
-        if spent(term, tail):
-            break
-    return min(1.0, tail / total)
-
-
 def score(base, tabs, k: int, key: tuple, numerator: str):
     """Run the three gold gates over one (player, context) under one numerator.
 
@@ -312,30 +261,6 @@ def fisher_two_sided(a: int, b: int, c: int, d: int) -> float:
     probs = [comb(r1, x) * comb(r2, c1 - x) / denom for x in range(lo, hi + 1)]
     p_obs = probs[a - lo]
     return min(1.0, sum(p for p in probs if p <= p_obs * (1 + 1e-9)))
-
-
-def bh(pvals: list) -> list:
-    """Benjamini-Hochberg adjusted p-values (step-up), returned in the input order."""
-    m = len(pvals)
-    if not m:
-        return []
-    order = sorted(range(m), key=lambda i: pvals[i], reverse=True)
-    adj, running = [1.0] * m, 1.0
-    for rank, i in enumerate(order):
-        running = min(running, min(1.0, m / (m - rank) * pvals[i]))
-        adj[i] = running
-    return adj
-
-
-def holm(pvals: list) -> list:
-    """Holm step-down adjusted p-values, returned in the input order."""
-    m = len(pvals)
-    order = sorted(range(m), key=lambda i: pvals[i])
-    adj, running = [1.0] * m, 0.0
-    for rank, i in enumerate(order):
-        running = max(running, min(1.0, (m - rank) * pvals[i]))
-        adj[i] = running
-    return adj
 
 
 def side_heterogeneity(rows: list, side_tabs_by_gender: dict, alpha: float = 0.05):

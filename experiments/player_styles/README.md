@@ -49,9 +49,15 @@ The archetypes line up with how fans would describe these players:
   *Big-serving baseliner* (Berdych, Söderling, Tsitsipas, Zverev, Medvedev — the broad
   modern-baseline group; spans aggressive shotmakers to consistent walls with a serve).
 - **Women** — *Big serve / first-strike* (Krejcikova, Ivanovic, Lisicki), *Baseline
-  grinder* (Jankovic, Pennetta, Stephens), *All-courter* (Swiatek, Sakkari,
+  grinder* (Jankovic, Pennetta, Stephens), *Baseline all-rounder* (Swiatek, Sakkari,
   Bouchard), and a rare *Slice & net specialist* archetype (Navratilova, Niculescu,
   Tatjana Maria).
+
+The *Baseline all-rounder* label is the cascade's else-branch and is named to say so.
+It used to read *All-courter*, which is a claim about court coverage and net play that
+this centroid does not support — its net rate is slightly *below* average — on what is
+the largest asserted women's group. Players there are the ones no earlier branch
+described, not players who have been found to play all-court tennis.
 
 Labels describe each cluster's *centroid*; a cluster spans a range, so a borderline
 player can read as the neighbouring style (e.g. Medvedev is a consistent wall who lands

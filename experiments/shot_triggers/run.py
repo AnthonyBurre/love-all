@@ -47,6 +47,7 @@ from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import aggressive_shot, parse_point  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
+from match_charting_project.stats import bh, binom_tail  # noqa: E402
 
 K = 2               # context = the K shots before the player's stroke
 MIN_SHOTS = 4000    # a player needs this many contextful strokes to be ranked
@@ -72,6 +73,7 @@ OPEN_ANCHORS = ((1, "return", "return"),      # returner's ball, ctx = (serve,)
 OPEN_MIN_BASE = 200   # per (player, side, anchor): strokes needed for a stable baseline
 MIN_HALF = 25         # strokes a context needs in *each* half to enter the split-half test
 MIN_HALF_ATT = 6      # aggressive shots a context needs in each half to carry a green/trap tag
+Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
 
 
 def collect(con, gender: str) -> "tuple[dict, dict]":
@@ -249,10 +251,25 @@ def tag_contexts(df: "pd.DataFrame", halves: "dict | None" = None) -> "pd.DataFr
     """
     out = df.copy()
     out.attrs = dict(df.attrs)
-    for pre, lift, att, conv, hatt, hconv in (
-            ("", "att_lift", "attempts", "conv", "attempts", "conv"),
-            ("fin_", "fin_lift", "fin_attempts", "fin_conv", "fin_attempts", "fin_conv")):
-        trig = (out[lift] >= TRIGGER_LIFT) & (out[att] >= MIN_ATT)
+    for pre, lift, att, conv, hatt, hconv, rate_base in (
+            ("", "att_lift", "attempts", "conv", "attempts", "conv", "base_att"),
+            ("fin_", "fin_lift", "fin_attempts", "fin_conv", "fin_attempts", "fin_conv",
+             "base_fin")):
+        # The frequency claim gets a test, and the test gets a correction. TRIGGER_LIFT is
+        # a threshold on a point estimate applied to every context a player has — a median
+        # of 40 of them, and up to 172 — so on its own it selects the top of an uncorrected
+        # ranking rather than finding cues that are really different. Each context's
+        # aggressive shots are scored against the player's own pooled rate with an exact
+        # binomial tail, and the tails are Benjamini-Hochberg adjusted across all of that
+        # player's contexts. Only cues clearing q=Q_FDR can carry a tag.
+        p0 = df.attrs[rate_base]
+        pvals = [binom_tail(int(a), int(n), p0)
+                 for a, n in zip(out[att], out["n"])] if p0 > 0 else [1.0] * len(out)
+        qs = bh(pvals)
+        out[f"{pre}p_raw"] = pvals
+        out[f"{pre}p_bh"] = qs
+        trig = ((out[lift] >= TRIGGER_LIFT) & (out[att] >= MIN_ATT)
+                & (pd.Series(qs, index=out.index) <= Q_FDR))
         # The class mean: attempts-weighted conversion across this player's triggers, so
         # a cue with 400 attempts sets the bar more than one with 13. With no qualifying
         # trigger there is no class and nothing to tag.
