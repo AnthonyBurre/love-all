@@ -124,23 +124,27 @@ CR_ROWS = [
     {"player": "A Player", "gender": "M", "family": "rally", "state": "drive into the middle",
      "response": "crosscourt FH drive", "state_depth": "", "inc_code": 2, "resp_code": 1,
      "lift": 1.8, "count": 40, "n_state": 300, "evidence": 33.9,
-     "win_rate": 0.55, "tour_win_rate": 0.51},
+     "win_rate": 0.55, "tour_win_rate": 0.51,
+     "field_share": 0.22, "state_win_rate": 0.48},
     {"player": "A Player", "gender": "M", "family": "ret", "state": "mid-depth drive return",
      "response": "crosscourt FH drive", "state_depth": "mid-depth", "inc_code": 2, "resp_code": 1,
      "lift": 1.7, "count": 30, "n_state": 200, "evidence": 23.0,
-     "win_rate": 0.57, "tour_win_rate": 0.52},
+     "win_rate": 0.57, "tour_win_rate": 0.52,
+     "field_share": 0.19, "state_win_rate": 0.45},
 ]
 SP_ROWS = [
     {"player": "A Player", "gender": "M", "family": "ret", "tier": "full",
      "state": "deuce court, T serve · mid-depth drive return", "response": "crosscourt FH drive",
      "serve_side": "deuce", "serve_dir": 6, "state_depth": "mid-depth",
      "inc_code": 2, "resp_code": 1, "lift": 2.0, "count": 90, "n_state": 400, "evidence": 90.0,
-     "win_rate": 0.58, "tour_win_rate": 0.56},
+     "win_rate": 0.58, "tour_win_rate": 0.56,
+     "field_share": 0.27, "state_win_rate": 0.50},
     {"player": "B Player", "gender": "W", "family": "ret", "tier": "pooled",
      "state": "mid-depth drive return", "response": "BH drive down the line",
      "serve_side": "", "serve_dir": "", "state_depth": "mid-depth",
      "inc_code": 3, "resp_code": 3, "lift": 1.5, "count": 20, "n_state": 150, "evidence": 11.7,
-     "win_rate": 0.49, "tour_win_rate": 0.47},
+     "win_rate": 0.49, "tour_win_rate": 0.47,
+     "field_share": 0.14, "state_win_rate": 0.41},
 ]
 
 
