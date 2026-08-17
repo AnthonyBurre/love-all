@@ -32,12 +32,17 @@ Writes `reports/player_styles.md`, `reports/player_style_clusters.csv`, and
 
 If the `player_eras` table exists (`match-charting-project eras`), `run.py` fingerprints by
 **era entity** instead of by player, so a long evolving career (e.g. *Andre Agassi
-(1988–1997)* vs *(1998–2006)*) clusters as two points. Of the 34 split careers, **6 cross an
-archetype boundary** — Chang (grinder → big-server), Henman (net-rusher → slice & variety),
-Lendl (grinder → slice & variety), Khachanov, Kasatkina, Linette — and the report lists them.
-The other 28 evolve *within* their archetype, consistent with the career-split finding that
-most evolution is style-drift, not a wholesale change. Without the table it falls back to one
-row per player.
+(1988–1997)* vs *(1998–2006)*) clusters as two points. Of the 35 split careers, **5 cross an
+archetype boundary** — Bublik (net-rusher → big-serving baseliner), Khachanov (big-serving
+baseliner → grinder), Chang (grinder → big-serving baseliner), Kasatkina (grinder → baseline
+all-rounder), Pegula (baseline all-rounder → grinder) — and the report lists them. The other 30
+evolve *within* their archetype, consistent with the career-split finding that most evolution is
+style-drift, not a wholesale change. Without the table it falls back to one row per player.
+
+These names move between rebuilds and this paragraph has been stale before: the crossing set is
+by construction the entities nearest a boundary, which is exactly the population the confidence
+gate below exists to distrust. `reports/player_styles.md` is regenerated on every run and is the
+authority; treat this list as an illustration of the shape, not a fixed finding.
 
 ## What it finds (face validity)
 
@@ -60,9 +65,8 @@ the largest asserted women's group. Players there are the ones no earlier branch
 described, not players who have been found to play all-court tennis.
 
 Labels describe each cluster's *centroid*; a cluster spans a range, so a borderline
-player can read as the neighbouring style (e.g. Medvedev is a consistent wall who lands
-among the big servers because of his serve — see the `class_rel_z` in class-relative WPA,
-which correctly flags him as the steadiest of that group).
+player can read as the neighbouring style — Medvedev is a consistent wall who lands among the
+big servers because of his serve.
 
 ## Honest limitations
 
@@ -76,13 +80,25 @@ which correctly flags him as the steadiest of that group).
   fingerprint is "style in context", not an intrinsic constant. Same charting-coverage
   caveat as the rest of the repo applies.
 
-## Next: class-relative WPA
+## What the fingerprint fed, and how that turned out
 
 `reports/player_style_clusters.csv` (player, gender, cluster, archetype, `style_margin`,
-`style_confident`, plus the fingerprint features themselves) is the bridge to the
-differentiated product: measure each player's shot quality against what their style
-predicts — separating skill from style, which the league-baseline leaderboard in
+`style_confident`, plus the fingerprint features themselves) was the bridge to what was meant
+to be the differentiated product: measure each player's shot quality against what their style
+predicts, separating skill from style in a way the league-baseline leaderboard in
 `chess_point_analysis` cannot.
+
+**That did not work, and the site does not print it.** `class_relative_wpa` benchmarks against
+a smooth fit over these features rather than a cluster mean — the right choice, since the
+cluster label is a step function that moves — but the ridge penalty is solved to absorb only as
+much variance as the four class means did, which it achieves by explaining a shrunken copy of
+the whole style axis. The residual keeps the rest: it correlates −0.99 with the raw score and
+66% of its variance is rally length. See that experiment's report for the numbers. The
+fingerprint is still the right object; what it could not support was a per-player skill verdict
+at this resolution.
+
+The one thing the clusters do feed into the site is the archetype line itself, and only where
+`style_confident` holds.
 
 Two columns exist because the label is softer than it looks. `style_margin` is the
 per-entity silhouette — how much better this player's own archetype fits than the

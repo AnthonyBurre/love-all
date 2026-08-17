@@ -252,8 +252,9 @@ def build() -> int:
     # though it were the stable half.
     # avg_rally_len travels with the archetype because it is the same measurement pass:
     # mean strokes in the points the player appeared in, keyed by the same era entity. It
-    # replaced the shot-quality score in the panel's profile column — see the note on
-    # class_rel_z below for why that score could not carry the weight it was given.
+    # replaced the shot-quality score in the panel's profile column — see the note where
+    # class_relative_wpa used to be merged, below, for why that score and the verdict built
+    # on top of it could not carry the weight they were given.
     # avg_rally_len is point-weighted across a split career; the archetype and its
     # confidence flag stay latest-era. The two want different things from the same row —
     # see _collapse — and n_points is the weight because it is the denominator the figure
@@ -279,22 +280,26 @@ def build() -> int:
     # does not ship it, since the two would describe one shot two ways on one page.
     patterns = _patterns()
 
-    # Class-relative shot quality. ``class_rel_z`` is the only part of this the panel shows,
-    # as a three-band verdict. The 0-100 ``accuracy`` score it is the residual of used to be
-    # the profile column's headline figure, and is no longer displayed anywhere: WPA
-    # telescopes within a point, so avg_wpa_lost is identically (win probability conceded per
-    # point) / (strokes per point), and the second factor dominates. Measured over the built
-    # table: it correlates -0.84 (men) / -0.76 (women) with rally length, the style
-    # fingerprint predicts 91% (men) / 85% (women) of it out-of-fold, and against a split-half
-    # reliability of 0.93 that leaves at most 2% / 8% of its spread as reliable non-style
-    # signal. It ranked Santoro and Wilander over Laver and Karlovic, which is a rally-length
-    # ranking wearing a quality label.
+    # Class-relative shot quality no longer ships in any form, so nothing from
+    # class_relative_wpa is merged here.
     #
-    # Both columns still ship. ``accuracy`` is what ``class_rel_z`` is computed from, so
-    # dropping it here would leave the surviving verdict with no stated origin.
-    crw = _collapse(pd.read_csv(REPORTS / "class_relative_wpa.csv")
-                    [["player", "gender", "class_rel_z", "accuracy", "avg_wpa_lost"]])
-    summary = summary.merge(crw, on=["player", "gender"], how="left")
+    # The 0-100 ``accuracy`` score went first: WPA telescopes within a point, so avg_wpa_lost
+    # is identically (win probability conceded per point) / (strokes per point) and the second
+    # factor dominates. On the current build it correlates -0.87 (men) / -0.83 (women) with
+    # rally length, the style fingerprint predicts 91% / 82% of it out-of-fold, and against a
+    # split-half reliability of 0.94 / 0.93 that leaves 3% / 11% of its spread as reliable
+    # non-style signal. It ranked Santoro and Wilander over Laver and Karlovic.
+    #
+    # The three-band ``class_rel_z`` verdict that replaced it went the same way and for the
+    # same reason: the residual correlates -0.99 with the score it is taken from and 66% of
+    # its variance is still rally length, because the ridge lambda is solved to match the four
+    # class means' R2 and buys that by leaving a scaled copy of the style axis behind. It
+    # reported that no male serve-volleyer had ever been ahead of similar players, against half
+    # of all grinders.
+    #
+    # The columns are not carried as dead weight: reports/class_relative_wpa.{csv,md} keep the
+    # full record, and the experiment stands as a negative result. This file ships what the
+    # panel renders.
 
     # Shot-making triggers (shot_triggers experiment): green lights by aggressive shot
     # frequency lift, traps by how far conversion falls below the player's norm. (These
@@ -331,8 +336,16 @@ def build() -> int:
                 .groupby(["player", "gender"]).head(3))
         triggers = pd.concat([triggers, deep[triggers.columns]])
 
+    # ``sigma`` is not taken. It printed as the profile column's "shot selection" figure and
+    # was cut by the test that retired the shot-quality score: it correlates -0.81 (men) /
+    # -0.59 (women) with rally length, two thirds of the men's spread is the player's own
+    # baseline aggressive shot frequency — which ``trig_att_rate`` below already carries in
+    # plain percent — and its leaderboard was a serve-volley leaderboard, with Rafter falling
+    # from the top of the tour to below the median once serve and net lead-ups came out. It
+    # also carried no direction: it was independent of whether the extra aggression converted,
+    # so one number described an adaptive player and a baited one identically.
     tp = pd.read_csv(REPORTS / "shot_triggers_players.csv")[
-        ["player", "gender", "att_rate", "conversion", "sigma", "n_traps"]].rename(
+        ["player", "gender", "att_rate", "conversion", "n_traps"]].rename(
         columns={"att_rate": "trig_att_rate", "conversion": "trig_conversion"})
     summary = summary.merge(tp, on=["player", "gender"], how="left")
 

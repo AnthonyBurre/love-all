@@ -19,19 +19,19 @@ answers it, and what it found. They write their output to `reports/`.
 | experiment | the question | what it found |
 | --- | --- | --- |
 | [`chess_point_analysis`](experiments/chess_point_analysis/) | Can chess-analysis techniques be ported to a tennis point? | Yes. A point string is a move list, so it gets an engine eval, WPA per shot, and an opening explorer. The decoder validates to within 1–5% of the project's own stat lines. |
-| [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Moutet, McEnroe, Navratilova, Niculescu. Most predictable: Agassi, Cilic, Osaka, Ostapenko. Junkballers score high, flat first-strike baseliners low. |
+| [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Rusedski, Moutet, Santoro, Rafter; Navratilova, Maria, Niculescu. Most predictable: Basilashvili, Cilic; Samsonova, Giorgi, Ostapenko. Junkballers and serve-volleyers score high, flat first-strike baseliners low. Zones are mirrored for left-handers, without which handedness alone explained over half the spread. |
 | [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive and face-valid. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, the textbook pressure point. |
-| [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, conversion rates, and **traps**, meaning cues that raise the frequency but sink conversion. Ships to the site. |
-| [`court_response`](experiments/court_response/) | What does a player do with a given incoming ball? | Enough stability to read as a scouting report: split-half r = 0.73 (men) / 0.69 (women) over ~43k state-response cells. Federer's crosscourt backhand slice, Djokovic's backhand down the line. |
-| [`serve_plus_one`](experiments/serve_plus_one/) | The server's third ball, with the service court in the state. | Pooling the courts was averaging two different shots. Nadal answers the same mid-depth return with a crosscourt forehand on the deuce side and a forehand down the line on the ad side. 602 such disagreements across 260 players. Each player is profiled at the finest state their charting funds. Ships to the site. |
+| [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, conversion rates, and **traps**, meaning cues that raise the frequency but convert worse than the player's *other* cues do. A cue must clear a per-player FDR correction and hold its sign in both halves of their matches. Ships to the site. |
+| [`court_response`](experiments/court_response/) | What does a player do with a given incoming ball? | Enough stability to read as a scouting report: split-half r = 0.73 (men) / 0.69 (women) over ~43k state-response cells. Federer's crosscourt backhand slice, Djokovic's backhand down the line. The field is weighted to each player's own era, without which a pre-2000 slicer's lift is mostly the decade. |
+| [`serve_plus_one`](experiments/serve_plus_one/) | The server's third ball, with the service court in the state. | Pooling the courts was averaging two different shots. Nadal answers the same mid-depth return with a crosscourt forehand on the deuce side and a forehand down the line on the ad side. 603 such disagreements across 260 players. 725 patterns over 414 players survive a per-player FDR correction. Each player is profiled at the finest state their charting funds. Ships to the site. |
 | [`context_length`](experiments/context_length/) | How many shots of history does charted data actually support? | **Two. The third actively hurts** held-out log-loss. And a player's top-5 signature list overlaps only J≈0.22 between halves of their own data, so much of any specific list is sampling luck. |
-| [`deep_patterns`](experiments/deep_patterns/) | For the most heavily charted players, do 3–4 shot patterns survive anyway? | 66 do, across 31 players, through a triple gate: beat your own parent pattern, replicate in both halves, clear a binomial test. Shipped as a gold-star tier. |
+| [`deep_patterns`](experiments/deep_patterns/) | For the most heavily charted players, do 3–4 shot patterns survive anyway? | 36 do, across 15 players, through a quadruple gate: beat your own parent pattern, replicate in both halves, clear a binomial test, and survive Benjamini-Hochberg across every context that player was screened on. The correction is what does the work — a heavily charted player is screened on 600+ contexts, so an uncorrected threshold returned roughly twice as many. Shipped as a gold-star tier. |
 | [`serve_side`](experiments/serve_side/) | Does deuce vs ad court hide structure? | Yes, and nothing else here conditioned on it. The direction codes mean **opposite wings** on the two sides, so serve analysis that ignores side is averaging two different shots together. |
 | [`serve_tendencies`](experiments/serve_tendencies/) | Which serve-placement stats can a player card safely carry? | Where a player serves is a measurement (split-half r = 0.58, ~860 serves for 80% signal); **what the placement earns is not** (r = 0.22, ~11,000 serves). Placement is re-decided per match, so the binomial sample-size rule is optimistic ~4x. |
-| [`player_styles`](experiments/player_styles/) | What style archetypes are there? | Four per tour, matching how fans talk: net-rusher (Sampras, McEnroe), baseline grinder (Djokovic, Nadal), slice & variety (Wawrinka, Federer), big-serving baseliner (Medvedev, Zverev). |
+| [`player_styles`](experiments/player_styles/) | What style archetypes are there? | Four per tour, matching how fans talk: net-rusher (Sampras, McEnroe), baseline grinder (Djokovic, Nadal), slice & variety (Wawrinka, Federer), big-serving baseliner (Medvedev, Zverev). Style is a continuum, so about a third of entities sit too near a boundary to name and are reported as "between styles" rather than assigned. |
 | [`career_splits`](experiments/career_splits/) | Should a long career split into eras, or is that just two noisier samples of one player? | Split **selectively**. Most careers are stable; 34 genuinely evolved, and those detections are face-valid (Sabalenka's serve yips, Clijsters' comeback). Justifies `player_eras`, 358 → 392 entities. |
 | [`blind_reid`](experiments/blind_reid/) | Hide every name. Can you tell who is across the net purely from the shots coming back? | Yes, and **the serve is the weakest way to do it**. Response strokes alone reach AUC 0.685 on held-out players against the serve block's 0.643. Identity also fades measurably across years. |
-| [`class_relative_wpa`](experiments/class_relative_wpa/) | Who beats the average for *their own style*, rather than the field's? | A per-player `class_rel_z`, so a high-variance shotmaker is judged against other shotmakers instead of against a counterpuncher. |
+| [`class_relative_wpa`](experiments/class_relative_wpa/) | Who beats the average for *their own style*, rather than the field's? | **Not at this resolution.** `class_rel_z` was meant to judge a shotmaker against other shotmakers, but the residual correlates −0.99 with the raw score it is taken from and 66% of its variance is rally length: the ridge λ is solved to match the class means' R², which buys that R² by leaving a scaled copy of the style axis in the residual. It said no male serve-volleyer had ever been ahead of similar players. Pulled from the site; the experiment stands as the negative result. |
 
 ### Win probability
 
@@ -71,9 +71,9 @@ finished events of every other tier. On a live match each box is shaded by how c
 pairing is; on a finished draw the shading turns per-match, and the drawer links straight to
 that match's full chart on Tennis Abstract or invites you to be the one who charts it. Click
 any match and a drawer opens with, for each player: a style archetype, serve and return
-rates against the tour average, serve direction, court patterns, shot-making triggers, shot
-quality relative to that archetype, and an **experimental pre-match win probability**. All of it is queried in
-the browser with **DuckDB-WASM**, with no backend.
+rates against the tour average, average point length, shot variety, serve direction, court
+patterns, shot-making triggers, and an **experimental pre-match win probability**. All of it is
+queried in the browser with **DuckDB-WASM**, with no backend.
 
 <details>
 <summary><b>Why neither Wikipedia feed is trusted blindly</b> — draw validation and calendar joining</summary>
@@ -141,32 +141,34 @@ and as a bar per season. The total alone cannot tell a breakout year from a deca
 work — "195 matches, 2014–2026" reads the same either way — and the difference matters, because
 those counts are the denominator of every number below. The bars are charted points, both
 players on one axis and one height scale, so a season lines up with the same season across the
-gap and the two shapes are directly comparable. Hover a bar for that season's exact counts.
+gap and the two shapes are directly comparable. Hover or press a bar for that season's exact
+counts.
 
 Under it, a **profile band**: what kind of player each of them is, which hand they hold the
-racket in, how good their shot-making is, and how long their average point runs. All of it is
-read through by everything below — the court drawings further down name their zones by the
-player's own hand, so a lefty's forehand corner is a righty's backhand corner. Shot quality
-leads, and it is a verdict rather than a score: whether the player is ahead of, level with, or
-behind what their own style fingerprint predicts. It says "similar players" rather than naming a
-style, because the benchmark is fitted smoothly across the whole style space rather than
-averaged within an archetype — so it means the same thing for the third of players whose
-archetype is too borderline to name, whom the band labels "between styles".
+racket in, and how long their average point runs. All of it is read through by everything
+below — the court drawings further down name their zones by the player's own hand, so a lefty's
+forehand corner is a righty's backhand corner. Style is a continuum, so a third of players sit
+too near a boundary to name and the band says "between styles" rather than picking one.
 
-That used to be a 0–100 rating, and the rating is gone. It was the chess accuracy score ported
-over — average win probability conceded per stroke, mapped onto a hundred — and it was a
-reliable measurement of the wrong thing. Win probability telescopes inside a point, so the
-average conceded *per stroke* is identically the concession per point divided by the strokes
-per point, and the second factor runs the figure: it correlates −0.84 with rally length, the
-style fingerprint predicts 91% of it out-of-fold, and against a 0.93 split-half reliability
-that leaves about 2% of its spread as reliable signal that isn't style. It ranked Santoro and
-Wilander above Laver and Karlovic, which is a rally-length table wearing a quality label. So
-the panel prints the rally length in strokes, which is what the number was mostly saying, and
-keeps the quality claim only where it survives the style correction — at three bands, because
-the corrected residual splits half-to-half at about 0.34 (men) and 0.53 (women), which will
-carry a verdict and would not carry a decimal. The rally length is labelled **shots per point**,
-because that is exactly what it is: the strokes in an average point, both players and the serve
-included, over every charted point that player appeared in.
+The band carries no verdict on how well anyone plays, and it used to carry two. The first was a
+0–100 rating: the chess accuracy score ported over, average win probability conceded per stroke
+mapped onto a hundred. Win probability telescopes inside a point, so the average conceded *per
+stroke* is identically the concession per point divided by the strokes per point, and the second
+factor runs the figure — it correlates −0.87 with rally length, the style fingerprint predicts
+91% of it out-of-fold, and against a 0.94 split-half reliability that leaves about 3% of its
+spread as reliable signal that isn't style. It ranked Santoro and Wilander above Laver and
+Karlovic, which is a rally-length table wearing a quality label.
+
+What replaced it was a three-band verdict on the style-corrected residual, and that has gone
+too, by the same test. The residual correlates −0.99 with the score it is taken from and 66% of
+its variance is still rally length, because the ridge λ is solved to absorb exactly as much
+variance as the four class means did — which it buys by explaining a shrunken copy of the whole
+style axis and leaving the rest of it in the "residual". It reported that no male serve-volleyer
+has ever been ahead of similar players, against half of all grinders. So the panel now prints
+the rally length and no judgement at all: **shots per point**, the strokes in an average point,
+both players and the serve included, averaged over every charted point that player appeared in.
+It is as much a fact about the tennis they get drawn into as about them, which the panel's own
+key says.
 
 Then **serve direction**: where their first serve goes on each court side,
 laid out the way the server sees the two boxes. Only wide and T are shown, so
@@ -186,18 +188,21 @@ point or two, which is why each player's figure stands on their own side of the 
 their arc climbs.
 
 Only those two get rings, because a ring only works for a number with a real zero and a
-reachable ceiling. Two more figures print beside them, in each player's own column under their
-shots per point: **variety**, how far their shot choices stray from tour norms, in bits, and
-**shot selection**, how much their aggression swings with the situation they are in, as a
-standard deviation in percentage points. They are per-player facts rather than comparisons, so
-they sit with the player rather than on a shared scale, and each appears on its own — the two
-come from different experiments with different qualification bars, and a player can clear one
-and not the other.
+reachable ceiling. Both are withheld below a coverage floor: they are career charted rates with
+no opponent adjustment, and off a single charted match a qualifier was printing a serve figure
+near the best in the draw.
 
-Neither is a unit anyone arrives knowing, so the section can open a note that defines every
-figure in the column, glosses the two units they are measured in, and says where the charted
-tour sits on each: half of it falls inside a band about a third of a bit wide, which is what
-makes "3.2 bits" mean something. The bits gloss is the one that earns its place, because bits compound — every
+One more figure prints beside them, in each player's own column under their shots per point:
+**variety**, how far their shot choices stray from tour norms, in bits. A second one used to —
+shot selection, the swing in a player's aggression across situations — and it went the same way
+as the shot-quality verdict, for the same reason: two thirds of its spread was the player's own
+baseline aggression, which the triggers section prints in plain percent further down, and it
+correlated −0.81 with rally length. Its leaderboard was really a serve-volley leaderboard;
+restricted to rally-only lead-ups Rafter fell from the top of the tour to below the median.
+
+Bits are not a unit anyone arrives knowing, so the section can open a note that defines the
+figure, glosses the unit, and says where the charted tour sits on it: half of it falls inside a
+band about a third of a bit wide, which is what makes "3.2 bits" mean something. The gloss earns its place, because bits compound — every
 extra bit is a shot half as likely again, so a gap that looks small is not. Those bands are
 read off the built table when the panel opens rather than written into the prose, so they
 cannot go stale against a rebuild. Nothing is converted to a rank or a percentile: the figures
@@ -211,7 +216,9 @@ patterns**, the mid-rally exchange, written in plain English:
 `drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
 **shot-making triggers** are written in shot tokens: `serve wide · BH slice→3`, with a bar
 under each cue: its length is how often that cue makes them go for a finishing shot, the
-colour change is how much of that landed, and the tick is the rate without the cue. The first
+colour change is how much of that landed, and the tick marks the player's rate with no cue at
+all. A cue is shown only if it clears a false-discovery correction across every context that
+player was screened on, and holds its sign in both halves of their charted matches. The first
 bar in each player's column is that player with no cue at all — their rate over every rally
 stroke they hit, drawn on the same scale and from the same left edge — so the section's whole
 claim is one glance: this is the rate, and these are the lead-ups that move it. Click the
@@ -228,9 +235,19 @@ A pattern is the player's answer to one incoming ball: the state (the ball's cha
 the zone it lands in) and the response (wing, shot type, and line). The multiplier compares
 how often the player picks that response to how often the tour picks it **from the same
 spot**, so `1.6×` on a crosscourt slice means a genuine preference rather than just that
-slices happen. The payoff (`wins 52% ▲5 vs tour`) is a separate claim: how often the point
-ends up theirs after that response, next to the tour's rate playing the same ball. The
-multiplier is the choice, the payoff is what it earns. Two families appear: **off the return**,
+slices happen — and the tour it compares against is weighted to the player's own era, because
+the game changes enough across the charted decades that a pre-2000 slicer measured against a
+pooled field is mostly being told what decade they played in. The share the multiplier is taken
+against prints beside it, since `1.6×` off a quarter of the field and `1.6×` off one percent are
+different claims. The count prints as `n=277/970`: how often they play it, out of how often they
+face the ball.
+
+The payoff (`wins 52% ▲5 vs 47%`) is a separate claim: how often the point ends up theirs after
+that response, against their own rate answering that same ball however else they answer it. It
+used to be measured against the tour's rate for that response, which mostly ranked players
+rather than choices — that gap runs about +0.43 with a player's overall serve-plus-return rate,
+so the strongest players beat the tour on nearly every pattern they own whatever the tactic is
+worth. The multiplier is the choice, the payoff is what it earns. Two families appear: **off the return**,
 which is what the server does with their first ball after the serve, split by the charted depth
 of the return (short / mid / deep), and the rally patterns that follow it.
 
@@ -248,9 +265,12 @@ Each stroke is one token:
   with. The type is `drive` (flat or topspin), `slice` (slice or chip), `net` (volley,
   overhead, or half-volley), or `shot` when the type was not charted. These group a finer
   set in the raw notation, which also records drop shots, lobs, overheads, and so on.
-- **Direction.** `→1` / `→2` / `→3` is the third of the court the ball was sent to, as
-  fixed thirds named by the right-hander convention. `→·` means the direction was not
-  charted.
+- **Direction.** `→1` / `→2` / `→3` is the third of the court the ball was sent to, named
+  relative to the **player's own hands** — mirrored for a left-hander, so one token string
+  means one piece of tennis whoever played it. The raw notation names fixed thirds by the
+  right-hander convention, which would make a lefty's crosscourt forehand and a righty's read
+  as different shots and their mirror images read as the same one. `→·` means the direction
+  was not charted.
 - **Serves.** A serve is written as its target: `serve wide`, `serve body`, or `serve T`.
 
 A trigger reads as a lead-up, the player's shot then the opponent's reply, and asks what
