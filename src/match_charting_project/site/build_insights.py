@@ -37,14 +37,38 @@ def _base(entity: str) -> "tuple[str, int]":
     return (m["base"], int(m["y1"])) if m else (str(entity), 0)
 
 
-def _collapse(df: pd.DataFrame) -> pd.DataFrame:
-    """Collapse era entities to base names, keeping the latest era per (gender, player)."""
+def _collapse(df: pd.DataFrame, mean_over: "dict | None" = None) -> pd.DataFrame:
+    """Collapse era entities to base names, keeping the latest era per (gender, player).
+
+    Latest-era is right for the things this is mostly used for — an archetype and its
+    confidence flag are a claim about how someone plays, and for a split career the
+    current answer is the one worth printing.
+
+    It is wrong for a *measurement* the panel prints beside a career-wide denominator.
+    ``mean_over`` names columns to average across a player's eras instead, weighted by
+    the ``weight`` column, so the figure covers the same matches the coverage band
+    above it counts. Rally length needed this: Connors' two eras run 4.90 and 6.16, and
+    the panel printed 6.2 from 2,776 points directly beside a charted-history line
+    reading 7,309 — under a key claiming the figure covers every charted point the
+    player appeared in. Across the 35 split careers the two eras differ by 0.351 on
+    average, which is 44% of the tour's whole interquartile spread, and by up to 1.266.
+    """
     df = df.copy()
     parsed = [_base(p) for p in df["player"]]
     df["player"] = [b for b, _ in parsed]
     df["_y1"] = [y for _, y in parsed]
-    return df.sort_values("_y1").groupby(["gender", "player"], as_index=False).last().drop(
-        columns="_y1")
+    latest = df.sort_values("_y1").groupby(["gender", "player"], as_index=False).last()
+    if mean_over:
+        for col, weight in mean_over.items():
+            w = df[weight].fillna(0.0)
+            wsum = w.groupby([df.gender, df.player]).transform("sum")
+            # An all-zero-weight player would divide by zero; they keep the latest era,
+            # which is what the unweighted path would have given them anyway.
+            share = (w / wsum).where(wsum > 0, 0.0)
+            avg = (df[col] * share).groupby([df.gender, df.player]).sum()
+            avg = avg.where(wsum.groupby([df.gender, df.player]).first() > 0)
+            latest[col] = latest.set_index(["gender", "player"]).index.map(avg)
+    return latest.drop(columns="_y1")
 
 
 def _charted_matches(con) -> pd.DataFrame:
@@ -145,7 +169,7 @@ def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
 
 PATTERN_COLS = ["player", "gender", "family", "state", "response", "state_depth",
                 "inc_code", "resp_code", "lift", "count", "n_state", "evidence",
-                "win_rate", "tour_win_rate"]
+                "win_rate", "tour_win_rate", "field_share", "state_win_rate"]
 # Extra columns the return family carries and the rally family has no meaning for.
 # The panel draws the serve from them, so they must survive the trip as strings —
 # an all-empty rally column would otherwise read back as NaN and print "nan".
@@ -228,11 +252,17 @@ def build() -> int:
     # though it were the stable half.
     # avg_rally_len travels with the archetype because it is the same measurement pass:
     # mean strokes in the points the player appeared in, keyed by the same era entity. It
-    # replaced the shot-quality score in the panel's profile column — see the note on
-    # class_rel_z below for why that score could not carry the weight it was given.
+    # replaced the shot-quality score in the panel's profile column — see the note where
+    # class_relative_wpa used to be merged, below, for why that score and the verdict built
+    # on top of it could not carry the weight they were given.
+    # avg_rally_len is point-weighted across a split career; the archetype and its
+    # confidence flag stay latest-era. The two want different things from the same row —
+    # see _collapse — and n_points is the weight because it is the denominator the figure
+    # was computed over in the first place.
     clusters = _collapse(pd.read_csv(REPORTS / "player_style_clusters.csv")
                          [["player", "gender", "archetype", "style_margin",
-                           "style_confident", "avg_rally_len"]])
+                           "style_confident", "avg_rally_len", "n_points"]],
+                         mean_over={"avg_rally_len": "n_points"}).drop(columns="n_points")
     summary = summary.merge(clusters, on=["player", "gender"], how="left")
 
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
@@ -250,22 +280,26 @@ def build() -> int:
     # does not ship it, since the two would describe one shot two ways on one page.
     patterns = _patterns()
 
-    # Class-relative shot quality. ``class_rel_z`` is the only part of this the panel shows,
-    # as a three-band verdict. The 0-100 ``accuracy`` score it is the residual of used to be
-    # the profile column's headline figure, and is no longer displayed anywhere: WPA
-    # telescopes within a point, so avg_wpa_lost is identically (win probability conceded per
-    # point) / (strokes per point), and the second factor dominates. Measured over the built
-    # table: it correlates -0.84 (men) / -0.76 (women) with rally length, the style
-    # fingerprint predicts 91% (men) / 85% (women) of it out-of-fold, and against a split-half
-    # reliability of 0.93 that leaves at most 2% / 8% of its spread as reliable non-style
-    # signal. It ranked Santoro and Wilander over Laver and Karlovic, which is a rally-length
-    # ranking wearing a quality label.
+    # Class-relative shot quality no longer ships in any form, so nothing from
+    # class_relative_wpa is merged here.
     #
-    # Both columns still ship. ``accuracy`` is what ``class_rel_z`` is computed from, so
-    # dropping it here would leave the surviving verdict with no stated origin.
-    crw = _collapse(pd.read_csv(REPORTS / "class_relative_wpa.csv")
-                    [["player", "gender", "class_rel_z", "accuracy", "avg_wpa_lost"]])
-    summary = summary.merge(crw, on=["player", "gender"], how="left")
+    # The 0-100 ``accuracy`` score went first: WPA telescopes within a point, so avg_wpa_lost
+    # is identically (win probability conceded per point) / (strokes per point) and the second
+    # factor dominates. On the current build it correlates -0.87 (men) / -0.83 (women) with
+    # rally length, the style fingerprint predicts 91% / 82% of it out-of-fold, and against a
+    # split-half reliability of 0.94 / 0.93 that leaves 3% / 11% of its spread as reliable
+    # non-style signal. It ranked Santoro and Wilander over Laver and Karlovic.
+    #
+    # The three-band ``class_rel_z`` verdict that replaced it went the same way and for the
+    # same reason: the residual correlates -0.99 with the score it is taken from and 66% of
+    # its variance is still rally length, because the ridge lambda is solved to match the four
+    # class means' R2 and buys that by leaving a scaled copy of the style axis behind. It
+    # reported that no male serve-volleyer had ever been ahead of similar players, against half
+    # of all grinders.
+    #
+    # The columns are not carried as dead weight: reports/class_relative_wpa.{csv,md} keep the
+    # full record, and the experiment stands as a negative result. This file ships what the
+    # panel renders.
 
     # Shot-making triggers (shot_triggers experiment): green lights by aggressive shot
     # frequency lift, traps by how far conversion falls below the player's norm. (These
@@ -275,14 +309,26 @@ def build() -> int:
               .groupby(["player", "gender"]).head(3))
     traps = (tr[tr.tag == "trap"].sort_values("conv_delta")
              .groupby(["player", "gender"]).head(3))
+    # ``attempts`` ships alongside ``n`` because they are the denominators of two
+    # different numbers on the card and the panel was printing only the first. ``n`` is
+    # the strokes played from that lead-up, which is what the frequency is over;
+    # ``attempts`` is the aggressive shots among them, which is what the conversion is
+    # over — and it is the smaller and more fragile of the two by roughly a factor of
+    # three, so a card labelled n=93 was resting its conversion claim on 33 shots.
     triggers = pd.concat([greens, traps])[
         ["player", "gender", "tag", "context", "att_rate", "att_lift",
-         "conversion", "conv_delta", "n"]]
+         "conversion", "conv_delta", "n", "attempts"]]
     triggers["depth"] = 2
 
-    # Gold-star deep patterns (deep_patterns experiment): 3-4 shot sequences that
-    # beat their own shorter parent and replicate — only the hugely-charted have them.
-    # att_lift for these rows is the lift vs the parent pattern, not vs base rate.
+    # Gold-star deep patterns (deep_patterns experiment): 3-4 shot sequences that beat
+    # their own shorter parent and clear Benjamini-Hochberg across every context that
+    # player was screened on — only the hugely-charted have them. att_lift for these
+    # rows is the lift vs the parent pattern, not vs base rate.
+    #
+    # The false-discovery correction landed 2026-08-16 and roughly halved this table
+    # (72 patterns over 28 players -> 36 over 15). What it removed were patterns picked
+    # out of hundreds of uncorrected binomial tests per player, at a rate the experiment
+    # itself now estimates: see the note at the head of reports/deep_patterns.md.
     dp_path = REPORTS / "deep_patterns.csv"
     if dp_path.exists():
         dp = pd.read_csv(dp_path).rename(columns={"parent_lift": "att_lift"})
@@ -290,8 +336,16 @@ def build() -> int:
                 .groupby(["player", "gender"]).head(3))
         triggers = pd.concat([triggers, deep[triggers.columns]])
 
+    # ``sigma`` is not taken. It printed as the profile column's "shot selection" figure and
+    # was cut by the test that retired the shot-quality score: it correlates -0.81 (men) /
+    # -0.59 (women) with rally length, two thirds of the men's spread is the player's own
+    # baseline aggressive shot frequency — which ``trig_att_rate`` below already carries in
+    # plain percent — and its leaderboard was a serve-volley leaderboard, with Rafter falling
+    # from the top of the tour to below the median once serve and net lead-ups came out. It
+    # also carried no direction: it was independent of whether the extra aggression converted,
+    # so one number described an adaptive player and a baited one identically.
     tp = pd.read_csv(REPORTS / "shot_triggers_players.csv")[
-        ["player", "gender", "att_rate", "conversion", "sigma", "n_traps"]].rename(
+        ["player", "gender", "att_rate", "conversion", "n_traps"]].rename(
         columns={"att_rate": "trig_att_rate", "conversion": "trig_conversion"})
     summary = summary.merge(tp, on=["player", "gender"], how="left")
 

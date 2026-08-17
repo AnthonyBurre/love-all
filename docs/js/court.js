@@ -194,20 +194,33 @@ const SERVE_TOK = { "serve wide": "svW", "serve body": "svB", "serve T": "svT" }
 const SIDE_TOK = { FH: "F", BH: "B", "?": "?" };
 const KIND_TOK = { drive: "d", slice: "s", net: "v", shot: "o" };
 
-function labelToToken(label) {
+// Court thirds mirrored, for a sequence stored in a left-hander's own frame.
+const MIRROR_DIR = { 1: "3", 2: "2", 3: "1" };
+
+function labelToToken(label, mirror = false) {
   label = label.trim();
+  // Serves are never mirrored: wide/body/T name the box the server is aiming into and
+  // mean the same shot in either hand, which is why the experiments leave them alone.
   if (label.startsWith("serve")) return SERVE_TOK[label] ?? "sv?";
   const sp = label.indexOf(" ");
   const side = label.slice(0, sp);
   const [kind, dir] = label.slice(sp + 1).split("→");
-  return (SIDE_TOK[side] ?? "?") + (KIND_TOK[kind.trim()] ?? "o") + ((dir ?? "").trim() || "·");
+  const d = (dir ?? "").trim() || "·";
+  return (SIDE_TOK[side] ?? "?") + (KIND_TOK[kind.trim()] ?? "o")
+    + (mirror ? (MIRROR_DIR[d] ?? d) : d);
 }
 
 // A stored pattern string -> its court SVG, or "" if it holds no recognizable shots.
-export function patternSvg(pattern) {
+//
+// `mirror` puts the sequence back on the physical court. Trigger and deep-pattern contexts
+// are both stored hand-relative — mirrored for a left-hander, so that a token names the
+// shot rather than the half of the court it landed in and two players' sequences can be
+// compared — and a drawing has to undo that or it draws a lefty's rally into the wrong
+// third. So it is set from the player's hand alone, not from which family the row is in.
+export function patternSvg(pattern, mirror = false) {
   const labels = String(pattern).match(SHOT_RE);
   if (!labels || !labels.length) return "";
-  return rallySvg(labels.map(labelToToken));
+  return rallySvg(labels.map((l) => labelToToken(l, mirror)));
 }
 
 // --- court-state patterns (player_patterns table) ----------------------------------------

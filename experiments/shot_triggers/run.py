@@ -41,12 +41,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from tokens import point_tokens, pretty  # noqa: E402
+from tokens import hand_map, point_tokens, pretty  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import aggressive_shot, parse_point  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
+from match_charting_project.stats import bh, binom_tail  # noqa: E402
 
 K = 2               # context = the K shots before the player's stroke
 MIN_SHOTS = 4000    # a player needs this many contextful strokes to be ranked
@@ -71,9 +72,11 @@ OPEN_ANCHORS = ((1, "return", "return"),      # returner's ball, ctx = (serve,)
                 (3, "return+1", "return"))    # returner's +1,    ctx = (return, serve+1)
 OPEN_MIN_BASE = 200   # per (player, side, anchor): strokes needed for a stable baseline
 MIN_HALF = 25         # strokes a context needs in *each* half to enter the split-half test
+MIN_HALF_ATT = 6      # aggressive shots a context needs in each half to carry a green/trap tag
+Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
 
 
-def collect(con, gender: str) -> "tuple[dict, dict]":
+def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     """Pooled per-player context tables (all plies) plus side-split opening tables.
 
     ``acc``: player -> {n, w, e, f, ctx:{context: [n, w, e, f]}, half:{(h, context):
@@ -83,6 +86,26 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
     judgment lands wholly on one side.
     ``openings``: (player, side, anchor) -> {base:[n,w,e,f], ctx:{context:[n,w,e,f]}}
     for the first-four-ply aggressive shots only, split by deuce/ad.
+
+    Cues are keyed in the *profiled player's* frame: for a left-hander every court third
+    in the lead-up is mirrored, so a cue names the shot rather than the half of the court
+    it landed in. The direction codes are the codebook's, which name fixed thirds by the
+    right-hander convention, so without this a lefty's cue string describes the mirror
+    image of what a right-hander's identical string describes — and the panel prints the
+    two as though they were one pattern.
+
+    Mirrored by the striker rather than by each shot's own hitter, because the cue
+    alternates hitters and a player's opponents are a mix of both hands; mirroring per
+    hitter would merge physically different opponent balls into one bucket. The whole
+    lead-up reads from the profiled player's side of the net, matching what
+    ``court_response`` does with hand-relative zones and what ``deep_patterns`` does with
+    the same tokens.
+
+    This changes no statistic. Every figure here — the lift against the player's own
+    pooled rate, the conversion against their own trigger class, the both-halves
+    replication, the FDR family — is computed within one player, so mirroring re-keys a
+    lefty's whole table consistently and every count comes out identical. It is a
+    labelling fix, and only a labelling fix.
     """
     acc: dict = defaultdict(lambda: {"n": 0, "w": 0, "e": 0, "f": 0,
                                      "ctx": defaultdict(lambda: [0, 0, 0, 0]),
@@ -104,8 +127,14 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
             pt = parse_point(fs, ss, svr, win)
             if not pt.parse_ok:
                 continue
-            toks = point_tokens(pt)
             names = {1: p1, 2: p2}
+            # One token stream per striker, in that striker's own frame. Passing both
+            # hitter numbers mirrors every rally shot in the point; the two streams are
+            # the same object whenever the strikers share a hand, which is most points.
+            plain = point_tokens(pt)
+            lefty = {w: hands.get(names[w]) == "L" for w in (1, 2)}
+            mirrored = point_tokens(pt, (1, 2)) if (lefty[1] or lefty[2]) else plain
+            toks_for = {w: (mirrored if lefty[w] else plain) for w in (1, 2)}
             n_sh = len(pt.shots)
             half = zlib.crc32(str(mid).encode()) & 1   # stable across runs
 
@@ -118,7 +147,7 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
                         break
                     s = pt.shots[idx]
                     rec = openings[(names[s.hitter], side, anchor)]
-                    ctx = tuple(toks[max(0, idx - K):idx])
+                    ctx = tuple(toks_for[s.hitter][max(0, idx - K):idx])
                     w, e, f = aggressive_shot(pt.shots, idx, n_sh)
                     for bucket in (rec["base"], rec["ctx"][ctx]):
                         bucket[0] += 1
@@ -130,7 +159,7 @@ def collect(con, gender: str) -> "tuple[dict, dict]":
                 continue
             for i in range(K, n_sh):
                 a = acc[names[pt.shots[i].hitter]]
-                ctx = tuple(toks[i - K:i])
+                ctx = tuple(toks_for[pt.shots[i].hitter][i - K:i])
                 w, e, f = aggressive_shot(pt.shots, i, n_sh)
                 a["n"] += 1
                 a["w"] += w
@@ -202,24 +231,102 @@ def dispersion(df: "pd.DataFrame") -> float:
     return float(np.sqrt(max(excess / denom, 0.0)))
 
 
-def tag_contexts(df: "pd.DataFrame") -> "pd.DataFrame":
-    """Label each context: trigger + green light / trap, by conversion vs baseline.
+def half_conversions(a: dict) -> dict:
+    """Per context, each half's (attempts, conversion) for both definitions.
+
+    Built from the same ``half`` buckets the definitions comparison uses, so the
+    replication gate below costs no extra pass over the corpus.
+    """
+    out = defaultdict(dict)
+    for (h, ctx), (n, w, e, f) in a["half"].items():
+        att, fatt = w + e + f, w + e
+        out[ctx][h] = {"attempts": att, "conv": (w + f) / att if att else np.nan,
+                       "fin_attempts": fatt, "fin_conv": w / fatt if fatt else np.nan}
+    return out
+
+
+def tag_contexts(df: "pd.DataFrame", halves: "dict | None" = None) -> "pd.DataFrame":
+    """Label each context: trigger + green light / trap, by conversion vs its class.
 
     Tagged twice — once on aggressive shots (``tag``, what the report and the site
     ship) and once on the narrower finishing shots (``fin_tag``), so the definitions
     section can show how many cues the switch reclassifies.
+
+    Two things here are deliberate and both were wrong before.
+
+    **The reference class is the player's other triggers, not all their strokes.**
+    Conditional on a lead-up raising the frequency at all, expected conversion already
+    sits about 16 points above the all-strokes baseline — the balls a player attacks on
+    are the ones they were well placed to attack. Measured against that baseline the
+    green/trap line therefore fell far below the middle of the class being split: 1,296
+    cues came out green against 115 traps, and a "trap" was mostly a trigger that had
+    landed in the low tail of a distribution whose whole body cleared the bar. Against
+    the trigger-class mean the sign means what it says — this cue converts worse than
+    the rest of this player's triggers do.
+
+    **A tag has to replicate.** Both halves of the player's matches must land on the
+    same side of that reference, on ``MIN_HALF_ATT``+ attempts each, or the context
+    stays neutral. Without it the tags were the top and bottom of an uncorrected
+    ranking over a median 40 candidate contexts: greens survived that (their
+    conversion edge held at about +15pp out of sample) but traps did not — out of
+    sample they converted *above* the player's own norm, and fewer than half kept a
+    negative sign, so the panel was shipping an inverted claim to 90 players.
+
+    ``halves`` is optional only so the definitions section can tag without it; the
+    shipped tables always pass it.
     """
     out = df.copy()
-    for pre, lift, att, conv, base in (("", "att_lift", "attempts", "conv", "base_conv"),
-                                       ("fin_", "fin_lift", "fin_attempts", "fin_conv",
-                                        "base_fin_conv")):
-        delta = out[conv] - df.attrs[base]
+    out.attrs = dict(df.attrs)
+    for pre, lift, att, conv, hatt, hconv, rate_base in (
+            ("", "att_lift", "attempts", "conv", "attempts", "conv", "base_att"),
+            ("fin_", "fin_lift", "fin_attempts", "fin_conv", "fin_attempts", "fin_conv",
+             "base_fin")):
+        # The frequency claim gets a test, and the test gets a correction. TRIGGER_LIFT is
+        # a threshold on a point estimate applied to every context a player has — a median
+        # of 40 of them, and up to 172 — so on its own it selects the top of an uncorrected
+        # ranking rather than finding cues that are really different. Each context's
+        # aggressive shots are scored against the player's own pooled rate with an exact
+        # binomial tail, and the tails are Benjamini-Hochberg adjusted across all of that
+        # player's contexts. Only cues clearing q=Q_FDR can carry a tag.
+        p0 = df.attrs[rate_base]
+        pvals = [binom_tail(int(a), int(n), p0)
+                 for a, n in zip(out[att], out["n"])] if p0 > 0 else [1.0] * len(out)
+        qs = bh(pvals)
+        out[f"{pre}p_raw"] = pvals
+        out[f"{pre}p_bh"] = qs
+        trig = ((out[lift] >= TRIGGER_LIFT) & (out[att] >= MIN_ATT)
+                & (pd.Series(qs, index=out.index) <= Q_FDR))
+        # The class mean: attempts-weighted conversion across this player's triggers, so
+        # a cue with 400 attempts sets the bar more than one with 13. With no qualifying
+        # trigger there is no class and nothing to tag.
+        tatt = out.loc[trig, att].sum()
+        base = float((out.loc[trig, conv] * out.loc[trig, att]).sum() / tatt) if tatt else np.nan
+        out.attrs[f"{pre}base_trig_conv"] = base
+        delta = out[conv] - base
         out[f"{pre}conv_delta"] = delta
         out[f"{pre}tag"] = "neutral"
-        trig = (out[lift] >= TRIGGER_LIFT) & (out[att] >= MIN_ATT)
-        out.loc[trig & (delta >= 0), f"{pre}tag"] = "green"
-        out.loc[trig & (delta < 0), f"{pre}tag"] = "trap"
-    out.attrs = df.attrs
+        if not np.isfinite(base):
+            continue
+        # Replication: same side of the class mean in both halves, each on real support.
+        # The bound arguments keep this honest about which definition it is testing —
+        # the loop rebinds hatt/hconv/base, and a closure over them would silently test
+        # the last one twice.
+        def _holds(ctx, want_green, _a=hatt, _c=hconv, _base=base):
+            h = (halves or {}).get(ctx)
+            if not h or 0 not in h or 1 not in h:
+                return False
+            for side in (0, 1):
+                if h[side][_a] < MIN_HALF_ATT or not np.isfinite(h[side][_c]):
+                    return False
+                if (h[side][_c] >= _base) != want_green:
+                    return False
+            return True
+
+        for want_green, tag in ((True, "green"), (False, "trap")):
+            cand = trig & ((delta >= 0) if want_green else (delta < 0))
+            for idx in out.index[cand]:
+                if _holds(out.at[idx, "context"], want_green):
+                    out.at[idx, f"{pre}tag"] = tag
     return out
 
 
@@ -229,27 +336,30 @@ def _ctx_str(ctx) -> str:
 
 def player_block(md, player, df):
     base_att, base_conv = df.attrs["base_att"], df.attrs["base_conv"]
+    trig_conv = df.attrs.get("base_trig_conv", float("nan"))
     n_all = int(df.n.sum())
     md.append(f"### {player}")
     md.append(f"*aggressive on {base_att:.1%} of strokes, converting {base_conv:.0%}; "
-              f"{n_all:,} contextful strokes*\n")
+              f"across their trigger cues, {trig_conv:.0%}; {n_all:,} contextful strokes*\n")
     trig = df[df.tag != "neutral"].sort_values("att_lift", ascending=False)
     md.append("**Trigger sequences** (lead-ups that most raise the frequency):")
     for r in trig.head(TOP).itertuples():
         kind = "✅ converts" if r.tag == "green" else "⚠️ trap"
         md.append(f"- `{_ctx_str(r.context)}` → aggressive {r.att_rate:.0%} "
                   f"({r.att_lift:.1f}×), converts {r.conv:.0%} "
-                  f"({r.conv_delta:+.0%} vs their norm) {kind} (n={r.n})")
+                  f"({r.conv_delta:+.0%} vs their other cues) {kind} "
+                  f"(n={r.n}, {r.attempts} attempts)")
     traps = df[df.tag == "trap"].sort_values("conv_delta")
     if len(traps):
         md.append("\n**Worst traps** (pulled into aggressive shots they don't convert):")
         for r in traps.head(3).itertuples():
             md.append(f"- `{_ctx_str(r.context)}` → aggressive {r.att_lift:.1f}× their norm "
-                      f"but converts only {r.conv:.0%} vs {base_conv:.0%} baseline (n={r.n})")
+                      f"but converts only {r.conv:.0%} vs {trig_conv:.0%} across their "
+                      f"other cues (n={r.n}, {r.attempts} attempts)")
     else:
-        md.append("\n**No trap contexts** — every sequence that raises the frequency "
-                  "also meets or beats their usual conversion. Unbaitable (at this "
-                  "resolution).")
+        md.append("\n**No trap contexts** — no cue that raises the frequency converts "
+                  "below the rest of their cues in *both* halves of their charted "
+                  "matches. Unbaitable (at this resolution).")
     md.append("")
 
 
@@ -457,13 +567,14 @@ def main() -> None:
     corr_all, phi_rows = [], []
     open_rows, open_by_gender = [], {}
     def_rows, pair_rows, flip_rows = [], [], []
+    hands = hand_map(con)
     for g in ("M", "W"):
-        acc, openings = collect(con, g)
+        acc, openings = collect(con, g, hands)
         tables = {}
         for player, a in acc.items():
             if a["n"] < MIN_SHOTS or (a["w"] + a["e"] + a["f"]) == 0:
                 continue
-            df = tag_contexts(context_table(a))
+            df = tag_contexts(context_table(a), half_conversions(a))
             if not len(df):
                 continue
             tables[player] = df

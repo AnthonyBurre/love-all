@@ -35,12 +35,13 @@ import matplotlib  # noqa: E402
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
-from tokens import point_tokens, pretty  # noqa: E402
+from tokens import hand_map, point_tokens, pretty  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import aggressive_shot, parse_point  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
+from match_charting_project.stats import bh, binom_tail, holm  # noqa: E402
 
 MIN_POINTS = 10_000     # charted points to enter the candidate pool
 DEPTHS = (3, 4)         # deep context lengths (production triggers use 2)
@@ -48,6 +49,7 @@ MIN_CTX, MIN_ATT = 60, 12          # production support floor
 PARENT_LIFT = 1.3       # deep aggressive shot frequency must be >= this x its parent's
 P_MAX = 0.005           # exact binomial tail vs the parent rate
 HALF_N = 15             # per-half support for the replication gate
+Q_FDR = 0.10            # Benjamini-Hochberg false-discovery rate, within player
 
 # Counter layout. Every context tallies both numerators at once so the whole
 # gold screen can be re-run on the narrower one without a second pass over the
@@ -76,12 +78,30 @@ def candidates(con, gender: str) -> set:
     return {r[0] for r in rows}
 
 
-def collect(con, gender: str, pool: set):
+def collect(con, gender: str, pool: set, hands: dict):
     """Per candidate: base [n,att,win,fatt,fwin]x2 halves + context tables for K=2..4.
 
     The ``f*`` slots are the shadow tally: the same strokes scored under the
     narrower *finishing shot* reading (winner + own unforced error, no induced
     forced errors), so ``mine`` can run the identical gold screen twice.
+
+    Contexts are keyed in the *profiled player's* frame: for a left-hander every court
+    third in the sequence is mirrored, so a token names the shot rather than the half of
+    the court it happened to land in. Without it the same string means different tennis
+    for different players, and the panel prints it as though it were one pattern —
+    ``BH drive->2 . BH drive->2 . FH drive->1`` was starred for Rybakina, Andreeva and
+    Nadal, where Nadal's is the mirror image of the other two.
+
+    Mirrored by the striker's hand rather than each shot's own hitter, because the
+    context alternates hitters and a player's opponents are a mix of both hands: mirroring
+    each shot by whoever hit it would merge physically different opponent balls into one
+    bucket. This way the whole sequence reads from the profiled player's side of the net,
+    which is what court_response's hand-relative zones already do.
+
+    This changes no statistic. Every gate in ``score`` compares a context to its own
+    parent or to the same player's base counts, all within one player, so mirroring
+    re-keys a lefty's whole table consistently and the counts come out identical. It is
+    a labelling fix, and only a labelling fix.
 
     Also builds ``side_tabs``: for each deep context, the [n, att, win] counts of
     its *opening-touching* occurrences — those whose K-shot window reaches into
@@ -108,8 +128,15 @@ def collect(con, gender: str, pool: set):
             pt = parse_point(fs, ss, svr, win)
             if not pt.parse_ok or len(pt.shots) < 3:
                 continue
-            toks = point_tokens(pt)
             names = {1: p1, 2: p2}
+            # One token stream per striker, in that striker's own frame. Passing both
+            # hitter numbers mirrors every rally shot in the point, which is what "read
+            # the whole sequence from this player's side" means. The two streams are the
+            # same object whenever the strikers share a hand, which is most points.
+            plain = point_tokens(pt)
+            lefty = {w: hands.get(names[w]) == "L" for w in (1, 2)}
+            mirrored = point_tokens(pt, (1, 2)) if (lefty[1] or lefty[2]) else plain
+            toks_for = {w: (mirrored if lefty[w] else plain) for w in (1, 2)}
             h = HALF * (zlib.crc32(str(mid).encode()) & 1)
             side = serve_side(pts)
             n_sh = len(pt.shots)
@@ -117,6 +144,7 @@ def collect(con, gender: str, pool: set):
                 pl = names[pt.shots[i].hitter]
                 if pl not in pool:
                     continue
+                toks = toks_for[pt.shots[i].hitter]
                 # winner / own unforced error / forced the reply out: all three are
                 # aggressive shots, and everything but the middle one paid off.
                 _w, _e, _f = aggressive_shot(pt.shots, i, n_sh)
@@ -151,15 +179,6 @@ def collect(con, gender: str, pool: set):
     return base, tabs, side_tabs
 
 
-def binom_tail(k: int, n: int, p: float) -> float:
-    """Exact P(X >= k) for X ~ Binomial(n, p)."""
-    if p <= 0:
-        return 0.0 if k > 0 else 1.0
-    if p >= 1:
-        return 1.0
-    return sum(comb(n, j) * p**j * (1 - p) ** (n - j) for j in range(k, n + 1))
-
-
 def score(base, tabs, k: int, key: tuple, numerator: str):
     """Run the three gold gates over one (player, context) under one numerator.
 
@@ -183,12 +202,18 @@ def score(base, tabs, k: int, key: tuple, numerator: str):
     if not parent:
         return None, "no parent", None
     pn, patt = parent[N] + parent[HALF + N], parent[ai] + parent[HALF + ai]
+    pwin = parent[wi] + parent[HALF + wi]
     if pn == 0 or patt == 0:
         return None, "no parent", None
     p_rate = patt / pn
-    if att / n < PARENT_LIFT * p_rate:
-        return None, "lift", None
+    # The tail is computed before the lift gate rather than after it, so every context
+    # that got as far as having a parent to be measured against carries a p — including
+    # the ones the lift gate turns away. Those are not free: the screen looked at them,
+    # and leaving them out of the multiplicity family would count a search over hundreds
+    # of contexts as a search over the handful that happened to clear 1.3x. See mine().
     pval = binom_tail(att, n, p_rate)
+    if att / n < PARENT_LIFT * p_rate:
+        return None, "lift", pval
     if pval >= P_MAX:
         return None, "binomial", pval
     if not (c[N] >= HALF_N and c[HALF + N] >= HALF_N
@@ -198,28 +223,69 @@ def score(base, tabs, k: int, key: tuple, numerator: str):
     b_att, b_win = b[ai] + b[HALF + ai], b[wi] + b[HALF + wi]
     base_conv = b_win / b_att if b_att else 0.0
     conv = win / att
+    # Judged against the parent pattern, the same thing the frequency is judged against.
+    # It used to be judged against the player's rate over *every* stroke they hit, which
+    # is a different question from the one the frequency asks and a much lower bar to
+    # fall under: these are all contexts selected for making the player attack more than
+    # the shorter pattern did, and going for more converts less nearly by definition. So
+    # the tag was mostly reporting that fact about the selection, not about the sequence
+    # — 22 of 36 rows came out traps, and every single women's row did.
+    #
+    # Against the parent, "trap" means what the panel says it means: the extra shot in
+    # this sequence makes them go for it more than the shorter one did, and they convert
+    # it worse than they convert the shorter one. That is a claim about the third ball.
+    parent_conv = pwin / patt
     return {
         "player": pl, "depth": k, "context": ctx, "n": n, "attempts": att,
         "att_rate": att / n, "parent_rate": p_rate,
         "parent_lift": (att / n) / p_rate,
-        "conversion": conv, "conv_delta": conv - base_conv,
-        "tag": "green" if conv >= base_conv else "trap",
+        "conversion": conv, "conv_delta": conv - parent_conv,
+        "parent_conv": parent_conv, "base_conv": base_conv,
+        "tag": "green" if conv >= parent_conv else "trap",
         "strokes": b[N] + b[HALF + N],
     }, None, pval
 
 
 def mine(base, tabs, numerator: str = "aggressive") -> list:
-    """Gold survivors under one numerator.
+    """Gold survivors under one numerator, false-discovery controlled within player.
 
     ``numerator`` picks which tally the whole screen runs on. Every gate reads
     the same slots, so passing ``"finishing"`` reproduces the pre-2026-08-05
     screen exactly rather than approximating it.
+
+    The binomial test in ``score`` is one test, and it is not run once. A heavily
+    charted player puts hundreds of contexts through it — 615 for Federer, 569 for
+    Djokovic, 406 for Nadal — so a raw p<0.005 threshold expects about three chance
+    survivors from Federer alone, against the thirteen he posts. Scaled over the pool
+    that is roughly 35-45 false positives among the ~72 patterns the screen used to
+    return: about half.
+
+    The replication gate below the test does not fix this, and it was doing far less
+    work than the README claimed. It re-uses the same pooled data that selected the
+    pattern, so once the pooled estimate sits a few standard errors above the parent
+    rate, both halves clear it almost automatically — it rejected none of the 35
+    patterns that cleared the binomial test across a re-run of eight players.
+
+    So the p-values are Benjamini-Hochberg adjusted across each player's *own*
+    candidate pool — every context of theirs that reached the binomial test, whether
+    it passed or failed — and only patterns clearing q=0.10 after that are gold. BH
+    within player is the right family: the claim on the panel is "this player has this
+    tendency", so the multiplicity that matters is how many tendencies were tried on
+    that player. It is also strictly tighter than the old fixed threshold at these pool
+    sizes, so every survivor is a pattern the previous screen would also have returned.
     """
-    out = []
+    tested = defaultdict(list)      # player -> [(pval, row_or_None)]
     for k in DEPTHS:
         for key in tabs[k]:
-            row, _, _ = score(base, tabs, k, key, numerator)
-            if row:
+            row, _gate, pval = score(base, tabs, k, key, numerator)
+            if pval is not None:    # reached the binomial test: a real candidate
+                tested[key[0]].append((pval, row))
+    out = []
+    for _pl, items in tested.items():
+        adj = bh([p for p, _ in items])
+        for (pval, row), q in zip(items, adj):
+            if row is not None and q <= Q_FDR:
+                row["p_raw"], row["p_bh"], row["n_candidates"] = pval, q, len(items)
                 out.append(row)
     return out
 
@@ -235,17 +301,6 @@ def fisher_two_sided(a: int, b: int, c: int, d: int) -> float:
     probs = [comb(r1, x) * comb(r2, c1 - x) / denom for x in range(lo, hi + 1)]
     p_obs = probs[a - lo]
     return min(1.0, sum(p for p in probs if p <= p_obs * (1 + 1e-9)))
-
-
-def holm(pvals: list) -> list:
-    """Holm step-down adjusted p-values, returned in the input order."""
-    m = len(pvals)
-    order = sorted(range(m), key=lambda i: pvals[i])
-    adj, running = [1.0] * m, 0.0
-    for rank, i in enumerate(order):
-        running = max(running, min(1.0, (m - rank) * pvals[i]))
-        adj[i] = running
-    return adj
 
 
 def side_heterogeneity(rows: list, side_tabs_by_gender: dict, alpha: float = 0.05):
@@ -389,10 +444,11 @@ def main():
     side_tabs_by_gender = {}
     data_by_gender = {}
     pool_sizes = {}
+    hands = hand_map(con)
     for g in ("M", "W"):
         pool = candidates(con, g)
         pool_sizes[g] = len(pool)
-        base, tabs, side_tabs = collect(con, g, pool)
+        base, tabs, side_tabs = collect(con, g, pool, hands)
         side_tabs_by_gender[g] = side_tabs
         data_by_gender[g] = (base, tabs)
         for numerator, sink in (("aggressive", all_rows), ("finishing", shadow_rows)):
@@ -431,10 +487,22 @@ def main():
     md = ["# Deep patterns — 3–4 shot sequences for the heavily charted", ""]
     md.append("*Generated by `experiments/deep_patterns/run.py`. A deep context earns "
               "**gold** only if it beats its own (K−1)-shot parent (≥1.3×, exact "
-              f"binomial p<{P_MAX}), replicates above the parent in both match-hash "
-              "halves, and meets the production support floor. Candidate pool: "
-              f"{pool_sizes['M']} men + {pool_sizes['W']} women with "
-              f"≥{MIN_POINTS:,} charted points.*")
+              f"binomial p<{P_MAX}), survives Benjamini-Hochberg at q={Q_FDR:g} across "
+              "every one of that player's own candidate contexts, replicates above the "
+              "parent in both match-hash halves, and meets the production support "
+              f"floor. Candidate pool: {pool_sizes['M']} men + {pool_sizes['W']} women "
+              f"with ≥{MIN_POINTS:,} charted points.*")
+    md.append("")
+    md.append("The false-discovery correction is the gate that does the work here, and "
+              "it was missing until 2026-08-16. A heavily charted player puts hundreds "
+              "of contexts through the binomial test — the per-player candidate counts "
+              "are in `deep_patterns.csv` — so a fixed p<0.005 expected a few chance "
+              "survivors per player and returned 72 patterns across 28 players where "
+              "it now returns "
+              f"{len(df)} across {df.player.nunique() if len(df) else 0}. The "
+              "both-halves replication gate below the test does not substitute for it: "
+              "it re-reads the same pooled counts that selected the pattern, so it "
+              "rejects almost nothing.")
     md.append("")
     if len(df):
         n_players = df.groupby("gender").player.nunique()
@@ -553,8 +621,12 @@ if __name__ == "__main__":
     out_csv = df.copy()
     if len(out_csv):
         out_csv["context"] = out_csv.context.map(_ctx_str)
+        # p_raw/p_bh/n_candidates ride along so the correction is auditable from the
+        # CSV: a reader can see both what the pattern scored and how many of this
+        # player's contexts it was picked out of.
         cols = ["player", "gender", "depth", "context", "n", "attempts", "att_rate",
-                "parent_rate", "parent_lift", "conversion", "conv_delta", "tag"]
+                "parent_rate", "parent_lift", "conversion", "conv_delta", "tag",
+                "p_raw", "p_bh", "n_candidates"]
         out_csv[cols].round(4).to_csv(PROJECT_ROOT / "reports" / "deep_patterns.csv",
                                       index=False)
     (PROJECT_ROOT / "reports" / "deep_patterns.md").write_text("\n".join(md) + "\n")

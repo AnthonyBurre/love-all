@@ -8,15 +8,15 @@ Assigned, then — in brackets — how many of those went on to surface a patter
 
 | tour | side + serve direction | side only | sides pooled |
 | --- | --- | --- | --- |
-| Men | 90 (88) | 57 (56) | 829 (106) |
-| Women | 53 (52) | 61 (57) | 614 (75) |
+| Men | 90 (88) | 57 (52) | 829 (100) |
+| Women | 53 (50) | 61 (54) | 614 (70) |
 
 - **Men**: 1,281,836 points → 1,266,981 parsed → 835,191 reached a third shot → 733,587 usable serve+1 observations (both directions and the return's depth charted, and a known hand for the server).
 - **Women**: 568,325 points → 565,232 parsed → 396,427 reached a third shot → 383,217 usable serve+1 observations (both directions and the return's depth charted, and a known hand for the server).
 
 The finest tier needs the serve's direction, which the coarser two do not, and that turned out to cost almost nothing: Men 87, Women 120 observations carry no charted serve direction, well under a tenth of a percent on either tour. Requiring the return's *depth* has already selected points from charters working at full detail, and those charters record the serve.
 
-770 patterns across 434 players: 277 at full resolution, 211 side-only, 282 pooled.
+725 patterns across 414 players: 269 at full resolution, 196 side-only, 260 pooled.
 
 ## What the pooling was costing
 
@@ -29,88 +29,88 @@ A *court disagreement* is a situation both service courts fund on their own, whe
 
 **Roger Federer** — tier: side + serve direction
 
-- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.51x, n=453/1880, halves 1.48/1.57, wins 62% vs 60%)
-- deuce court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.5x, n=393/1222, halves 1.45/1.59, wins 56% vs 56%)
-  - *courts disagree*: deep drive return into the BH corner → crosscourt BH drive on the deuce side (n=596), BH drive through the middle on the ad side (n=1273)
-  - *courts disagree*: mid-depth slice return into the BH corner → crosscourt BH drive on the deuce side (n=409), inside-out FH drive on the ad side (n=569)
+- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.51x vs 16% of the field, n=453/1880, halves 1.48/1.57, wins 62% vs 60% on this ball overall, tour 60%)
+- deuce court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.5x vs 21% of the field, n=393/1222, halves 1.45/1.59, wins 56% vs 55% on this ball overall, tour 56%)
+  - *courts disagree*: short drive return into the FH corner → FH drive down the line on the deuce side (n=750), crosscourt FH drive on the ad side (n=267)
+  - *courts disagree*: deep drive return into the FH corner → FH drive down the line on the deuce side (n=552), crosscourt FH drive on the ad side (n=217)
 
 **Novak Djokovic** — tier: side + serve direction
 
-- ad court, wide serve · mid-depth drive return into the BH corner → **BH drive down the line** (1.95x, n=418/1304, halves 1.93/2.01, wins 56% vs 52%)
-- ad court, T serve · mid-depth drive return into the BH corner → **crosscourt BH drive** (1.6x, n=428/776, halves 1.64/1.61, wins 55% vs 51%)
-  - *courts disagree*: mid-depth slice return into the middle → FH drive down the line on the deuce side (n=894), crosscourt FH drive on the ad side (n=580)
-  - *courts disagree*: mid-depth drive return into the FH corner → FH drive down the line on the deuce side (n=1539), crosscourt FH drive on the ad side (n=366)
+- ad court, wide serve · mid-depth drive return into the BH corner → **BH drive down the line** (1.95x vs 16% of the field, n=418/1304, halves 1.93/2.01, wins 56% vs 55% on this ball overall, tour 52%)
+- ad court, T serve · mid-depth drive return into the BH corner → **crosscourt BH drive** (1.6x vs 34% of the field, n=428/776, halves 1.64/1.61, wins 55% vs 52% on this ball overall, tour 51%)
+  - *courts disagree*: short drive return into the FH corner → FH drive down the line on the deuce side (n=675), crosscourt FH drive on the ad side (n=185)
+  - *courts disagree*: deep drive return into the FH corner → FH drive through the middle on the deuce side (n=716), crosscourt FH drive on the ad side (n=187)
 
 **Rafael Nadal** — tier: side + serve direction
 
-- deuce court, T serve · mid-depth drive return into the middle → **crosscourt FH drive** (2.0x, n=948/1701, halves 1.87/2.13, wins 58% vs 56%)
-- deuce court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (2.36x, n=501/1014, halves 2.39/2.41, wins 60% vs 55%)
-  - *courts disagree*: short slice return into the BH corner → inside-in FH drive on the deuce side (n=86), inside-out FH drive on the ad side (n=81)
+- deuce court, T serve · mid-depth drive return into the middle → **crosscourt FH drive** (2.0x vs 28% of the field, n=948/1701, halves 1.87/2.13, wins 58% vs 58% on this ball overall, tour 56%)
+- deuce court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (2.36x vs 21% of the field, n=501/1014, halves 2.39/2.41, wins 60% vs 58% on this ball overall, tour 55%)
+  - *courts disagree*: short drive return into the FH corner → crosscourt FH drive on the deuce side (n=265), FH drive down the line on the ad side (n=696)
   - *courts disagree*: mid-depth drive return into the middle → crosscourt FH drive on the deuce side (n=3202), FH drive down the line on the ad side (n=2937)
 
 **Pete Sampras** — tier: side + serve direction
 
-- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt BH net shot** (9.46x, n=132/513, halves 8.94/10.83, wins 76% vs 74%)
-- ad court, T serve · mid-depth drive return into the middle → **BH net shot down the line** (17.04x, n=79/455, halves 19.07/17.06, wins 57% vs 57%)
-  - *courts disagree*: deep drive return into the BH corner → crosscourt BH drive on the deuce side (n=109), BH drive through the middle on the ad side (n=157)
-  - *courts disagree*: short slice return into the BH corner → crosscourt BH net shot on the deuce side (n=143), BH net shot down the line on the ad side (n=171)
+- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt BH net shot** (9.46x vs 3% of the field, n=132/513, halves 8.94/10.83, wins 76% vs 61% on this ball overall, tour 74%)
+- ad court, T serve · mid-depth drive return into the middle → **BH net shot down the line** (17.04x vs 1% of the field, n=79/455, halves 19.07/17.06, wins 57% vs 49% on this ball overall, tour 57%)
+  - *courts disagree*: mid-depth drive return into the middle → crosscourt BH net shot on the deuce side (n=1081), BH net shot down the line on the ad side (n=938)
+  - *courts disagree*: short drive return into the middle → FH drive down the line on the deuce side (n=737), FH net shot down the line on the ad side (n=826)
 
 **Daniil Medvedev** — tier: side + serve direction
 
-- ad court, T serve · mid-depth drive return into the middle → **BH drive down the line** (5.2x, n=66/500, halves 5.53/5.39, wins 56% vs 50%)
-- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt BH drive** (1.7x, n=185/633, halves 1.76/1.7, wins 57% vs 57%)
-  - *courts disagree*: mid-depth drive return into the FH corner → FH drive down the line on the deuce side (n=582), crosscourt FH drive on the ad side (n=161)
+- ad court, T serve · mid-depth drive return into the middle → **BH drive down the line** (5.2x vs 2% of the field, n=66/500, halves 5.53/5.39, wins 56% vs 54% on this ball overall, tour 50%)
+- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt BH drive** (1.7x vs 17% of the field, n=185/633, halves 1.76/1.7, wins 57% vs 54% on this ball overall, tour 57%)
   - *courts disagree*: mid-depth drive return into the middle → crosscourt BH drive on the deuce side (n=1297), FH drive down the line on the ad side (n=1000)
+  - *courts disagree*: short drive return into the middle → FH drive down the line on the deuce side (n=578), crosscourt FH drive on the ad side (n=486)
 
 **Stefan Edberg** — tier: side + serve direction
 
-- deuce court, body serve · mid-depth drive return into the middle → **crosscourt BH net shot** (33.48x, n=216/462, halves 37.74/33.17, wins 72% vs 56%)
-- deuce court, T serve · mid-depth drive return into the middle → **crosscourt BH net shot** (30.26x, n=192/451, halves 31.58/32.8, wins 68% vs 59%)
-  - *courts disagree*: mid-depth drive return into the FH corner → FH net shot down the line on the deuce side (n=407), crosscourt FH net shot on the ad side (n=236)
+- deuce court, body serve · mid-depth drive return into the middle → **crosscourt BH net shot** (33.48x vs 1% of the field, n=216/462, halves 37.74/33.17, wins 72% vs 65% on this ball overall, tour 56%)
+- deuce court, T serve · mid-depth drive return into the middle → **crosscourt BH net shot** (30.26x vs 1% of the field, n=192/451, halves 31.58/32.8, wins 68% vs 60% on this ball overall, tour 59%)
+  - *courts disagree*: short drive return into the FH corner → FH net shot down the line on the deuce side (n=420), crosscourt FH net shot on the ad side (n=232)
   - *courts disagree*: mid-depth drive return into the middle → crosscourt BH net shot on the deuce side (n=1370), crosscourt FH net shot on the ad side (n=1087)
 
 ### Women
 
 **Serena Williams** — tier: side + serve direction
 
-- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt BH drive** (1.72x, n=92/233, halves 1.83/1.8, wins 45% vs 60%)
-- ad court, wide serve · mid-depth drive return into the BH corner → **BH drive down the line** (1.43x, n=91/253, halves 1.46/1.5, wins 53% vs 52%)
+- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt BH drive** (1.72x vs 22% of the field, n=92/233, halves 1.83/1.8, wins 45% vs 45% on this ball overall, tour 60%)
+- ad court, wide serve · mid-depth drive return into the BH corner → **BH drive down the line** (1.43x vs 24% of the field, n=91/253, halves 1.46/1.5, wins 53% vs 49% on this ball overall, tour 52%)
   - *courts disagree*: mid-depth drive return into the middle → crosscourt BH drive on the deuce side (n=740), crosscourt FH drive on the ad side (n=588)
 
 **Iga Swiatek** — tier: side + serve direction
 
-- ad court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.42x, n=168/447, halves 1.48/1.42, wins 64% vs 54%)
-- deuce court, body serve · deep drive return into the middle → **crosscourt FH drive** (1.75x, n=79/396, halves 1.47/2.19, wins 46% vs 48%)
+- ad court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.42x vs 26% of the field, n=168/447, halves 1.48/1.42, wins 64% vs 59% on this ball overall, tour 54%)
+- deuce court, body serve · deep drive return into the middle → **crosscourt FH drive** (1.75x vs 11% of the field, n=79/396, halves 1.47/2.19, wins 46% vs 43% on this ball overall, tour 48%)
   - *courts disagree*: mid-depth drive return into the middle → crosscourt BH drive on the deuce side (n=1214), crosscourt FH drive on the ad side (n=1017)
   - *courts disagree*: short drive return into the middle → crosscourt BH drive on the deuce side (n=434), crosscourt FH drive on the ad side (n=349)
 
 **Steffi Graf** — tier: side + serve direction
 
-- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt BH slice** (36.0x, n=65/266, halves 38.64/40.87, wins 59% vs 49%)
-- ad court, wide serve · mid-depth drive return into the BH corner → **crosscourt BH slice** (11.06x, n=91/311, halves 11.49/12.61, wins 46% vs 37%)
+- deuce court, wide serve · mid-depth drive return into the middle → **crosscourt BH slice** (36.0x vs 1% of the field, n=65/266, halves 38.64/40.87, wins 59% vs 57% on this ball overall, tour 49%)
+- ad court, wide serve · mid-depth drive return into the BH corner → **crosscourt BH slice** (11.06x vs 2% of the field, n=91/311, halves 11.49/12.61, wins 46% vs 49% on this ball overall, tour 37%)
+  - *courts disagree*: mid-depth drive return into the middle → FH drive down the line on the deuce side (n=528), crosscourt FH drive on the ad side (n=348)
   - *courts disagree*: mid-depth slice return into the middle → FH drive down the line on the deuce side (n=286), crosscourt FH drive on the ad side (n=161)
-  - *courts disagree*: mid-depth slice return into the BH corner → crosscourt BH slice on the deuce side (n=135), inside-out FH drive on the ad side (n=229)
 
 **Angelique Kerber** — tier: side + serve direction
 
-- ad court, wide serve · mid-depth drive return into the FH corner → **FH drive down the line** (2.6x, n=166/251, halves 2.85/2.74, wins 55% vs 52%)
-- ad court, wide serve · mid-depth drive return into the middle → **crosscourt BH drive** (3.73x, n=103/313, halves 4.04/3.95, wins 62% vs 55%)
-  - *courts disagree*: mid-depth drive return into the FH corner → crosscourt FH drive on the deuce side (n=133), FH drive down the line on the ad side (n=352)
+- ad court, wide serve · mid-depth drive return into the FH corner → **FH drive down the line** (2.6x vs 24% of the field, n=166/251, halves 2.85/2.74, wins 55% vs 52% on this ball overall, tour 52%)
+- ad court, wide serve · mid-depth drive return into the middle → **crosscourt BH drive** (3.73x vs 8% of the field, n=103/313, halves 4.04/3.95, wins 62% vs 56% on this ball overall, tour 55%)
   - *courts disagree*: mid-depth drive return into the middle → crosscourt FH drive on the deuce side (n=671), crosscourt BH drive on the ad side (n=517)
+  - *courts disagree*: deep drive return into the FH corner → crosscourt FH drive on the deuce side (n=89), FH drive down the line on the ad side (n=145)
 
 **Caroline Wozniacki** — tier: side + serve direction
 
-- deuce court, T serve · mid-depth drive return into the middle → **BH drive down the line** (2.64x, n=66/208, halves 2.79/2.94, wins 61% vs 52%)
-- deuce court, body serve · mid-depth drive return into the middle → **BH drive down the line** (2.33x, n=74/351, halves 2.5/2.39, wins 56% vs 50%)
-  - *courts disagree*: mid-depth drive return into the FH corner → FH drive down the line on the deuce side (n=553), crosscourt FH drive on the ad side (n=205)
+- deuce court, T serve · mid-depth drive return into the middle → **BH drive down the line** (2.64x vs 11% of the field, n=66/208, halves 2.79/2.94, wins 61% vs 60% on this ball overall, tour 52%)
+- deuce court, body serve · mid-depth drive return into the middle → **BH drive down the line** (2.33x vs 9% of the field, n=74/351, halves 2.5/2.39, wins 56% vs 55% on this ball overall, tour 50%)
   - *courts disagree*: mid-depth drive return into the middle → FH drive down the line on the deuce side (n=843), crosscourt FH drive on the ad side (n=761)
+  - *courts disagree*: short drive return into the middle → crosscourt FH drive on the deuce side (n=279), BH drive down the line on the ad side (n=272)
 
 **Bianca Andreescu** — tier: side + serve direction
 
-- ad court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.43x, n=127/332, halves 1.51/1.42, wins 56% vs 54%)
-- ad court, wide serve · mid-depth drive return into the middle → **FH drive through the middle** (1.56x, n=81/326, halves 1.6/1.64, wins 53% vs 46%)
-  - *courts disagree*: mid-depth slice return into the middle → FH drive down the line on the deuce side (n=98), crosscourt FH drive on the ad side (n=94)
-  - *courts disagree*: mid-depth drive return into the FH corner → FH drive down the line on the deuce side (n=585), crosscourt FH drive on the ad side (n=123)
+- ad court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.43x vs 26% of the field, n=127/332, halves 1.51/1.42, wins 56% vs 52% on this ball overall, tour 54%)
+- ad court, wide serve · mid-depth drive return into the middle → **FH drive through the middle** (1.56x vs 15% of the field, n=81/326, halves 1.6/1.64, wins 53% vs 56% on this ball overall, tour 46%)
+  - *courts disagree*: mid-depth drive return into the middle → BH drive through the middle on the deuce side (n=1353), crosscourt FH drive on the ad side (n=975)
+  - *courts disagree*: deep drive return into the FH corner → FH drive through the middle on the deuce side (n=342), crosscourt FH drive on the ad side (n=87)
 
 ![tiers](figures/serve_plus_one_tiers.png)
 

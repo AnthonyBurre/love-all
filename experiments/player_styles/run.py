@@ -55,7 +55,13 @@ def archetype_name(centroid, features) -> str:
         return "Big serve / first-strike"          # genuinely winner-heavy
     if z["ace_rate"] > 0.2 or z["serve_t"] > 0.3:
         return "Big-serving baseliner"              # big serve, ordinary winner rate
-    return "All-courter"
+    # The else-branch, and named as one. "All-courter" is a compliment in tennis and it was
+    # being paid to whatever this cascade had not already described: the cluster it lands on
+    # for the women has *below*-average net play (net_pct -0.16) with every other feature
+    # near zero, and it is their largest asserted group, sweeping in Halep and Kasatkina —
+    # counterpunchers by any account. A reader who knows the term reads a claim about court
+    # coverage and net play that the centroid does not support.
+    return "Baseline all-rounder"
 
 
 def fig_pca(df, scores, lab, clusters, explained, path, title):

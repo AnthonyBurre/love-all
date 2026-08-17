@@ -910,6 +910,9 @@ a { color: var(--acc-d); }
 .covnote { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line);
   max-width: 74ch; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
 .tapetitle span { font-weight: 500; text-transform: none; letter-spacing: normal; opacity: .82; }
+/* The footnote marker, not a word — it keeps the title's weight so it reads as attached to
+   "history" rather than as the first character of something else, and sits clear of it. */
+.tapestar { font-weight: 700; opacity: .6; padding-left: 1px; }
 
 /* --- who these two are, over everything the body measures -----------------------------
    Two halves, each capped by a rule in its player's colour — the same mark that caps every
@@ -1012,6 +1015,21 @@ a { color: var(--acc-d); }
 /* A season with no charted match holds its place and draws nothing. It is not a zero bar:
    a zero bar at the floor above would be a season with a match in it. */
 .cy.none { background: none; }
+/* The season readout, on hover *and* on press. `title` alone is a mouse affordance, and this
+   band is read on a phone — so the exact year, match count and point count behind a bar were
+   reachable only by the readers least likely to need them. :active covers the thumb.
+   The chart needs the positioning context and has to stop clipping it for this to show. */
+.cchart { position: relative; }
+.cy[data-lbl]:hover::after, .cy[data-lbl]:active::after {
+  content: attr(data-lbl); position: absolute; left: 0; right: 0; bottom: 100%;
+  z-index: 3; margin-bottom: 3px; padding: 3px 5px; border-radius: 3px;
+  background: var(--ink); color: var(--bg); font-size: 9.5px; line-height: 1.3;
+  font-weight: 600; text-align: center; white-space: normal; pointer-events: none;
+}
+/* Touch devices fire :hover as a sticky pseudo-state after a tap, which would leave the last
+   tapped season's readout pinned open. Press-and-hold is the affordance there, so hover is
+   dropped wherever the pointer is coarse. */
+@media (hover: none) { .cy[data-lbl]:hover::after { content: none; } }
 /* The two ends of the axis, and nothing in between — a tick per season is unreadable at this
    width, and the tooltip on each bar carries the exact year for anyone who wants one. Both
    columns print both ends, rather than one shared axis under the pair: the two charts are
@@ -1231,12 +1249,18 @@ a { color: var(--acc-d); }
 .pmeta { min-width: 0; }
 .plift { margin: 0; font-size: 17px; font-weight: 800; color: var(--shot); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .plift span { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+/* the base the multiple is taken against, on its own line under it: a lift is only
+   readable next to the share it multiplies, and at 17px the two numbers would compete */
+.pshare { display: block; font-size: 10.5px; font-weight: 600; color: var(--muted); letter-spacing: 0; text-transform: none; }
 .pdesc { margin: 3px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
 .pdesc b { display: block; color: var(--ink); }
 .pfoot { margin: 3px 0 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pfoot b { color: var(--ink); }
-/* the comparison to the tour is one phrase — a narrow column mustn't break "▲5 vs tour"
-   across two lines and leave "tour" sitting alone */
+/* the denominator, dimmer than the count it qualifies — "277/970" should read as one
+   figure with a scale, not as two numbers of equal weight */
+.pof { opacity: .65; }
+/* the payoff comparison is one phrase — a narrow column mustn't break "▲5 vs their
+   other answers" mid-phrase and leave a word sitting alone */
 .up, .down, .lvl { white-space: nowrap; }
 .up { color: var(--up); font-weight: 700; }
 .down { color: var(--b); font-weight: 700; }
@@ -1334,9 +1358,16 @@ a { color: var(--acc-d); }
   position: relative; }
 .srvbp::before { content: "⭐"; position: absolute; left: 7px; top: 5px; font-size: 10px; }
 .srvbp b { color: var(--ink); font-variant-numeric: tabular-nums; }
+/* Which window this one number is measured over. It is the only figure in the section not
+   drawn from the recency window the caption above names, so it has to carry its own — set
+   a step down, because it qualifies the claim rather than being part of it. */
+.srvbpwin { display: block; font-size: 10.5px; opacity: .8; }
 
 /* the court glyph's key, stated where the glyph is first used */
 .courtkey { margin: 5px 0 0; display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 10.5px; }
+/* What the two figures on every pattern card mean. Its own line under the section note,
+   at the note's own weight — it is a gloss on the cards, not a second caption. */
+.paykey { display: block; margin: 4px 0 0; font-size: 10.5px; line-height: 1.45; }
 /* The cue bar's key. Ordinary inline flow, unlike .courtkey above: that one keys three
    glyphs with a word each and wants them spaced apart as three items, this one is a
    sentence with marks in it, and laid out as flex items its own clauses came apart. */

@@ -1,7 +1,7 @@
 // The matchup drawer: experimental pre-match win probability + a card per player,
 // all queried from insights.duckdb via DuckDB-WASM.
 import { query, leagueMu, serveGates, tourSpread } from "./db.js";
-import { preMatchWP } from "./winprob.js";
+import { preMatchWP, shrinkWP } from "./winprob.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong } from "./schedule.js";
 
@@ -59,14 +59,14 @@ async function playerData(name, gender) {
   let triggers = [];
   try {
     triggers = await query(
-      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, depth " +
+      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, attempts, depth " +
       "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
   } catch (e) { /* stale insights db: show the card without tendencies */ }
   let patterns = [];
   try {
     patterns = await query(
       "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
-      "win_rate, tour_win_rate, serve_side, serve_dir " +
+      "win_rate, tour_win_rate, field_share, state_win_rate, serve_side, serve_dir " +
       "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
       [name, gender]);
   } catch (e) { /* stale insights db: show the card without patterns */ }
@@ -86,30 +86,25 @@ async function playerData(name, gender) {
   return { s: s[0], triggers, patterns, serve, years };
 }
 
-// The benchmark is no longer the mean of the archetype a player was sorted into — it is what
-// their own style fingerprint predicts, fitted smoothly across the style space. So the
-// comparison group is the players who sit near them in that space, and the wording says that
-// rather than naming a style.
+// The shot-quality verdict used to print here — "ahead of / typical for / behind similar
+// players", banded off class_rel_z at ±0.5. It is gone, for the same reason and by the same
+// test as the 0-100 score it was the residual of (see profileSide below): measured on the
+// built table it correlates -0.99 with that score, 66% of its variance is rally length, and
+// it says no male serve-volleyer has ever been ahead of similar players against half of all
+// grinders. The residual is not orthogonal to the benchmark it is taken against — the ridge
+// λ is bisected to match the class means' R², which buys that R² by explaining a shrunken
+// copy of the whole style axis and leaves the rest of it in the residual.
 //
-// It used to say "their style", which broke on exactly the players the panel is most careful
-// about: for about a third of them the archetype is withheld and the column reads "Between
-// styles", and "beats their style" directly above that is a verdict measured against a style
-// the same column has just declined to name. The fingerprint is continuous and every player
-// has one, so "similar players" is true for all of them and points at something real — the
-// people who play like this — instead of at a box. See figureKey() for the same point made at
-// length, since a three-word label can't carry it.
-function ratingLabel(z) {
-  if (z == null) return "";
-  if (z <= -0.5) return "ahead of similar players";
-  if (z >= 0.5) return "behind similar players";
-  return "typical for similar players";
-}
+// class_rel_z still ships in player_summary; nothing renders it. Restoring it means
+// orthogonalising against style_expected first, which moves 45% (men) / 41% (women) of the
+// verdicts — Karlovic behind→ahead, Sorribes Tormo ahead→behind — and even then the
+// style-stripped split-half is 0.43/0.60, which will not carry three bands.
 
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
 // drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
 // pattern has no chartable direction, so there's nothing to draw.
-function rallyDrawer(pattern) {
-  const svg = patternSvg(pattern);
+function rallyDrawer(pattern, mirror = false) {
+  const svg = patternSvg(pattern, mirror);
   return svg ? `<details class="rally"><summary>ball path</summary>
     <div class="court">${svg}</div></details>` : "";
 }
@@ -143,7 +138,11 @@ function trigMeter(t) {
   return `<div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i>${tick}</div>`;
 }
 
-function trigLine(t) {
+// `hand` is the player's, and every row here needs it: both trigger families store their
+// contexts in the player's own frame, mirrored for a left-hander so that one cue string
+// means one piece of tennis whoever plays it. The drawing is the one place that wants the
+// real court back, so it mirrors again on the way out.
+function trigLine(t, hand) {
   // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates across
   // halves of the player's data — only the hugely-charted earn these.
   const deep = Number(t.depth) > 2;
@@ -152,19 +151,33 @@ function trigLine(t) {
   const conv = Math.round(t.conversion * 100);
   // A deep pattern already claims the ⭐, so a deep *trap* would otherwise lose its
   // warning entirely — it keeps a ⚠ on the number that makes it one.
+  // A shallow cue's conversion is now measured against the player's *other* cues, not
+  // against their all-strokes rate. Conditional on a lead-up raising the frequency at
+  // all, conversion already sits well above that rate — the balls you attack on are the
+  // ones you were well placed to attack — so the old comparison put the line far below
+  // the middle of the class it was splitting and called the bottom of a normal spread a
+  // trap. Deep patterns keep their own reference, the shorter pattern they beat.
   const payoff = trap
     ? `converts only <b>${conv}%</b>${deep ? ' <span class="warnmark">⚠</span>' : ""}
-       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs their norm</span>`
+       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs ${deep
+         ? "the shorter pattern" : "their other cues"}</span>`
     : `converts <b>${conv}%</b>`;
   const against = deep ? "the shorter pattern" : "their norm";
+  // Two denominators, both printed. The frequency is over every stroke from this lead-up
+  // (n); the conversion is over the aggressive shots among them (attempts), which runs
+  // about a third of n — and it was the unprinted one, so a conversion resting on 33
+  // shots read as though it rested on 93.
+  const att = num(t.attempts);
+  const counts = att == null ? `n=${Number(t.n)}`
+    : `n=${Number(t.n)}, ${att} attempt${att === 1 ? "" : "s"}`;
   return `<div class="trig ${cls}"${deep
     ? ` title="deep pattern: only visible with this player's huge charted history"` : ""}>
     <p class="tcue">after <code>${esc(t.context)}</code></p>
     <p class="tnum">aggressive <b>${Math.round(t.att_rate * 100)}%</b>
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
-      ${payoff} <span class="lift">n=${Number(t.n)}</span></p>
+      ${payoff} <span class="lift">${counts}</span></p>
     ${trigMeter(t)}
-    ${rallyDrawer(t.context)}</div>`;
+    ${rallyDrawer(t.context, hand === "L")}</div>`;
 }
 
 // Where they aim the first serve. Only wide and T are printed: the body share is
@@ -221,10 +234,22 @@ function serveHtml(d, gates) {
   // multiplicity correction is applied.
   let bp = "";
   const delta = d.s && d.s.serve_bp_wide_delta;
-  if (d.s && Number(d.s.serve_bp_sig) === 1 && delta != null) {
+  // Significant *and* big enough to act on. The experiment's test is correctly
+  // multiplicity-corrected, but significance on a player with a thousand charted break
+  // points certifies shifts of three or four points that no returner can prepare against —
+  // eleven of the fifty-eight lines this used to print were that. A returner adjusts to
+  // "he goes wider here", so the line only appears where the shift reaches five points.
+  const BP_MIN = 0.05;
+  if (d.s && Number(d.s.serve_bp_sig) === 1 && delta != null && Math.abs(delta) >= BP_MIN) {
     const pts = Math.round(Math.abs(delta) * 100);
+    // Its own window, said out loud. Everything else in this section is the recency-weighted
+    // window named in the caption above; this one is computed across the whole charted
+    // career, and sitting silently under "last 34 charted matches" it read as though it
+    // shared it.
     bp = `<p class="srvbp" title="a shift this size clears the experiment's significance
-      test; most players show nothing here">on break points, <b>${pts} points</b> ${delta > 0 ? "wider" : "less wide"} than their own norm</p>`;
+      test and is large enough to play against; most players show nothing here">on break
+      points, <b>${pts} points</b> ${delta > 0 ? "wider" : "less wide"} than their own norm
+      <span class="srvbpwin">across their whole charted career</span></p>`;
   }
   return `<div class="srv">
     <div class="srvcourt">${sorted.map(box).join("")}</div>
@@ -240,33 +265,57 @@ function serveHtml(d, gates) {
 // disclosure, with the lift — the finding — promoted out of the parenthetical it used
 // to share with three other numbers.
 function patternCard(p) {
-  // Payoff: their point-win rate playing this response vs the tour's playing the same
-  // response to the same ball — the choice is the lift, this is what it earns. Level
-  // with the tour is stated rather than left blank, so a missing arrow always means
-  // the comparison is genuinely unavailable and never that the gap rounded to zero.
+  // Payoff: their point-win rate playing this response against their own rate answering
+  // the same incoming ball however else they answer it. It used to be measured against
+  // the tour's rate for the same response, which mostly ranked players rather than
+  // choices — that gap runs about +0.43 with a player's overall serve-plus-return rate,
+  // so the strongest thirty beat the tour on nearly every pattern they own and the
+  // weakest thirty trail on nearly all of theirs, whatever the shot is worth. Both
+  // numbers here are the same player on the same ball, so the difference is the choice.
+  // Level is stated rather than left blank, so a missing arrow always means the
+  // comparison is genuinely unavailable and never that the gap rounded to zero.
   let payoff = "";
   if (p.win_rate != null) {
     const w = `wins <b>${Math.round(p.win_rate * 100)}%</b>`;
-    if (p.tour_win_rate == null) {
+    // The reference prints as a figure rather than as a phrase. In a 160px column on a
+    // phone "▲5 vs their other answers" is three lines of card for one comparison, and
+    // it has to be nowrap or it breaks mid-phrase — so the card carries the two numbers
+    // and the section note above carries the sentence, once, for all six cards.
+    const ref = num(p.state_win_rate);
+    if (ref == null) {
       payoff = ` · ${w}`;
     } else {
-      const d = Math.round((p.win_rate - p.tour_win_rate) * 100);
-      payoff = ` · ${w} ` + (d === 0 ? `<span class="lvl">level with tour</span>`
-        : `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} vs tour</span>`);
+      const d = Math.round((p.win_rate - ref) * 100);
+      const r = `${Math.round(ref * 100)}%`;
+      payoff = ` · ${w} ` + (d === 0 ? `<span class="lvl">= their ${r}</span>`
+        : `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}
+           vs ${r}</span>`);
     }
   }
+  // What the lift is taken against. "3.4x the tour" is two very different claims off a
+  // 27% base and off a 0.4% one, and the card used to print only the multiple — so a
+  // mild over-index on the tour's own favourite shot and a genuine oddity looked alike.
+  const share = num(p.field_share);
+  const vs = share == null ? "" : ` <span class="pshare">tour ${share < 0.01
+    ? "under 1" : Math.round(share * 100)}%</span>`;
   // The return family is the serve+1: its state names the court and often the serve, so
   // the drawing starts at the serve rather than at the return. retSvg falls back to the
   // pair drawing for a pattern surfaced with the sides pooled.
   const court = p.family === "ret"
     ? retSvg(p.serve_side, p.serve_dir, p.inc_code, p.resp_code, p.state_depth)
     : pairSvg(p.inc_code, p.resp_code, p.state_depth);
+  // Both denominators. The count alone cannot say whether this is what they do with the
+  // ball or a corner of it: 277 answers looks the same printed on its own whether the
+  // ball came 970 times or 300. n_state is what the frequency claim is actually over.
+  const of = num(p.n_state);
+  const n = `n=${Number(p.count).toLocaleString()}${of
+    ? `<span class="pof">/${of.toLocaleString()}</span>` : ""}`;
   return `<div class="pcard2">
     <div class="pcourt">${court}</div>
     <div class="pmeta">
-      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span></p>
+      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span>${vs}</p>
       <p class="pdesc">${esc(p.state)}<b>→ ${esc(p.response)}</b></p>
-      <p class="pfoot">n=${Number(p.count).toLocaleString()}${payoff}</p>
+      <p class="pfoot">${n}${payoff}</p>
     </div>
   </div>`;
 }
@@ -297,11 +346,11 @@ function trigBase(d) {
     <p class="tcue">every rally stroke, no cue</p>
     <p class="tnum">aggressive <b>${(att * 100).toFixed(1)}%</b>${conv == null ? ""
       : ` · converts <b>${Math.round(conv * 100)}%</b>`}
-      ${/* Not quite the same number as the ticks below, and said so: each cue's tick is the
-           player's rate with that cue's own balls taken out, which moves it by a tenth of a
-           point on a career of twenty thousand. Near enough to read off, not near enough to
-           claim they are the same figure. */""}
-      <span class="lift">each tick below is this, without that cue's own balls</span></p>
+      ${/* This *is* the tick below, exactly: trigMeter draws it at att_rate / att_lift, and
+           att_lift is the cue's rate over this same pooled figure, so the division returns
+           it unchanged. The line used to claim the tick was this rate with that cue's own
+           balls removed, which is a different and better number that nothing computes. */""}
+      <span class="lift">the tick on each cue below marks this rate</span></p>
     <div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i></div>
   </div>`;
 }
@@ -325,12 +374,19 @@ function trigSets(d) {
     .sort((a, b) => a.conv_delta - b.conv_delta).slice(0, 2);
   const gold = d.triggers.filter((t) => Number(t.depth) > 2)
     .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
+  // The banner has to answer for the whole panel, not just the shallow tier. n_traps
+  // counts K=2 cues only, so a player with a deep trap starred two sections below was
+  // being told nothing baits them, directly above a ⚠ saying something does.
   const immune = d.s.n_traps != null && Number(d.s.n_traps) === 0
+    && !d.triggers.some((t) => t.tag === "trap")
     ? `<div class="trig immune">no trap sequences — every lead-up that raises their
-       aggressive shot frequency also meets their usual conversion</div>` : "";
+       aggressive shot frequency converts at least as well as their other cues do</div>` : "";
+  // Bound explicitly rather than passed to .map directly, which would hand trigLine the
+  // array index as its second argument and mirror every drawing on an odd row.
+  const hand = d.s.hand;
   return {
-    main: base + [...greens, ...traps].map(trigLine).join("") + immune,
-    gold: gold.map(trigLine).join(""),
+    main: base + [...greens, ...traps].map((t) => trigLine(t, hand)).join("") + immune,
+    gold: gold.map((t) => trigLine(t, hand)).join(""),
   };
 }
 
@@ -384,6 +440,23 @@ function trigSets(d) {
 // direction wins.
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const num = (v) => (v == null ? null : Number(v));
+
+// The coverage floor the serve and return rates have to clear before this panel will print
+// them, in charted points — the same 2,000 the win probability's confidence bands already
+// used as their lower edge, now enforced rather than described.
+//
+// It was the one number here with no gate at all, which had it backwards: variety is withheld
+// below 800 charted strokes, the serve mix below ~862 effective serves, ace rate below 200
+// service points, and the two figures a reader looks at first were printed off a single match.
+// A one-match entrant was reading 70.9% of serve points won — near the best server in the
+// table — from 173 points, and the rings say nothing about how many points are behind them.
+//
+// 2,000 points is roughly a dozen charted matches. It is a floor on obvious nonsense rather
+// than a claim that everything above it is precise: these rates are career-long, shrunk toward
+// the tour mean by 100 points, and never adjusted for the opponents a volunteer chose to
+// chart, so the number above the floor is still a charted rate and not a true one.
+const RATE_MIN_PTS = 2000;
+const wellCharted = (d) => !!d && (Number(d.s.points_charted) || 0) >= RATE_MIN_PTS;
 
 function tapeRows(mu) {
   return [
@@ -632,14 +705,19 @@ function coverageChart(rows, sc) {
     const pts = Number(r.points) || 0, mt = Number(r.matches) || 0;
     if (!peak || pts > peak.pts) peak = { y, pts, mt };
     const label = `${y} — ${mt} ${mt === 1 ? "match" : "matches"} · ${pts.toLocaleString()} points`;
+    // `title` is a mouse affordance and this layout is read on a phone, where hover does not
+    // exist and the season labels were simply unreachable. `data-lbl` carries the same string
+    // to a CSS readout that opens on press as well as on hover (see .cy[data-lbl]), so a
+    // thumb can get at it. The bars stay out of the tab order deliberately — a thirty-season
+    // career would otherwise put thirty stops inside a modal, twice over.
     bars.push(`<i class="cy" style="height:${(pts / sc.max * 100).toFixed(1)}%"
-      title="${esc(label)}"></i>`);
+      title="${esc(label)}" data-lbl="${esc(label)}"></i>`);
   }
   // One label per end of the axis, and only those two. A tick per season is unreadable at this
   // size, and the years in between are recoverable by counting along from either end — which is
   // what the per-bar tooltip is for when a reader wants an exact one.
   const say = `charted points by season, ${sc.lo} to ${sc.hi}` +
-    (peak ? `; busiest ${peak.y}, ${peak.mt} matches` : "");
+    (peak ? `; busiest ${peak.y}, ${peak.mt} ${peak.mt === 1 ? "match" : "matches"}` : "");
   return `<div class="cchart">
     <div class="cbars" role="img" aria-label="${esc(say)}">${bars.join("")}</div>
     <p class="cyears"><span>${sc.lo}</span><span>${sc.hi}</span></p>
@@ -665,8 +743,13 @@ function coverageSide(d, tag, sc) {
     ? `${s.year_min}: ` : `${s.year_min}–${s.year_max}: `);
   // These counts are how much of the player exists in the data, not how much tennis they have
   // played — which is what the title above them and the note at the foot of the panel are for.
+  //
+  // Singular where it is one. This line is at its most conspicuous on exactly the players it
+  // reads worst for: a qualifier with a single charted match got "1 matches" at the top of a
+  // panel whose entire subject is how little is known about them.
+  const mt = Number(s.matches_charted) || 0;
   return `<div class="pbside ${tag}" data-side="${tag}">
-    <p class="pbchart">${span}${s.matches_charted} matches ·
+    <p class="pbchart">${span}${mt} ${mt === 1 ? "match" : "matches"} ·
       ${Number(s.points_charted).toLocaleString()} points</p>
     ${chart}</div>`;
 }
@@ -704,14 +787,15 @@ const FIGS = [
       extra bit is a shot half as likely again — the scale multiplies rather than adds, so
       the step from 3.0 to 3.2 is a bigger claim than it looks.`,
   },
-  {
-    k: "sigma", label: "shot selection", unit: "pp",
-    fmt: (v) => (v * 100).toFixed(1), say: (v) => `${(v * 100).toFixed(1)}pp`,
-    unitDef: `is percentage points, the plain gap between two percentages. Going for the
-      finish 30% of the time after one lead-up and 36% after another is a gap of 6 percentage
-      points, not of 6%. Shot selection is built out of gaps like that, so it carries their
-      unit.`,
-  },
+  // "shot selection" (sigma) stood here and is gone, cut by the test that retired the
+  // shot-quality score: it correlates -0.81 (men) / -0.59 (women) with rally length. Two
+  // thirds of the men's spread is the player's own baseline aggressive shot frequency, which
+  // the shot-making triggers section prints in plain percent further down, and the top of the
+  // leaderboard is a serve-volley artifact — restricted to rally-only lead-ups Rafter falls
+  // from 14.9pp, top of the tour, to a below-median 3.8pp. It is also independent of whether
+  // the extra aggression pays (rho = -0.07 with trap count), so one number described an
+  // adaptive player and a baited one identically. The triggers section answers the same
+  // question concretely, with a direction, and keeps it.
 ];
 
 // Who these two players are: what kind of player this is, which hand they hold the racket in,
@@ -776,31 +860,16 @@ function profileSide(d, tag) {
     return v == null ? "" : `<p class="pbfig"><b>${f.fmt(v)}</b><span>${esc(f.unit)}</span>
       <em>${esc(f.label)}</em></p>`;
   }).join("");
-  // The one surviving quality claim, and it now leads the figures rather than closing them.
-  // It is the only judgement in the column — everything under it is a measurement, and a
-  // reader who takes one thing from this band should take the judgement — and it belongs
-  // beside the style line it is measured against, not three items away from it with the
-  // descriptive figures in between.
-  //
-  // It keeps the smaller type it had when it closed the column. The verdict is a phrase, and
-  // a phrase set at the rally figure's 22px is a headline sentence that wraps to three lines
-  // in half a phone column; the rally figure stays the one number set large, so the column
-  // still has a hierarchy rather than two competing tops.
-  //
-  // It takes the same shape as every other item here — the finding, then the label for it —
-  // and the label says shot quality, because that is what is being judged.
-  //
-  // A verdict rather than a figure, because that is the resolution it survives at: the
-  // style-adjusted residual splits half-to-half at r≈0.34 (men) / 0.53 (women), which will
-  // carry three bands and would not carry a decimal.
-  const verdict = ratingLabel(s.class_rel_z);
-  const quality = verdict ? `<p class="pbverdict"><b>${esc(verdict)}</b>
-    <em>shot quality</em></p>` : "";
-  if (!arch && !hand && !rallyFig && !figs && !quality) return "";
+  // The column now carries no judgement at all — style, hand, and two measurements. The
+  // shot-quality verdict that used to lead it was the one thing here that graded a player,
+  // and it graded them on rally length; see the note above ratingLabel's grave for the
+  // numbers. Nothing replaces it, because the honest version of that claim does not exist at
+  // this resolution yet.
+  if (!arch && !hand && !rallyFig && !figs) return "";
   return `<div class="pbside ${tag}" data-side="${tag}">
     ${arch ? `<p class="pbstyle">${esc(arch)}</p>` : ""}
     ${hand ? `<p class="pbhand">${esc(hand)}</p>` : ""}
-    ${quality}${rallyFig}${figs}
+    ${rallyFig}${figs}
   </div>`;
 }
 
@@ -816,7 +885,10 @@ function profileSide(d, tag) {
 // recent-form window rather than a career total, and a subtitle that covers the body has to
 // be true of every section in it. The section says which window in its own caption.
 //
-const CHARTED_TITLE = `<p class="tapetitle">Charted history</p>`;
+// The asterisk is the other half of COV_NOTE below, which opens with one. It had no
+// counterpart anywhere in the panel, so the note at the foot read as a footnote to nothing
+// and the caveat never attached to the counts it qualifies.
+const CHARTED_TITLE = `<p class="tapetitle">Charted history<span class="tapestar">*</span></p>`;
 
 // The asterisk on "Charted history": these are a sample assembled by volunteers picking
 // matches worth charting, not a random one, so it isn't the player's record. It reads once
@@ -832,10 +904,10 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
 // from its neighbours: every other section gives each player a column, and this is the one
 // place the two are measured on a shared axis.
 //
-// Two rings, where there were six. The four that left were not deleted — variety and shot
-// selection are figures in the two style columns here, and winners-and-errors is the first bar
-// in each player's column under shot-making triggers, which is where the numbers it should be
-// held against already were.
+// Two rings, where there were six. Of the four that left, variety is a figure in the two style
+// columns here and winners-and-errors is the first bar in each player's column under
+// shot-making triggers, which is where the numbers it should be held against already were;
+// shot selection and shot quality have since been cut outright rather than moved.
 //
 // The rings stack rather than sit side by side, and the two style columns flank the stack
 // instead of sitting in a row above it, wide enough allowing: three tracks (style, rings,
@@ -870,25 +942,8 @@ function figureKey(sa, sb, spread) {
     k: "avg_rally_len", fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} shots`,
   };
   const defs = [
-    // Shot quality leads the key because it now leads the column. The two are ordered
-    // together deliberately: a reader who opens the key is looking for the thing they just
-    // read, and a key in a different order than the figures is a second thing to search.
-    !has("class_rel_z") ? "" : `<div><b>Shot quality</b> A win-probability model evaluates the
-      position after every stroke, which gives the win probability a player concedes on an
-      average stroke; that figure is then measured against a benchmark fitted to the player's
-      own style fingerprint, so a high-variance stylist is not marked down for the style
-      itself, only for being worse at it. The gap is read as a standard deviation, and past
-      half of one either way it says they are ahead of or behind similar players.
-      ${/* The point the three-word verdict cannot make on its own, and the reason it says
-           "similar players" rather than naming a style: the benchmark is a smooth fit across
-           the whole style space, not the average of the archetype a player was sorted into.
-           So it is defined for a player whose archetype the panel withholds ("Between
-           styles") in exactly the way it is for everyone else. Without this the reader is
-           left to reconcile a verdict about similar players with a column that has just
-           said it cannot place this one. */""}
-      "Similar players" means the ones nearest them in that style space, not the ones in the
-      same named archetype — the benchmark is fitted across the whole space, so it exists
-      even for the players this panel declines to give a style name.</div>`,
+    // The key follows the column, so it opens on the figure the column now leads with. The
+    // shot-quality entry that used to head it went when the verdict did.
     !has("avg_rally_len") ? "" : `<div><b>Shots per point</b> is how many strokes the average
       point lasts, counting both players and the serve, over every charted point this player
       appeared in. It is as much a fact about the tennis they get drawn into as about them,
@@ -901,13 +956,6 @@ function figureKey(sa, sb, spread) {
       and measured in bits. It rewards uncommon shot types about as much as uncommon order, so
       slicers and serve-volleyers score high. A player needs 800 charted strokes to
       get one.${band(FIGS[0])}</div>`,
-    !has("sigma") ? "" : `<div><b>Shot selection</b> is how much the situation drives their
-      aggression. For every two-shot lead-up they face, we measure how often they go for a
-      finishing shot; shot selection is how much that rate swings from one lead-up to the
-      next, as a standard deviation in percentage points. Near zero means the decision looks
-      much the same whatever came before it. Sampling noise is subtracted, so a heavily
-      charted player is not rewarded for having steadier numbers. A player needs 4,000 charted
-      strokes spread over at least 20 lead-ups.${band(FIGS[1])}</div>`,
   ].filter(Boolean);
   if (!defs.length) return "";
   // The units, after the figures that use them. They come last because a reader who wants to
@@ -924,20 +972,34 @@ function figureKey(sa, sb, spread) {
 }
 
 function tape(da, db, mu, spread) {
-  const sa = da && da.s, sb = db && db.s;
-  if (!sa && !sb) return "";
-  const cells = tapeRows(mu).map((r) => donut(r, sa, sb)).join("");
+  // The rings take only the sides that clear the coverage floor; the profile columns beside
+  // them take the player whole, since every figure in them carries its own gate already. A
+  // side held back leaves its half of the ring empty, which is the shape the drawing already
+  // has for a player the rates simply do not exist for — and the note says which it is, so an
+  // empty half is never left reading as "no charting" when it means "not enough of it".
+  const sa = wellCharted(da) ? da.s : null, sb = wellCharted(db) ? db.s : null;
+  const cells = sa || sb ? tapeRows(mu).map((r) => donut(r, sa, sb)).join("") : "";
   const sideA = profileSide(da, "a"), sideB = profileSide(db, "b");
   if (!cells && !sideA && !sideB) return "";
   const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
+  // Named, not just omitted. A blank half beside a full one is the panel making a claim about
+  // the thin player, and the claim it should make is about the charting rather than the
+  // tennis.
+  const thin = [[da, sa], [db, sb]]
+    .filter(([d, s]) => d && !s).map(([d]) => last(d.s.player));
+  const thinNote = thin.length
+    ? `<p class="tapenote">Serve and return rates need ${RATE_MIN_PTS.toLocaleString()}
+       charted points to print; ${esc(thin.join(" and "))}
+       ${thin.length > 1 ? "are" : "is"} below that.</p>` : "";
   return `<section class="msec">
     <h3 class="sechead">side by side</h3>
     <section class="tape">
     <div class="tapemain">${sideA}${rings}${sideB}</div>
     ${cells ? `<p class="tapenote">
-      <span class="tickkey"></span> this draw's tour average ·
+      <span class="tickkey"></span> charted tour average ·
       <span class="segkey deep"></span> aces, within serve points won</p>` : ""}
-    ${figureKey(sa, sb, spread)}
+    ${thinNote}
+    ${figureKey(sa || (da && da.s), sb || (db && db.s), spread)}
   </section></section>`;
 }
 
@@ -982,6 +1044,13 @@ function section(title, note, a, b, aHtml, bHtml, kind = "cards") {
   </section>`;
 }
 
+// Said once per section rather than on each of six cards. Both figures the cards carry are
+// comparisons, and neither is self-describing: "n=277/970" needs to be read as a share, and
+// the win rate is against the player's own rate on the same ball — which is the whole point
+// of it, since measuring it against the tour's rate ranked players rather than choices.
+const PAYOFF_LEGEND = `<span class="paykey">n is how often they play it, out of how often
+  they face the ball; win rates are against their own rate answering that same ball</span>`;
+
 // The court glyph explained where it is first used, rather than only inside the collapsed
 // notation key — three cues is two more than a reader should have to go looking for.
 // A span, not a paragraph: this rides inside the section's <h3>, where a block element
@@ -1000,11 +1069,18 @@ const meterLegend = (baseline) => `<span class="meterkey">
   <span class="segkey"></span> landed <span class="segkey miss"></span> missed, out of the
   balls the cue provokes · <span class="tickkey"></span> ${baseline}</span>`;
 
+// Only two bands survive, because the third one is now the gate. "low — one side is thinly
+// charted" used to ride under a percentage that printed regardless, and that was the whole
+// problem: measured against real results, matchups where a player had fewer than three prior
+// charted matches score 0.80 log-loss and 52.6% accuracy — worse than a coin flip — and where
+// the model printed 85% or better the favourite won 62.4%. It was also the regime the site
+// mostly ships in: 41 of 58 upcoming matchups in the current brackets sat in it, and it
+// printed its boldest numbers there, because a thin player's rate is dragged far from the
+// tour mean by a single charted match and the score tree amplifies small per-point gaps.
+// So below the floor there is no number to put a caveat under.
 function confidence(pa, pb) {
   const minPts = Math.min(Number(pa.s.points_charted) || 0, Number(pb.s.points_charted) || 0);
-  if (minPts >= 10000) return "high";
-  if (minPts >= 2000) return "moderate";
-  return "low — one side is thinly charted";
+  return minPts >= 10000 ? "high" : "moderate";
 }
 
 // Deliberately small print: the shot-sequence tendencies above are this site's
@@ -1016,9 +1092,10 @@ function wpBar(a, b, wpA, conf) {
     <div class="wp-line"><span>${esc(last(a))} ${pa}%</span>
       <div class="wp-bar"><div class="pa" style="width:${wpA * 100}%"></div></div>
       <span>${100 - pa}% ${esc(last(b))}</span></div>
-    <div class="wp-note">Experimental, from charted serve and return rates only. Surface and
-      recent-form adjustments were tested and don't improve it at this data resolution, so
-      it stays deliberately simple. Charting confidence: ${conf}.</div>
+    <div class="wp-note">Experimental, from charted serve and return rates only, and pulled
+      toward even because the raw model is measurably overconfident against real results.
+      Surface and recent-form adjustments were tested and don't improve it at this data
+      resolution. Charting confidence: ${conf}.</div>
   </div>`;
 }
 
@@ -1295,13 +1372,15 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
     none +
     section("serve + 1", `what they do with the returns they serve up, by service
-      court and return depth`, a, b, familyCards(pa, "ret", 2), familyCards(pb, "ret", 2),
-      "cards") +
+      court and return depth${PAYOFF_LEGEND}`, a, b,
+      familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
     section("court patterns", `their answer to an incoming ball, × how often the tour
-      plays it from the same spot${COURT_LEGEND}`, a, b,
+      of their own era plays it from the same
+      spot${COURT_LEGEND}${PAYOFF_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("shot-making triggers", `a lead-up that shifts their aggressive shot
-      frequency — and whether it pays${meterLegend("their rate without the cue")}`,
+      frequency — and whether it converts as well as their other cues
+      do${meterLegend("their rate with no cue")}`,
       a, b, ta.main, tb.main, "text") +
     section("deep patterns ⭐", `3–4 shot sequences only chartable at this player's
       coverage${meterLegend("the shorter pattern's rate")}`, a, b, ta.gold, tb.gold, "text") +
@@ -1561,11 +1640,23 @@ export async function openMatchup(m, t) {
   const wpslot = document.getElementById("wpslot");
   if (t.completed) {
     wpslot.innerHTML = "";              // result is in — no pre-match number to offer
-  } else if (pa && pb) {
-    const wpA = preMatchWP(
+  } else if (pa && pb && wellCharted(pa) && wellCharted(pb)) {
+    // Shrunk toward even before it is printed. The tree is exact; its inputs are career
+    // charted rates with no opponent adjustment, and scored against real results it
+    // printed 0.92 where the truth was 0.84 and 0.12 where the truth was 0.24. See
+    // winprob.js for the fit.
+    const wpA = shrinkWP(preMatchWP(
       { serve: pa.s.serve_rate, ret: pa.s.return_rate },
-      { serve: pb.s.serve_rate, ret: pb.s.return_rate }, mu, t.best_of);
+      { serve: pb.s.serve_rate, ret: pb.s.return_rate }, mu, t.best_of));
     wpslot.innerHTML = wpBar(m.a.name, m.b.name, wpA, confidence(pa, pb));
+  } else if (pa && pb) {
+    // Both charted, one of them barely. The model is fed career serve and return rates with
+    // no opponent adjustment, so a player charted once — in the televised loss that got them
+    // charted — reads as far below tour average, and the number that comes out is confident
+    // and wrong rather than uncertain.
+    wpslot.innerHTML = `<p class="wp-note">No pre-match number here: it needs
+      ${RATE_MIN_PTS.toLocaleString()} charted points for each player, and one of these two is
+      below that. Under it the number is not a rougher guess, it is a worse one.</p>`;
   } else {
     wpslot.innerHTML = `<p class="wp-note">A win probability needs charting history for both players.</p>`;
   }

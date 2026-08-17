@@ -57,6 +57,7 @@ from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import parse_point, stroke_kind  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
+from match_charting_project.stats import bh, binom_tail  # noqa: E402
 
 REPORTS = PROJECT_ROOT / "reports"
 FIG = REPORTS / "figures"
@@ -73,6 +74,21 @@ LIFT_MIN = 1.4        # shrunk lift needed to surface
 HALF_LIFT_MIN = 1.15  # raw lift required in *both* halves of their matches
 HALF_MIN = 4          # raw count required in both halves
 TOP_PER_PLAYER = 2    # patterns surfaced per player (the panel shows two)
+Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
+
+# The lift gate above is a threshold on a point estimate, and a full-tier player is put
+# through it on the order of fifty to a hundred times — once per state x response cell
+# their charting funds. Without a correction that is a search, not a test: of the 770
+# rows this used to ship, 170 sat above an uncorrected p=0.001 against the field share
+# they were measured on, 57 above p=0.01 and 9 above p=0.05.
+#
+# So every cell that has a field baseline gets an exact binomial tail against that
+# baseline, and the tails are Benjamini-Hochberg adjusted across that player's own
+# candidate cells. Within player is the right family: the panel's claim is "this player
+# does this unusually often", so what has to be controlled is how many tendencies were
+# tried on them. This is the same correction deep_patterns applies, and it is applied
+# here for the same reason — the two sections sit one above the other in the panel and a
+# reader has no way to tell that one was screened and the other was not.
 
 # Tier assignment. Deliberately a coverage test, not a results test: a player earns
 # the finer state by having faced enough distinct situations in it, whatever those
@@ -245,10 +261,19 @@ def profile(res, name, tier) -> list:
     Every gate is court_response's, applied against the field in the *same* state,
     so a full-tier pattern is compared to the tour's answers to that same serve,
     into that same court, off that same return.
+
+    ``p_field`` and ``sconv`` ride along for the same reasons they do there: the card
+    needs to show what share of the field plays a response before "3.4x" means anything
+    (3.4x off a 27% base and 3.4x off a 0.4% base are different claims), and the
+    player's own win rate on this serve-and-return, across every third ball they hit
+    from it, is the only payoff comparison that is not mostly a statement about how
+    good they are. Unlike court_response this field is *not* era-standardized — the
+    serve+1 state already carries the service court and the serve's direction, which
+    thins each cell enough that a per-era baseline would price very few of them.
     """
     h0, h1 = res["per"][name]
     h0w, h1w = res["perw"][name]
-    out = []
+    out, pending = [], []
     for st, n in tier_states(res, name, tier).items():
         c0, c1 = h0[st], h1[st]
         mine = c0 + c1
@@ -256,26 +281,40 @@ def profile(res, name, tier) -> list:
         bn = base.total()
         if bn < MIN_FIELD:
             continue
+        mine_w = h0w[st] + h1w[st]
+        p_state = (res["fieldw"][st] - mine_w).total() / bn
+        sconv = (mine_w.total() + K_CONV * p_state) / (n + K_CONV) if n else p_state
         for resp, c in mine.items():
             bf = base.get(resp, 0)
             if c < MIN_CELL or bf < 20:
                 continue
             p_field = bf / bn
+            # Every cell with a baseline is a test that was performed, whether or not it
+            # goes on to clear the lift gate — so the tail is taken here, before any of
+            # the surfacing gates, and the whole set forms the correction family.
+            pval = binom_tail(c, n, p_field)
             lift = ((c + K_SHRINK * p_field) / (n + K_SHRINK)) / p_field
-            if lift < LIFT_MIN:
-                continue
-            if min(c0[resp], c1[resp]) < HALF_MIN:
-                continue
+            surfaces = lift >= LIFT_MIN and min(c0[resp], c1[resp]) >= HALF_MIN
             n0, n1 = c0.total(), c1.total()
-            if not (n0 and n1):
-                continue
-            l0, l1 = (c0[resp] / n0) / p_field, (c1[resp] / n1) / p_field
-            if min(l0, l1) < HALF_LIFT_MIN:
+            if surfaces and n0 and n1:
+                l0, l1 = (c0[resp] / n0) / p_field, (c1[resp] / n1) / p_field
+                surfaces = min(l0, l1) >= HALF_LIFT_MIN
+            else:
+                l0 = l1 = 0.0
+                surfaces = False
+            if not surfaces:
+                pending.append((pval, None))
                 continue
             wins = h0w[st][resp] + h1w[st][resp]
             fconv = (res["fieldw"][st].get(resp, 0) - wins) / bf
             conv = (wins + K_CONV * fconv) / (c + K_CONV)
-            out.append((c * np.log2(lift), lift, st, resp, n, c, l0, l1, conv, fconv))
+            pending.append((pval, (c * np.log2(lift), lift, st, resp, n, c, l0, l1,
+                                   conv, fconv, p_field, sconv)))
+    # Adjust across the player's whole candidate set, then keep the survivors that also
+    # cleared the surfacing gates.
+    for (pval, row), q in zip(pending, bh([p for p, _ in pending])):
+        if row is not None and q <= Q_FDR:
+            out.append(row)
     out.sort(key=lambda r: -r[0])
     return out[:TOP_PER_PLAYER]
 
@@ -422,9 +461,11 @@ def player_block(md, name, rows_by_player, tiers, flips):
         return
     md.append(f"**{name}** — tier: {TIER_WORD[tiers[name]]}\n")
     for r in rows:
-        md.append(f"- {r['state']} → **{r['response']}** ({r['lift']}x, "
+        md.append(f"- {r['state']} → **{r['response']}** ({r['lift']}x vs "
+                  f"{r['field_share']:.0%} of the field, "
                   f"n={r['count']}/{r['n_state']}, halves {r['lift_h1']}/{r['lift_h2']}, "
-                  f"wins {r['win_rate']:.0%} vs {r['tour_win_rate']:.0%})")
+                  f"wins {r['win_rate']:.0%} vs {r['state_win_rate']:.0%} on this ball "
+                  f"overall, tour {r['tour_win_rate']:.0%})")
     for st, rd, nd, ra, na in flips.get(name, [])[:2]:
         md.append(f"  - *courts disagree*: {state_name(st)} → "
                   f"{resp_name(st, rd)} on the deuce side (n={nd}), "
@@ -451,7 +492,8 @@ def main():
             tiers[name] = tier
             flips_by_g[g][name] = side_flips(res, name)
             hand = hands[name]
-            for ev, lift, st, resp, n, c, l0, l1, conv, fconv in profile(res, name, tier):
+            for (ev, lift, st, resp, n, c, l0, l1,
+                 conv, fconv, pf, sconv) in profile(res, name, tier):
                 inc, out = physical_codes(st, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family="ret", tier=tier,
@@ -463,6 +505,7 @@ def main():
                     inc_code=inc, resp_code=out,
                     n_state=n, count=c, lift=round(lift, 2), evidence=round(ev, 1),
                     lift_h1=round(l0, 2), lift_h2=round(l1, 2),
+                    field_share=round(pf, 4), state_win_rate=round(sconv, 3),
                     win_rate=round(conv, 3), tour_win_rate=round(fconv, 3)))
 
     surfaced = {g: Counter() for g in ("M", "W")}
