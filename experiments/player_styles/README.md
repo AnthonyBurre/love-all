@@ -16,9 +16,10 @@ rather than the league average.
   already captured by net-forwardness, so net play isn't double-counted as "shotmaking".)
   Features are chosen to be roughly handedness-invariant.
 - **`cluster.py`** — numpy only (no new deps): standardize → PCA (view) → k-means++ with
-  restarts at a fixed **k=4** (silhouette is flat across k, so the count is a presentation
-  choice); clusters described by their most extreme standardized features + nearest-centroid
-  exemplars.
+  restarts at a fixed **k=4**; clusters described by their most extreme standardized features
+  + nearest-centroid exemplars. Silhouette is flat across k **≥ 3**, so among those the count
+  is a presentation choice — see the note on k below, which corrects an earlier claim that it
+  was flat across k generally.
 - **`run.py`** — per gender: fingerprint → cluster → figures + report + the mapping CSV.
 
 ```bash
@@ -73,6 +74,23 @@ big servers because of his serve.
 - **Style is a continuum, not species.** Silhouette scores are low (~0.11–0.14):
   players spread smoothly, so the clusters are *soft strata*, useful for stratifying,
   not hard categories. Borderline players sit between archetypes.
+- **The geometry supports two groups, not four.** Measured on the shipped fingerprints,
+  silhouette runs:
+
+  | | k=2 | k=3 | k=4 | k=5 | k=6 |
+  |---|---|---|---|---|---|
+  | Men (n=242) | **0.362** | 0.134 | 0.136 | 0.131 | 0.122 |
+  | Women (n=152) | **0.506** | 0.151 | 0.117 | 0.112 | 0.115 |
+
+  The single split the data insists on is two-way — net-rushers against everyone else for
+  the men, slicers against everyone else for the women — and for the women k=4 scores
+  *below* k=3. Four archetypes are kept because they match how the sport talks about
+  itself and because `style_confident` withholds any label whose margin is too thin to
+  trust; that gate is what makes a k the geometry does not pin down defensible to ship.
+  Forcing four does shatter the women's most distinctive cohort: of the twelve players
+  whose fingerprints are slice-dominated, eight are asserted *Baseline grinder /
+  counterpuncher* (Hingis, Radwanska, Evert, Mauresmo, Sanchez Vicario among them), and
+  Barty lands in *Big serve / first-strike* on a margin four thousandths over the line.
 - **Small rare classes.** The women's net/slicer archetype is real but tiny (4 players)
   — too small to build its own eval for class-relative WPA, so that step will need to
   merge tiny classes or use soft (distance-weighted) membership.

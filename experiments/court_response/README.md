@@ -77,5 +77,30 @@ men's profiles (vs 22% for the old signatures), and it is a genuine style
 trait (choosing the crosscourt slice from the backhand corner) rather than
 forced geometry. The high-volume profiles read as scouting reports: Federer's
 crosscourt backhand slice, Djokovic's backhand down the line, Nadal's
-run-around forehand from the middle, Graf's slice at 7x on 3,400 charted
-balls.
+run-around forehand from the middle.
+
+Lifts are taken against a field weighted to the player's own era (see `ERAS` and
+`era_baseline` in run.py). Graf's crosscourt backhand slice reads 7.3x against the pooled
+corpus and **3.2x** against the field she actually played: among women answering a drive
+into the backhand corner, that slice runs 23.6% pre-2000 against 5.7% in the 2000s, so
+most of the pooled lift was the decade rather than the player.
+
+## The ceiling on what a pattern can mean
+
+**The state is coarser than the tactic it names.** It carries the incoming ball's
+character (drive / slice / net / drop-lob) and the third of the court it lands in, and
+nothing else — no height, no spin, no speed, and no record of where the striker was
+standing. The charting does not record those, so this is a ceiling rather than a
+shortcut.
+
+What that costs is specific: "a drive into the BH corner" pools a deep heavy topspin ball
+that forces a defensive slice with a short floaty one that invites a step-around forehand.
+Those are opposite situations demanding opposite answers, and the card reports the mix as
+though it were one choice. So a response that is largely a *necessity* reads as a
+*preference*, and the lift over the field is partly a statement about which of the two
+balls that player tends to receive — which is a fact about their opponents.
+
+The payoff column is the place this bites hardest, and is why it is baselined against the
+player's own rate answering that same ball rather than against the tour's: both sides of
+that comparison inherit the same mix, so the mix largely cancels. It does not cancel for
+the lift, which has no such shelter.

@@ -289,6 +289,137 @@ const shortLabel = (label) => {
            final: "F" }[label.toLowerCase()] || label;
 };
 
+// Full-height zones flanking the round: right steps forward a round, left steps back
+// (omitted on the first round, where there is nowhere to go back to; the right zone is
+// likewise omitted on the final). Each is a real tap target, not just a decoration —
+// role="button" and Enter/Space keep it reachable without a pointer.
+function navZone(cls, label, onTap) {
+  const zone = el("div", "roundnav " + cls);
+  zone.title = label;
+  zone.setAttribute("role", "button");
+  zone.setAttribute("aria-label", label);
+  zone.tabIndex = 0;
+  zone.onclick = onTap;
+  zone.onkeydown = (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    onTap();
+  };
+  return zone;
+}
+
+// The right zone's preview: this round's matches converging into the next one or two
+// rounds, threaded from each match's real `feeds` id — the same link the full draw's wires
+// follow — rather than assumed pairing, so it's right on the byes and non-power-of-two
+// draws too. Only the current round has cards on screen, so round+1 and round+2 get no
+// cards of their own; each node sits at the average y of whatever feeds it, the same rule
+// placeColumn uses to center a card on its feeders.
+function drawThreads(rounds, selected, cards, zone) {
+  const round0 = rounds[selected], round1 = rounds[selected + 1];
+  if (!round1) return;
+  const round2 = rounds[selected + 2];
+  const zoneRect = zone.getBoundingClientRect();
+  const cy = (id) => {
+    const r = cards.get(id).getBoundingClientRect();
+    return r.top - zoneRect.top + r.height / 2;
+  };
+  const feedCenters = (parents, parentY) => {
+    const acc = new Map();
+    for (const m of parents) {
+      if (m.feeds == null || !parentY.has(m.id)) continue;
+      if (!acc.has(m.feeds)) acc.set(m.feeds, []);
+      acc.get(m.feeds).push(parentY.get(m.id));
+    }
+    const out = new Map();
+    for (const [id, ys] of acc) out.set(id, ys.reduce((a, b) => a + b, 0) / ys.length);
+    return out;
+  };
+  const y0 = new Map(round0.matches.map((m) => [m.id, cy(m.id)]));
+  const y1 = feedCenters(round0.matches, y0);
+  if (!y1.size) return;
+  const y2 = round2 ? feedCenters(round1.matches, y1) : new Map();
+
+  const w = zone.clientWidth, h = zone.clientHeight;
+  const x1 = y2.size ? w / 2 : w;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "navthreads");
+  svg.setAttribute("width", w);
+  svg.setAttribute("height", h);
+  const wire = (ax, ay, bx, by) => {
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", mitre(ax, ay, bx, by));
+    svg.appendChild(p);
+  };
+  const node = (x, y) => {
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", 2.5);
+    svg.appendChild(c);
+  };
+  for (const m of round0.matches) {
+    if (m.feeds == null || !y1.has(m.feeds)) continue;
+    wire(0, y0.get(m.id), x1, y1.get(m.feeds));
+  }
+  for (const yv of y1.values()) node(x1, yv);
+  if (y2.size) {
+    for (const m of round1.matches) {
+      if (m.feeds == null || !y2.has(m.feeds)) continue;
+      wire(x1, y1.get(m.id), w, y2.get(m.feeds));
+    }
+    for (const yv of y2.values()) node(w, yv);
+  }
+  zone.appendChild(svg);
+}
+
+// The left zone's preview: a one-round mirror of drawThreads above — the previous round's
+// two matches converging into this one, in the same wire grammar (mitred lines, node
+// dots) instead of a mark per card, but never more than the one round a tap on this zone
+// actually goes back. The averaging direction has to flip: forward, a parent's position is
+// the average of its already-known children; here it's the current match's position that's
+// known, and its two children have none of their own to average — only their fixed order
+// within the round (array order is slot order), so they're split a fixed offset above and
+// below the parent instead.
+function drawBackThreads(rounds, selected, cards, zone) {
+  const round0 = rounds[selected], round1 = rounds[selected - 1];
+  if (!round1) return;
+  const zoneRect = zone.getBoundingClientRect();
+  const cy = (id) => {
+    const r = cards.get(id).getBoundingClientRect();
+    return r.top - zoneRect.top + r.height / 2;
+  };
+  const y0 = new Map(round0.matches.map((m) => [m.id, cy(m.id)]));
+  const byParent = new Map();
+  for (const m of round1.matches) {
+    if (m.feeds == null || !y0.has(m.feeds)) continue;
+    if (!byParent.has(m.feeds)) byParent.set(m.feeds, []);
+    byParent.get(m.feeds).push(m);
+  }
+  if (!byParent.size) return;
+  const offset = 14;
+  const y1 = new Map();
+  for (const [pid, kids] of byParent) {
+    const py = y0.get(pid);
+    kids.forEach((k, i) => y1.set(k.id, kids.length > 1 ? py - offset + (offset * 2 * i) / (kids.length - 1) : py));
+  }
+
+  const w = zone.clientWidth, h = zone.clientHeight;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "navthreads");
+  svg.setAttribute("width", w);
+  svg.setAttribute("height", h);
+  for (const m of round1.matches) {
+    if (!y1.has(m.id)) continue;
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", mitre(w, y0.get(m.feeds), 0, y1.get(m.id)));
+    svg.appendChild(p);
+  }
+  for (const yv of y1.values()) {
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", 0); c.setAttribute("cy", yv); c.setAttribute("r", 2.5);
+    svg.appendChild(c);
+  }
+  zone.appendChild(svg);
+}
+
 export function renderRoundList(rounds, root, t, cov, onClick, roundSel) {
   root.innerHTML = "";
   root.className = "bracket aslist";
@@ -302,22 +433,50 @@ export function renderRoundList(rounds, root, t, cov, onClick, roundSel) {
   });
   root.append(chips);
 
-  const round = rounds[roundSel.selected];
+  const selected = roundSel.selected;
+  const round = rounds[selected];
+  const cards = new Map();
+  // A sibling of navrow, not nested inside it: sticky only reaches full page width — wide
+  // enough to cover the nav zones either side once it's pinned — by sitting outside their
+  // flex row rather than inside the narrower content column between them.
   root.append(el("h3", "roundtitle", round.label));
+  const content = el("div", "roundcontent");
   const list = el("div", "rlist");
   const ms = round.matches;
   const paired = roundSel.paired && ms.length > 1 && ms.length % 2 === 0;
+  const addCard = (m) => {
+    const card = matchCard(m, t, cov, onClick);
+    cards.set(m.id, card);
+    return card;
+  };
   if (paired) {
     for (let i = 0; i < ms.length; i += 2) {
       const pair = el("div", "pair");
-      pair.append(matchCard(ms[i], t, cov, onClick), matchCard(ms[i + 1], t, cov, onClick));
+      pair.append(addCard(ms[i]), addCard(ms[i + 1]));
       list.append(pair);
     }
   } else {
-    for (const m of ms) list.append(matchCard(m, t, cov, onClick));
+    for (const m of ms) list.append(addCard(m));
   }
-  root.append(list);
+  content.append(list);
+
+  const navrow = el("div", "roundnavrow");
+  if (selected > 0) {
+    navrow.append(navZone("left", `Previous round: ${rounds[selected - 1].label}`,
+                           () => roundSel.onPick(selected - 1)));
+  }
+  navrow.append(content);
+  if (selected < rounds.length - 1) {
+    navrow.append(navZone("right", `Next round: ${rounds[selected + 1].label}`,
+                           () => roundSel.onPick(selected + 1)));
+  }
+  root.append(navrow);
+
   fitNames(root);
+  const leftZone = navrow.querySelector(".roundnav.left");
+  if (leftZone) drawBackThreads(rounds, selected, cards, leftZone);
+  const rightZone = navrow.querySelector(".roundnav.right");
+  if (rightZone) drawThreads(rounds, selected, cards, rightZone);
 }
 
 // Default round to open on: the earliest with something still to play.

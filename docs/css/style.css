@@ -1395,7 +1395,14 @@ a { color: var(--acc-d); }
 .site-foot .links a { margin-right: 14px; font-weight: 600; }
 
 /* phone layout: one round at a time as a vertical list — no horizontal panning */
-.bracket.aslist { display: block; overflow-x: visible; }
+/* overflow-y goes back to visible too, not just -x: the base rule's overflow-y: hidden
+   is what lets the tree view size its wire SVG off scrollHeight (see the comment on
+   .bracket above), but here it has a second, unwanted effect — an ancestor with any
+   overflow other than visible becomes the containing block position: sticky measures
+   against, and this one never scrolls internally (its height always grows to fit its
+   content), so .roundtitle's sticky top:0 had nothing to stick to and just scrolled
+   off with the page. */
+.bracket.aslist { display: block; overflow-x: visible; overflow-y: visible; }
 /* Every chip shrinks to share the row rather than holding its own width and running the
    row past the screen — a phone's width divided by a slam's seven rounds is still enough
    for "R16", the longest label this ever prints. overflow-x stays as a fallback for a
@@ -1403,7 +1410,13 @@ a { color: var(--acc-d); }
    nothing to scroll. */
 .roundchips { display: flex; gap: 5px; overflow-x: auto; padding: 2px 0 10px; }
 .roundchips .qchip { flex: 1 1 0; min-width: 0; padding: 7px 6px; text-align: center; }
-.roundtitle { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+/* Pinned to the page top on scroll, so the round stays legible while the list under it
+   runs past — a phone's round can be a full screen or more of cards, and past the first
+   one there is nothing left on screen naming which round they're from. Sticky rather than
+   fixed: it needs no JS height offset, and it only overlays once it would otherwise have
+   scrolled off, not before. */
+.roundtitle { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 8px 0; }
 .rlist { display: flex; flex-direction: column; gap: 16px; }
 /* relative, not static: the card is out of the tree layout's absolute positioning here,
    but it still has to be the containing block for its own tier wedge. Static, the wedge
@@ -1411,12 +1424,30 @@ a { color: var(--acc-d); }
    top-left corner, the second over the first, and half the draw showed the wrong tier
    while the other half showed none. Relative changes nothing about the flow. */
 .rlist .match { position: relative; }
-.rlist .pair { display: flex; flex-direction: column; gap: 6px; position: relative; padding-right: 14px; }
-/* right-side bracket joining a pair: these two winners meet next round */
-/* The joiner is drawn by its own three borders, so it can't be clipped into a triangle —
-   a clip-path takes the borders away with the corners and leaves a sliver. Square corners
-   are the angular version of the same bracket, and they keep all three edges. */
-.rlist .pair::after { content: ""; position: absolute; right: 2px; top: 24px; bottom: 24px; width: 10px; border: 1.5px solid color-mix(in srgb, var(--acc) 42%, var(--line)); border-left: none; }
+/* Tighter gap than the list's own — this is the visual grouping that says these two meet
+   next round. It used to carry its own right-side bracket too, drawn independently of the
+   round-nav thread preview added alongside it; the two were redundant on every round that
+   has a right nav zone (which is every round but the final), each saying "these two meet
+   next round" in a different style stacked one after the other. The thread preview already
+   draws that exact first hop, so the in-list bracket is gone rather than kept twice over. */
+.rlist .pair { display: flex; flex-direction: column; gap: 6px; }
+
+/* Tap zones flanking the round: left steps back, right steps forward. A flex row so each
+   zone stretches to the list's own height for free — no JS measuring needed. */
+.roundnavrow { display: flex; align-items: stretch; }
+.roundcontent { flex: 1 1 auto; min-width: 0; }
+.roundnav { flex: 0 0 auto; position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.roundnav:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; }
+/* Both zones share the same wire grammar now — mitred lines, node dots — but not the same
+   depth: the right previews up to two rounds ahead, needing room for a midpoint stage of
+   nodes, while the left only ever shows the one round a tap on it actually goes back (see
+   drawBackThreads and drawThreads in bracket.js) and so needs no midpoint of its own.
+   Neither zone has any static affordance of its own; both are blank until that preview is
+   drawn into them after layout. */
+.roundnav.left { width: 30px; }
+.roundnav.right { width: 50px; }
+.navthreads path { fill: none; stroke: color-mix(in srgb, var(--acc) 38%, var(--line)); stroke-width: 1.5; }
+.navthreads circle { fill: color-mix(in srgb, var(--acc) 55%, var(--line)); }
 
 @media (max-width: 700px) {
   .site-head h1 { font-size: 26px; }

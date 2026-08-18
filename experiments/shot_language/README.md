@@ -55,7 +55,25 @@ unpredictability differentiates *who a player is*, not *how well they're playing
 
 - **Surprise rewards rare shot *types* as much as rare *sequencing*** — a slice-heavy
   player scores "varied" largely for using uncommon shots, not only for unusual order.
-- **Order-2, coarse tokens** — captures local rhythm, not long-range tactics; zones are
-  the raw codebook 1/2/3.
+- **Order-2, coarse tokens** — captures local rhythm, not long-range tactics. Zones are
+  the codebook's 1/2/3, mirrored for left-handed hitters (see `tokens.py`) so a token
+  names the shot rather than the half of the court it landed in.
+- **A residual left-hander premium survives the mirror, and some of it is real.** Before
+  the mirror, handedness alone explained 56% of the variance and every left-hander in the
+  corpus sat in the top quartile of their tour — Connors ranked fifth-most-varied man with
+  no slice game and no net game, which was the tell. Mirroring cuts that to R²=0.20 (men)
+  / 0.14 (women), leaving a gap of **+0.28 / +0.33 bits**, or about 1.1× the interquartile
+  range. Part of that is genuine: the lefty serve out wide in the ad court and the forehand
+  into a right-hander's backhand really are patterns an 87%-right-handed field model sees
+  less of, and a model of the field is the right thing to be surprised relative to. Part of
+  it is probably still an artifact of a righty-majority corpus. The figure should not be
+  read as if a left-hander and a right-hander an equal distance apart are equally unusual.
+- **An era slope.** Among right-handers, bits correlate **−0.34** (men) / −0.19 (women)
+  with the last season a player was charted in: the earlier the career, the more varied it
+  scores. The field model pools every year in the corpus, so a player from a more varied
+  era is partly being credited for their era.
+- **Drop shots, lobs and swinging volleys share one token.** `kind` collapses to
+  drive/slice/net/other, and `other` holds all three — so the shots a tennis person would
+  call the most inventive are the ones the alphabet distinguishes least.
 - The surprise↔WPA link is correlational and inherits the point eval's conflation of
   selection, execution, and pressure; same charting-coverage caveat as the rest of the repo.

@@ -931,6 +931,9 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
 // explains a number nowhere on screen sends the reader looking for it.
 function figureKey(sa, sb, spread) {
   const has = (k) => [sa, sb].some((s) => s && num(s[k]) != null);
+  // The style line is a string, not a figure, so it needs its own test — num() on an
+  // archetype name is NaN and `has` would drop the entry that most needs to exist.
+  const hasStyle = [sa, sb].some((s) => s && s.archetype);
   // The unit rides on the upper bound only: "between 2.9 bits and 3.2 bits" says bits twice
   // for one range.
   const band = (f) => {
@@ -942,6 +945,27 @@ function figureKey(sa, sb, spread) {
     k: "avg_rally_len", fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} shots`,
   };
   const defs = [
+    // The style line leads the key because it leads the column, and because it is the one
+    // item here that sometimes declines to answer. A reader who meets "Between styles" with
+    // no explanation has to guess whether it means missing data, a hedge, or a finding — it
+    // is the third, and saying so is the whole point of this entry. It is also the panel's
+    // most common non-answer: about a third of the players who qualify get it.
+    !hasStyle ? "" : `<div><b>Style</b> is where a player sits among twelve measured
+      tendencies — where they serve, how much they slice, how often they come forward, how
+      long their points run, how their winners and errors fall. Players with similar
+      fingerprints are grouped, and each group is named for what its centre looks like.
+      ${/* The gate is not a detail. Style is a continuum: the clustering scores a silhouette
+           near 0.12, and for about a third of players the nearest two groups fit equally
+           well. Those are exactly the players whose label flipped wholesale when a fifth of a
+           percent of the charting corpus was removed and their own fingerprint had not moved
+           at all. Naming one of them is a coin toss reported as a finding, so the panel
+           doesn't. */""}
+      <b>"Between styles"</b> means the two nearest groups fit this player about equally well,
+      so naming one would be a coin toss. It is a real answer rather than missing data — the
+      player has a fingerprint, it just doesn't sit inside one group — and it is what the
+      panel says for roughly a third of the players it can place at all. A named style is a
+      description of a centre, not a box: a player near the edge of their group genuinely
+      plays some of the neighbouring one.</div>`,
     // The key follows the column, so it opens on the figure the column now leads with. The
     // shot-quality entry that used to head it went when the verdict did.
     !has("avg_rally_len") ? "" : `<div><b>Shots per point</b> is how many strokes the average

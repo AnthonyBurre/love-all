@@ -76,6 +76,21 @@ counts against the statistic rather than for it — leaves the wide share
 repeating at r = +0.56 against +0.58, so the stability is the player, not the
 person typing.
 
+**That disagreement is not symmetric between the tours, and the site treats them as
+though it were.** The women's *wide* share carries a charter fingerprint of ±4.5% —
+about the size of the men's *body* fingerprint, which is the disagreement that
+disqualified the body share from being reported at all — against a true between-player
+spread of ±7.9%. So roughly a third of the visible spread in a women's wide share is
+who typed it, where for the men it is closer to a sixth. Nothing downstream accounts
+for this: the panel applies one reliability gate, derived from the men's numbers, to
+both tours, and prints the two identically.
+
+The honest options are a per-tour gate or a stated caveat, and this is currently the
+caveat. It is not a reason to withhold the women's numbers — a third of the spread
+being charter noise still leaves two thirds that is the player, which is why the
+split-half stability holds up — but a women's wide share should be read as the coarser
+of the two measurements, not as the same measurement.
+
 ## Is this already covered elsewhere?
 
 - **`serve_side`** owns the descriptive split and stays the place to look up
