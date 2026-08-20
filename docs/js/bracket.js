@@ -308,16 +308,34 @@ function navZone(cls, label, onTap) {
   return zone;
 }
 
-// The right zone's preview: this round's matches converging into the next one or two
-// rounds, threaded from each match's real `feeds` id — the same link the full draw's wires
-// follow — rather than assumed pairing, so it's right on the byes and non-power-of-two
-// draws too. Only the current round has cards on screen, so round+1 and round+2 get no
-// cards of their own; each node sits at the average y of whatever feeds it, the same rule
-// placeColumn uses to center a card on its feeders.
+// Both previews are drawn against a zone that now runs to the screen's own edge, so the
+// outermost stage is held a node's radius inside it: a dot centred on the edge itself is
+// sliced in half by the viewport and reads as a clipping bug rather than as a match.
+const NAV_NODE_R = 2;
+
+// The right zone's preview: this round's matches converging into the rounds after it,
+// threaded from each match's real `feeds` id — the same link the full draw's wires follow —
+// rather than assumed pairing, so it's right on the byes and non-power-of-two draws too.
+// Only the current round has cards on screen, so every round past it gets no cards of its
+// own; each node sits at the average y of whatever feeds it, the same rule placeColumn
+// uses to center a card on its feeders.
+//
+// NAV_HOPS is how many of those rounds get drawn at most; a round with less draw left than
+// that draws what it has, which is why the semifinal draws one hop and not three. The zone
+// doesn't grow to fit them — the hops share the width it has.
+//
+// They don't share it evenly, though. Split in three, each hop gets under 9px of run, and
+// mitre() answers a run that short with a stub at each end and almost no diagonal between
+// them: the wire comes out a vertical line with a kink in it, three of them stacked, which
+// is a ladder and not a bracket. Each hop instead takes NAV_HOP_DECAY of the one before,
+// so the first — who they play next, and the only one a tap on this zone actually takes
+// you to — keeps roughly the room it had when two hops split the width evenly, and the
+// ones behind it tighten. That is also the honest shape of the information: the near hop
+// is a fixture, the far ones are only "and it keeps going".
+const NAV_HOPS = 3;
+const NAV_HOP_DECAY = 0.7;
 function drawThreads(rounds, selected, cards, zone) {
-  const round0 = rounds[selected], round1 = rounds[selected + 1];
-  if (!round1) return;
-  const round2 = rounds[selected + 2];
+  if (!rounds[selected + 1]) return;
   const zoneRect = zone.getBoundingClientRect();
   const cy = (id) => {
     const r = cards.get(id).getBoundingClientRect();
@@ -334,13 +352,23 @@ function drawThreads(rounds, selected, cards, zone) {
     for (const [id, ys] of acc) out.set(id, ys.reduce((a, b) => a + b, 0) / ys.length);
     return out;
   };
-  const y0 = new Map(round0.matches.map((m) => [m.id, cy(m.id)]));
-  const y1 = feedCenters(round0.matches, y0);
-  if (!y1.size) return;
-  const y2 = round2 ? feedCenters(round1.matches, y1) : new Map();
+  // ys[i] is where round selected+i's matches sit: ys[0] off the cards themselves, each one
+  // after it off the round that feeds it.
+  const ys = [new Map(rounds[selected].matches.map((m) => [m.id, cy(m.id)]))];
+  for (let i = 0; i < NAV_HOPS && rounds[selected + i + 1]; i++) {
+    const next = feedCenters(rounds[selected + i].matches, ys[i]);
+    if (!next.size) break;
+    ys.push(next);
+  }
+  const hops = ys.length - 1;
+  if (!hops) return;
 
   const w = zone.clientWidth, h = zone.clientHeight;
-  const x1 = y2.size ? w / 2 : w;
+  const outer = w - NAV_NODE_R;
+  const cuts = [];                        // cumulative share of the width through each hop
+  let total = 0;
+  for (let i = 0; i < hops; i++) cuts.push((total += NAV_HOP_DECAY ** i));
+  const x = (i) => (i === 0 ? 0 : (cuts[i - 1] / total) * outer);
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "navthreads");
   svg.setAttribute("width", w);
@@ -350,22 +378,17 @@ function drawThreads(rounds, selected, cards, zone) {
     p.setAttribute("d", mitre(ax, ay, bx, by));
     svg.appendChild(p);
   };
-  const node = (x, y) => {
+  const node = (cx, cyv) => {
     const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", 2.5);
+    c.setAttribute("cx", cx); c.setAttribute("cy", cyv); c.setAttribute("r", NAV_NODE_R);
     svg.appendChild(c);
   };
-  for (const m of round0.matches) {
-    if (m.feeds == null || !y1.has(m.feeds)) continue;
-    wire(0, y0.get(m.id), x1, y1.get(m.feeds));
-  }
-  for (const yv of y1.values()) node(x1, yv);
-  if (y2.size) {
-    for (const m of round1.matches) {
-      if (m.feeds == null || !y2.has(m.feeds)) continue;
-      wire(x1, y1.get(m.id), w, y2.get(m.feeds));
+  for (let i = 0; i < hops; i++) {
+    for (const m of rounds[selected + i].matches) {
+      if (m.feeds == null || !ys[i].has(m.id) || !ys[i + 1].has(m.feeds)) continue;
+      wire(x(i), ys[i].get(m.id), x(i + 1), ys[i + 1].get(m.feeds));
     }
-    for (const yv of y2.values()) node(w, yv);
+    for (const yv of ys[i + 1].values()) node(x(i + 1), yv);
   }
   zone.appendChild(svg);
 }
@@ -394,14 +417,18 @@ function drawBackThreads(rounds, selected, cards, zone) {
     byParent.get(m.feeds).push(m);
   }
   if (!byParent.size) return;
-  const offset = 14;
+
+  const w = zone.clientWidth, h = zone.clientHeight;
+  // Half the zone's own width, so the bracket keeps its proportions as the zone narrows
+  // rather than standing at a fixed height and just getting steeper — a steeper bracket in
+  // a narrower lane is more line, not less, which is the opposite of taking the zone in.
+  const offset = w / 2;
   const y1 = new Map();
   for (const [pid, kids] of byParent) {
     const py = y0.get(pid);
     kids.forEach((k, i) => y1.set(k.id, kids.length > 1 ? py - offset + (offset * 2 * i) / (kids.length - 1) : py));
   }
 
-  const w = zone.clientWidth, h = zone.clientHeight;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "navthreads");
   svg.setAttribute("width", w);
@@ -409,12 +436,12 @@ function drawBackThreads(rounds, selected, cards, zone) {
   for (const m of round1.matches) {
     if (!y1.has(m.id)) continue;
     const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("d", mitre(w, y0.get(m.feeds), 0, y1.get(m.id)));
+    p.setAttribute("d", mitre(w, y0.get(m.feeds), NAV_NODE_R, y1.get(m.id)));
     svg.appendChild(p);
   }
   for (const yv of y1.values()) {
     const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c.setAttribute("cx", 0); c.setAttribute("cy", yv); c.setAttribute("r", 2.5);
+    c.setAttribute("cx", NAV_NODE_R); c.setAttribute("cy", yv); c.setAttribute("r", NAV_NODE_R);
     svg.appendChild(c);
   }
   zone.appendChild(svg);

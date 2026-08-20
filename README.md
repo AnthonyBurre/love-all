@@ -21,7 +21,7 @@ answers it, and what it found. They write their output to `reports/`.
 | [`chess_point_analysis`](experiments/chess_point_analysis/) | Can chess-analysis techniques be ported to a tennis point? | Yes. A point string is a move list, so it gets an engine eval, WPA per shot, and an opening explorer. The decoder validates to within 1–5% of the project's own stat lines. |
 | [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Rusedski, Moutet, Santoro, Rafter; Navratilova, Maria, Niculescu. Most predictable: Basilashvili, Cilic; Samsonova, Giorgi, Ostapenko. Junkballers and serve-volleyers score high, flat first-strike baseliners low. Zones are mirrored for left-handers, without which handedness alone explained over half the spread. |
 | [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive and face-valid. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, the textbook pressure point. |
-| [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, conversion rates, and **traps**, meaning cues that raise the frequency but convert worse than the player's *other* cues do. A cue must clear a per-player FDR correction and hold its sign in both halves of their matches. Ships to the site. |
+| [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, conversion rates, and **traps**, meaning cues that raise the frequency but convert worse than the player's *other* cues do. Cues are cross-validated: each half of a player's matches takes a turn discovering, with the FDR correction inside it, and the tag is read off the other half, which had no part in the selection. The figures shown are the held-out ones. Ships to the site. |
 | [`court_response`](experiments/court_response/) | What does a player do with a given incoming ball? | Enough stability to read as a scouting report: split-half r = 0.73 (men) / 0.69 (women) over ~43k state-response cells. Federer's crosscourt backhand slice, Djokovic's backhand down the line. The field is weighted to each player's own era, without which a pre-2000 slicer's lift is mostly the decade. |
 | [`serve_plus_one`](experiments/serve_plus_one/) | The server's third ball, with the service court in the state. | Pooling the courts was averaging two different shots. Nadal answers the same mid-depth return with a crosscourt forehand on the deuce side and a forehand down the line on the ad side. 603 such disagreements across 260 players. 725 patterns over 414 players survive a per-player FDR correction. Each player is profiled at the finest state their charting funds. Ships to the site. |
 | [`context_length`](experiments/context_length/) | How many shots of history does charted data actually support? | **Two. The third actively hurts** held-out log-loss. And a player's top-5 signature list overlaps only J≈0.22 between halves of their own data, so much of any specific list is sampling luck. |
@@ -34,6 +34,11 @@ answers it, and what it found. They write their output to `reports/`.
 | [`class_relative_wpa`](experiments/class_relative_wpa/) | Who beats the average for *their own style*, rather than the field's? | **Not at this resolution.** `class_rel_z` was meant to judge a shotmaker against other shotmakers, but the residual correlates −0.99 with the raw score it is taken from and 66% of its variance is rally length: the ridge λ is solved to match the class means' R², which buys that R² by leaving a scaled copy of the style axis in the residual. It said no male serve-volleyer had ever been ahead of similar players. Pulled from the site; the experiment stands as the negative result. |
 
 ### Win probability
+
+These four stand as experiments and none of them ships to the site. The panel used to carry a
+pre-match number built on this engine and no longer does — see [The site](#the-site) for why.
+The in-match tree remains the right tool for the question it was built for; what it could not
+survive was being fed career charted rates and asked to pick a winner.
 
 | experiment | the question | what it found |
 | --- | --- | --- |
@@ -72,8 +77,16 @@ pairing is; on a finished draw the shading turns per-match, and the drawer links
 that match's full chart on Tennis Abstract or invites you to be the one who charts it. Click
 any match and a drawer opens with, for each player: a style archetype, serve and return
 rates against the tour average, average point length, shot variety, serve direction, court
-patterns, shot-making triggers, and an **experimental pre-match win probability**. All of it is
-queried in the browser with **DuckDB-WASM**, with no backend.
+patterns, and shot-making triggers. All of it is queried in the browser with
+**DuckDB-WASM**, with no backend.
+
+The panel deliberately does **not** predict the match. A pre-match win probability shipped
+here for a while, from the analytic score tree in `winprob_match.py` driven by each player's
+charted serve and return rates, and it is gone: the tree is exact but its inputs are career
+rates over a volunteer-selected sample with no opponent adjustment, and a plain Elo built on
+the same charted results beat it on both tours. Predicting the winner is the one thing this
+data is worst at and the thing every other tennis site already does. What the charting is
+uniquely good for is what a player *does* — which is what the panel is now entirely about.
 
 <details>
 <summary><b>Why neither Wikipedia feed is trusted blindly</b> — draw validation and calendar joining</summary>
@@ -218,7 +231,9 @@ patterns**, the mid-rally exchange, written in plain English:
 under each cue: its length is how often that cue makes them go for a finishing shot, the
 colour change is how much of that landed, and the tick marks the player's rate with no cue at
 all. A cue is shown only if it clears a false-discovery correction across every context that
-player was screened on, and holds its sign in both halves of their charted matches. The first
+player was screened on, and then holds up on the half of their matches that had no part in
+choosing it — each half takes a turn discovering and the other confirms, so the number on the
+cue is measured on data that did not select it. The first
 bar in each player's column is that player with no cue at all — their rate over every rally
 stroke they hit, drawn on the same scale and from the same left edge — so the section's whole
 claim is one glance: this is the rate, and these are the lead-ups that move it. Click the

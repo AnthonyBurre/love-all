@@ -231,11 +231,25 @@ def matchup_strength(serve_a, return_a, serve_b, return_b, mu,
     return pa, pb
 
 
-def current_strength(con, k: int = 100) -> "tuple[dict, dict]":
+def current_strength(con) -> "tuple[dict, dict]":
     """``(gender, player) -> (serve_rate, return_rate)`` over their whole charted career.
 
-    Each rate shrunk toward the gender mean with pseudo-count ``k`` (so thin-history
-    players tend toward an even matchup). Returns ``(strength, mu)``.
+    These are the plain charted rates. They used to be shrunk toward the gender mean by
+    100 pseudo-points so that a thin-history player tended toward an even matchup — a
+    guard that existed purely for the pre-match win probability, which the site no longer
+    shows. Their only consumer now is the panel's two rings, which are withheld below
+    2,000 charted points, so the population the shrinkage protected is already excluded
+    before it could apply.
+
+    What it did instead was quietly bias a *displayed measurement*: a ring labelled
+    "serve points won" is read as this player's charted rate, and it wasn't quite — it was
+    that rate pulled toward a prior the reader could not see. Small (median 0.07pp, at
+    most 0.83pp across the 363 players who get a ring) but pointless, and it was the cause
+    of a mismatch in the ace wedge, which divides an unshrunk ace rate by this figure.
+
+    ``walk_forward_strength`` below keeps its own pseudo-count. That one is not display —
+    it is the no-leakage estimator the win-probability experiments calibrate against, and
+    there the shrinkage is doing real work on genuinely thin prior histories.
     """
     mu = league_mu(con)
     serve = con.execute(
@@ -257,7 +271,7 @@ def current_strength(con, k: int = 100) -> "tuple[dict, dict]":
         g = key[0]
         sn, sw = sd.get(key, (0, 0))
         rn, rw = rd.get(key, (0, 0))
-        out[key] = ((sw + k * mu[g]) / (sn + k), (rw + k * (1 - mu[g])) / (rn + k))
+        out[key] = (sw / sn if sn else mu[g], rw / rn if rn else 1 - mu[g])
     return out, mu
 
 

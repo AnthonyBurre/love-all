@@ -97,6 +97,18 @@ big servers because of his serve.
 - **Reactive features.** A player's shots are partly forced by the opponent, so a
   fingerprint is "style in context", not an intrinsic constant. Same charting-coverage
   caveat as the rest of the repo applies.
+- **`avg_rally_len` is unadjusted for surface, era and opponent**, and it is the one
+  feature the site also prints as a figure in its own right ("shots per point"). Charted
+  points average **5.20** strokes on clay, **4.69** on hard and **4.02** on grass — a
+  1.18-stroke spread against a between-player interquartile range of 0.80, so where a
+  career was charted moves the number by more than half the tour's own middle. Era does
+  the same without being a trend: the 1990s average **4.21** against 4.88 in the 1980s and
+  a flat ~4.8 from 2000 on, so the fast-court serve-volley years read as a dip rather than
+  as one end of a slope. And because a point has one length shared by both players, part
+  of any figure belongs to who that player was drawn against.
+
+  None of this hurts the clustering, which only needs entities placed on a common axis.
+  It matters for the shipped figure, where the panel's key states it.
 
 ## What the fingerprint fed, and how that turned out
 

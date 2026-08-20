@@ -115,7 +115,11 @@ body { margin: 0; background: var(--bg); color: var(--ink); }
    <body>, so a --head-meta written in :root would resolve --acc to the grass default and
    stay green at Roland Garros. Declared on body, it resolves against the themed value. */
 body { --head-meta: color-mix(in srgb, var(--acc) 28%, #ffffff); }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+/* --wrap-pad is the page gutter held as a variable rather than a literal: the phone
+   layout's nav zones and its sticky round title both have to pull back out through it to
+   reach the screen's own edge, and a second copy of the number is a second thing to keep
+   in step with this one. */
+.wrap { --wrap-pad: 20px; max-width: 1180px; margin: 0 auto; padding: 0 var(--wrap-pad); }
 a { color: var(--acc-d); }
 
 /* The band runs on the diagonal, and a facet of slightly lighter ground cuts across its
@@ -868,16 +872,6 @@ a { color: var(--acc-d); }
 .ct-them { fill: none; stroke: var(--muted); stroke-width: 1.1; }
 .ct-bounce { fill: var(--card); stroke: var(--muted); stroke-width: 1.1; }
 
-/* the win probability is deliberately small print below the tendencies */
-.wp-slim { margin: 18px 0 6px; padding-top: 12px; border-top: 1px solid var(--line); }
-/* it borrows the section heading's type, but it heads a footnote, not a run of cards —
-   nothing scrolls under it long enough to need pinning */
-.wp .sechead { position: static; margin: 0 0 6px; padding: 0; border-bottom: 0; }
-.wp-line { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
-.wp-line .wp-bar { flex: 1; height: 8px; overflow: hidden; background: color-mix(in srgb, var(--b) 30%, var(--card)); }
-.wp-line .pa { height: 100%; background: color-mix(in srgb, var(--a) 65%, var(--card)); }
-.wp-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
-
 /* --- the comparison strip, headed "side by side" ---------------------------------
    Both players' headline numbers on one axis: bars grow outward from a shared centre,
    so a gap reads as a shape rather than as arithmetic between two distant columns. The
@@ -1415,8 +1409,9 @@ a { color: var(--acc-d); }
    one there is nothing left on screen naming which round they're from. Sticky rather than
    fixed: it needs no JS height offset, and it only overlays once it would otherwise have
    scrolled off, not before. */
-.roundtitle { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
-  position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 8px 0; }
+.roundtitle { margin: 0 calc(-1 * var(--wrap-pad)) 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); position: sticky; top: 0; z-index: 3; background: var(--bg);
+  padding: 8px var(--wrap-pad); }
 .rlist { display: flex; flex-direction: column; gap: 16px; }
 /* relative, not static: the card is out of the tree layout's absolute positioning here,
    but it still has to be the containing block for its own tier wedge. Static, the wedge
@@ -1433,21 +1428,48 @@ a { color: var(--acc-d); }
 .rlist .pair { display: flex; flex-direction: column; gap: 6px; }
 
 /* Tap zones flanking the round: left steps back, right steps forward. A flex row so each
-   zone stretches to the list's own height for free — no JS measuring needed. */
-.roundnavrow { display: flex; align-items: stretch; }
+   zone stretches to the list's own height for free — no JS measuring needed.
+   The row pulls back out through the page gutter so each zone starts at the screen's own
+   edge. Inside the gutter, a zone left 20px of dead page beside it that looks like part of
+   the control and isn't: a thumb aimed at the edge — which is where a thumb goes when the
+   target is an edge — landed on nothing. Flush, the outermost pixel is live, which is also
+   what lets the zones be this narrow: none of their width is spent on a margin now. */
+.roundnavrow { --nav-w: 28px; --nav-w-back: 22px;
+  display: flex; align-items: stretch; margin-inline: calc(-1 * var(--wrap-pad)); }
 .roundcontent { flex: 1 1 auto; min-width: 0; }
+/* The first round has no left zone and the final has no right one, and the content column
+   is what takes up the slack — which, now that the row reaches the screen, would put those
+   two rounds' cards hard against the bezel with no gutter at all. It stands in for the
+   missing zone at exactly the zone's own width rather than at the page gutter, so the card
+   column holds the same two edges from the first round through to the final: paging
+   through the draw moves the cards' contents and nothing else. */
+.roundnavrow > .roundcontent:first-child { padding-left: var(--nav-w-back); }
+.roundnavrow > .roundcontent:last-child { padding-right: var(--nav-w); }
 .roundnav { flex: 0 0 auto; position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .roundnav:focus-visible { outline: 2px solid var(--acc); outline-offset: -2px; }
-/* Both zones share the same wire grammar now — mitred lines, node dots — but not the same
-   depth: the right previews up to two rounds ahead, needing room for a midpoint stage of
-   nodes, while the left only ever shows the one round a tap on it actually goes back (see
-   drawBackThreads and drawThreads in bracket.js) and so needs no midpoint of its own.
+/* Both narrow, and the back zone narrower still. They were briefly the same width, on the
+   theory that a pair read down two edges wants to match; but they hold different drawings
+   and equal widths didn't buy equal weight. The forward zone packs two or three hops into
+   its width, and that density reads fine and light. The back zone holds a single hop —
+   one open bracket, the biggest shape either zone draws — and at a matched width it read
+   as the heavier of the two even though the boxes were identical. Taking it in closes that
+   gap; the shape it draws scales with the width (see drawBackThreads), so it comes in
+   proportionally rather than just getting steeper.
    Neither zone has any static affordance of its own; both are blank until that preview is
    drawn into them after layout. */
-.roundnav.left { width: 30px; }
-.roundnav.right { width: 50px; }
-.navthreads path { fill: none; stroke: color-mix(in srgb, var(--acc) 38%, var(--line)); stroke-width: 1.5; }
+.roundnav.left { width: var(--nav-w-back); }
+.roundnav.right { width: var(--nav-w); }
+/* Thinner than the draw's own wires and thinner than these were. At full width these were
+   the same 1.5 as a wire spanning a whole column, which put the heaviest line on the page
+   in its narrowest lane — the preview only has to read as a thread going somewhere, and a
+   hairline does that without competing with the cards it runs off. */
+.navthreads path { fill: none; stroke: color-mix(in srgb, var(--acc) 38%, var(--line)); stroke-width: 1.2; }
 .navthreads circle { fill: color-mix(in srgb, var(--acc) 55%, var(--line)); }
+/* The one moment either zone shows itself: a zone with no resting state and no label needs
+   to answer "did I hit it, or did I hit the page?" while the finger is still down, and the
+   threads are the only thing it owns to answer with. */
+.roundnav:active .navthreads path { stroke: var(--acc); }
+.roundnav:active .navthreads circle { fill: var(--acc); }
 
 @media (max-width: 700px) {
   .site-head h1 { font-size: 26px; }
