@@ -159,7 +159,7 @@ function trigLine(t, hand) {
   const payoff = trap
     ? `converts only <b>${conv}%</b>${deep ? ' <span class="warnmark">⚠</span>' : ""}
        <span class="lift">${Math.round(t.conv_delta * 100)}pp vs ${deep
-         ? "the shorter pattern" : "their other cues"}</span>`
+      ? "the shorter pattern" : "their other cues"}</span>`
     : `converts <b>${conv}%</b>`;
   const against = deep ? "the shorter pattern" : "their norm";
   // Two denominators, both printed. The frequency is over every stroke from this lead-up
@@ -972,7 +972,15 @@ function figureKey(sa, sb, spread) {
       appeared in. It is as much a fact about the tennis they get drawn into as about them,
       since both players in a point share its length — but it separates the tour sharply
       anyway, from big servers near three strokes to grinders near seven, and it is the
-      plainest thing on this panel to check against a match you have watched.${band(RALLY)}</div>`,
+      plainest thing on this panel to check against a match you have watched.${band(RALLY)}
+      ${/* These are raw charted points with no adjustment: a
+           player charted mostly on clay is measured on longer points than one charted
+           mostly on grass, before either of them hits a ball. The same goes for era. */""}
+      It is not adjusted for where or when those points were played, and both move it by
+      more than the tour's own middle half: charted points run 5.2 strokes on clay, 4.7 on
+      hard and 4.0 on grass, and the 1990s sit about half a stroke below every decade
+      either side of them. So a clay-heavy career and a grass-heavy one are not being read
+      on the same scale.</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from
       tour norms. A model built on the whole tour predicts each next shot from the two before
       it, and variety is how surprised that model is by this player, averaged over their shots
