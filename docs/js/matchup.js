@@ -451,9 +451,15 @@ const num = (v) => (v == null ? null : Number(v));
 // table — from 173 points, and the rings say nothing about how many points are behind them.
 //
 // 2,000 points is roughly a dozen charted matches. It is a floor on obvious nonsense rather
-// than a claim that everything above it is precise: these rates are career-long, shrunk toward
-// the tour mean by 100 points, and never adjusted for the opponents a volunteer chose to
-// chart, so the number above the floor is still a charted rate and not a true one.
+// than a claim that everything above it is precise: these rates are career-long and never
+// adjusted for the opponents a volunteer chose to chart, so the number above the floor is
+// still a charted rate and not a true one.
+//
+// This floor is also what let the shrinkage go. The rates used to be pulled toward the tour
+// mean by 100 pseudo-points, which existed to keep a thin player from producing a confident
+// pre-match prediction — a number the panel no longer prints. Once the floor excludes the
+// thin players outright, the pull was only biasing a displayed measurement toward a prior
+// the reader cannot see, so the rings now show the player's own charted rate.
 const RATE_MIN_PTS = 2000;
 const wellCharted = (d) => !!d && (Number(d.s.points_charted) || 0) >= RATE_MIN_PTS;
 
