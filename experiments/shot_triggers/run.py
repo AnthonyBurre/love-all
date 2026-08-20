@@ -72,7 +72,7 @@ OPEN_ANCHORS = ((1, "return", "return"),      # returner's ball, ctx = (serve,)
                 (3, "return+1", "return"))    # returner's +1,    ctx = (return, serve+1)
 OPEN_MIN_BASE = 200   # per (player, side, anchor): strokes needed for a stable baseline
 MIN_HALF = 25         # strokes a context needs in *each* half to enter the split-half test
-MIN_HALF_ATT = 6      # aggressive shots a context needs in each half to carry a green/trap tag
+MIN_FOLD_ATT = 6      # aggressive shots a context needs in a fold to be tested or confirmed there
 Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
 
 
@@ -102,8 +102,8 @@ def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     the same tokens.
 
     This changes no statistic. Every figure here — the lift against the player's own
-    pooled rate, the conversion against their own trigger class, the both-halves
-    replication, the FDR family — is computed within one player, so mirroring re-keys a
+    own fold's rate, the conversion against that fold's own trigger class, the
+    cross-validation, the FDR family — is computed within one player, so mirroring re-keys a
     lefty's whole table consistently and every count comes out identical. It is a
     labelling fix, and only a labelling fix.
     """
@@ -231,102 +231,167 @@ def dispersion(df: "pd.DataFrame") -> float:
     return float(np.sqrt(max(excess / denom, 0.0)))
 
 
-def half_conversions(a: dict) -> dict:
-    """Per context, each half's (attempts, conversion) for both definitions.
+def fold_totals(a: dict) -> tuple:
+    """Per-fold player totals and per-fold per-context counts, as [n, w, e, f].
 
-    Built from the same ``half`` buckets the definitions comparison uses, so the
-    replication gate below costs no extra pass over the corpus.
+    Every contextful stroke is accumulated into exactly one ``(half, context)`` bucket,
+    so summing those buckets recovers the player's own totals within each half — no
+    second pass and no extra accumulator.
     """
-    out = defaultdict(dict)
-    for (h, ctx), (n, w, e, f) in a["half"].items():
-        att, fatt = w + e + f, w + e
-        out[ctx][h] = {"attempts": att, "conv": (w + f) / att if att else np.nan,
-                       "fin_attempts": fatt, "fin_conv": w / fatt if fatt else np.nan}
-    return out
+    tot = {0: [0, 0, 0, 0], 1: [0, 0, 0, 0]}
+    per = {0: {}, 1: {}}
+    for (h, ctx), v in a["half"].items():
+        for i in range(4):
+            tot[h][i] += v[i]
+        per[h][ctx] = v
+    return tot, per
 
 
-def tag_contexts(df: "pd.DataFrame", halves: "dict | None" = None) -> "pd.DataFrame":
-    """Label each context: trigger + green light / trap, by conversion vs its class.
+# The two readings of "went for it", as functions of a [n, w, e, f] bucket. ``att`` is
+# what counts as an aggressive shot, ``win`` is what counts as having paid off.
+NUMERATORS = {
+    "":     (lambda v: v[1] + v[2] + v[3], lambda v: v[1] + v[3]),   # aggressive (shipped)
+    "fin_": (lambda v: v[1] + v[2],        lambda v: v[1]),          # finishing (shadow)
+}
 
-    Tagged twice — once on aggressive shots (``tag``, what the report and the site
-    ship) and once on the narrower finishing shots (``fin_tag``), so the definitions
-    section can show how many cues the switch reclassifies.
 
-    Two things here are deliberate and both were wrong before.
+def tag_contexts(df: "pd.DataFrame", a: dict) -> "pd.DataFrame":
+    """Label each context green / trap / neutral by two-fold cross-validation.
 
-    **The reference class is the player's other triggers, not all their strokes.**
-    Conditional on a lead-up raising the frequency at all, expected conversion already
-    sits about 16 points above the all-strokes baseline — the balls a player attacks on
-    are the ones they were well placed to attack. Measured against that baseline the
-    green/trap line therefore fell far below the middle of the class being split: 1,296
-    cues came out green against 115 traps, and a "trap" was mostly a trigger that had
-    landed in the low tail of a distribution whose whole body cleared the bar. Against
-    the trigger-class mean the sign means what it says — this cue converts worse than
-    the rest of this player's triggers do.
+    A cue makes two claims — this lead-up raises the player's aggressive shot frequency,
+    and what they go for from it converts better or worse than their other cues do — and
+    both have to survive being tested on data that had no say in picking the cue.
 
-    **A tag has to replicate.** Both halves of the player's matches must land on the
-    same side of that reference, on ``MIN_HALF_ATT``+ attempts each, or the context
-    stays neutral. Without it the tags were the top and bottom of an uncorrected
-    ranking over a median 40 candidate contexts: greens survived that (their
-    conversion edge held at about +15pp out of sample) but traps did not — out of
-    sample they converted *above* the player's own norm, and fewer than half kept a
-    negative sign, so the panel was shipping an inverted claim to 90 players.
+    The player's matches are split in half by hash. Each half takes a turn as the
+    **discovery** fold: the frequency lift, the significance test and the per-player FDR
+    correction all run inside it, and nothing outside it is consulted. The cue is then
+    **validated** on the other half, which was not involved in selecting it: the lift has
+    to still point the same way there, and the tag is read off the conversion sign *in
+    the validation fold*, against that fold's own trigger-class mean. Both directions are
+    run, and a cue ships if either survives.
 
-    ``halves`` is optional only so the definitions section can tag without it; the
-    shipped tables always pass it.
+    This replaced a pooled screen with a both-halves consistency check bolted on, which
+    was circular: the reference and the candidate lift were computed over all the
+    player's matches, and the two halves it then "confirmed" against were subsets of the
+    data that had just selected it. It was also strictly harsher than cross-validation
+    without buying anything for the strictness — it demanded agreement from both halves
+    at once, where running each half as its own experiment asks each of them a question
+    it can actually answer independently.
+
+    The figures reported are the held-out ones. When a single direction confirms, the
+    cue's rate, lift and conversion come from the validation fold alone; when both
+    confirm, the pooled figures are the attempts-weighted mean of two independently clean
+    estimates and are used as-is. Either way the number on the card was measured on data
+    that did not choose the cue, which also removes the selection inflation that a
+    top-of-the-ranking effect size otherwise carries.
     """
     out = df.copy()
     out.attrs = dict(df.attrs)
-    for pre, lift, att, conv, hatt, hconv, rate_base in (
-            ("", "att_lift", "attempts", "conv", "attempts", "conv", "base_att"),
-            ("fin_", "fin_lift", "fin_attempts", "fin_conv", "fin_attempts", "fin_conv",
-             "base_fin")):
-        # The frequency claim gets a test, and the test gets a correction. TRIGGER_LIFT is
-        # a threshold on a point estimate applied to every context a player has — a median
-        # of 40 of them, and up to 172 — so on its own it selects the top of an uncorrected
-        # ranking rather than finding cues that are really different. Each context's
-        # aggressive shots are scored against the player's own pooled rate with an exact
-        # binomial tail, and the tails are Benjamini-Hochberg adjusted across all of that
-        # player's contexts. Only cues clearing q=Q_FDR can carry a tag.
-        p0 = df.attrs[rate_base]
-        pvals = [binom_tail(int(a), int(n), p0)
-                 for a, n in zip(out[att], out["n"])] if p0 > 0 else [1.0] * len(out)
-        qs = bh(pvals)
-        out[f"{pre}p_raw"] = pvals
-        out[f"{pre}p_bh"] = qs
-        trig = ((out[lift] >= TRIGGER_LIFT) & (out[att] >= MIN_ATT)
-                & (pd.Series(qs, index=out.index) <= Q_FDR))
-        # The class mean: attempts-weighted conversion across this player's triggers, so
-        # a cue with 400 attempts sets the bar more than one with 13. With no qualifying
-        # trigger there is no class and nothing to tag.
-        tatt = out.loc[trig, att].sum()
-        base = float((out.loc[trig, conv] * out.loc[trig, att]).sum() / tatt) if tatt else np.nan
-        out.attrs[f"{pre}base_trig_conv"] = base
-        delta = out[conv] - base
-        out[f"{pre}conv_delta"] = delta
-        out[f"{pre}tag"] = "neutral"
-        if not np.isfinite(base):
-            continue
-        # Replication: same side of the class mean in both halves, each on real support.
-        # The bound arguments keep this honest about which definition it is testing —
-        # the loop rebinds hatt/hconv/base, and a closure over them would silently test
-        # the last one twice.
-        def _holds(ctx, want_green, _a=hatt, _c=hconv, _base=base):
-            h = (halves or {}).get(ctx)
-            if not h or 0 not in h or 1 not in h:
-                return False
-            for side in (0, 1):
-                if h[side][_a] < MIN_HALF_ATT or not np.isfinite(h[side][_c]):
-                    return False
-                if (h[side][_c] >= _base) != want_green:
-                    return False
-            return True
+    tot, per = fold_totals(a)
+    ctx_index = {c: i for i, c in enumerate(out["context"])}
 
-        for want_green, tag in ((True, "green"), (False, "trap")):
-            cand = trig & ((delta >= 0) if want_green else (delta < 0))
-            for idx in out.index[cand]:
-                if _holds(out.at[idx, "context"], want_green):
-                    out.at[idx, f"{pre}tag"] = tag
+    for pre, (att_of, win_of) in NUMERATORS.items():
+        n_rows = len(out)
+        tag = ["neutral"] * n_rows
+        # Held-out display values, filled in only for confirmed cues.
+        d_rate, d_lift, d_conv, d_delta = ([np.nan] * n_rows for _ in range(4))
+        d_n, d_att = ([0] * n_rows for _ in range(2))
+
+        # Per-fold player baseline and per-fold per-context figures.
+        base = {}
+        fold = {0: {}, 1: {}}
+        for h in (0, 1):
+            bn, batt = tot[h][0], att_of(tot[h])
+            base[h] = batt / bn if bn else 0.0
+            for ctx, v in per[h].items():
+                if ctx not in ctx_index:
+                    continue
+                n, att = v[0], att_of(v)
+                fold[h][ctx] = {
+                    "n": n, "att": att,
+                    "rate": att / n if n else 0.0,
+                    "lift": (att / n) / base[h] if n and base[h] else 0.0,
+                    "conv": win_of(v) / att if att else np.nan,
+                }
+
+        # Each fold's own trigger-class mean: the attempts-weighted conversion across the
+        # cues that fold calls triggers. Computed inside the fold so that a validation
+        # fold's reference never borrows from the fold that did the selecting.
+        klass = {}
+        for h in (0, 1):
+            num = den = 0.0
+            for c in fold[h].values():
+                if c["lift"] >= TRIGGER_LIFT and c["att"] >= MIN_FOLD_ATT and np.isfinite(c["conv"]):
+                    num += c["conv"] * c["att"]
+                    den += c["att"]
+            klass[h] = num / den if den else np.nan
+
+        # A player can have no qualifying trigger in either fold, leaving both class
+        # means undefined; nanmean over that is an empty slice, so guard rather than warn.
+        finite = [v for v in klass.values() if np.isfinite(v)]
+        out.attrs[f"{pre}base_trig_conv"] = float(np.mean(finite)) if finite else np.nan
+        confirmed = {}          # context -> list of (tag, validation fold)
+        for disc, val in ((0, 1), (1, 0)):
+            if not np.isfinite(klass[val]) or base[disc] <= 0:
+                continue
+            # The correction family is every context this fold could test at all.
+            fam = [c for c in ctx_index
+                   if c in fold[disc] and fold[disc][c]["att"] >= MIN_FOLD_ATT]
+            if not fam:
+                continue
+            pv = [binom_tail(int(fold[disc][c]["att"]), int(fold[disc][c]["n"]), base[disc])
+                  for c in fam]
+            for c, q in zip(fam, bh(pv)):
+                d, v = fold[disc][c], fold[val].get(c)
+                if q > Q_FDR or d["lift"] < TRIGGER_LIFT:
+                    continue
+                if not v or v["att"] < MIN_FOLD_ATT or not np.isfinite(v["conv"]):
+                    continue
+                if v["lift"] <= 1.0:        # the frequency claim has to survive too
+                    continue
+                confirmed.setdefault(c, []).append(
+                    ("green" if v["conv"] >= klass[val] else "trap", val))
+
+        for c, hits in confirmed.items():
+            tags = {t for t, _ in hits}
+            if len(tags) > 1:
+                continue            # the two directions disagree: not a finding
+            i = ctx_index[c]
+            tag[i] = hits[0][0]
+            if len(hits) == 2:      # both clean; pooled is the mean of two clean halves
+                d_n[i], d_att[i] = int(out.at[i, "n"]), int(out.at[i, f"{pre}attempts"])
+                d_rate[i] = out.at[i, f"{pre}rate" if pre else "att_rate"]
+                d_lift[i] = out.at[i, f"{pre}lift" if pre else "att_lift"]
+                d_conv[i] = out.at[i, f"{pre}conv"]
+            else:
+                v = fold[hits[0][1]][c]
+                d_n[i], d_att[i] = int(v["n"]), int(v["att"])
+                d_rate[i], d_lift[i], d_conv[i] = v["rate"], v["lift"], v["conv"]
+            # The reference is attempts-weighted across the confirming folds, matching
+            # how the displayed conversion is pooled across them. Equal-weighting the two
+            # class means instead lets a cue whose sign held in *both* folds come out with
+            # a delta pointing the other way, purely from the weighting mismatch — which
+            # is a tag and a number contradicting each other on the card.
+            wsum = sum(fold[v][c]["att"] for _, v in hits)
+            ref = sum(klass[v] * fold[v][c]["att"] for _, v in hits) / wsum
+            d_delta[i] = d_conv[i] - ref
+
+        out[f"{pre}tag"] = tag
+        out[f"{pre}conv_delta"] = d_delta
+        out[f"{pre}oos_n"] = d_n
+        out[f"{pre}oos_attempts"] = d_att
+        # The shipped figures are the held-out ones wherever a cue is tagged; untagged
+        # rows keep their pooled values, which nothing reads.
+        for col, vals in ((f"{pre}rate" if pre else "att_rate", d_rate),
+                          (f"{pre}lift" if pre else "att_lift", d_lift),
+                          (f"{pre}conv", d_conv)):
+            out[col] = [vals[i] if tag[i] != "neutral" else out.at[i, col]
+                        for i in range(n_rows)]
+        for col, vals in ((("n" if pre == "" else f"{pre}n"), d_n),
+                          (f"{pre}attempts", d_att)):
+            if col in out.columns:
+                out[col] = [vals[i] if tag[i] != "neutral" else out.at[i, col]
+                            for i in range(n_rows)]
     return out
 
 
@@ -357,9 +422,9 @@ def player_block(md, player, df):
                       f"but converts only {r.conv:.0%} vs {trig_conv:.0%} across their "
                       f"other cues (n={r.n}, {r.attempts} attempts)")
     else:
-        md.append("\n**No trap contexts** — no cue that raises the frequency converts "
-                  "below the rest of their cues in *both* halves of their charted "
-                  "matches. Unbaitable (at this resolution).")
+        md.append("\n**No trap contexts** — no cue that raises the frequency was found "
+                  "to convert below the rest of their cues when tested on matches that "
+                  "had no part in selecting it. Unbaitable (at this resolution).")
     md.append("")
 
 
@@ -574,7 +639,7 @@ def main() -> None:
         for player, a in acc.items():
             if a["n"] < MIN_SHOTS or (a["w"] + a["e"] + a["f"]) == 0:
                 continue
-            df = tag_contexts(context_table(a), half_conversions(a))
+            df = tag_contexts(context_table(a), a)
             if not len(df):
                 continue
             tables[player] = df
