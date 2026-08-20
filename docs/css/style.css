@@ -872,16 +872,6 @@ a { color: var(--acc-d); }
 .ct-them { fill: none; stroke: var(--muted); stroke-width: 1.1; }
 .ct-bounce { fill: var(--card); stroke: var(--muted); stroke-width: 1.1; }
 
-/* the win probability is deliberately small print below the tendencies */
-.wp-slim { margin: 18px 0 6px; padding-top: 12px; border-top: 1px solid var(--line); }
-/* it borrows the section heading's type, but it heads a footnote, not a run of cards —
-   nothing scrolls under it long enough to need pinning */
-.wp .sechead { position: static; margin: 0 0 6px; padding: 0; border-bottom: 0; }
-.wp-line { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
-.wp-line .wp-bar { flex: 1; height: 8px; overflow: hidden; background: color-mix(in srgb, var(--b) 30%, var(--card)); }
-.wp-line .pa { height: 100%; background: color-mix(in srgb, var(--a) 65%, var(--card)); }
-.wp-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
-
 /* --- the comparison strip, headed "side by side" ---------------------------------
    Both players' headline numbers on one axis: bars grow outward from a shared centre,
    so a gap reads as a shape rather than as arithmetic between two distant columns. The

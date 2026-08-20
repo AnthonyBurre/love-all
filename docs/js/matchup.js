@@ -1,7 +1,6 @@
 // The matchup drawer: experimental pre-match win probability + a card per player,
 // all queried from insights.duckdb via DuckDB-WASM.
 import { query, leagueMu, serveGates, tourSpread } from "./db.js";
-import { preMatchWP, shrinkWP } from "./winprob.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong } from "./schedule.js";
 
@@ -1093,36 +1092,6 @@ const meterLegend = (baseline) => `<span class="meterkey">
   <span class="segkey"></span> landed <span class="segkey miss"></span> missed, out of the
   balls the cue provokes · <span class="tickkey"></span> ${baseline}</span>`;
 
-// Only two bands survive, because the third one is now the gate. "low — one side is thinly
-// charted" used to ride under a percentage that printed regardless, and that was the whole
-// problem: measured against real results, matchups where a player had fewer than three prior
-// charted matches score 0.80 log-loss and 52.6% accuracy — worse than a coin flip — and where
-// the model printed 85% or better the favourite won 62.4%. It was also the regime the site
-// mostly ships in: 41 of 58 upcoming matchups in the current brackets sat in it, and it
-// printed its boldest numbers there, because a thin player's rate is dragged far from the
-// tour mean by a single charted match and the score tree amplifies small per-point gaps.
-// So below the floor there is no number to put a caveat under.
-function confidence(pa, pb) {
-  const minPts = Math.min(Number(pa.s.points_charted) || 0, Number(pb.s.points_charted) || 0);
-  return minPts >= 10000 ? "high" : "moderate";
-}
-
-// Deliberately small print: the shot-sequence tendencies above are this site's
-// substance; the win probability is a rough, tested-and-humbled reference number.
-function wpBar(a, b, wpA, conf) {
-  const pa = Math.round(wpA * 100);
-  return `<div class="wp wp-slim">
-    <h3 class="sechead">rough pre-match number</h3>
-    <div class="wp-line"><span>${esc(last(a))} ${pa}%</span>
-      <div class="wp-bar"><div class="pa" style="width:${wpA * 100}%"></div></div>
-      <span>${100 - pa}% ${esc(last(b))}</span></div>
-    <div class="wp-note">Experimental, from charted serve and return rates only, and pulled
-      toward even because the raw model is measurably overconfident against real results.
-      Surface and recent-form adjustments were tested and don't improve it at this data
-      resolution. Charting confidence: ${conf}.</div>
-  </div>`;
-}
-
 // Collapsed key for the shot notation: two mini courts (rally zones, serve
 // targets) + a text legend. Tap/click to open — hover isn't a thing on phones.
 function notationHelp() {
@@ -1639,7 +1608,7 @@ export async function openMatchup(m, t) {
     return;
   }
   body.innerHTML = `<div id="cardslot" class="loading">Loading…</div>
-    <div id="wpslot"></div>${notationHelp()}`;
+    ${notationHelp()}`;
 
   let pa, pb, mu, gates, spread;
   try {
@@ -1653,7 +1622,6 @@ export async function openMatchup(m, t) {
   } catch (e) {
     console.warn("insights db unavailable:", e);
     if (mine !== openSeq) return;
-    document.getElementById("wpslot").innerHTML = "";
     const down = document.getElementById("cardslot");
     down.classList.remove("loading");
     down.innerHTML = DATA_DOWN;
@@ -1661,29 +1629,6 @@ export async function openMatchup(m, t) {
   }
   if (mine !== openSeq) return;
 
-  const wpslot = document.getElementById("wpslot");
-  if (t.completed) {
-    wpslot.innerHTML = "";              // result is in — no pre-match number to offer
-  } else if (pa && pb && wellCharted(pa) && wellCharted(pb)) {
-    // Shrunk toward even before it is printed. The tree is exact; its inputs are career
-    // charted rates with no opponent adjustment, and scored against real results it
-    // printed 0.92 where the truth was 0.84 and 0.12 where the truth was 0.24. See
-    // winprob.js for the fit.
-    const wpA = shrinkWP(preMatchWP(
-      { serve: pa.s.serve_rate, ret: pa.s.return_rate },
-      { serve: pb.s.serve_rate, ret: pb.s.return_rate }, mu, t.best_of));
-    wpslot.innerHTML = wpBar(m.a.name, m.b.name, wpA, confidence(pa, pb));
-  } else if (pa && pb) {
-    // Both charted, one of them barely. The model is fed career serve and return rates with
-    // no opponent adjustment, so a player charted once — in the televised loss that got them
-    // charted — reads as far below tour average, and the number that comes out is confident
-    // and wrong rather than uncertain.
-    wpslot.innerHTML = `<p class="wp-note">No pre-match number here: it needs
-      ${RATE_MIN_PTS.toLocaleString()} charted points for each player, and one of these two is
-      below that. Under it the number is not a rougher guess, it is a worse one.</p>`;
-  } else {
-    wpslot.innerHTML = `<p class="wp-note">A win probability needs charting history for both players.</p>`;
-  }
   const slot = document.getElementById("cardslot");
   slot.classList.remove("loading");
   slot.innerHTML = bodyHtml(m, pa, pb, mu, gates, spread);

@@ -35,6 +35,11 @@ answers it, and what it found. They write their output to `reports/`.
 
 ### Win probability
 
+These four stand as experiments and none of them ships to the site. The panel used to carry a
+pre-match number built on this engine and no longer does — see [The site](#the-site) for why.
+The in-match tree remains the right tool for the question it was built for; what it could not
+survive was being fed career charted rates and asked to pick a winner.
+
 | experiment | the question | what it found |
 | --- | --- | --- |
 | [`match_winprob`](experiments/match_winprob/) | P(win the match) from the score, and what each point is worth. | Federer's 2019 final peaks at **98.8%** serving at 8-7, 40-15, two championship points, then collapses. It stays under 99% because the model credits Djokovic's elite return. |
@@ -72,8 +77,16 @@ pairing is; on a finished draw the shading turns per-match, and the drawer links
 that match's full chart on Tennis Abstract or invites you to be the one who charts it. Click
 any match and a drawer opens with, for each player: a style archetype, serve and return
 rates against the tour average, average point length, shot variety, serve direction, court
-patterns, shot-making triggers, and an **experimental pre-match win probability**. All of it is
-queried in the browser with **DuckDB-WASM**, with no backend.
+patterns, and shot-making triggers. All of it is queried in the browser with
+**DuckDB-WASM**, with no backend.
+
+The panel deliberately does **not** predict the match. A pre-match win probability shipped
+here for a while, from the analytic score tree in `winprob_match.py` driven by each player's
+charted serve and return rates, and it is gone: the tree is exact but its inputs are career
+rates over a volunteer-selected sample with no opponent adjustment, and a plain Elo built on
+the same charted results beat it on both tours. Predicting the winner is the one thing this
+data is worst at and the thing every other tennis site already does. What the charting is
+uniquely good for is what a player *does* — which is what the panel is now entirely about.
 
 <details>
 <summary><b>Why neither Wikipedia feed is trusted blindly</b> — draw validation and calendar joining</summary>
