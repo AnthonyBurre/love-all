@@ -234,18 +234,15 @@ def matchup_strength(serve_a, return_a, serve_b, return_b, mu,
 def current_strength(con) -> "tuple[dict, dict]":
     """``(gender, player) -> (serve_rate, return_rate)`` over their whole charted career.
 
-    These are the plain charted rates. They used to be shrunk toward the gender mean by
-    100 pseudo-points so that a thin-history player tended toward an even matchup — a
-    guard that existed purely for the pre-match win probability, which the site no longer
-    shows. Their only consumer now is the panel's two rings, which are withheld below
-    2,000 charted points, so the population the shrinkage protected is already excluded
-    before it could apply.
+    These are the plain charted rates, unshrunk. Their only consumer is the panel's two
+    rings, which are withheld below 2,000 charted points, so the thin-history players a
+    pseudo-count would protect are already excluded before it could apply.
 
-    What it did instead was quietly bias a *displayed measurement*: a ring labelled
-    "serve points won" is read as this player's charted rate, and it wasn't quite — it was
-    that rate pulled toward a prior the reader could not see. Small (median 0.07pp, at
-    most 0.83pp across the 363 players who get a ring) but pointless, and it was the cause
-    of a mismatch in the ace wedge, which divides an unshrunk ace rate by this figure.
+    Shrinking them would instead bias a *displayed measurement*: a ring labelled "serve
+    points won" is read as this player's charted rate, not that rate pulled toward a prior
+    the reader cannot see. The effect is small (median 0.07pp, at most 0.83pp across the 363
+    players who get a ring) but it also mismatches the ace wedge, which divides an unshrunk
+    ace rate by this figure.
 
     ``walk_forward_strength`` below keeps its own pseudo-count. That one is not display —
     it is the no-leakage estimator the win-probability experiments calibrate against, and

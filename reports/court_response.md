@@ -4,7 +4,7 @@
 
 ## What the screen turns away
 
-Until 2026-08-29 this experiment applied no multiplicity correction and printed a lift measured on the same data its gates had just used to select the pattern — the only pattern-mining screen in the repo still doing either. Both are fixed above. The accounting:
+Without a multiplicity correction, and reading the lift off the same data the gates used to select the pattern, this table would be a search rather than a test. The accounting for the screen that runs instead:
 
 | | players screened | candidates tested | directions confirmed | surfaced |
 |---|--:|--:|--:|--:|
@@ -15,9 +15,9 @@ Until 2026-08-29 this experiment applied no multiplicity correction and printed 
 
 The other 1,617 patterns cleared from both directions, each fold validating the other, and show the two halves pooled — so their displayed lift is not a clean out-of-sample read and is not quoted as one. Being findable twice independently is itself the stronger claim.
 
-The correction costs less here than it did elsewhere: it took `deep_patterns` from 72 patterns to 36, and this table from 2,804 over 805 players to 2,434 over 746. The split-half r below is why — these cells were already stable, so correcting them mostly removes the thin tail rather than the findings.
+The correction is cheap here: it takes this table from 2,804 patterns over 805 players to 2,434 over 746. The split-half r below is why — these cells were already stable, so correcting them mostly removes the thin tail rather than the findings.
 
-**Still pooled, and known to be:** a cell counts the serve+1 ball together with the same-described ball at shot 11. For 691 of 4,218 well-supported cells (16.4%, against 0 of 5,040 on a coin-flip control) the response a player picks differs measurably between the two, so those cells are reporting an average of two situations and naming neither. The fix is a heterogeneity pass over the survivors — split the cells that differ, leave the rest pooled with evidence that pooling is justified — which costs no coverage and is a natural third test in the family corrected above. **Not implemented; it is the next thing this experiment should do.**
+**Still pooled, and known to be:** a cell counts the serve+1 ball together with the same-described ball at shot 11. For 691 of 4,218 well-supported cells (16.4%, against 0 of 5,040 on a coin-flip control) the response a player picks differs measurably between the two, so those cells are reporting an average of two situations and naming neither. Splitting them is not implemented; the 16.4% is measured so the profiles can be read knowing it.
 
 ## Men
 

@@ -82,10 +82,10 @@ jobs:
 
       # Without the calendar the site can't tell a 500 from a 250 and serves only slams and
       # 1000s. It also carries the per-event draw-page links, which a season page grows all
-      # year as each draw is made — so this is an age check, not the season check it used to
-      # be: that one pinned a July cache until January and left every event drawn after it
-      # with no draw sheet. --if-stale no-ops while the cache is under a day old, keeping the
-      # hourly run at two Wikipedia calls a day (an adopted draw sheet is never re-fetched).
+      # year as each draw is made — so this is an age check rather than a season check, which
+      # would pin a July cache until January and leave every event drawn after it with no
+      # draw sheet. --if-stale no-ops while the cache is under a day old, keeping the hourly
+      # run at two Wikipedia calls a day (an adopted draw sheet is never re-fetched).
       - name: Refresh the tour calendar (daily)
         run: uv run match-charting-project feeds calendar --if-stale
 

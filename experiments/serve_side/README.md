@@ -46,9 +46,9 @@ but computed within each side, so pressure varies while the court is held fixed.
 Tour-wide the server wins about 3 points per hundred fewer on break points than
 on normal points, and that gap is close to the same size in both courts. The
 break-point penalty is a pressure effect, not a side effect dressed up as one.
-Note that break points are not purely ad-court: `15-40` and `0-40` fall on
-opposite sides, so consecutive break points in a game alternate courts. That is
-the confound this step exists to separate.
+Break points are not purely ad-court: `15-40` and `0-40` fall on opposite sides,
+so consecutive break points in a game alternate courts. That is the confound this
+step exists to separate.
 
 **Step 3 — serve+1.** The forehand share and aggressive shot frequency of the
 server's first groundstroke, split by side, since serve-plus-one is where a side
@@ -59,7 +59,7 @@ serve, visible only once the side is separated out. Claims here stay in
 server-wing and wide/body/T terms, which are side-relative and always correct
 without assuming the returner's handedness.
 
-## Honest limitations
+## Limitations
 
 - **Direction mix mixes serves.** Step 1's mix is over first-serve targets that
   were charted; serves with an unknown target are dropped from the mix but kept

@@ -41,11 +41,10 @@ AGREEMENT_FLOOR = 0.9
 
 # How long a calendar read stays good. A season page is *not* written once and left alone:
 # it links each event's draw page only after that draw is made, so the page grows links all
-# season. This used to be a season-equality check — refresh only when the cached season is
-# last year's — and a cache taken on 2026-07-30, days before the National Bank Open draw was
-# published, held all season with no draw link for it. Without the link the sheet is never
-# fetched and the bracket stays unslotted, which would have gone on to cost every remaining
-# event of the season: Cincinnati, the US Open, Shanghai, Paris, all of them.
+# season, so the cache cannot key on the season alone. A cache taken days before an event's
+# draw is published would otherwise hold all season with no draw link for it, and without the
+# link the sheet is never fetched and the bracket stays unslotted — for that event and every
+# one after it.
 CALENDAR_MAX_AGE = timedelta(days=1)
 
 TOURS = {"M": "ATP", "W": "WTA"}

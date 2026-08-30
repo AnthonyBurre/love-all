@@ -85,28 +85,22 @@ who typed it, where for the men it is closer to a sixth. Nothing downstream acco
 for this: the panel applies one reliability gate, derived from the men's numbers, to
 both tours, and prints the two identically.
 
-The honest options are a per-tour gate or a stated caveat, and this is currently the
-caveat. It is not a reason to withhold the women's numbers — a third of the spread
-being charter noise still leaves two thirds that is the player, which is why the
-split-half stability holds up — but a women's wide share should be read as the coarser
-of the two measurements, not as the same measurement.
+This is a stated caveat rather than a per-tour gate. It is not a reason to withhold the
+women's numbers — a third of the spread being charter noise still leaves two thirds that
+is the player, which is why the split-half stability holds up — but a women's wide share
+should be read as the coarser of the two measurements.
 
-## Is this already covered elsewhere?
+## Related experiments
 
-- **`serve_side`** owns the descriptive split and stays the place to look up
-  what a mix *is*. Nothing here replaces it; this adds the error bars.
-- **`blind_reid`** scores the serve as one feature block and finds it the
-  weakest of three for naming a player. That is discrimination *between*
-  players; reliability is a statement *within* one, and the two are compatible.
-  A statistic can be perfectly stable per player and still identify nobody if
-  its true spread is narrow, which is exactly the serve's situation.
-- **`career_splits`** decides whether a career becomes two entities, in a
-  10-feature style space that already includes serve location. Step 5 is that
-  design narrowed to placement alone, so it answers "did the serve move" rather
-  than "did the player". It is an input to that decision, not a competitor.
-- Genuinely new here: the sample-size rules (step 3), the match-to-match
-  dispersion (step 4), the side-adjusted break-point test (step 6), and the
-  charter-agreement check (step 1).
+- **`serve_side`** owns the descriptive split and stays the place to look up what a mix
+  *is*; this adds the error bars.
+- **`blind_reid`** finds the serve the weakest of three feature blocks for naming a
+  player. That is discrimination *between* players, where reliability is a statement
+  *within* one. A statistic can be perfectly stable per player and still identify nobody
+  if its true spread is narrow, which is the serve's situation.
+- **`career_splits`** decides whether a career becomes two entities in a 10-feature style
+  space that already includes serve location. Step 5 narrows that design to placement
+  alone, so it answers "did the serve move" rather than "did the player".
 
 ## Run
 
@@ -156,7 +150,7 @@ and the match list is sorted before shuffling.
 - No scipy in this project, so the chi-square tail is a Wilson-Hilferty normal
   approximation and multiplicity is handled with Benjamini-Hochberg at q = 0.10.
 
-## Honest limits
+## Limits
 
 - The notation records a target, not a serve: no speed, no spin, no returner
   position. "Wide" pools a kick and a flat slice out wide.

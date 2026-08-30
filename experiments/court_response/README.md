@@ -5,10 +5,10 @@ its character (drive / slice / net ball / drop-lob) and the zone it lands in,
 named relative to the receiver's own hands. The response is the player's
 decision: wing, shot type, and the line taken (crosscourt, down the line,
 through the middle, with run-around shots named inside-out / inside-in).
-Everything upstream of the incoming ball is ignored on purpose — the reaction
-to a slice into the backhand corner should not, mostly, depend on how that ball
-got there. "Mostly" is doing work in that sentence and it is measured rather
-than assumed: see [where it fails](#where-the-state-is-still-too-coarse).
+Everything upstream of the incoming ball is ignored on purpose: the reaction to
+a slice into the backhand corner should mostly not depend on how that ball got
+there. How far "mostly" stretches is measured, not assumed — see [where the
+state is still too coarse](#where-the-state-is-still-too-coarse).
 
 Two state families come from one pass. **Rally** states are depth-agnostic and
 cover every rally pair. **Return** states add the charted return depth (short /
@@ -77,22 +77,16 @@ takes a turn discovering: an exact binomial tail against the field's share for
 that state, Benjamini-Hochberg at q=0.10 across every cell that fold screened for
 that player, then a shrunk lift ≥1.4 to be a candidate. The lift, payoff and
 counts are read off the other fold, which needs to still show ≥1.15 to confirm.
+Without the correction the screen would test a median of 17 candidates per player
+and up to 208, 87,080 across the tour.
 
-Both halves of that landed on 2026-08-29 and neither was here before. The screen
-had **no multiplicity correction at all** while testing a median of 17 candidates
-per player and up to 208 — 87,080 across the tour — and it printed a lift computed
-on the same pooled data its gates had just used to select the pattern. It was the
-last pattern-mining screen in the repo doing either; `shot_triggers`,
-`serve_plus_one` and `rally_patterns` were already corrected.
-
-The cost was small, which is itself the finding. 2,804 patterns over 805 players
-became **2,434 over 746** — the same correction took `deep_patterns` from 72 to 36.
-These cells were already stable (see the r below), so it mostly trimmed the thin
-tail. And on the 817 patterns confirmed from a single direction, where the shown
-lift comes from a fold with no vote, **46% of the discovered edge survives out of
-sample** — within a few points of what `rally_patterns` measured on a completely
-different screen (50%), which suggests that number is a property of this kind of
-search rather than of either experiment.
+The correction is cheap here, which is itself the finding: 2,804 patterns over 805
+players become **2,434 over 746**. These cells were already stable (see the r
+below), so it mostly trims the thin tail. On the 817 patterns confirmed from a
+single direction, where the shown lift comes from a fold with no vote, **46% of the
+discovered edge survives out of sample** — within a few points of what
+`rally_patterns` measures on a completely different screen (50%), which suggests
+that number is a property of this kind of search rather than of either experiment.
 
 ## Where the state is still too coarse
 
@@ -102,12 +96,8 @@ of 4,218** well-supported cells — 16.4%, against 0 of 5,040 on a coin-flip con
 average two situations and name neither. The likely mechanism is the ceiling
 described at the end of this README: "a drive into the BH corner" arriving off a
 return, with the server still recovering, is not the same ball as one at shot 11.
-
-The fix is a heterogeneity pass over the survivors — split the cells that differ,
-leave the rest pooled with evidence that pooling is justified, exactly the shape
-`deep_patterns` used for its deuce/ad refinement. It costs no coverage and is a
-natural third test in the family the screen already corrects across. **It is not
-implemented. It is the next thing this experiment should do.**
+Splitting those cells is not implemented; the 16.4% is measured so the profiles
+can be read knowing it.
 
 ## Result
 

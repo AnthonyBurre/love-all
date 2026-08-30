@@ -4,10 +4,8 @@ A point is a sentence in a small shot alphabet; chess people model move sequence
 n-gram opening books and move-prediction models. This ports that idea: an order-2 Markov
 "opening book" over the shot tokens — `P(next shot | last two shots)` — and reads three
 things off it. It's the *sequential* complement to `player_styles`, which captured a
-player's *static* shot mix; this captures the order they play shots in.
-
-The next unbuilt crossover from `chess_point_analysis/CROSSOVER_IDEAS.md`, and it consumes
-the graduated point eval (`match_charting_project.shots.winprob`) for the last question.
+player's *static* shot mix; this captures the order they play shots in. The last question
+below consumes the graduated point eval (`match_charting_project.shots.winprob`).
 
 ## Method
 
@@ -28,7 +26,7 @@ uv run python experiments/shot_language/run.py
 
 Writes `reports/shot_language.md` and two figures.
 
-## What it finds (and it's face-valid)
+## What it finds
 
 **1. Predictability** — a player's mean per-shot surprise under the field model (how far
 their choices stray from tour norms). The extremes are exactly who you'd name:
@@ -51,7 +49,7 @@ at *moderate* surprise (sound, aggressive shots) and goes slightly **negative** 
 *most* unexpected shots — those are defensive, forced gets, not creative winners. So
 unpredictability differentiates *who a player is*, not *how well they're playing*.
 
-## Honest limitations
+## Limitations
 
 - **Surprise rewards rare shot *types* as much as rare *sequencing*** — a slice-heavy
   player scores "varied" largely for using uncommon shots, not only for unusual order.

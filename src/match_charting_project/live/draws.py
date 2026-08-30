@@ -153,8 +153,8 @@ def slot_rounds(tournament, fixture) -> "list | None":
                                 b=Side(BYE if through else "TBD", None, False, []),
                                 bye=bool(through),
                                 # A bye is never played, so it takes no date; an undecided
-                                # slot takes its round's, which is the whole reason the far
-                                # half of a scaffolded draw used to read as dateless.
+                                # slot takes its round's, without which the far half of a
+                                # scaffolded draw reads as dateless.
                                 date="" if through else _round_day(by_rank[rank]))
             m.slot = slot
             m.feeds = f"slot-{round_no + 1}-{(slot - 1) // 2 + 1}" if round_no < n_rounds else None

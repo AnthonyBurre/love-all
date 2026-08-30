@@ -223,8 +223,8 @@ function drawSize(t) {
 }
 
 // The lines under the <h1>: what this draw is, in the order you'd ask. First the
-// sponsor's name for the event, which the <h1> no longer carries but the tour publishes and
-// a search turns up, then the level, the surface and the size of the field together, then
+// sponsor's name for the event, which the <h1> does not carry but the tour publishes and a
+// search turns up, then the level, the surface and the size of the field together, then
 // the host city on its own — three different questions ("what's it called", "what kind of
 // event", "where") rather than one run-on line. Every part is optional — an event the
 // calendar can't place keeps its name alone rather than showing a line of gaps.
@@ -273,10 +273,10 @@ function render() {
   $("status").hidden = true;
   const t = pick();
   document.body.dataset.theme = themeFor(t);
-  // The tab keeps the site's name and only that. It used to lead with the selected event,
-  // which made the tab rename itself every time you changed the dropdown — a tab you had
-  // parked reading "Wimbledon" was a tab you could no longer find by its title. The event
-  // is the <h1> on the page, where it doesn't have to compete for ~15 characters.
+  // The tab keeps the site's name and only that. Leading with the selected event would rename
+  // the tab on every dropdown change, so a tab parked reading "Wimbledon" could not be found
+  // by its title. The event is the <h1> on the page, where it doesn't have to compete for
+  // ~15 characters.
   $("pageTitle").textContent = glabel(t);
   const lines = billing(t);
   const bEl = $("billing");

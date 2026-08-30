@@ -25,7 +25,7 @@ uv run python experiments/shot_patterns/run.py
 Writes `reports/shot_patterns.md` (marquee players) and `reports/shot_patterns.csv` (every
 qualifying player × context, to slice yourself).
 
-## What it finds (face-valid, and player-distinctive)
+## What it finds
 
 - **Pete Sampras** — green light is **net play** (`FH net→3 · BH … → 71% winner`); the
   serve-volleyer finishes at the net. Highest winner baseline of the group (13.8%/stroke).
@@ -52,7 +52,7 @@ and this says **which orders pay off** (winner) or **cost** (error).
 substantially overlap because both mark the same *aggressive shot* — see that experiment
 for frequency/conversion, trap patterns, and pattern-immunity.
 
-## Honest limitations
+## Limitations
 
 - **Coarse tokens.** Zones are the codebook's 1/2/3, shot "kind" is drive/slice/net/other —
   enough for tactics, not for spin/pace/exact placement.

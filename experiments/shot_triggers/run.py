@@ -12,8 +12,8 @@ baseline), the winner-vs-error context correlation (are the two books the same
 book?), and a pattern-immunity score (frequency overdispersion vs binomial noise).
 
 A section near the end justifies the numerator against the narrower **finishing
-shot frequency** (winner + own unforced error, no induced forced errors) that this
-experiment used through 2026-08-05, on split-half reliability.
+shot frequency** (winner + own unforced error, no induced forced errors), on
+split-half reliability.
 
 The pooled contexts above average over the serve side. A final section splits the
 first-four-ply openings — the return, serve+1 and return+1 — by deuce/ad court,
@@ -472,7 +472,7 @@ def definition_block(md: list, defs: "pd.DataFrame", pairs: "pd.DataFrame",
     r_agg, r_fin = pairs.agg0.corr(pairs.agg1), pairs.fin0.corr(pairs.fin1)
     md.append("## Why the numerator counts induced forced errors")
     md.append("")
-    md.append("Through 2026-08-05 this experiment counted only shots that ended the "
+    md.append("The narrow reading counts only shots that ended the "
               "point on the player's own racquet — a winner or their own unforced "
               "error. Call that the **finishing shot frequency**. The wider and "
               "standard reading also credits a shot that forced the reply into an "
@@ -515,7 +515,7 @@ def definition_block(md: list, defs: "pd.DataFrame", pairs: "pd.DataFrame",
               "narrow definition systematically under-credited players whose "
               "aggression works by pressure rather than by clean winners.")
     md.append("")
-    md.append("| most under-credited by the old numerator | induced FE share | "
+    md.append("| most under-credited by the narrow numerator | induced FE share | "
               "least |  induced FE share |")
     md.append("|---|--:|---|--:|")
     hi = defs.nlargest(5, "fe_share").reset_index()
@@ -530,13 +530,14 @@ def definition_block(md: list, defs: "pd.DataFrame", pairs: "pd.DataFrame",
     n_fin = int((flips.fin_tag != "neutral").sum())
     md.append(f"The cue lists move more than the leaderboard does. Of the "
               f"{len(both):,} contexts either definition flags, they agree on "
-              f"{(both.tag == both.fin_tag).mean():.0%}; the old numerator flagged "
-              f"{n_fin:,} and this one flags {n_agg:,}. Traps fall from "
+              f"{(both.tag == both.fin_tag).mean():.0%}; the narrow numerator flags "
+              f"{n_fin:,} and the wide one flags {n_agg:,}. Traps fall from "
               f"{int((flips.fin_tag == 'trap').sum()):,} to "
               f"{int((flips.tag == 'trap').sum()):,}, which is the substantive "
-              "correction: a shot that forced an error used to count as neither a "
-              "success nor an aggressive shot, so a cue that reliably produced them "
-              "read as low-conversion and got labelled a trap it had not earned.")
+              "difference: under the narrow reading a shot that forced an error counts "
+              "as neither a success nor an aggressive shot, so a cue that reliably "
+              "produces them reads as low-conversion and draws a trap label it has not "
+              "earned.")
     md.append("")
     md.append("![definitions](figures/shot_triggers_definitions.png)")
     md.append("")
@@ -555,15 +556,12 @@ def _role_of(anchor: str) -> str:
 def opening_rows(openings: dict, gender: str, qualifying: set) -> list:
     """Opening cues, cross-validated exactly the way ``tag_contexts`` does the pooled ones.
 
-    Until 2026-08-29 this function was a raw threshold screen: clear ``MIN_CTX`` strokes,
-    lift the frequency ``TRIGGER_LIFT``x over the group baseline on ``MIN_ATT``+ aggressive
-    shots, then split green/trap on the sign of the conversion gap — with no multiplicity
-    correction and every displayed figure computed on the same data that had just selected
-    the row. The pooled table beside it had been cross-validated and FDR-corrected since
-    the day ``tag_contexts`` landed, so this experiment was shipping one screened table and
-    one unscreened one, and only the screened one reached the site.
+    A raw threshold screen — clear ``MIN_CTX`` strokes, lift the frequency
+    ``TRIGGER_LIFT``x over the group baseline on ``MIN_ATT``+ aggressive shots, then split
+    green/trap on the sign of the conversion gap — would carry no multiplicity correction
+    and compute every displayed figure on the data that had just selected the row.
 
-    Now each group ``(player, side, anchor)`` — their deuce serve+1, their ad return+1, and
+    Instead each group ``(player, side, anchor)`` — their deuce serve+1, their ad return+1, and
     so on — is split into the same two match-hash folds the pooled screen uses. Each fold
     takes a turn discovering: an exact binomial tail against **that fold's own** baseline
     for the group, Benjamini-Hochberg at q=``Q_FDR`` across every context that fold could
@@ -843,13 +841,11 @@ def main() -> None:
     _both = [r for r in open_rows if r["folds"] == 2]
     _dl = sum(r["disc_lift"] for r in _one) / len(_one) if _one else 0.0
     _al = sum(r["att_lift"] for r in _one) / len(_one) if _one else 0.0
-    md.append("**These are cross-validated as of 2026-08-29, and were not before.** Until "
-              "then this section was a raw threshold screen — clear the support floor, "
-              "clear the lift, tag on the sign of the conversion gap — with no "
-              "multiplicity correction and every figure computed on the data that had "
-              "just selected the row. The pooled tables above had been FDR-corrected and "
-              "cross-validated since `tag_contexts` landed, so this experiment was "
-              "shipping one screened table and one unscreened one. Now each "
+    md.append("**These are cross-validated**, on the same footing as the pooled tables "
+              "above. A raw threshold screen — clear the support floor, clear the lift, "
+              "tag on the sign of the conversion gap — would carry no multiplicity "
+              "correction and compute every figure on the data that had just selected the "
+              "row. Instead each "
               "(player, side, anchor) group splits into the same two match-hash folds: "
               "one discovers, with an exact binomial tail against that fold's own group "
               f"baseline and Benjamini-Hochberg at q={Q_FDR:g} across every context it "
@@ -917,7 +913,7 @@ def main() -> None:
                label=f"mean {defs.fe_share.mean():.0%}")
     b2.set_xlabel("induced forced errors, % of a player's aggressive shots")
     b2.set_ylabel("players")
-    b2.set_title("What the old numerator was discarding")
+    b2.set_title("What the narrow numerator discards")
     b2.legend(fontsize=8)
     for ax in (b1, b2):
         ax.grid(alpha=0.18, lw=0.6)

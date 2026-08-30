@@ -9,8 +9,8 @@ every row it touched in the report. Nothing goes without being counted and named
 The distinction that matters is between a *value* being wrong and a *row* being
 wrong. Per-column checks — is this a real surface, does this date parse — only
 ever see the first kind. A row that has slipped two columns to the left trips
-several of them at once and looks like several unrelated problems: the report
-used to say "invalid surface: {'1': 7, 'Eva Asderaki-Moore': 2}" and leave the
+several of them at once and looks like several unrelated problems: a per-column
+report says "invalid surface: {'1': 7, 'Eva Asderaki-Moore': 2}" and leaves the
 reader to notice that an umpire's name in the surface column means the row is
 shifted, not that the surface is unusual. So the shape of a row is checked first
 and on its own terms, and the report names the cause rather than the symptoms.

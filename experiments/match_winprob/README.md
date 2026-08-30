@@ -34,23 +34,11 @@ empirical table, we propagate two numbers up the scoring tree.
   units. A blunder on a swing point costs far more than the same shot at 40-0 — shot
   quality, finally priced in the units that decide the match.
 
-## What's chess here, and what isn't
-
-Worth being precise about the analogy, because this experiment is mostly *not* chess:
-
-- The win-probability **engine** — the point→game→set→match score tree — is a **classical
-  tennis model**, not a chess idea (chess has no nested scoring to propagate through). Its
-  sole input is a **pre-point per-server scalar** `p1/p2`. That input is **pluggable** and
-  swaps cleanly: a flat league constant (pure-structure baseline), the serve+return rates
-  used here, the point eval's `base()`, or a future strength model — all slot into the same
-  `MatchWP(p1, p2, …)`. The engine never consumes the within-rally shot eval.
-- The **chess crossover** is exactly one layer *on top*: **leverage-weighted shot quality**.
-  The rally-state point eval (`chess_point_analysis`) scores each shot's WPA in *point*
-  units; leverage converts it to *match* units — the "centipawn-loss in game-outcome units"
-  payoff. It's an optional consumer of the engine, not the engine itself.
-
-So there's nothing to divorce: the engine is already chess-agnostic, and the chess theme is
-correctly scoped to the point eval and this shot-quality bridge.
+The score tree itself is a classical tennis model, not a chess one — chess has no nested
+scoring to propagate through. Its only input is the pre-point scalar `p1/p2`, which is
+pluggable: a flat league constant, the serve+return rates used here, the point eval's
+`base()`, or a future strength model all slot into the same `MatchWP(p1, p2, …)`. The
+chess crossover is the one layer on top, leverage-weighted shot quality.
 
 ## The model (`winprob_match.py`)
 
@@ -101,7 +89,7 @@ uv run python experiments/match_winprob/run.py
 Writes `reports/match_winprob.md`, `reports/figures/match_winprob_calibration.png`, and
 `reports/figures/match_winprob_curve.png`.
 
-## Honest limitations
+## Limitations
 
 - **Strength is serve+return only** — walk-forward and matchup-aware, but with no surface,
   form, fatigue, or recency weighting, and thin-history players collapse toward an even
@@ -111,23 +99,10 @@ Writes `reports/match_winprob.md`, `reports/figures/match_winprob_calibration.pn
 - **Charting bias** — same coverage caveat as the rest of the repo; and the leverage-weighted
   shot quality inherits the point eval's conflation of selection, execution, and pressure.
 
-## Roadmap — richer matchup strength (deliberately deferred)
+## Richer matchup strength
 
-All of these improve the `p1/p2` **input** and plug in behind the same scalar seam — the WP
-engine and the leverage/shot-quality layer don't change. Parked here to keep this experiment
-about the *win-probability layer*, not the strength model:
-
-- **Surface-specific serve/return** — **investigated and settled negative** in
-  `../surface_winprob`: on charted samples the surface backoff never beats the career
-  baseline, even restricted to players with deep surface history. Not "likely the
-  biggest single gain" after all.
-- **Recency / form weighting** — **investigated in `../form_streakiness`**: the form
-  signal is real at the points level but too small to improve held-out match
-  predictions, and individual "streakiness" is indistinguishable from noise. Needs
-  dense (non-charted) tour results to revisit.
-- **Opponent-adjusted strength** — common-opponent / Elo-style ratings rather than raw
-  serve+return vs the field.
-- **External covariates** — ranking/seed prior, fatigue (days off, prior-round minutes),
-  weather/conditions.
-- **Learned strength model** — replace the additive serve+return combo with a fitted model,
-  still emitting `p1/p2` so nothing downstream changes.
+Anything better than serve+return improves the `p1/p2` input and plugs in behind the same
+scalar seam, leaving the tree and the leverage layer unchanged. Two candidates were tried
+and came back negative: surface-specific rates (`../surface_winprob`) and recency/form
+weighting (`../form_streakiness`). Opponent-adjusted ratings, external covariates
+(ranking, fatigue, conditions) and a learned strength model are untried.

@@ -1,6 +1,6 @@
 // The matchup drawer: experimental pre-match win probability + a card per player,
 // all queried from insights.duckdb via DuckDB-WASM.
-import { query, leagueMu, serveGates, tourSpread } from "./db.js";
+import { query, serveGates, tourSpread } from "./db.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong } from "./schedule.js";
 
@@ -92,19 +92,12 @@ async function playerData(name, gender) {
   return { s: s[0], triggers, openings, patterns, serve, years };
 }
 
-// The shot-quality verdict used to print here — "ahead of / typical for / behind similar
-// players", banded off class_rel_z at ±0.5. It is gone, for the same reason and by the same
-// test as the 0-100 score it was the residual of (see profileSide below): measured on the
-// built table it correlates -0.99 with that score, 66% of its variance is rally length, and
-// it says no male serve-volleyer has ever been ahead of similar players against half of all
-// grinders. The residual is not orthogonal to the benchmark it is taken against — the ridge
-// λ is bisected to match the class means' R², which buys that R² by explaining a shrunken
-// copy of the whole style axis and leaves the rest of it in the residual.
-//
-// class_rel_z still ships in player_summary; nothing renders it. Restoring it means
-// orthogonalising against style_expected first, which moves 45% (men) / 41% (women) of the
-// verdicts — Karlovic behind→ahead, Sorribes Tormo ahead→behind — and even then the
-// style-stripped split-half is 0.43/0.60, which will not carry three bands.
+// No shot-quality verdict prints here. class_rel_z still ships in player_summary and
+// nothing renders it: it correlates -0.99 with the raw score it is a residual of and 66% of
+// its variance is rally length, so it grades players on how long their points run. Rendering
+// it would mean orthogonalising against style_expected first, and even then the
+// style-stripped split-half is 0.43/0.60, which will not carry three bands. See
+// experiments/class_relative_wpa.
 
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
 // drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
@@ -149,19 +142,17 @@ function trigMeter(t) {
 // means one piece of tennis whoever plays it. The drawing is the one place that wants the
 // real court back, so it mirrors again on the way out.
 function trigLine(t, hand) {
-  // Every cue here is a two-shot lead-up. There used to be a starred 3-4 shot tier
-  // alongside them (deep_patterns, then rally_patterns); it is gone because the patterns
-  // were not there — 71% of the old tier's evidence sat in the opening, which the two
-  // sections above already cover, and on serve-blind ground two of 1,752 candidates
-  // survived a screen whose figures were held out. See experiments/rally_patterns.
+  // Every cue here is a two-shot lead-up. No starred 3-4 shot tier ships: on serve-blind
+  // ground two of 1,752 three-shot candidates survive a held-out screen, and both belong to
+  // retired players. See experiments/rally_patterns.
   const trap = t.tag === "trap";
   const cls = trap ? "bait" : "green";
   const conv = Math.round(t.conversion * 100);
   // A cue's conversion is measured against the player's *other* cues, not against their
   // all-strokes rate. Conditional on a lead-up raising the frequency at all, conversion
-  // already sits well above that rate — the balls you attack on are the ones you were
-  // well placed to attack — so the old comparison put the line far below the middle of
-  // the class it was splitting and called the bottom of a normal spread a trap.
+  // already sits well above that rate — the balls you attack on are the ones you were well
+  // placed to attack — so the all-strokes line would sit far below the middle of the class
+  // it is splitting and call the bottom of a normal spread a trap.
   const payoff = trap
     ? `converts only <b>${conv}%</b>
        <span class="lift">${Math.round(t.conv_delta * 100)}pp vs their other cues</span>`
@@ -239,8 +230,8 @@ function serveHtml(d, gates) {
   // Significant *and* big enough to act on. The experiment's test is correctly
   // multiplicity-corrected, but significance on a player with a thousand charted break
   // points certifies shifts of three or four points that no returner can prepare against —
-  // eleven of the fifty-eight lines this used to print were that. A returner adjusts to
-  // "he goes wider here", so the line only appears where the shift reaches five points.
+  // eleven of fifty-eight qualifying lines. A returner adjusts to "he goes wider here", so
+  // the line only appears where the shift reaches five points.
   const BP_MIN = 0.05;
   if (d.s && Number(d.s.serve_bp_sig) === 1 && delta != null && Math.abs(delta) >= BP_MIN) {
     const pts = Math.round(Math.abs(delta) * 100);
@@ -268,12 +259,11 @@ function serveHtml(d, gates) {
 // to share with three other numbers.
 function patternCard(p) {
   // Payoff: their point-win rate playing this response against their own rate answering
-  // the same incoming ball however else they answer it. It used to be measured against
-  // the tour's rate for the same response, which mostly ranked players rather than
-  // choices — that gap runs about +0.43 with a player's overall serve-plus-return rate,
-  // so the strongest thirty beat the tour on nearly every pattern they own and the
-  // weakest thirty trail on nearly all of theirs, whatever the shot is worth. Both
-  // numbers here are the same player on the same ball, so the difference is the choice.
+  // the same incoming ball however else they answer it. Baselining against the tour's rate
+  // for that response would mostly rank players rather than choices — that gap runs about
+  // +0.43 with a player's overall serve-plus-return rate, so the strongest thirty would beat
+  // the tour on nearly every pattern they own whatever the shot is worth. Both numbers here
+  // are the same player on the same ball, so the difference is the choice.
   // Level is stated rather than left blank, so a missing arrow always means the
   // comparison is genuinely unavailable and never that the gap rounded to zero.
   let payoff = "";
@@ -295,8 +285,8 @@ function patternCard(p) {
     }
   }
   // What the lift is taken against. "3.4x the tour" is two very different claims off a
-  // 27% base and off a 0.4% one, and the card used to print only the multiple — so a
-  // mild over-index on the tour's own favourite shot and a genuine oddity looked alike.
+  // 27% base and off a 0.4% one; without the share, a mild over-index on the tour's own
+  // favourite shot and a genuine oddity look alike.
   const share = num(p.field_share);
   const vs = share == null ? "" : ` <span class="pshare">tour ${share < 0.01
     ? "under 1" : Math.round(share * 100)}%</span>`;
@@ -350,8 +340,7 @@ function trigBase(d) {
       : ` · converts <b>${Math.round(conv * 100)}%</b>`}
       ${/* This *is* the tick below, exactly: trigMeter draws it at att_rate / att_lift, and
            att_lift is the cue's rate over this same pooled figure, so the division returns
-           it unchanged. The line used to claim the tick was this rate with that cue's own
-           balls removed, which is a different and better number that nothing computes. */""}
+           it unchanged. */""}
       <span class="lift">the tick on each cue below marks this rate</span></p>
     <div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i></div>
   </div>`;
@@ -402,8 +391,8 @@ function openSets(d) {
 //
 // The baseline comes from player_summary rather than from the trigger table, so it prints for
 // a player charted enough to have a rate but not enough for any cue to clear the significance
-// test — which is most of the tour, and which used to leave their column saying only "nothing
-// at this player's coverage".
+// test — which is most of the tour. Otherwise their column would say only "nothing at this
+// player's coverage".
 function trigSets(d) {
   if (!d) return "";
   const base = trigBase(d);
@@ -426,7 +415,7 @@ function trigSets(d) {
 }
 
 // --- "side by side": one ring per metric ----------------------------------------------
-// The axis the two players used to diverge along, bent into a circle. 12 o'clock is the
+// One shared axis, bent into a circle. 12 o'clock is the
 // bottom of the drawing domain for both of them, A sweeps counter-clockwise and B clockwise,
 // and a half-turn each is the top of it. So they still grow from a shared origin and the
 // comparison is still "whose reaches further" — read as a sweep rather than as a length, and
@@ -445,18 +434,14 @@ function trigSets(d) {
 // written out under the metric's name, so the sweep is proportional to the figure beside it:
 // twice the arc is twice the number, and a fifth of the ring is a fifth of the ceiling.
 //
-// This used to be a *zoomed* window per metric — 50–80% for serve points, 5–32% for winners
-// and errors — picked so that two tour pros, whose numbers differ by a point or two, drew
-// visibly different bars. On bars that was defensible; a track with no ends doesn't claim to
-// be anything. On a ring it wasn't: a closed loop reads as a whole, so "how full" reads as a
-// share of it, and identical circles side by side invite exactly the comparison the windows
-// didn't support. It showed: 66.5% of serve points and 19.8% of rally strokes drew the same
-// 99° arc, because each sat 55% of the way through its own window.
+// Not a zoomed window per metric. A closed loop reads as a whole, so "how full" reads as a
+// share of it, and identical circles side by side invite exactly the comparison a zoomed
+// window cannot support: on a 50–80% window for serve points and 5–32% for rally strokes,
+// 66.5% and 19.8% draw the same 99° arc.
 //
-// The cost of zeroing them is real and is paid in resolution. 66.5% against 68.1% is under
-// three degrees, which nobody can see. The figures either side of the ring carry that
-// comparison now, the leader is the one set in ink, and the tour tick is where the picture
-// still says something — it shows how narrow these gaps genuinely are.
+// Zeroing them costs resolution, and that is paid for elsewhere. 66.5% against 68.1% is under
+// three degrees, which nobody can see, so the figures either side of the ring carry that
+// comparison and the leader is the one set in ink.
 //
 // Which is also why only two metrics are left on rings. A ring that runs from a real zero to
 // a ceiling anyone could reach says something about both players at a glance; one where every
@@ -471,8 +456,25 @@ function trigSets(d) {
 // is not always the metric's own full — return points won has a full nobody comes within
 // half of — so `hi` is per ring and `top` prints it over the arc.
 //
-// `avg` puts a tick on the ring at the tour reference where one exists. `better` says which
-// direction wins.
+// `mark` puts a second figure of the player's own on the ring, as a tick across the band at
+// the point on the same scale it reaches. It is the game-level reading of the arc: how often
+// the serve ring's points-won actually became a hold, how often the return ring's became a
+// break. Same axis, different denominator, which is exactly the thing worth showing — the
+// arcs sit in a narrow band because points are close, and the ticks do not, because games
+// are not. A serve advantage of three points in a hundred is twenty games in a hundred.
+//
+// It reads in both directions from the same mechanism, which is why one mark does for both
+// rings. Above half in points lands further above in games, so the serve ring's tick sits
+// out past the end of its arc, in open track; below half lands further below, so the return
+// ring's sits back inside its arc. The gap between arc and tick is the conversion either way.
+//
+// Not the charted tour average, which is the one shared spoke this replaces. That answers a
+// question the two figures either side of the ring already answer between them — these players
+// are close, and here is the tour they are close around — and it answers it in the one place
+// on the drawing that could carry a number about the players instead.
+//
+// The mark is per player and per ring, so it is a function of that player's row rather than
+// a scalar on the row spec. `better` says which direction wins.
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const num = (v) => (v == null ? null : Number(v));
 
@@ -491,47 +493,74 @@ const num = (v) => (v == null ? null : Number(v));
 // adjusted for the opponents a volunteer chose to chart, so the number above the floor is
 // still a charted rate and not a true one.
 //
-// This floor is also what let the shrinkage go. The rates used to be pulled toward the tour
-// mean by 100 pseudo-points, which existed to keep a thin player from producing a confident
-// pre-match prediction — a number the panel no longer prints. Once the floor excludes the
-// thin players outright, the pull was only biasing a displayed measurement toward a prior
-// the reader cannot see, so the rings now show the player's own charted rate.
+// The floor is also what makes shrinkage unnecessary. Pulling the rates toward the tour mean
+// would bias a displayed measurement toward a prior the reader cannot see, and the thin
+// players it would protect are already excluded, so the rings show each player's own charted
+// rate.
 const RATE_MIN_PTS = 2000;
 const wellCharted = (d) => !!d && (Number(d.s.points_charted) || 0) >= RATE_MIN_PTS;
 
-function tapeRows(mu) {
+// The two free points, printed as a pair under the total. An ace is a service point won
+// without playing it and a double fault is one given away the same way, they are measured
+// over the same denominator — every service point the player served — and they are the two
+// ends of the same decision about how hard to hit a serve. Read together they say what a
+// player's serve costs as well as what it earns: 14.6% aces against 2.3% double faults is a
+// different serve from 10.6% against 5.0%, and the ring alone cannot tell those apart.
+//
+// Double faults are text and not an angle, where aces get both. On the ring's half-turn a
+// double-fault rate is 3.6° at the tour's 5th percentile and 10.1° at its 95th, and the
+// whole middle half of the men's tour fits inside 2.9° — under the three degrees this
+// panel already treats as invisible. Drawn as a wedge down from the 100% mark it would
+// have been a 6px nick in a 17px band, in grey, on the grey of the unreached track. The
+// figure is the part of it that carries information, so the figure is the part that ships.
+// Returned as the two figures rather than as one string. Each gets its own line in the flank,
+// which is what keeps a figure with its own unit: run together on one line and left to wrap,
+// they broke wherever the gutter ran out — "9.6% aces · 1.9%" on one line and "double faults"
+// on the next, and differently on the two sides of the ring, since the wider player's figures
+// ran out sooner. Two lines is what the pair costs at this track width anyway.
+// The part of a sweep the player never had to play out, as the arc's own deepened core:
+// aces inside serve points won, return winners inside return points won. Both are subsets of
+// the arc they sit in, so the split is over *points won* — the share of this sweep — while the
+// figure in the flank is over every point of that kind, which is how each is normally quoted.
+// Two different denominators, which is why only one of them is printed: the ring carries the
+// other as an angle, where it does not have to be read as a figure.
+//
+// The return core is small and often smaller than the eye resolves — the modern men's game
+// puts it near three degrees, against fourteen for a typical ace wedge — and it is drawn
+// anyway. It is a true share of a true arc at whatever size it comes to, the women's tour
+// spends up to fifteen degrees of ring on it, and a mark that appears only for the players it
+// is large for is still telling the truth about the ones it is small for.
+//
+// Null where the rate is (a thinly-charted server, a returner under the build's return-point
+// floor), and the arc is then simply one colour.
+const outright = (part, whole) => (s) => {
+  if (s[part] == null) return null;
+  const f = clamp01(Number(s[part]) / Number(s[whole]));
+  return [{ f, cls: "deep" }, { f: 1 - f }];
+};
+
+function tapeRows() {
   return [
-    // The sweep is how often they win a service point; where it changes colour is how much
-    // of that they never had to play for. Aces are a subset of service points won, so the
-    // split is aces over *points won* — the share of this sweep — while the number under the
-    // total is the ace rate as it is normally quoted, over every service point they hit.
-    // Two different denominators, which is why only one of them is printed: the ring carries
-    // the other one as an angle, where it doesn't have to be read as a figure.
-    // Absent for a thinly-charted player (the build floors it at ~2 matches of service
-    // points), and the arc is then simply one colour.
+    // The sweep is how often they win a service point; where it changes colour is how much of
+    // that they never had to play for — see outright() above.
     {
-      k: "serve_rate", label: "serve points won", short: ["serve pts", "won"],
-      hi: 1, top: "100%", better: "hi",
-      avg: mu, fmt: pct,
-      sub: (s) => s.ace_rate == null ? "" : `${(Number(s.ace_rate) * 100).toFixed(1)}% aces`,
-      parts: (s) => {
-        if (s.ace_rate == null) return null;
-        const f = clamp01(Number(s.ace_rate) / Number(s.serve_rate));
-        return [{ f, cls: "deep" }, { f: 1 - f }];
-      }
+      k: "serve_rate", label: "serve points won", short: ["serves", "won"],
+      hi: 1, top: "100%", better: "hi", fmt: pct, unit: "points",
+      mark: { k: "hold_rate", label: "games" },
+      wedge: { k: "ace_rate", label: "aces" }
     },
     // Ceilinged at 0–67% rather than 0–100%. Returning is the half of tennis nobody wins
     // outright — the best charted return games on either tour reach 46% (men) and 52%
-    // (women) — so against a full 100% this ring spent two thirds of its climb on ground no
-    // player has ever stood on, and the whole metric sat in the first third of the arc.
-    // The cost is that its arcs are no longer the same scale as the rings either side of it:
-    // 41.1% here climbs about as far as 66.5% does on serve points. That is what the scale
-    // under the name is for, and why the note below stops short of saying arcs compare
+    // (women) — so a full 100% would spend two thirds of the climb on ground no player has
+    // ever stood on. The cost is that these arcs are not the same scale as the rings either
+    // side: 41.1% here climbs about as far as 66.5% does on serve points. That is what the
+    // scale under the name is for, and why the note below stops short of saying arcs compare
     // between rings.
     {
-      k: "return_rate", label: "return points won", short: ["return pts", "won"],
-      hi: 0.67, top: "67%", better: "hi",
-      avg: 1 - mu, fmt: pct
+      k: "return_rate", label: "return points won", short: ["returns", "won"],
+      hi: 0.67, top: "67%", better: "hi", fmt: pct, unit: "points",
+      mark: { k: "break_rate", label: "games" },
+      wedge: { k: "ret_winner_rate", label: "return winners" }
     },
   ];
 }
@@ -583,9 +612,12 @@ function dnSpoke(deg, out, cls, inn = out) {
     ` x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}"/>`;
 }
 
-// The tour average. Two spokes on the same line, the wider dark one under the narrower light
-// one, which is the strip's haloed tick drawn in SVG — it has to survive both the saturated
-// arc and the empty track, and no one colour does.
+// The player's own games figure, laid across the band where it falls on the ring's scale —
+// see the `mark` note above. Two spokes on the same line, the wider dark one under the
+// narrower light one, which is the strip's haloed tick drawn in SVG. It stands on both of the
+// ring's grounds — inside the arc on the return ring, out on open track past the arc's end on
+// the serve ring — and it is the halo that carries it across them: on a violet or red arc the
+// white core does the work, and on the pale track the ink halo does.
 const dnTick = (deg) => dnSpoke(deg, 1.6, "dtickhalo") + dnSpoke(deg, 1.6, "dtick");
 
 // Zero, cut into the foot of the ring. The two sweeps leave in opposite directions from this
@@ -601,35 +633,126 @@ const dnOrigin = () => dnSpoke(180, 0.5, "dorigin");
 // floating in a hole says what the end is worth without saying where it is — an arc that stops
 // a few degrees short of the top is not visibly short of anything until the top is a mark.
 //
-// Ink, where every other mark on the band is the card's own colour. That is the distinction
-// being drawn: the tour tick and the origin seam are drained out of the ring, and read as
-// absences in it, which is right for a reference value and for a gap. These are the frame the
-// arcs are measured in, so they are laid on rather than cut out.
+// Ink, and the only marks on the band set in it. That is the distinction being drawn: the
+// origin seam is cut out of the ring in the card's own colour, and the tick is drawn in the
+// same muted grey as the figure it belongs to beside the ring — a gap and a measurement, both
+// of them things happening inside the scale. These two are the scale, so they are laid on.
 //
 // At the foot this lands inside the origin seam, which is 2.2 units of card colour to this
 // line's 1.1 — so the seam keeps a hairline of white either side and gains a definite edge
 // instead of competing for the same spot. Drawn after it, for exactly that stacking.
 //
 // `inn: 0` stops it flush with the inner edge of the band. The scale labels sit about 1.3
-// units further in (see .dncap), and the tour tick's 1.6 of inward reach would put an ink line
+// units further in (see .dncap), and the tick's 1.6 of inward reach would put an ink line
 // through the top of "100%".
 const DN_END_OUT = 1.2;
 const dnEnds = () => dnSpoke(0, DN_END_OUT, "dend", 0) + dnSpoke(180, DN_END_OUT, "dend", 0);
 
-// One player's number and its qualifier, on that player's side of the ring. No colour chip —
-// position says whose it is, the way it did when these were bars.
-const dnFlank = (it, tag) => `<div class="dside ${tag}">
-  <div class="dpair">
-    <span class="dv${it.lead ? " lead" : ""}">${it.v == null ? "—" : it.fmt(it.v)}</span>
-    ${it.sub ? `<span class="ds">${esc(it.sub)}</span>` : ""}
-  </div></div>`;
+// --- the floating labels -------------------------------------------------------------
+// Every figure is set beside the mark it is read off. The points total sits where its arc
+// stops, the games figure beside the tick, and the outright-win figure at the foot beside
+// its wedge — so the number and the thing it measures are one object, and no part of the
+// drawing has to be matched back to a column of small print by colour or by side.
+//
+// The three could not go in one column and stay tied to the ring: they are three different
+// places on it, and a stacked list puts them in reading order rather than in the order the
+// ring makes. Around the ring they land in the order they happen — outright wins at the foot,
+// then points, then games above them — which is also the order they nest in.
+//
+// `left`/`top` are percentages of a box that is exactly the drawing's size, so they resolve
+// against the same square the viewBox does and hold at every ring size. Anchored on a circle
+// just outside the band, then pushed clear of it by the transform: side A's labels end at
+// their anchor and reach left, side B's start at theirs and reach right, which is the half of
+// the ring each player's arc climbs. That is also what keeps the two players' labels apart at
+// the foot, where their anchors are closest.
+const DN_LR = 45;
 
-// A ring cell: a player, the ring, and the other player. The name used to run as a line of
-// small print over the row; it now sits in the ring's own hole, so nothing above the row
-// answers a question the ring itself already sits under.
-const dnCell = (a, art, b) => `<div class="dn">
-  <div class="dnrow">${a}${art}${b}</div>
-</div>`;
+// The outright-win figures are the exception to the anchoring above: they sit in a row of
+// their own directly under the ring, split either side of its centre line, rather than on
+// the circle with the other two.
+//
+// Anchored on the circle at the middle of their own wedge, they collided — with each other
+// whenever both wedges were small, which on the modern men's return ring is every time, and
+// then with the games figure once they were pushed far enough round to clear that. Checked
+// across all 363 players the rings print for, the second collision hits 120 of them: a break
+// rate lands the games figure low on the ring, which is exactly where a wedge label pushed
+// off the foot has to go.
+//
+// A row under the ring is the placement with no data in it, so nothing can drive it into
+// anything else. It still points at the wedges — they are at the foot, and this is directly
+// below the foot — and it still says which player's it is, by which side of the centre line
+// it falls on, the same rule the other four follow.
+// The leader joining an outright-win figure to the wedge it counts. The figures sit in a row
+// under the ring, where nothing in the data can push them into anything else; the leader is
+// what buys that placement back — without it the row is two numbers parked below a drawing,
+// and the wedge they belong to is a colour change a reader has to find.
+//
+// Three runs, two kinks. A short radial stub straight out of the band at the middle of the
+// wedge, then a diagonal outward and down to the row the figures sit on, then a flat run along
+// that row into the figure. The stub leaves the band the way a spoke would, so the leader
+// reads as attached to the wedge rather than dropped past it; the diagonal is the reach, and
+// the flat run is what hands the line off to the text horizontally.
+//
+// Every run travels outward, away from the ring's centre line. That is a property of the data
+// rather than a case handled: the widest wedge on either ring is a 22% ace rate, whose middle
+// sits near x=35, and the row's inner end is at 32 — so every leader leaves the band inside
+// its own figure and reaches out to it. The flat run is trimmed toward zero where a wide wedge
+// starts the leader that close to the figure's edge, which keeps the diagonal from doubling
+// back.
+const DN_LEAD_R = 43;      // where a leader leaves the band, just clear of its outer edge at 41
+const DN_LEAD_STUB = 2.5;  // how far the radial stub reaches before the leader turns outward
+const DN_LEAD_Y = 104;     // the row the leaders flatten onto — and the row the figures sit on
+const DN_LEAD_FLAT = 4;    // the flat run into the figure, after the diagonal
+const DN_LEAD_X = 32;      // where that run ends, before the figure's own edge at 30
+
+function dnLead(deg, side) {
+  const a = dnAt(deg, side);
+  const [x0, y0] = dnPoint(a, DN_LEAD_R);
+  const [x1, y1] = dnPoint(a, DN_LEAD_R + DN_LEAD_STUB);
+  const end = side === "a" ? DN_LEAD_X : 100 - DN_LEAD_X;
+  const flat = Math.max(0, Math.min(DN_LEAD_FLAT,
+    side === "a" ? x1 - end - 0.5 : end - x1 - 0.5));
+  const knee = side === "a" ? end + flat : end - flat;
+  return `<path class="dlead" d="M${x0.toFixed(2)},${y0.toFixed(2)}` +
+    ` L${x1.toFixed(2)},${y1.toFixed(2)} L${knee.toFixed(2)},${DN_LEAD_Y}` +
+    ` L${end},${DN_LEAD_Y}"/>`;
+}
+
+function dnLabel(x, y, side, cls, html) {
+  return `<span class="dlab ${side} ${cls}"
+    style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%">${html}</span>`;
+}
+
+// The clear space the points and games figures need between them, in viewBox units, when the
+// two values they sit at are close enough on the ring to put them on the same line of type.
+//
+// Both labels reach outward from the same side, so a small angular gap does not separate them:
+// near the top of the ring it moves them sideways, one behind the other. What has to be clear
+// is the vertical, and it needs the two half-heights plus air — about 17.5px.
+//
+// Written in viewBox units against the *smallest* ring the panel draws, so the separation is
+// sufficient at every size rather than only at the one it was measured on. On a wider ring the
+// same fraction is a few more pixels than strictly needed, which costs nothing; calibrated the
+// other way it would come up short on a phone.
+//
+// It bites for 27 of the 363 players the rings print for — all on the serve ring, all of them
+// players whose hold rate is barely above their serve-points rate, which is a real thing about
+// how they serve and not a fault in the drawing. Where it applies the two labels move apart
+// around their own midpoint, so neither ends up further than half the shortfall from its own
+// mark: at most 5 units, under a tenth of the ring's width, with the tick glyph and the arc's
+// own end still directly beside them.
+const DN_SEP = 10.5;
+
+function dnSpread(a, b) {
+  const d = b.y - a.y;
+  if (Math.abs(d) >= DN_SEP) return [a, b];
+  const push = (DN_SEP - Math.abs(d)) / 2 * (d < 0 ? -1 : 1);
+  return [{ x: a.x, y: a.y - push }, { x: b.x, y: b.y + push }];
+}
+
+// A ring cell. The ring is the whole cell now — there are no flanking columns left to lay out
+// beside it, so nothing here has to hold three tracks in balance.
+const dnCell = (art) => `<div class="dn">${art}</div>`;
 
 function donut(r, sa, sb) {
   const va = sa ? num(sa[r.k]) : null;
@@ -638,50 +761,85 @@ function donut(r, sa, sb) {
   const lead = r.better && va != null && vb != null && va !== vb
     ? ((va > vb) === (r.better === "hi") ? "a" : "b") : "";
   const at = (v) => clamp01(v / r.hi) * 180;
-  // An arc is one colour unless the metric splits it: then the segments are shares of that
-  // player's own sweep, laid out from the foot upward, so both players' first segments start
-  // from the shared origin and stay directly comparable.
+  // The three figures, read out of the player's row once each and used by both the drawing
+  // and the label beside it — the tick and its number, the wedge and its number, are the same
+  // value twice and come from the same lookup.
+  const markOf = (s) => (!r.mark || !s ? null : num(s[r.mark.k]));
+  const wedgeOf = (s) => (!r.wedge || !s ? null : num(s[r.wedge.k]));
+  // An arc is one colour unless the player has an outright-win rate to split it with; then
+  // the segments are shares of that player's own sweep, laid from the foot up, so both
+  // players' cores start at the shared origin and stay directly comparable.
   const arc = (v, s, side) => v == null ? ""
-    : dnArc(at(v), (r.parts && s ? r.parts(s) : null) || [{ f: 1 }], side);
-  const item = (v, s, tag) => ({
-    v, fmt: r.fmt, lead: lead === tag,
-    sub: v == null || !r.sub ? "" : r.sub(s)
-  });
-  // "no data" only in the label a screen reader hears — set beside the picture it would be a
-  // sentence where every other cell holds a figure, which is what the em dash is for.
+    : dnArc(at(v), (r.wedge && s ? outright(r.wedge.k, r.k)(s) : null) || [{ f: 1 }], side);
+
+  // One player's labels. A side with no rate gets a single em dash where its arc would have
+  // left the foot: the half is empty on purpose, and an empty half beside a full one should
+  // say so on the drawing rather than only in the note under it.
+  // The middle of a player's wedge, in degrees of sweep from the foot — where its leader
+  // leaves the band. Null where there is no wedge to point at.
+  const wedgeMid = (v, s) => {
+    const w = wedgeOf(s);
+    return v == null || w == null ? null : at(v) * clamp01(w / v) / 2;
+  };
+  const anchor = (deg, side) => {
+    const [x, y] = dnPoint(dnAt(deg, side), DN_LR);
+    return { x, y };
+  };
+  const labels = (v, s, side) => {
+    if (v == null) return `<span class="dlab ${side} dwdg dnone">—</span>`;
+    const m = markOf(s), w = wedgeOf(s);
+    // Word before figure on side A, figure before word on side B — so the number ends up
+    // nearest the ring on both sides, against the mark it is read off. Side A's labels are
+    // right-aligned and reach in toward the band; side B's reach out from it, so number-first
+    // already lands its digits by the ring there.
+    const flank = (word, fig) => esc(side === "a" ? `${word} ${fig}` : `${fig} ${word}`);
+    // Placed as a pair, because whether either can sit exactly on its own mark depends on
+    // where the other one is — see dnSpread().
+    let pa = anchor(at(v), side), ga = m == null ? null : anchor(at(m), side);
+    if (ga) [pa, ga] = dnSpread(pa, ga);
+    const unit = r.unit ? `<span class="dvu">${esc(r.unit)}</span>` : "";
+    const pts = side === "a" ? `${unit}${r.fmt(v)}` : `${r.fmt(v)}${unit}`;
+    const out = [dnLabel(pa.x, pa.y, side, `dpts${lead === side ? " lead" : ""}`, pts)];
+    if (ga) {
+      // No key glyph. The figure is set against the tick it names, close enough that a
+      // second copy of the mark beside the number was labelling the label.
+      out.push(dnLabel(ga.x, ga.y, side, "dgms", flank(r.mark.label, pct(m))));
+    }
+    // Placed by the stylesheet rather than by angle, and joined to its wedge by a leader
+    // drawn on the ring — see dnLead().
+    if (w != null) {
+      out.push(`<span class="dlab ${side} dwdg">${flank(r.wedge.label, pct(w))}</span>`);
+    }
+    return out.join("");
+  };
+
+  // "no data" only in the label a screen reader hears — set on the drawing it would be a
+  // sentence where every other mark is a figure, which is what the em dash is for.
   const say = (v) => (v == null ? "no data" : r.fmt(v));
   // The ring's name, shrunk and shortened to sit in its own hole rather than over the row —
   // the one place beside the arc itself a reader is already looking.
   const title = r.short
     ? `<p class="dnttl">${r.short.map(esc).join("<br>")}</p>` : "";
-  // The two ends of the scale, at the two ends of the ring. Both sweeps start at the foot and
-  // finish at the top, so those are the only two places the numbers could go and mean
-  // anything — and put there they are read off the picture rather than remembered from a
-  // caption above it.
-  //
-  // Inside the ring rather than above and below it, which is where they used to sit. The hole
-  // is empty space the drawing already owns; the two rows outside it were height spent on
-  // twelve characters, and they pushed the ceiling a whole label away from the arc that climbs
-  // toward it. Tucked just inside the band, each number sits against the end of the scale it
-  // marks, and the ring is one object instead of three stacked ones. They join the ring's own
-  // name in there, spaced clear of it — see .dncap in the stylesheet for the geometry.
-  return dnCell(
-    dnFlank(item(va, sa, "a"), "a"),
-    `<div class="dnring">
+  // The two ends of the scale, at the two ends of the ring, inside the hole. Every other
+  // figure now sits outside the band against its own mark, so the hole holds only the two
+  // that belong to the ring rather than to either player.
+  return dnCell(`<div class="dnring">
       <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img"
         aria-label="${esc(`${r.label} — ${say(va)} against ${say(vb)}`)}">
         <circle class="dtrack" cx="${DN_C}" cy="${DN_C}" r="${DN_R}"/>
         ${arc(va, sa, "a")}${arc(vb, sb, "b")}${dnOrigin()}${dnEnds()}
         ${/* one per side, and only where that side has a sweep to read it against — a lone
-             tick on an empty half is a reference for a number that isn't there */""}
-        ${r.avg == null || va == null ? "" : dnTick(dnAt(at(r.avg), "a"))}
-        ${r.avg == null || vb == null ? "" : dnTick(dnAt(at(r.avg), "b"))}
+             tick on an empty half marks a conversion of nothing */""}
+        ${va == null || markOf(sa) == null ? "" : dnTick(dnAt(at(markOf(sa)), "a"))}
+        ${vb == null || markOf(sb) == null ? "" : dnTick(dnAt(at(markOf(sb)), "b"))}
+        ${wedgeMid(va, sa) == null ? "" : dnLead(wedgeMid(va, sa), "a")}
+        ${wedgeMid(vb, sb) == null ? "" : dnLead(wedgeMid(vb, sb), "b")}
       </svg>
       <span class="dncap top">${esc(r.top)}</span>
       ${title}
       <span class="dncap zero">0</span>
-    </div>`,
-    dnFlank(item(vb, sb, "b"), "b"));
+      ${labels(va, sa, "a")}${labels(vb, sb, "b")}
+    </div>`);
 }
 
 // How much of each player the charting actually has, under the title that names what these
@@ -818,7 +976,44 @@ function profileBand(da, db) {
 // in the definitions is the copy that drifts. The unit gloss rides here for the same reason:
 // each unit belongs to exactly one figure, so it should not be possible to add a figure and
 // forget to say what it is measured in.
+// How the serve behaves before anyone plays a point off it, and the reason this list is not
+// only "figures with an exotic unit". None of the three is a share of any arc the rings draw —
+// they draw points won, and these are about where the ball landed — so on a ring each could
+// only ever be a figure parked beside a drawing it was not part of. Here they are what they
+// actually are: facts about how this player serves, beside how long their points run and how
+// far their shot choices stray.
+//
+// The three are one measurement told in full. A serve either goes in or it doesn't; the first
+// rate is how often the first one lands, the second is how often the one after a miss lands,
+// and a double fault is the case where neither did. Which is why the third is derived rather
+// than read: it is exactly (1 - second in) x (1 - first in), so a shipped copy of it would be
+// the same fact twice, free to disagree with the pair it came from. It is still printed —
+// nobody should have to multiply two percentages to find out how often a player serves the
+// point away — but there is one number behind it, not two.
+//
+// A figure's value for one player. Most are a column on the row; one is computed from two of
+// them, and every reader of FIGS goes through here so the derived one is never the case that
+// got missed.
+const figOf = (f, s) => (!s ? null : (f.get ? f.get(s) : num(s[f.k])));
+
+const dfOf = (s) => {
+  const f = num(s.first_in_pct), sec = num(s.second_in_pct);
+  return f == null || sec == null ? null : (1 - sec) * (1 - f);
+};
+
 const FIGS = [
+  {
+    k: "first_in_pct", label: "1st serves in", unit: "",
+    fmt: (v) => pct(v), say: (v) => pct(v),
+  },
+  {
+    k: "second_in_pct", label: "2nd serves in", unit: "",
+    fmt: (v) => pct(v), say: (v) => pct(v),
+  },
+  {
+    k: "df_rate", label: "double faults", unit: "", get: dfOf,
+    fmt: (v) => pct(v), say: (v) => pct(v),
+  },
   {
     k: "bits", label: "variety", unit: "bits",
     fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} bits`,
@@ -828,15 +1023,14 @@ const FIGS = [
       extra bit is a shot half as likely again — the scale multiplies rather than adds, so
       the step from 3.0 to 3.2 is a bigger claim than it looks.`,
   },
-  // "shot selection" (sigma) stood here and is gone, cut by the test that retired the
-  // shot-quality score: it correlates -0.81 (men) / -0.59 (women) with rally length. Two
-  // thirds of the men's spread is the player's own baseline aggressive shot frequency, which
-  // the shot-making triggers section prints in plain percent further down, and the top of the
-  // leaderboard is a serve-volley artifact — restricted to rally-only lead-ups Rafter falls
-  // from 14.9pp, top of the tour, to a below-median 3.8pp. It is also independent of whether
-  // the extra aggression pays (rho = -0.07 with trap count), so one number described an
-  // adaptive player and a baited one identically. The triggers section answers the same
-  // question concretely, with a direction, and keeps it.
+  // No "shot selection" figure (sigma) ships. It correlates -0.81 (men) / -0.59 (women) with
+  // rally length, two thirds of the men's spread is the player's own baseline aggressive shot
+  // frequency — which the triggers section prints in plain percent further down — and the top
+  // of its leaderboard is a serve-volley artifact: restricted to rally-only lead-ups Rafter
+  // falls from 14.9pp, top of the tour, to a below-median 3.8pp. It is also independent of
+  // whether the extra aggression pays (rho = -0.07 with trap count), so one number described
+  // an adaptive player and a baited one identically. The triggers section answers the same
+  // question concretely and with a direction.
 ];
 
 // Who these two players are: what kind of player this is, which hand they hold the racket in,
@@ -871,23 +1065,13 @@ function profileSide(d, tag) {
   // what the key says. One decimal: the tour's middle half spans about 0.8 of a stroke, and
   // whole numbers would collapse most of the field onto "5".
   //
-  // Labelled "per point" rather than "avg rally", because that is exactly what it is — average
-  // hits per point — and "rally" invites the reader to assume the serve and the return are
-  // excluded from a figure that counts both. The unit above it already says "shots", so the
-  // label only has to say what they are counted over.
-  //
-  // It stands where the 0-100 shot-quality score used to. That score was a reliable
-  // measurement of the wrong thing: WPA telescopes inside a point, so the average win
-  // probability conceded per stroke is identically the concession per point divided by the
-  // strokes per point, and the second factor runs the figure. It correlated -0.84 with rally
-  // length, the style fingerprint predicted 91% of it out-of-fold, and set against a 0.93
-  // split-half reliability that left about 2% of its spread as reliable non-style signal. It
-  // put Santoro and Wilander at the top and Laver and Karlovic at the bottom, which is a
-  // rally-length table with a quality label on it. So the panel prints the rally length.
+  // Labelled "avg point length" rather than "avg rally": the figure counts the serve and the
+  // return like every other stroke, and "rally" invites the reader to assume those are left
+  // out. The unit above it already says "shots", so the label only has to say what is averaged.
   const rally = num(s.avg_rally_len);
   const rallyFig = rally == null ? "" : `
     <p class="pbq"><b>${rally.toFixed(1)}</b><span>shots</span>
-      <em>per point</em></p>`;
+      <em>avg point length</em></p>`;
   // The secondary tier, and deliberately a tier down: rally length is the figure this band
   // leads on, and three numbers all set at 22px would be three headlines and no hierarchy.
   // Each prints on its own line rather than two-up — "shot selection" is a two-word label, and
@@ -897,15 +1081,13 @@ function profileSide(d, tag) {
   // thresholds, so a player can easily have one and not the other; a figure held back because
   // its neighbour is missing is a fact withheld for no reason.
   const figs = FIGS.map((f) => {
-    const v = num(s[f.k]);
-    return v == null ? "" : `<p class="pbfig"><b>${f.fmt(v)}</b><span>${esc(f.unit)}</span>
-      <em>${esc(f.label)}</em></p>`;
+    const v = figOf(f, s);
+    return v == null ? "" : `<p class="pbfig"><b>${f.fmt(v)}</b>${f.unit ? `<span>${esc(f.unit)}</span>` : ""}<em>${esc(f.label)}</em></p>`;
   }).join("");
-  // The column now carries no judgement at all — style, hand, and two measurements. The
-  // shot-quality verdict that used to lead it was the one thing here that graded a player,
-  // and it graded them on rally length; see the note above ratingLabel's grave for the
-  // numbers. Nothing replaces it, because the honest version of that claim does not exist at
-  // this resolution yet.
+  // The column carries no judgement — style, hand, and two measurements. Every shot-quality
+  // verdict tried here graded players on rally length; see the note near the top of this file.
+  // Nothing replaces it, because the honest version of that claim does not exist at this
+  // resolution yet.
   if (!arch && !hand && !rallyFig && !figs) return "";
   return `<div class="pbside ${tag}" data-side="${tag}">
     ${arch ? `<p class="pbstyle">${esc(arch)}</p>` : ""}
@@ -918,13 +1100,13 @@ function profileSide(d, tag) {
 // can't, nothing under here is about this match — so the body has to say what it is itself,
 // before any of its numbers do.
 //
-// It used to ride inside the strip and head only what followed the strip, which left serve
-// direction above it uncovered once that section moved to the top. Everything in the body is
-// the same thing: what the charting has of these two players. So the line heads all of it.
+// It heads the whole body rather than riding inside the strip, because everything below is
+// the same thing: what the charting has of these two players.
 //
-// "Their charted matches, not this one", and no longer "career totals": serve direction is a
-// recent-form window rather than a career total, and a subtitle that covers the body has to
-// be true of every section in it. The section says which window in its own caption.
+// It reads "their charted matches, not this one" rather than "career totals", because serve
+// direction is a recent-form window rather than a career total, and a subtitle covering the
+// body has to be true of every section in it. Each section names its own window in its
+// caption.
 //
 // The asterisk is the other half of COV_NOTE below, which opens with one. It had no
 // counterpart anywhere in the panel, so the note at the foot read as a footnote to nothing
@@ -961,29 +1143,34 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
 // wants once and then never again, so it opens on request rather than spending the panel's
 // width on prose every reader has already read.
 //
-// The tour bands here do the job the scatter used to. Bits and percentage points are not
-// scales anyone arrives knowing, and the crowd of grey ×s behind the old field was what
-// supplied one; the band the middle half of the tour occupies says the same thing in a
-// clause. It is read off the build rather than written into the sentence, because a hardcoded
-// "2.9 to 3.2" is correct until the next rebuild and quietly wrong after it — which is exactly
-// how the README came to be quoting a correlation the data had stopped supporting.
+// The tour bands supply a scale. Bits and percentage points are not units anyone arrives
+// knowing, and the band the middle half of the tour occupies says in a clause what a scatter
+// of the whole field would take a chart to say. It is read off the build rather than written
+// into the sentence, because a hardcoded "2.9 to 3.2" is correct until the next rebuild and
+// quietly wrong after it.
 //
 // Only the figures at least one of these two players actually has get defined. A key that
 // explains a number nowhere on screen sends the reader looking for it.
 function figureKey(sa, sb, spread) {
-  const has = (k) => [sa, sb].some((s) => s && num(s[k]) != null);
+  const has = (k) => {
+    const f = FIGS.find((x) => x.k === k);
+    return [sa, sb].some((s) => s && (f ? figOf(f, s) : num(s[k])) != null);
+  };
   // The style line is a string, not a figure, so it needs its own test — num() on an
   // archetype name is NaN and `has` would drop the entry that most needs to exist.
   const hasStyle = [sa, sb].some((s) => s && s.archetype);
   // The unit rides on the upper bound only: "between 2.9 bits and 3.2 bits" says bits twice
   // for one range.
+  // Looked up by key, never by position in FIGS: indexing meant that adding a figure to the
+  // head of that list silently repointed another figure's tour band at the newcomer's spread,
+  // and a band that quietly resolves to nothing prints as no band at all rather than as an
+  // error. `spread` only carries the two figures whose quantiles the site cuts (see
+  // tourSpread), so anything else here correctly gets no band.
+  const bandFor = (k) => band(FIGS.find((f) => f.k === k));
   const band = (f) => {
-    const b = spread && spread[f.k];
+    const b = f && spread && spread[f.k];
     return b ? ` Half the charted tour sits between ${esc(f.fmt(b.lo))} and
       ${esc(f.say(b.hi))}.` : "";
-  };
-  const RALLY = {
-    k: "avg_rally_len", fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} shots`,
   };
   const defs = [
     // The style line leads the key because it leads the column, and because it is the one
@@ -1002,33 +1189,17 @@ function figureKey(sa, sb, spread) {
            at all. Naming one of them is a coin toss reported as a finding, so the panel
            doesn't. */""}
       <b>"Between styles"</b> means the two nearest groups fit this player about equally well,
-      so naming one would be a coin toss. It is a real answer rather than missing data — the
-      player has a fingerprint, it just doesn't sit inside one group — and it is what the
-      panel says for roughly a third of the players it can place at all. A named style is a
-      description of a centre, not a box: a player near the edge of their group genuinely
-      plays some of the neighbouring one.</div>`,
-    // The key follows the column, so it opens on the figure the column now leads with. The
-    // shot-quality entry that used to head it went when the verdict did.
-    !has("avg_rally_len") ? "" : `<div><b>Shots per point</b> is how many strokes the average
-      point lasts, counting both players and the serve, over every charted point this player
-      appeared in. It is as much a fact about the tennis they get drawn into as about them,
-      since both players in a point share its length — but it separates the tour sharply
-      anyway, from big servers near three strokes to grinders near seven, and it is the
-      plainest thing on this panel to check against a match you have watched.${band(RALLY)}
-      ${/* These are raw charted points with no adjustment: a
-           player charted mostly on clay is measured on longer points than one charted
-           mostly on grass, before either of them hits a ball. The same goes for era. */""}
-      It is not adjusted for where or when those points were played, and both move it by
-      more than the tour's own middle half: charted points run 5.2 strokes on clay, 4.7 on
-      hard and 4.0 on grass, and the 1990s sit about half a stroke below every decade
-      either side of them. So a clay-heavy career and a grass-heavy one are not being read
-      on the same scale.</div>`,
+      so naming one would be a coin toss.</div>`,
+    // The key follows the column, so it opens on the figure the column leads with. Kept to one
+    // line: the concept is plain, and the only thing a reader needs told is what gets counted.
+    !has("avg_rally_len") ? "" : `<div><b>Average point length</b> counts the serve that starts it and the
+      shot that ends it.</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from
       tour norms. A model built on the whole tour predicts each next shot from the two before
       it, and variety is how surprised that model is by this player, averaged over their shots
       and measured in bits. It rewards uncommon shot types about as much as uncommon order, so
       slicers and serve-volleyers score high. A player needs 800 charted strokes to
-      get one.${band(FIGS[0])}</div>`,
+      get one.${bandFor("bits")}</div>`,
   ].filter(Boolean);
   if (!defs.length) return "";
   // The units, after the figures that use them. They come last because a reader who wants to
@@ -1036,7 +1207,7 @@ function figureKey(sa, sb, spread) {
   // gated the same way, since a unit with nothing on screen measured in it is a definition of
   // nothing. Set as a glossary — the unit is the subject of its own line — rather than folded
   // into the figure above, which already carries two thresholds and a tour band.
-  const units = FIGS.filter((f) => has(f.k)).map((f) =>
+  const units = FIGS.filter((f) => has(f.k) && f.unitDef).map((f) =>
     `<div class="unitdef"><b>${esc(f.unit)}</b> ${f.unitDef}</div>`);
   return `<details class="notekey figkey">
     <summary>How these figures are measured</summary>
@@ -1044,14 +1215,14 @@ function figureKey(sa, sb, spread) {
   </details>`;
 }
 
-function tape(da, db, mu, spread) {
+function tape(da, db, spread) {
   // The rings take only the sides that clear the coverage floor; the profile columns beside
   // them take the player whole, since every figure in them carries its own gate already. A
   // side held back leaves its half of the ring empty, which is the shape the drawing already
   // has for a player the rates simply do not exist for — and the note says which it is, so an
   // empty half is never left reading as "no charting" when it means "not enough of it".
   const sa = wellCharted(da) ? da.s : null, sb = wellCharted(db) ? db.s : null;
-  const cells = sa || sb ? tapeRows(mu).map((r) => donut(r, sa, sb)).join("") : "";
+  const cells = sa || sb ? tapeRows().map((r) => donut(r, sa, sb)).join("") : "";
   const sideA = profileSide(da, "a"), sideB = profileSide(db, "b");
   if (!cells && !sideA && !sideB) return "";
   const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
@@ -1068,9 +1239,9 @@ function tape(da, db, mu, spread) {
     <h3 class="sechead">side by side</h3>
     <section class="tape">
     <div class="tapemain">${sideA}${rings}${sideB}</div>
-    ${cells ? `<p class="tapenote">
-      <span class="tickkey"></span> charted tour average ·
-      <span class="segkey deep"></span> aces, within serve points won</p>` : ""}
+    ${/* No key under the rings. Every mark on them now carries its own figure against it,
+         wearing the mark as a glyph, so a key would be naming things the drawing has already
+         named — and naming them a screen away from where they are. */""}
     ${thinNote}
     ${figureKey(sa || (da && da.s), sb || (db && db.s), spread)}
   </section></section>`;
@@ -1107,9 +1278,9 @@ function section(title, note, a, b, aHtml, bHtml, kind = "cards") {
   // Whose column is whose is said once per layout, and only where the layout stops saying it
   // by itself. Side by side — at any width — each column is capped by a rule in its player's
   // colour, in the same left-right order as the split under the scoreboard, which never
-  // scrolls away. A phone used to get a second pair of names in the sticky bar as well, so a
-  // court-pattern section arrived carrying the same key twice over columns that had not moved.
-  // Stacked, the position is genuinely gone, and each column names its own player.
+  // scrolls away — so repeating the names in the sticky bar would carry the same key twice
+  // over columns that had not moved. Stacked, the position is genuinely gone, and each column
+  // names its own player.
   return `<section class="msec ${kind}">
     <h3 class="sechead">${title}</h3>
     ${note ? `<p class="secnote">${note}</p>` : ""}
@@ -1228,8 +1399,8 @@ function notationHelp() {
 // control, and the site's controls carry SVG glyphs, not characters. A font's → is also
 // the wrong weight beside 700 uppercase at 9.5px — it is drawn for running text and comes
 // out a hairline. fill: currentColor, so the state that colours the label colours it too.
-// The ✓ that used to lead the charted label is gone: no other mark on the site is a
-// checkmark, and the two states already read apart on their words and their colour.
+// No ✓ leads the charted label: no other mark on the site is a checkmark, and the two states
+// already read apart on their words and their colour.
 const GO_ICON = `<svg class="gly" viewBox="0 0 11 8" width="11" height="8" aria-hidden="true">
   <rect x="0" y="2.9" width="7.4" height="2.2"/><path d="M6.4 0.4 11 4 6.4 7.6z"/></svg>`;
 
@@ -1305,9 +1476,9 @@ function eyebrow(t, round) {
 
 // When. A scheduled match carries its date and start time inside ESPN's detail string once
 // it has a court and a session, so printing the long date beside that would just say the day
-// twice. Before that the detail is the literal word "TBD" — which used to win here, because
-// it is a non-empty string, and printed itself over a date the feed already knew — so an
-// unscheduled match falls back to its day. A finished one says only the day: the state it
+// twice. Before that the detail is the literal word "TBD", which is a non-empty string and
+// would print itself over a date the feed already knows, so an unscheduled match falls back
+// to its day. A finished one says only the day: the state it
 // is in is already on the scoreboard, in the caret against the winner's name, and a word
 // for it beside the date was the same fact a second time in weaker type. ESPN's detail
 // here is only ever "Final" or "Retired", so nothing else is being dropped with it.
@@ -1396,21 +1567,21 @@ function headHtml(m, t, round) {
 // The three pattern sections then run in the order a point does: where the serve goes, what the
 // server does with the ball it comes back as ("off the return"), and only then the mid-rally
 // exchange ("court patterns"). Off the return is built out of the service court and the serve's
-// own direction, so it continues the section above it — it used to sit below court patterns,
-// which put a mid-rally ball between the serve and the shot the serve sets up.
+// own direction, so it continues the section above it. Below court patterns it would put a
+// mid-rally ball between the serve and the shot the serve sets up.
 //
 // The title is gated on there being a player under it. With neither side charted the body is
 // the invitation to go and chart one, and "Charted history" over "Neither player has Match
 // Charting history yet" heads a section with the word "history" twice and no history in it.
 // The two conditions are exact opposites, so exactly one of them ever prints.
-function bodyHtml(m, pa, pb, mu, gates, spread) {
+function bodyHtml(m, pa, pb, gates, spread) {
   const a = m.a, b = m.b;
   const ta = trigSets(pa), tb = trigSets(pb);
   const none = !pa && !pb
     ? `<p class="nochart">Neither player has Match Charting history yet.
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
   return (pa || pb ? CHARTED_TITLE + profileBand(pa, pb) : "") +
-    tape(pa, pb, mu, spread) +
+    tape(pa, pb, spread) +
     section("serve direction", `recency weighted measures of first serve direction by court side`, a, b,
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
     none +
@@ -1563,8 +1734,8 @@ function namesWrap(grid) {
 //
 // When that happens depends on the match as much as on the window: five sets of games take
 // twice the middle of the band that straight sets do, and "A. Zverev" is not the width of
-// "Q. Halys". A breakpoint can see none of that — this used to switch at 620px, wider than
-// any phone in portrait, so every phone got the fallback and none of them needed it.
+// "Q. Halys". A breakpoint can see none of that: switching at 620px, wider than any phone in
+// portrait, gives every phone a fallback none of them needs.
 //
 // Above 620px the stacked class is inert (see the stylesheet): there is room on a wide panel
 // for a long name to take two lines, and the stagger is still the better header. Setting it
@@ -1662,13 +1833,12 @@ export async function openMatchup(m, t) {
   body.innerHTML = `<div id="cardslot" class="loading">Loading…</div>
     ${notationHelp()}`;
 
-  let pa, pb, mu, gates, spread;
+  let pa, pb, gates, spread;
   try {
     [pa, pb] = await Promise.all([
       playerData(m.a.matched, t.gender),
       playerData(m.b.matched, t.gender),
     ]);
-    mu = (await leagueMu())[t.gender];
     gates = (await serveGates())[t.gender] || {};
     spread = (await tourSpread())[t.gender] || {};
   } catch (e) {
@@ -1683,5 +1853,5 @@ export async function openMatchup(m, t) {
 
   const slot = document.getElementById("cardslot");
   slot.classList.remove("loading");
-  slot.innerHTML = bodyHtml(m, pa, pb, mu, gates, spread);
+  slot.innerHTML = bodyHtml(m, pa, pb, gates, spread);
 }

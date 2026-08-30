@@ -43,7 +43,7 @@ the score tree: (a) does form-entering-a-match predict the *realized residual*
 of that match (decile plot + slope)? (b) is the distribution of per-player
 autocorrelations distinguishable from a within-player permutation null?
 
-## Honest limitations
+## Limitations
 
 - **Charted matches are a sparse, biased sample of a season.** Consecutive
   charted matches can be months apart, and charting skews to TV courts and

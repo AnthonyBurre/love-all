@@ -18,8 +18,7 @@ rather than the league average.
 - **`cluster.py`** — numpy only (no new deps): standardize → PCA (view) → k-means++ with
   restarts at a fixed **k=4**; clusters described by their most extreme standardized features
   + nearest-centroid exemplars. Silhouette is flat across k **≥ 3**, so among those the count
-  is a presentation choice — see the note on k below, which corrects an earlier claim that it
-  was flat across k generally.
+  is a presentation choice — see the limitation on k below.
 - **`run.py`** — per gender: fingerprint → cluster → figures + report + the mapping CSV.
 
 ```bash
@@ -40,10 +39,9 @@ all-rounder), Pegula (baseline all-rounder → grinder) — and the report lists
 evolve *within* their archetype, consistent with the career-split finding that most evolution is
 style-drift, not a wholesale change. Without the table it falls back to one row per player.
 
-These names move between rebuilds and this paragraph has been stale before: the crossing set is
-by construction the entities nearest a boundary, which is exactly the population the confidence
-gate below exists to distrust. `reports/player_styles.md` is regenerated on every run and is the
-authority; treat this list as an illustration of the shape, not a fixed finding.
+The crossing set is by construction the entities nearest a boundary — exactly the population the
+confidence gate below exists to distrust — so these names move between rebuilds. Read the list
+as the shape of the result; `reports/player_styles.md` is the authority.
 
 ## What it finds (face validity)
 
@@ -59,17 +57,17 @@ The archetypes line up with how fans would describe these players:
   Bouchard), and a rare *Slice & net specialist* archetype (Navratilova, Niculescu,
   Tatjana Maria).
 
-The *Baseline all-rounder* label is the cascade's else-branch and is named to say so.
-It used to read *All-courter*, which is a claim about court coverage and net play that
-this centroid does not support — its net rate is slightly *below* average — on what is
-the largest asserted women's group. Players there are the ones no earlier branch
-described, not players who have been found to play all-court tennis.
+The *Baseline all-rounder* label is the cascade's else-branch and is named to say so: players
+there are the ones no earlier branch described, not players found to play all-court tennis. It
+is deliberately not *All-courter*, a claim about court coverage and net play that this centroid
+does not support — its net rate is slightly *below* average — on the largest asserted women's
+group.
 
 Labels describe each cluster's *centroid*; a cluster spans a range, so a borderline
 player can read as the neighbouring style — Medvedev is a consistent wall who lands among the
 big servers because of his serve.
 
-## Honest limitations
+## Limitations
 
 - **Style is a continuum, not species.** Silhouette scores are low (~0.11–0.14):
   players spread smoothly, so the clusters are *soft strata*, useful for stratifying,
@@ -110,24 +108,17 @@ big servers because of his serve.
   None of this hurts the clustering, which only needs entities placed on a common axis.
   It matters for the shipped figure, where the panel's key states it.
 
-## What the fingerprint fed, and how that turned out
+## What the fingerprint feeds
 
-`reports/player_style_clusters.csv` (player, gender, cluster, archetype, `style_margin`,
-`style_confident`, plus the fingerprint features themselves) was the bridge to what was meant
-to be the differentiated product: measure each player's shot quality against what their style
-predicts, separating skill from style in a way the league-baseline leaderboard in
-`chess_point_analysis` cannot.
+`reports/player_style_clusters.csv` carries player, gender, cluster, archetype,
+`style_margin`, `style_confident`, and the fingerprint features themselves.
 
-**That did not work, and the site does not print it.** `class_relative_wpa` benchmarks against
-a smooth fit over these features rather than a cluster mean — the right choice, since the
-cluster label is a step function that moves — but the ridge penalty is solved to absorb only as
-much variance as the four class means did, which it achieves by explaining a shrunken copy of
-the whole style axis. The residual keeps the rest: it correlates −0.99 with the raw score and
-66% of its variance is rally length. See that experiment's report for the numbers. The
-fingerprint is still the right object; what it could not support was a per-player skill verdict
-at this resolution.
+It was meant to feed a per-player skill verdict — shot quality measured against what a
+player's style predicts. That did not work; `../class_relative_wpa` has the arithmetic. The
+fingerprint is still the right object, but it could not support a skill verdict at this
+resolution.
 
-The one thing the clusters do feed into the site is the archetype line itself, and only where
+What the clusters do feed into the site is the archetype line itself, and only where
 `style_confident` holds.
 
 Two columns exist because the label is softer than it looks. `style_margin` is the

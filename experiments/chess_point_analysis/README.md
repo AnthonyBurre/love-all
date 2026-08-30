@@ -25,9 +25,6 @@ All of these have since graduated into the library (`match_charting_project.shot
 
 ## Files
 
-Everything this spike built proved useful and **graduated into the library** — it's
-reusable infrastructure now, not experiment-local:
-
 - `match_charting_project.shots.notation` — the decoder (parser, `stroke_kind`,
   `iter_parsed_points`, `point_features`) with a `points_parsed` materialize step
   (`match-charting-project shots`) and tests in `tests/test_notation.py`.
@@ -45,9 +42,8 @@ reusable infrastructure now, not experiment-local:
   `../class_relative_wpa`. Treat `avg_wpa_lost` as an input to a style-relative
   comparison, never as a standalone ranking.
 
-What stays here is the demo driver:
-
-- `run.py` — end-to-end: fit the eval per gender, emit figures + a findings report.
+What stays in this folder is the demo driver, `run.py`: fit the eval per gender, emit
+figures and a findings report.
 
 ## Run
 
@@ -78,7 +74,7 @@ uv run python experiments/chess_point_analysis/run.py   # eval + quality + repor
   Sorribes Tormo, Wozniacki, Radwanska) and high-variance shotmakers at the bottom
   (Cressy, Opelka; Ostapenko, Galfi).
 
-## Honest limitations
+## Limitations
 
 - **No oracle for the "best" stroke.** Unlike a chess engine, negative WPA blends shot
   *selection*, *execution*, and the *pressure* the opponent applied. The forced/unforced
@@ -87,12 +83,8 @@ uv run python experiments/chess_point_analysis/run.py   # eval + quality + repor
 - **Still a coarse state.** The eval reads the last stroke (wing, drive/slice/net
   kind, direction, net-approach, depth) plus capped ply — well-populated and now much
   more resolving, but it ignores the game/set score and flattens very long rallies
-  (the oscillating eval late in the annotated point). (A score-aware variant was later
-  tested in `../score_aware_eval` — it did **not** improve the eval, confirming the
-  Klaassen–Magnus point-independence result, so the score stays out of the state.)
+  (the oscillating eval late in the annotated point). A score-aware variant was tested in
+  `../score_aware_eval` and did **not** improve the eval, confirming the Klaassen–Magnus
+  point-independence result, so the score stays out of the state.
 - **Charting bias.** Win rates inherit the same coverage skew the repo documents
   (later rounds over-charted); treat cross-player numbers as indicative, not official.
-
-The parser + eval + quality scoring all proved useful and were graduated into
-`src/match_charting_project/shots/`; the downstream experiments (`player_styles`,
-`shot_language`, `class_relative_wpa`, `match_winprob`, …) build on them from there.

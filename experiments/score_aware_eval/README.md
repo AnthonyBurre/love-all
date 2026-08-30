@@ -97,8 +97,7 @@ numbers exactly (men 0.6758, women 0.6833) — same eval, same split.
 ## Implication
 
 Keep **one point-dynamics eval** as the shared currency; do not condition it on the
-score. The score *does* matter — but for **leverage** (which points are worth more),
-not for **point-win probability**. That belongs in a layer *on top of* the eval (a
-game→set→match win-probability / leverage model that weights each shot's WPA by how
-much its point swings the match), not inside it. The point eval should stay the
-honest, score-blind "how is this rally going" engine that such a layer consumes.
+score. The score *does* matter, but for **leverage** — which points are worth more —
+not for **point-win probability**. That belongs in a layer on top of the eval: a
+game→set→match win-probability model that weights each shot's WPA by how much its point
+swings the match. See `../match_winprob`.

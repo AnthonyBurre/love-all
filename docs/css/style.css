@@ -18,11 +18,10 @@
      pairing is belongs to the data, not to the tournament it happens at. Themed, the top
      tier was green at Wimbledon and clay-red at Roland Garros — the scale changed meaning
      between events, and on the clay band it changed places with the tier below it.
-     Gold is the top step now and not the second one. A saturated gold beside a
-     desaturated accent is the one being pointed at whatever the legend says, which is
-     why the old mid tier read as the deep one.
-     --cov-thin and --cov-none are three steps apart in lightness where they used to be
-     one; at #c8cfd9 against #dde2ea the bottom two tiers were the same mark. */
+     Gold is the top step, not the second one: a saturated gold beside a desaturated accent
+     is the one being pointed at whatever the legend says.
+     --cov-thin and --cov-none are three steps apart in lightness; one step apart, at
+     #c8cfd9 against #dde2ea, the bottom two tiers are the same mark. */
   --cov-rich: #c8901a;     /* deep charting — gold */
   --cov-some: #e6c885;     /* decent — the same hue, drained */
   --cov-thin: #93a0b2;     /* thin — neutral: too little to read patterns from */
@@ -86,7 +85,7 @@
 
 /* Tournament / season themes (picked by app.js from the selected event).
    Only the three colours the event actually owns change; ink, bg, line and the meta
-   tint are shared, so a theme can no longer drift its own contrast. */
+   tint are shared, so a theme cannot drift its own contrast. */
 [data-theme="clay"] {
   --acc: #b4552f; --acc-d: #7d3319; --trim: #f0c65a;
 }
@@ -102,8 +101,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); }
 /* The meta line is a tint of the event's own accent rather than a hand-picked colour per
-   theme — four hand-picked tints is four chances to get one wrong, and one of them was:
-   the old aus-hard pair measured 3.27:1 on its band, under the 4.5 small text needs.
+   theme — four hand-picked tints is four chances to get one wrong, and one hand-picked
+   aus-hard pair measured 3.27:1 on its band, under the 4.5 small text needs.
    At 28% it measures 6.19:1 at Roland Garros and 9.04:1 at the US Open, against the
    colour actually under the text. That last part matters: the band is a 112° gradient, so
    "on the band" is not one number. This row sits at ~0.60 along the gradient line — past
@@ -130,17 +129,17 @@ a { color: var(--acc-d); }
 .site-head > .wrap { position: relative; z-index: 2; }
 .site-head::before { content: ""; position: absolute; inset: 0 0 0 auto; width: 40%;
   background: linear-gradient(102deg, transparent 50%, rgba(255,255,255,.05) 50%); }
-/* The trim used to be a 4px rule the full width of the band. As a rule it had to be a
-   colour that could hold its own across the whole edge, and the clay one couldn't — dark
-   green on terracotta measured 1.30:1, which is to say it wasn't there. As a short wedge
-   it only has to be seen once, so it can be the bright accent the event actually wants. */
+/* A short wedge, not a rule the full width of the band. A full-width rule has to hold its
+   own across the whole edge, which the clay one cannot — dark green on terracotta measures
+   1.30:1, which is to say it isn't there. A wedge only has to be seen once, so it can be
+   the bright accent the event actually wants. */
 .site-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
   background: var(--trim); clip-path: polygon(0 0, 34% 0, 30% 100%, 0 100%); }
 .site-head .brand { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: var(--head-meta); }
 .site-head h1 { margin: 4px 0 8px; font-size: 40px; font-weight: 800; line-height: 1.05; letter-spacing: -0.035em; }
-/* The only prose in the band now that the site's general blurb is gone: it describes the
-   draw you are looking at rather than the site, so it takes the full-strength ink and
-   enough weight to read as part of the title block instead of a footnote to it. */
+/* The only prose in the band: it describes the draw you are looking at rather than the
+   site, so it takes the full-strength ink and enough weight to read as part of the title
+   block instead of a footnote to it. */
 .site-head .billing { margin: 0; max-width: 760px; line-height: 1.5;
   font-size: 13.5px; font-weight: 600; letter-spacing: .01em; color: var(--head-ink); }
 .billing-line { display: block; }
@@ -168,8 +167,8 @@ a { color: var(--acc-d); }
 .tourselect:hover { border-color: var(--acc); }
 .tourselect:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
 
-/* match-tier legend. The tier used to be a thick left border; it is now the same corner
-   wedge the match cards wear, so the legend and the thing it explains are the same shape.
+/* match-tier legend. The tier is the same corner wedge the match cards wear, not a left
+   border, so the legend and the thing it explains are the same shape.
    The wedge is drawn from currentColor so one rule sets both triangle edges. */
 .legend { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap; }
 .legend .chip { position: relative; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 4px 9px 4px 14px; clip-path: var(--chip-clip); background-color: var(--card); border: 1px solid var(--line); }
@@ -233,11 +232,11 @@ a { color: var(--acc-d); }
    card is still a rectangle to read, and 9px of corner is width the names and the games
    were never using. The 8-across row cuts less (6px): its cards are ~135px wide, and a cut
    sized for a 250px card eats into a 12px name there.
-   corner-shape, and not the clip-path this used to be. A clip is applied *after* everything
-   the element paints, so it took the border off the four diagonals and erased the offset
-   hover shadow and the focus ring entirely — three separate things then had to be rebuilt
-   inside the box (a hand-drawn evenodd ring for the outline, inset shadows standing in for
-   a lift). A bevel is the box's own geometry instead: border, box-shadow and outline all
+   corner-shape, not a clip-path. A clip is applied *after* everything the element paints,
+   so it takes the border off the four diagonals and erases the offset hover shadow and the
+   focus ring entirely, leaving three separate things to rebuild inside the box (a
+   hand-drawn evenodd ring for the outline, inset shadows standing in for a lift). A bevel
+   is the box's own geometry instead: border, box-shadow and outline all
    follow it for free, which is why every rule below this point is simply the full draw's,
    inherited. Where corner-shape isn't supported the whole block is skipped and the cards
    come out square — the full draw's corner, which is the right thing to degrade to.
@@ -249,8 +248,8 @@ a { color: var(--acc-d); }
   /* --- charting depth, told by the corners ------------------------------------------
      The tier mark moves into the facets the bevel opens up, and *how many are filled*
      is the depth: four for deep charting, two for decent, one for thin, none for
-     uncharted. The colour still says it — same ramp as the legend — but it is no longer
-     the only thing saying it, and a count survives what a shade does not: a greyscale
+     uncharted. The colour still says it — same ramp as the legend — but it is not the only
+     thing saying it, and a count survives what a shade does not: a greyscale
      print, a red-green reader, and the corner of the eye halfway down a 32-card draw.
      Which is the job this mark actually has. Nobody reads a card to learn its tier;
      they sweep a draw looking for the matches worth opening.
@@ -374,11 +373,10 @@ a { color: var(--acc-d); }
 .match.t-some { --tier: var(--cov-some); background-color: var(--tint-some); }
 .match.t-thin { --tier: var(--cov-thin); }
 .match.t-none { --tier: var(--cov-none); }
-/* Transparent used to mean "the page's own colour", since nothing sat between a card and
-   var(--bg) — so an undecided slot and the page itself were the same fill, and the card
-   only read as a card at all because of its dashed edge. A step of --line off --card does
-   the same job the tint does for the charted tiers: the fill itself now says "nothing
-   decided here" instead of leaving that entirely to the border. */
+/* Not transparent. Nothing sits between a card and var(--bg), so a transparent fill makes
+   an undecided slot and the page itself the same colour, leaving the dashed edge as the
+   only thing marking it as a card. A step of --line off --card does the job the tint does
+   for the charted tiers: the fill itself says "nothing decided here". */
 .match.t-tbd { --tier: var(--line); border-style: dashed;
   background-color: color-mix(in srgb, var(--line) 22%, var(--card)); }
 .match.ghost { cursor: default; }
@@ -468,7 +466,7 @@ a { color: var(--acc-d); }
   background: var(--card); border: 1px solid var(--hd-line);
   border-top-width: 0; border-right-width: 0; clip-path: var(--chip-clip-r);
   transition: background .12s ease, border-color .12s ease; }
-/* Centred on the chip, not on the target — the two no longer share a centre. Both the
+/* Centred on the chip, not on the target — the two do not share a centre. Both the
    ::before and the glyph are positioned, so they stack in source order and the mark stays
    on top without a z-index. */
 .matchup .close svg { position: absolute; display: block; fill: currentColor;
@@ -555,21 +553,20 @@ a { color: var(--acc-d); }
   color: var(--hd-mut); background: var(--card); border: 1px solid var(--hd-line); }
 /* Top left, which is where you start reading — the event and round say which match this is
    before the names say who is in it. It leaves the top right to the close button alone, so
-   this row no longer has to keep out of --close-lane; the lane is still what the condensed
+   this row does not have to keep out of --close-lane; the lane is what the condensed
    right-hand name uses, since that one does come up level with the button.
-   The two pills run along the row rather than stacking down it. Stacked, they were two
-   boxes of different widths with nothing to line up on but their outer ends, which is the
-   shape a ragged edge takes; and the second one cost the header 21px that a scheduled match
-   paid and a finished one didn't, so the same panel came out two heights. Side by side they
-   read as one line of chrome and the header is one height. They still wrap when a long event
-   name and a start time won't share a phone's width, left-aligned to the same edge. */
+   The two pills run along the row rather than stacking down it. Stacked, they are two boxes
+   of different widths with nothing to line up on but their outer ends, and the second one
+   costs the header 21px that a scheduled match pays and a finished one doesn't, so the same
+   panel comes out two heights. Side by side they read as one line of chrome and the header
+   is one height. They still wrap when a long event name and a start time won't share a
+   phone's width, left-aligned to the same edge. */
 /* The negative margins take the row out through the band's padding and pin it to the
-   panel's top-left corner; the 14 underneath is the air the names need, which the padding
-   used to be providing from above. */
-/* The row stops --close-chip-w short of the panel's right edge, plus a gap. It could always
-   grow to the band's own content edge, which used to be a dead click zone under an
-   invisible button and is now the close button's chip: a long enough event name ran under
-   a thing you can see. Written off the panel's width rather than the band's, since that is
+   panel's top-left corner; the 14 underneath is the air the names need, which the band's
+   padding would otherwise provide from above. */
+/* The row stops --close-chip-w short of the panel's right edge, plus a gap. Grown to the
+   band's own content edge it would run a long enough event name under the close button's
+   chip. Written off the panel's width rather than the band's, since that is
    what the chip is pinned to — 100% here is the content box, and the two paddings put it
    back. Reaching the limit wraps the date to a second line, which is what the row already
    did on a phone.
@@ -634,8 +631,8 @@ a { color: var(--acc-d); }
 .matchup.cond .mcorner { gap: 0; margin: 0; }
 .matchup.cond .mp { font-size: 17px; }
 /* condensed, the names come up level with the close button, so the right-hand one keeps
-   clear of it — the event line that used to do that job is the thing that just left. Same
-   lane the corner keeps, because it is the same button being kept clear of. */
+   clear of it — the event line that does that job in the full header is gone at this size.
+   Same lane the corner keeps, because it is the same button being kept clear of. */
 .matchup.cond .mp.b { padding-right: var(--close-lane); }
 .matchup.cond .sg { font-size: 14px; }
 .matchup.cond .mflag { font-size: 13px; }
@@ -694,19 +691,18 @@ a { color: var(--acc-d); }
 .mp.lose { color: var(--hd-mut); }
 /* Both renderings of the name ship, and fitHeader() picks between them — the full name by
    default, the first name down to an initial once the gap has been spent and the name would
-   otherwise break over two lines. It used to be a straight media-query swap at 700px, which
-   abbreviated every name on every phone whether or not it was the one that didn't fit;
-   "Q. Halys" was being shown where "Quentin Halys" had room to spare. */
+   otherwise break over two lines. A straight media-query swap at 700px would abbreviate
+   every name on every phone whether or not it was the one that didn't fit, showing
+   "Q. Halys" where "Quentin Halys" has room to spare. */
 .mabbr { display: none; }
 .mgrid.abbr .mfull { display: none; }
 .mgrid.abbr .mabbr { display: inline; }
-/* The winner's caret, pointing into their name from the score side. Dark and 12px it was
-   the same weight as a full stop sitting at the end of the name, and that is what it looked
-   like. It is now the only thing in the header saying the match is over — the word that used
-   to say so beside the date is gone — so it is sized to be found rather than merely noticed.
-   Still short of the 24px names: a caret that matches them competes with the thing it is
-   marking, and this one only has to be seen once. One gold both sides — see --win.
-   ◀ is a fuller glyph than the ◂ it replaced — solid, and drawn to the em rather than
+/* The winner's caret, pointing into their name from the score side. Dark and 12px it reads
+   as a full stop at the end of the name. It is the only thing in the header saying the match
+   is over — nothing beside the date says so — so it is sized to be found rather than merely
+   noticed. Still short of the 24px names: a caret that matches them competes with the thing
+   it is marking, and this one only has to be seen once. One gold both sides — see --win.
+   ◀ is a fuller glyph than ◂ — solid, and drawn to the em rather than
    inset — so 18px here would land bigger than the 18px before it. 14px holds the size
    the mark actually read at. */
 .mwin { flex: none; font-size: 14px; line-height: 1; color: var(--win); margin-left: -2px; }
@@ -772,9 +768,10 @@ a { color: var(--acc-d); }
    placeholder. */
 /* flex, not inline-flex: an inline-level box sits on a line box, and a line box is at least
    one line of leading tall whether or not the box on it has any height. Collapsed to
-   max-height:0 for the condensed header this one still left ~19px of blank line behind it —
-   the header shrank around a gap the button was no longer in. Block-level it takes exactly
-   its own height, which when collapsed is none. width:fit-content still shrink-wraps it. */
+   max-height:0 for the condensed header, an inline-level box still leaves ~19px of blank
+   line behind it and the header shrinks around a gap the button is not in. Block-level it
+   takes exactly its own height, which when collapsed is none. width:fit-content still
+   shrink-wraps it. */
 /* The negative margins take the row out through the band's padding to the panel's edges,
    the way the corner row does at the top. The bottom one stops it on the split rule rather
    than at the band's floor — the rule is the band's own edge as far as anything inside it
@@ -873,21 +870,31 @@ a { color: var(--acc-d); }
 .ct-bounce { fill: var(--card); stroke: var(--muted); stroke-width: 1.1; }
 
 /* --- the comparison strip, headed "side by side" ---------------------------------
-   Both players' headline numbers on one axis: bars grow outward from a shared centre,
-   so a gap reads as a shape rather than as arithmetic between two distant columns. The
-   hairline on each bar is the tour average, where the metric has one. */
+   Both players' headline numbers on one axis, bent into a ring: each sweeps out of a shared
+   origin at the foot, so a gap reads as a shape rather than as arithmetic between two distant
+   columns. A spoke across the band carries a second figure of that player's own, the games
+   the sweep turns into. See the note over donut() in matchup.js for what a ring encodes and
+   why only two metrics are drawn on one. */
 /* --dn-size is the drawn diameter of one ring, set here because the box it sits in is what
-   there is to divide up. The rings stack one per row now at every width (see .tapemain), so
-   the ring no longer shares its row with a second one below 761px either — it can spend the
-   width that used to buy two rings side by side on one, larger ring instead.
+   there is to divide up. The narrow value came down from 156 when the flanks took on a second
+   qualifier: a phone gives the ring's row 321px and the ring is the part of it that can give
+   width back, so 144 plus an 8px gap leaves ~80px a side. That is what the headline figure and
+   its unit need on one line at the highest serve rate on tour ("72.4% points", 77px); the
+   double-fault line is longer than that and wraps, which is the right one of the two to break. The rings stack one per row at every width (see .tapemain), so a
+   ring never shares its row with a second one — it spends the whole width on one larger ring
+   instead of two side by side.
    Sized against measured slack rather than guessed at. A ring's row is shrink-to-fit inside a
    centred track (.dn has min-width:0 in a centre-aligned column), so the flanking figures are
    not squeezed as the ring grows — the row simply widens until it fills its track, and the
-   track is 336px narrow / 340px wide against a row that was using 255 / 271. These sizes spend
-   part of that and leave ~58px / ~46px still standing, so the longest qualifier on the panel
-   ("10.4% aces") keeps its own line at either width. */
+   ring keeps these sizes while the track is widened to whatever the qualifiers beside it
+   need. The longest line a flank can carry is 88px — "10.5% double faults" and "5.5% return
+   winners" come out the same width, both measured off the worst rate on the charted tour
+   rather than off whichever players happened to be on screen. The track that gets a flank to
+   88 is 380, not the 368 the parts add up to: the ring's row is shrink-to-fit inside it and
+   the fr tracks either side of the ring do not hand over their last few pixels until the
+   track has them to give. Measured rather than derived, and set a little over. */
 .tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0;
-  --dn-size: 156px; }
+  --dn-size: 160px; --dn-pad: 76px; }
 /* The first thing in the scroll, right under a header that just named this match — so
    without a label over them, the numbers below default to reading as this match's. They're
    the opposite, which is what the "not this one" half says outright rather than trusting
@@ -922,10 +929,10 @@ a { color: var(--acc-d); }
    half of them wrap — which is fine, it is the one thing here worth two lines. */
 .pbstyle { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--ink); }
 .pbhand { margin: 1px 0 0; font-size: 11px; color: var(--muted); }
-/* The column's headline figure — rally length, where the shot-quality score used to be; see
-   profileSide() for why that score is no longer a number. The unit is set small and the name
-   smaller still: the figure is what is being read, and "shots" and "per point" are both there
-   to tell you what it is once. */
+/* The column's headline figure — rally length; see profileSide() for why no shot-quality
+   score stands here instead. The unit is set small and the name smaller still: the figure is
+   what is being read, and "shots" and "per point" are both there to tell you what it is
+   once. */
 .pbq { margin: 9px 0 0; line-height: 1.1; }
 /* Proportional figures, not tabular. Equal-width digits are for numbers that have to line up
    down a column; on a standalone figure at this size they set every 1 in the width of a 0 and
@@ -961,9 +968,9 @@ a { color: var(--acc-d); }
 .pbverdict + .pbq { margin-top: 13px; }
 /* The shot-quality verdict, leading the figures. It takes .pbq's shape — finding first, label
    under it — at a smaller size, because it is a finding of the same kind and not a footnote to
-   the figure below it: the score it used to caption is gone, so it stands on its own subject
-   now and the label under it is what says which subject that is.
-   Deliberately not set at .pbq's 22px even though it now comes first. It is a phrase, not a
+   the figure below it: it stands on its own subject, and the label under it says which
+   subject that is.
+   Deliberately not set at .pbq's 22px even though it comes first. It is a phrase, not a
    digit, and at that size it is a headline sentence over three lines in half a phone column —
    so the one number in the column stays the one thing set large, and order rather than size is
    what puts the judgement first.
@@ -1052,9 +1059,9 @@ a { color: var(--acc-d); }
   grid-template-areas: "sa sb" "rings rings"; align-items: start; }
 .tapemain > .pbside.a { grid-area: sa; }
 .tapemain > .pbside.b { grid-area: sb; }
-/* One ring per row, centred: each ring already pulls its own flanking numbers in against
-   itself (see .dside below), so a ring reads centred at any track width regardless of how
-   much of the row's width is actually spare either side of it. */
+/* One ring per row, centred. A ring is a fixed-size drawing with a fixed reserve either side
+   for the figures that hang off it (see .dn), so it reads centred at any track width
+   regardless of how much of the row is actually spare. */
 .dnstack { grid-area: rings; display: flex; flex-direction: column; align-items: center;
   gap: 22px; min-width: 0; }
 @media (min-width: 761px) {
@@ -1063,23 +1070,35 @@ a { color: var(--acc-d); }
      stack now sets the height of. Only the stack itself is asked to centre — align-self on
      .dnstack alone — so it climbs to the middle of that height while the rule at the top of
      each style column stays put. */
-  .tapemain { grid-template-columns: 1fr minmax(270px, 340px) 1fr;
+  /* The ring track takes what the flanks need and the style columns give it up: they hold
+     three short lines each against a 90px min-content, so the ~22px apiece this costs them is
+     slack rather than a squeeze. */
+  .tapemain { grid-template-columns: 1fr minmax(270px, 356px) 1fr;
     grid-template-areas: "sa rings sb"; align-items: start; }
   .dnstack { align-self: center; }
   /* Room to spend, now the rings have a track of their own instead of sharing a row with a
-     second ring: the wider a ring is drawn, the more its arc can say. */
-  .tape { --dn-size: 172px; }
+     second ring: the wider a ring is drawn, the more its arc can say — and the further apart
+     two figures land when the values behind them are close, which is what decides whether a
+     label sits beside its own mark or on top of its neighbour. */
+  .tape { --dn-size: 200px; --dn-pad: 76px; }
 }
-.dn { min-width: 0; }
+/* The room the figures need outside the drawing. A label's anchor sits just past the band, so
+   the one nearest nine or three o'clock starts a twentieth of the ring's width from its edge
+   and the whole line hangs past it — which makes this a function of the longest line a ring
+   carries rather than of the ring's size, and very nearly a constant across the two.
+   76px, from the widest case the data actually produces: a leader's points figure — set
+   heavier than the other side's, and so wider — on a return ring where the arc ends near nine
+   o'clock. Measured across all 363 players the rings print for, at both ring sizes. */
+.dn { min-width: 0; padding: 0 var(--dn-pad) 20px; }
 /* The two ends of the ring's scale, at the two ends of the ring: zero at the foot both sweeps
    leave from, the ceiling at the top they climb toward. Printed rather than assumed, because
    the two rings do not share one — "67%" against an arc at two thirds says nothing without it
    — and printed on the drawing rather than in a caption above it, because this is where a
    reader looks to find out what an arc has reached.
    Set inside the hole, hard against the band's inner edge — the end of the scale each one
-   marks. They used to sit outside, in a row above and a row below, which cost the stack two
-   lines of height per ring for twelve characters and left the ceiling floating a whole label
-   away from the arc climbing toward it.
+   marks. Outside, in a row above and a row below, they cost the stack two lines of height
+   per ring for twelve characters and leave the ceiling floating a whole label away from the
+   arc climbing toward it.
    19% is where the hole starts. The band's inner edge is DN_R - DN_W/2 = 31 of the viewBox's
    100 units from the centre, and the centre is at 50, so the hole's top is at 19 and its foot
    at 81. Percentages here resolve against .dnring, which is exactly --dn-size square, so the
@@ -1092,39 +1111,81 @@ a { color: var(--acc-d); }
   font-variant-numeric: tabular-nums; line-height: 1.3; pointer-events: none; }
 .dncap.top { top: calc(19% + 2px); }
 .dncap.zero { bottom: calc(19% + 2px); }
-/* The ring on the panel's own centre line, with a player either side of it. Equal outer
-   tracks rather than tracks sized to their contents: the two qualifiers are rarely the same
-   length, and sized to them the ring would sit off-centre by half the difference — which is
-   the one thing this layout exists to avoid. */
-.dnrow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center; gap: 10px; }
-/* The ring is now one box exactly the drawing's size, with everything else laid over it: the
-   two scale ends and the name all sit in the hole. It was a flex column stacking a cap, the
-   drawing and a cap, which made its height the drawing plus two lines of type — so the row it
-   sits in, and the stack of rows, carried that twice over for no picture. */
+/* One box exactly the drawing's size, with everything else laid over it: the two ends of the
+   scale and the ring's name sit in the hole, and the six figures sit outside the band against
+   their own marks. Those reach past this box, which is what .dn's padding holds room for. */
 .dnring { position: relative; width: var(--dn-size); height: var(--dn-size); }
-.dnring svg { display: block; width: 100%; height: 100%; }
+/* overflow visible so the leaders can run past the foot of the viewBox to the row the
+   outright-win figures sit on — see dnLead(). Nothing else is drawn outside the box. */
+.dnring svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* The leader from a wedge to its figure. A hairline, and lighter than the figure it arrives
+   at: it is the connection that matters, not the line. 0.6 of the viewBox's 100 units comes
+   out near a physical pixel at both ring sizes, which is what keeps it from reading as a mark
+   on the drawing in its own right. */
+.dlead { fill: none; stroke: color-mix(in srgb, var(--muted) 55%, transparent);
+  stroke-width: 0.6; }
 /* The ring's name, in its own hole rather than set as a line of print over the row — see
    donut(). Shrunk and shortened (tapeRows' `short`) to fit the clear space the ring's stroke
    leaves at its centre, and centred there, which keeps it clear of the two scale ends tucked
    against the top and foot of the same hole. */
 .dnttl { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  margin: 0; width: 64px; text-align: center; font-size: 9px; font-weight: 700;
+  margin: 0; width: 88px; text-align: center; font-size: 9px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .03em; line-height: 1.25; color: var(--muted);
   pointer-events: none; }
-/* Each player's pair reads outward from the ring: the number against it, the qualifier
-   under the number. No colour chip on either — the side is the key, and it is the same side
-   the player's own arc climbs. */
-.dside { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.dside.a { align-items: flex-end; text-align: right; }
-.dside.b { align-items: flex-start; text-align: left; }
-/* one ring's figure and its qualifier, kept together; the gap above separates the pairs
-   where a cell nests two rings */
-.dpair { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.dv { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
-  color: var(--muted); line-height: 1.2; }
-.dv.lead { color: var(--ink); font-weight: 800; }
-.ds { font-size: 10px; color: var(--muted); line-height: 1.4; }
+/* The hole is 62% of the ring across — 124px on the desktop drawing against 99 on the phone —
+   so the name can be set at the size it is actually the title of something at, rather than at
+   the size the smaller hole allows. */
+@media (min-width: 761px) {
+  .dnttl { width: 108px; font-size: 12.5px; letter-spacing: .04em; }
+}
+/* --- the floating figures ----------------------------------------------------------
+   Every number the ring carries is set against the mark it is read off, rather than in a
+   column beside the drawing — see the note over dnLabel() in matchup.js.
+   Absolutely placed inside .dnring, which is exactly the drawing's size, so the percentages
+   the JS writes resolve against the same square the viewBox does and hold at every ring size.
+   The transform is what pushes each label clear of the band: side A's box ends at its anchor
+   and reads back to the left, side B's begins at its anchor and reads right, which is the half
+   of the ring that player's own arc climbs. So position still says whose a figure is, exactly
+   as the two columns used to, and it now says which figure it is as well. */
+.dlab { position: absolute; white-space: nowrap; line-height: 1.2; color: var(--muted);
+  font-variant-numeric: tabular-nums; pointer-events: none; }
+.dlab.a { transform: translate(-100%, -50%); text-align: right; }
+.dlab.b { transform: translate(0, -50%); }
+/* The points total, still the largest thing on the ring: it is the figure the arc is drawn
+   for, and the other two are read against it. */
+.dpts { font-size: 14px; font-weight: 600; }
+.dpts.lead { color: var(--ink); font-weight: 800; }
+/* The denominator, hung off the figure the way "shots" hangs off rally length in the style
+   column. Its own colour and weight rather than inherited ones: the leader's figure is set in
+   bold ink, and a unit that came along would make the word "points" the loudest thing here. */
+.dpts .dvu { margin-left: 3px; font-size: 10px; font-weight: 500; color: var(--muted); }
+/* Side A sets the unit ahead of the number (see labels() in matchup.js), so the gap it
+   carries moves to its trailing edge to keep the same air between word and figure. */
+.dlab.a.dpts .dvu { margin-left: 0; margin-right: 3px; }
+/* The two smaller figures, each wearing the mark it names. A tier down from the total between
+   them, because they are both parts of it — the games figure is what it converts to, the
+   wedge figure is a slice of it — and three numbers at one size would be three headlines
+   around one ring. */
+.dgms, .dwdg { font-size: 10px; }
+/* The outright-win figures, in a row of their own under the ring — see dnLabel() for why they
+   are the two that come off the circle. Split either side of the centre line, which is the
+   same rule the other four follow and the only thing keeping the two players' apart when both
+   their wedges are a couple of degrees. Placed against 50% rather than by a transform, so the
+   gap either side of centre is the 5px it says and not a share of however long the text is. */
+/* Both halves of the placement have to out-specify .dlab.a / .dlab.b, which carry the
+   transform that pushes a circle label clear of the band. A bare .dwdg loses that tie and the
+   row is dragged a full label-width sideways and half a line up.
+   Set in percentages of the ring box, which is the same square the viewBox resolves against,
+   so 104% is DN_LEAD_Y and 30% is where the leader's horizontal run stops 2 units short. The
+   figure and the line that arrives at it therefore stay joined at every ring size, which they
+   would not if either end were pinned in pixels. */
+.dlab.a.dwdg, .dlab.b.dwdg { top: 104%; transform: translateY(-50%); }
+.dlab.a.dwdg { left: auto; right: 70%; }
+.dlab.b.dwdg { left: 70%; }
+/* The empty half of a ring, where a player is under the charting floor. It takes the foot
+   row, on that player's side of the centre line, so the gap is marked on the drawing and not
+   only in the note under it. */
+.dnone { font-size: 12px; opacity: .7; }
 
 /* The unreached part of the domain, and the only thing saying how far a sweep could have
    gone. A full circle, because the two half-turns either side of 12 o'clock are the whole
@@ -1138,21 +1199,24 @@ a { color: var(--acc-d); }
 .dseg.b { stroke: var(--b); }
 /* the missed half of the same decision: same hue, drained of it */
 .dseg.miss { opacity: .38; }
-/* The other way an arc splits. An ace is a service point won like every other point in that
-   sweep — there is no failed half to drain — so the ace share deepens instead of the rest
-   draining. Drained, it was the wrong shape of statement and the wrong weight: aces are a
-   twelfth of a good server's points won, so ~90% of the serve ring would go faint and come
-   out paler than the return ring beside it. Deepened, the ring keeps its weight and the
-   marked part is the one that reads as emphatic, which is what winning a point outright is.
-   It starts at 12 o'clock, so the two players' cores meet at the origin. */
+/* The other way an arc splits. An ace, or a winner off the return, is a point won like every
+   other point in that sweep — there is no failed half to drain — so the outright share deepens
+   instead of the rest draining. Drained, it was the wrong shape of statement and the wrong
+   weight: aces are a twelfth of a good server's points won, so ~90% of the serve ring would go
+   faint and come out paler than the return ring beside it. Deepened, the ring keeps its weight
+   and the marked part is the one that reads as emphatic, which is what winning a point
+   outright is.
+   It is the first segment of the sweep, so it starts at the foot and the two players' cores
+   meet at the origin. */
 .dseg.a.deep { stroke: color-mix(in srgb, var(--a) 60%, #000); }
 .dseg.b.deep { stroke: color-mix(in srgb, var(--b) 60%, #000); }
-/* The tour average, as a spoke across the ring. It has to be legible on the saturated arc
-   *and* on the empty track behind it, and no single colour manages both — on a violet or red
-   arc a dark mark is simply not there, which is the half of the ring the average usually
-   lands in. So it is a light core over a dark halo, drawn as two lines because SVG has no
-   box-shadow. The cue bars under the shot-making triggers wear the same mark, in CSS, for
-   the same reason and against the same two grounds. */
+/* The player's hold or break rate, as a spoke across the ring. It stands on both of the ring's
+   grounds — inside the arc on the return ring, on open track past the arc's end on the serve
+   ring — and no single colour is legible against both: on a violet or red arc a dark mark is
+   simply not there, and on the near-white track a light one is not. So it is a light core over
+   a dark halo, one of the two carrying it whichever ground it lands on, drawn as two lines
+   because SVG has no box-shadow. The cue bars under the shot-making triggers wear the same
+   mark, in CSS, for the same reason and against the same two grounds. */
 .dtickhalo { stroke: color-mix(in srgb, var(--ink) 50%, transparent); stroke-width: 3.6;
   stroke-linecap: butt; }
 .dtick { stroke: var(--card); stroke-width: 1.8; stroke-linecap: butt; }
@@ -1188,9 +1252,8 @@ a { color: var(--acc-d); }
 .figkey .unitdef b { color: var(--ink); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
-.segkey.deep { background: color-mix(in srgb, var(--muted) 60%, #000); }
-/* the key wears the mark it is a key for, halo and all — hence the margin, which is the
-   room the halo needs to not sit on the words either side of it */
+/* The figure wears the mark it is drawn as, halo and all — hence the margin, which is the
+   room the halo needs to not sit on the words either side of it. */
 .tickkey { display: inline-block; width: 2px; height: 11px; background: var(--card);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 50%, transparent);
   vertical-align: -2px; margin: 0 3px; }
@@ -1209,7 +1272,7 @@ a { color: var(--acc-d); }
 /* Both columns run on the same rows, so each player's first finding sits level with the
    other's — two independent stacks drift apart the moment one description wraps a line
    further than its opposite number, and a comparison you have to scroll between isn't
-   one. Browsers without subgrid drop the rule and get the old stacks. */
+   one. Browsers without subgrid drop the rule and get two independent stacks. */
 .seccols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 0;
   grid-template-rows: repeat(var(--rows, 1), auto); }
 /* The player's colour caps the column instead of running down its left edge. A left rule
@@ -1227,10 +1290,9 @@ a { color: var(--acc-d); }
 
 /* one court pattern: the drawing, then the lift, then what it is and what it earns */
 .pcard2 { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 12px; }
-/* 88px of box, not the 96 it was: the drawing is cropped to the court now (see FRAME in
-   court.js) instead of carrying 20 units of blank field either side, so a narrower box
-   holds a court an eighth wider than the old one did. The width it gives back goes to the
-   description beside it. */
+/* 88px of box, not 96: the drawing is cropped to the court (see FRAME in court.js) rather
+   than carrying 20 units of blank field either side, so a narrower box holds a court an
+   eighth wider. The width it gives back goes to the description beside it. */
 .pcourt { flex: 0 0 88px; }
 .pcourt svg { width: 88px; height: auto; display: block; }
 /* These thumbnails render at ~0.72 scale, so the drawn balls need extra weight in viewBox
@@ -1413,11 +1475,9 @@ a { color: var(--acc-d); }
    while the other half showed none. Relative changes nothing about the flow. */
 .rlist .match { position: relative; }
 /* Tighter gap than the list's own — this is the visual grouping that says these two meet
-   next round. It used to carry its own right-side bracket too, drawn independently of the
-   round-nav thread preview added alongside it; the two were redundant on every round that
-   has a right nav zone (which is every round but the final), each saying "these two meet
-   next round" in a different style stacked one after the other. The thread preview already
-   draws that exact first hop, so the in-list bracket is gone rather than kept twice over. */
+   next round. No in-list right-side bracket: the round-nav thread preview already draws that
+   exact first hop on every round that has a right nav zone, which is every round but the
+   final. */
 .rlist .pair { display: flex; flex-direction: column; gap: 6px; }
 
 /* Tap zones flanking the round: left steps back, right steps forward. A flex row so each
@@ -1493,7 +1553,7 @@ a { color: var(--acc-d); }
 @keyframes sheet { from { opacity: 0; transform: translateY(28px); } }
 
 /* phone panel: everything stacks, so each column names its own player rather than relying
-   on a position that no longer holds. */
+   on a left-right position that stacking removes. */
 @media (max-width: 620px) {
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }

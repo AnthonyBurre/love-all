@@ -4,8 +4,7 @@ ESPN gives scores but no draw: no slot positions, no seeds, nothing (verified ag
 scoreboard, the core API's event/competition/competitor objects, and ``/bracket``,
 ``/draws``, ``/rounds``, which all 404). The sources that *do* carry draw structure are
 licensed feeds — Sportradar sells it, Sofascore reverse-engineered it and TLS-fingerprints
-every non-browser client. So draw structure used to be committed by hand, one JSON per
-event, harvested from a browser.
+every non-browser client.
 
 Wikipedia's per-event draw pages carry the same thing in the open: ``{{16TeamBracket}}``
 templates whose parameters are *positional*, which is precisely a draw sheet.

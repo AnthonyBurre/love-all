@@ -90,9 +90,7 @@ export async function serveGates() {
 // scale that hid what it was doing. This says the same thing in the unit it is actually in.
 //
 // The quartiles are cut in SQL rather than by shipping the players down and cutting them here.
-// This used to send every charted player's coordinates to draw a crowd of them behind the two
-// in the match; with the crowd gone, that is a couple of hundred rows fetched per tour to
-// derive four numbers from.
+// Shipping them would fetch a couple of hundred rows per tour to derive four numbers from.
 //
 // Each metric is measured over its own qualifying players rather than over the players who
 // have both — they are separate experiments with separate thresholds, and intersecting them
@@ -130,18 +128,4 @@ async function loadSpread() {
     }
   } catch (e) { /* stale insights db: the figures print without their tour band */ }
   return out;
-}
-
-// League mean serve-win rates (for the matchup strength combine), keyed by gender.
-// Read by prefix rather than by testing for "mu_M" and treating everything else as the
-// women's value: `meta` is a general key/value table, so the first non-mu row added to it
-// would have become mu.W and skewed every women's win probability without erroring.
-export async function leagueMu() {
-  const rows = await query("SELECT key, value FROM meta");
-  const mu = {};
-  for (const r of rows) {
-    const key = String(r.key);
-    if (key.startsWith("mu_")) mu[key.slice(3)] = r.value;
-  }
-  return mu;
 }

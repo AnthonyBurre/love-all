@@ -7,7 +7,7 @@ entity. This folder is the **justification** for the optional **`player_eras`** 
 `match_charting_project.analysis.career_eras`). It answers: **does cutting a long career
 into eras yield genuinely different players, or just two noisier samples of the same one?**
 
-## The test (the honest question, not the easy one)
+## The test
 
 Splitting *can* always be done — the data supports 2.3× more entities. The real question is
 whether a split is *meaningful*. For each long career we compare:
@@ -51,7 +51,7 @@ unevolved majority stay whole, and any analysis can join points to it on
 `year BETWEEN year_start AND year_end`. The report's *threshold sensitivity* table shows how
 the split count moves with the cutoff (e.g. a uniform 2.0 erases the women).
 
-## Honest limitations
+## Limitations
 
 - **Style-mix resolution.** Evolution is measured in shot-mix features (serve location,
   slice/net, aggression, errors). A career change that doesn't move the *mix* — purely

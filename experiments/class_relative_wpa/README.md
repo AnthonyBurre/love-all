@@ -1,28 +1,22 @@
 # Class-relative shot quality
 
-The synthesis of the roadmap, kept deliberately small. One style-blind win-prob eval
-(the graduated `match_charting_project.shots.winprob`) measures each player's decision
-quality (avg win-prob conceded per stroke); we then compare each player against **what
-their own style predicts** instead of against the whole field — so high-variance
-stylists aren't penalized for their style, only for being worse *at* it.
+One style-blind win-prob eval (the graduated `match_charting_project.shots.winprob`)
+measures each player's decision quality (avg win-prob conceded per stroke); each player is
+then compared against **what their own style predicts** instead of against the whole field,
+so high-variance stylists aren't penalized for their style, only for being worse *at* it.
 
-> **Read the validation section of the report first.** The raw metric this is built on
-> is not a quality measure. `avg_wpa_lost` is reliable (split-half ≈0.94) but it is
-> ~0.85 correlated with rally length and ~0.9 predictable from the style fingerprint
-> out-of-fold, which leaves at most 3% (men) / 11% (women) of its spread as reliable
-> signal that isn't style. The correction below is therefore doing nearly all the work,
-> and what survives it is coarse. `run.py` recomputes all of these numbers every run —
-> see "Does it measure quality?" below.
+> **This is a negative result — read "Does it measure quality?" below before using any of
+> it.** The raw metric is reliable but is mostly rally length, and the correction leaves a
+> residual that is mostly rally length too. Nothing here ships to the site.
 
 ### The benchmark is a surface, not a class mean
 
-It used to be the mean of the archetype a player was sorted into. That made the metric
-a step function of style, and the step moves: re-running on 0.16% less charting data
-flipped 92 of 388 shot-quality verdicts, **51 of them for players whose own archetype
-never changed and whose measured quality moved in the fourth decimal**. Their benchmark
-had moved underneath them.
+A class mean would make the metric a step function of style, and the step moves:
+re-running on 0.16% less charting data flipped 92 of 388 shot-quality verdicts, **51 of
+them for players whose own archetype never changed and whose measured quality moved in the
+fourth decimal**. Their benchmark had moved underneath them.
 
-So the benchmark is now fitted smoothly over the style fingerprint (ridge on the
+So the benchmark is fitted smoothly over the style fingerprint (ridge on the
 `player_styles` features), and a player between two archetypes gets a benchmark between
 them. Under the same perturbation the flip rate falls from 24% to 5%, and the largest
 single move from 2.25 standard deviations to 0.36.
@@ -60,10 +54,10 @@ uv run python experiments/class_relative_wpa/run.py    # needs player_style_clus
 It re-ranks the style-penalized: e.g. Lendl, Medvedev, Roddick, Davenport, Barty look
 mid-pack on the raw board but top their own archetypes.
 
-## Does it measure quality? Mostly not, and the report says so
+## Does it measure quality? Mostly not
 
-`run.py` recomputes this every run rather than stating it in prose, because prose numbers
-go stale against a rebuild. Three findings, all in `reports/class_relative_wpa.md`:
+`run.py` recomputes these every run rather than fixing them in prose. All three land in
+`reports/class_relative_wpa.md`:
 
 **The raw metric is arithmetic on rally length.** WPA telescopes inside a point — the
 strokes sum to (result − pre-serve value) — so the total swing per point is near-fixed
@@ -79,17 +73,17 @@ it *out-of-fold*, so the most that could be reliable non-style signal is the dif
 **0.03 / 0.11**.
 
 **The correction's own signal is coarse.** `class_rel_z` splits half-to-half at ≈0.9,
-which flatters it — λ is deliberately solved to absorb only as much variance as the class
-means did, so much of the style is still inside the residual, stabilising it. Strip all
-the style the fingerprint can reach and the residual splits at **0.43 (men) / 0.60
-(women)**. That is a three-band verdict's worth of signal and not a score's, which is why
-the site prints it as one and stopped printing the 0–100 `accuracy` figure at all.
+which flatters it — λ is solved to absorb only as much variance as the class means did, so
+much of the style is still inside the residual, stabilising it. Strip all the style the
+fingerprint can reach and the residual splits at **0.43 (men) / 0.60 (women)**: a
+three-band verdict's worth of signal, not a score's. Even that band turned out to be
+mostly rally length, which is why neither figure ships.
 
-None of this makes the class-relative comparison wrong — it is the only part of the
-metric with a skill claim in it. It makes the *raw* number unusable on its own, and it
+None of this makes the class-relative comparison wrong in principle — it is the only part
+of the metric with a skill claim in it. It makes the *raw* number unusable on its own, and
 caps how finely the corrected one can be reported.
 
-*Caveat:* the women's net/slicer archetype has only 4 players. That no longer poisons
-`class_rel_z` — the smooth benchmark never divides by a four-player group's spread — but
-`rank_in_archetype` and `archetype_mean` are still computed per class and are still noisy
-there (`archetype_size` is in the CSV — filter on it as you like).
+*Caveat:* the women's net/slicer archetype has only 4 players. The smooth benchmark never
+divides by a four-player group's spread, so `class_rel_z` is unaffected, but
+`rank_in_archetype` and `archetype_mean` are computed per class and are noisy there
+(`archetype_size` is in the CSV).

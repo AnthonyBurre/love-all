@@ -6,10 +6,6 @@ That shape needs an exact binomial tail and a false-discovery correction, and it
 both to mean the same thing in all three: a per-player Benjamini-Hochberg family in one
 place and a fixed threshold in another is not a difference readers can see in the panel,
 which prints the survivors side by side.
-
-They lived in ``deep_patterns`` first — the experiment ``rally_patterns`` replaced — and
-were copied nowhere, which is why the other two shipped uncorrected: the tool being in a
-neighbouring directory is not the same as it being available.
 """
 
 from math import exp, lgamma, log, log1p
