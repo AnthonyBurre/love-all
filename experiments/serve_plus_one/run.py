@@ -64,7 +64,15 @@ FIG = REPORTS / "figures"
 GLABEL = {"M": "Men", "W": "Women"}
 
 # Surfacing gates. The first five are court_response's, unchanged, so a tier-"pooled"
-# row here means what the same row means there and the two are readable side by side.
+# row here is built on the same support as the same row there.
+#
+# The *screens* diverged on 2026-08-29, and a reader comparing the two should know how.
+# court_response now discovers in one half of a player's matches and reads its lift off
+# the other, so its figures are held out; this one still selects on both halves with the
+# gate below and prints the pooled lift, which is inflated by however much of the lift
+# was the luck that got it selected — 46% of a discovered edge survived that treatment
+# over there, so the gap is not small. The FDR correction below is applied in both.
+# Giving this experiment the same two-fold treatment is the obvious next change here.
 MIN_STATE = 80        # times a player must face a state to be profiled on it
 MIN_CELL = 10         # raw count behind any surfaced response
 MIN_FIELD = 500       # field observations of the state (minus the player's own)
@@ -86,7 +94,7 @@ Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
 # baseline, and the tails are Benjamini-Hochberg adjusted across that player's own
 # candidate cells. Within player is the right family: the panel's claim is "this player
 # does this unusually often", so what has to be controlled is how many tendencies were
-# tried on them. This is the same correction deep_patterns applies, and it is applied
+# tried on them. This is the same correction rally_patterns applies, and it is applied
 # here for the same reason — the two sections sit one above the other in the panel and a
 # reader has no way to tell that one was screened and the other was not.
 

@@ -318,23 +318,46 @@ def build() -> int:
     triggers = pd.concat([greens, traps])[
         ["player", "gender", "tag", "context", "att_rate", "att_lift",
          "conversion", "conv_delta", "n", "attempts"]]
-    triggers["depth"] = 2
 
-    # Gold-star deep patterns (deep_patterns experiment): 3-4 shot sequences that beat
-    # their own shorter parent and clear Benjamini-Hochberg across every context that
-    # player was screened on — only the hugely-charted have them. att_lift for these
-    # rows is the lift vs the parent pattern, not vs base rate.
+    # A starred 3-4 shot tier used to ride along here, from deep_patterns and then from
+    # rally_patterns, and it is gone rather than replaced. Two findings retired it, and
+    # neither is that it overlapped another section — overlap is fine, and the panel has
+    # useful overlap elsewhere. 71% of the old tier's evidence sat in windows reaching into
+    # the opening, where it measured the same shots with less support and no idea which
+    # service court they were played to, and its lift was computed on the same data that
+    # selected it. Screened properly, with the
+    # opening blinded and every figure read off a fold that had no part in the selection,
+    # two of 1,752 three-shot candidates survive, both for retired players who appear in no
+    # draw. A section that renders for nobody is not a section. The experiment still runs
+    # weekly and still writes reports/rally_patterns.csv; if the charting grows enough for a
+    # current player to earn one, this is where it would come back.
+
+    # Opening cues by service court (shot_triggers' openings section). Same currency as
+    # the pooled triggers above — a lead-up that shifts the player's aggressive shot
+    # frequency — but scored against their own norm *for that shot and that court*, which
+    # the pooled table cannot do: a wide serve opens a right-hander's forehand in the
+    # deuce court and their backhand in the ad court, so the pooled row averages two
+    # different serves and names neither. 310 of the pooled rows above are opening cues
+    # shown that way; these are the same shots told properly.
     #
-    # The false-discovery correction landed 2026-08-16 and roughly halved this table
-    # (72 patterns over 28 players -> 36 over 15). What it removed were patterns picked
-    # out of hundreds of uncorrected binomial tests per player, at a rate the experiment
-    # itself now estimates: see the note at the head of reports/deep_patterns.md.
-    dp_path = REPORTS / "deep_patterns.csv"
-    if dp_path.exists():
-        dp = pd.read_csv(dp_path).rename(columns={"parent_lift": "att_lift"})
-        deep = (dp.sort_values("att_lift", ascending=False)
-                .groupby(["player", "gender"]).head(3))
-        triggers = pd.concat([triggers, deep[triggers.columns]])
+    # This waited until 2026-08-29 for a reason worth recording: the experiment produced
+    # this table from the start, but as a raw threshold screen with no multiplicity
+    # correction and its figures read off the data that selected them, while the pooled
+    # table beside it was FDR-corrected and cross-validated. Shipping it in that state
+    # would have put the panel's least-screened numbers next to its most-screened. It is
+    # now on the same footing as everything else here.
+    openings = pd.DataFrame()
+    op_path = REPORTS / "shot_triggers_openings.csv"
+    if op_path.exists():
+        op = pd.read_csv(op_path)
+        if len(op):
+            og = (op[op.tag == "green"].sort_values("att_lift", ascending=False)
+                  .groupby(["player", "gender"]).head(2))
+            ot = (op[op.tag == "trap"].sort_values("conv_delta")
+                  .groupby(["player", "gender"]).head(2))
+            openings = pd.concat([og, ot])[
+                ["player", "gender", "side", "role", "anchor", "context", "tag",
+                 "att_rate", "att_lift", "conversion", "conv_delta", "n", "attempts"]]
 
     # ``sigma`` is not taken. It printed as the profile column's "shot selection" figure and
     # was cut by the test that retired the shot-quality score: it correlates -0.81 (men) /
@@ -370,7 +393,8 @@ def build() -> int:
     OUT.unlink(missing_ok=True)     # fresh file: dropped tables must not ship forever
     out = duckdb.connect(str(OUT))
     tables = [("player_summary", summary), ("player_triggers", triggers),
-              ("player_patterns", patterns), ("player_years", years), ("meta", meta),
+              ("player_patterns", patterns), ("player_openings", openings),
+              ("player_years", years), ("meta", meta),
               ("charted_matches", charted)]
     if serve is not None:
         tables.append(("player_serve", serve))

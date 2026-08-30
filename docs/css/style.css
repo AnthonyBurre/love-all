@@ -1265,18 +1265,11 @@ a { color: var(--acc-d); }
 .trig::before { position: absolute; left: 0; top: 0; }
 .trig.green::before { content: "▲"; color: var(--up); font-size: 10px; }
 .trig.bait::before { content: "⚠"; color: var(--warn); font-size: 11px; }
-.trig.gold::before { content: "⭐"; font-size: 10px; }
-/* The gold wash rides the written sequence only, not the whole card. What sits under the
-   cue is a court drawing and a two-tone bar, and both are read against the card's own
-   white — a tinted court half and a drained bar segment have to mean the same thing here
-   as they do in every other card, which a background behind them quietly undoes.
-   The wash is pulled back by exactly its own left padding, so the cue's text still starts
-   on the same vertical as the numbers and the drawing below it, and it bleeds left into
-   the gutter the ⭐ sits in — which is absolutely positioned, so it paints over the wash.
-   It stays a block and shrinks with `fit-content` rather than going inline-block: inline
-   layout would render the source newline in front of it as a space and shove it right. */
-.trig.gold .tcue { width: fit-content; padding: 3px 7px; margin-left: -7px;
-  background: color-mix(in srgb, #d7b53d 12%, var(--card)); }
+/* The service court and which ball of the opening this is, said in the row rather than
+   left to the collapsed drawing — the court is the whole reason the row exists, so it
+   cannot be behind a disclosure triangle. Recessive against the cue string it labels. */
+.ocourt { color: var(--muted); font-weight: 600; text-transform: uppercase;
+  font-size: 9px; letter-spacing: 0.04em; margin-right: 5px; }
 .trig.immune { color: var(--acc-d); font-weight: 600; }
 .trig.immune::before { content: "◆"; font-size: 10px; }
 /* The player's own rate, heading their column of cues. It keeps .trig's left inset with no

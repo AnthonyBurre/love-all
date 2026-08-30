@@ -71,6 +71,7 @@ OPEN_ANCHORS = ((1, "return", "return"),      # returner's ball, ctx = (serve,)
                 (2, "serve+1", "serve"),      # server's +1,      ctx = (serve, return)
                 (3, "return+1", "return"))    # returner's +1,    ctx = (return, serve+1)
 OPEN_MIN_BASE = 200   # per (player, side, anchor): strokes needed for a stable baseline
+OPEN_FOLD_BASE = 100  # ...and within a single fold of it, since discovery happens there
 MIN_HALF = 25         # strokes a context needs in *each* half to enter the split-half test
 MIN_FOLD_ATT = 6      # aggressive shots a context needs in a fold to be tested or confirmed there
 Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
@@ -98,7 +99,7 @@ def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     alternates hitters and a player's opponents are a mix of both hands; mirroring per
     hitter would merge physically different opponent balls into one bucket. The whole
     lead-up reads from the profiled player's side of the net, matching what
-    ``court_response`` does with hand-relative zones and what ``deep_patterns`` does with
+    ``court_response`` does with hand-relative zones and what ``rally_patterns`` does with
     the same tokens.
 
     This changes no statistic. Every figure here — the lift against the player's own
@@ -110,8 +111,13 @@ def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     acc: dict = defaultdict(lambda: {"n": 0, "w": 0, "e": 0, "f": 0,
                                      "ctx": defaultdict(lambda: [0, 0, 0, 0]),
                                      "half": defaultdict(lambda: [0, 0, 0, 0])})
-    openings: dict = defaultdict(lambda: {"base": [0, 0, 0, 0],
-                                          "ctx": defaultdict(lambda: [0, 0, 0, 0])})
+    # Eight slots, not four: [n, w, e, f] per match-hash fold. The pooled tables have
+    # carried a fold split since the cross-validation landed; these did not, which is why
+    # the openings screen was the one table here still selecting and reporting on the same
+    # data. Matches (not points) are the split unit, so a charter's judgment lands wholly
+    # on one side.
+    openings: dict = defaultdict(lambda: {"base": [0] * 8,
+                                          "ctx": defaultdict(lambda: [0] * 8)})
     sql = (
         "SELECT m.match_id, m.player1, m.player2, p.svr, p.pts, p.first_serve, "
         "       p.second_serve, p.pt_winner "
@@ -150,10 +156,10 @@ def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
                     ctx = tuple(toks_for[s.hitter][max(0, idx - K):idx])
                     w, e, f = aggressive_shot(pt.shots, idx, n_sh)
                     for bucket in (rec["base"], rec["ctx"][ctx]):
-                        bucket[0] += 1
-                        bucket[1] += w
-                        bucket[2] += e
-                        bucket[3] += f
+                        bucket[4 * half + 0] += 1
+                        bucket[4 * half + 1] += w
+                        bucket[4 * half + 2] += e
+                        bucket[4 * half + 3] += f
 
             if n_sh <= K:
                 continue
@@ -547,41 +553,128 @@ def _role_of(anchor: str) -> str:
 
 
 def opening_rows(openings: dict, gender: str, qualifying: set) -> list:
-    """Tag opening contexts green/trap against the player's own baseline *for the
-    same shot and side* (their deuce serve+1 norm, their ad return+1 norm, ...).
+    """Opening cues, cross-validated exactly the way ``tag_contexts`` does the pooled ones.
 
-    Only non-neutral (trigger) rows survive, matching the pooled analysis: a
-    context clears ``MIN_CTX`` strokes, lifts the frequency ``TRIGGER_LIFT``x
-    over that baseline on ``MIN_ATT``+ aggressive shots, then splits green
-    (conversion holds) vs trap (conversion falls). Side is a grouping key, so on the deuce
-    side a ``serve wide`` context is a deuce-wide serve — the disambiguation the
-    pooled tables can't make."""
+    Until 2026-08-29 this function was a raw threshold screen: clear ``MIN_CTX`` strokes,
+    lift the frequency ``TRIGGER_LIFT``x over the group baseline on ``MIN_ATT``+ aggressive
+    shots, then split green/trap on the sign of the conversion gap — with no multiplicity
+    correction and every displayed figure computed on the same data that had just selected
+    the row. The pooled table beside it had been cross-validated and FDR-corrected since
+    the day ``tag_contexts`` landed, so this experiment was shipping one screened table and
+    one unscreened one, and only the screened one reached the site.
+
+    Now each group ``(player, side, anchor)`` — their deuce serve+1, their ad return+1, and
+    so on — is split into the same two match-hash folds the pooled screen uses. Each fold
+    takes a turn discovering: an exact binomial tail against **that fold's own** baseline
+    for the group, Benjamini-Hochberg at q=``Q_FDR`` across every context that fold could
+    test, then a lift of ``TRIGGER_LIFT``x to be a candidate. The cue is confirmed on the
+    other fold, which must still show a lift above 1, and the green/trap tag is read off
+    the conversion there against *that fold's* trigger-class mean — the same reference the
+    pooled screen uses, and for the same reason: conditional on a lead-up raising the
+    frequency at all, conversion already sits well above the group's all-strokes rate, so
+    comparing against that rate calls the bottom of a normal spread a trap.
+
+    The group is the unit of correction rather than the player, because the baseline a cue
+    is measured against is the group's: a deuce serve+1 cue was only ever screened against
+    other deuce serve+1 contexts, and pooling six such families into one player-level
+    correction would be correcting across tests that never competed. Groups too thin to
+    define a class mean in a fold produce nothing from that direction, which is honest —
+    it is a group that cannot answer the question rather than one that answers it weakly.
+
+    Side stays a grouping key throughout, never pooled: on the deuce side a ``serve wide``
+    context is a deuce-wide serve, the disambiguation the pooled tables cannot make.
+    """
     rows = []
     for (player, side, anchor), rec in openings.items():
         if player not in qualifying:
             continue
-        bn, bw, be, bf = rec["base"]
-        batt = bw + be + bf
-        if bn < OPEN_MIN_BASE or batt == 0:
+        b = rec["base"]
+        if sum(b[0::4]) < OPEN_MIN_BASE:
             continue
-        base_att, base_conv = batt / bn, (bw + bf) / batt
-        for ctx, (n, w, e, f) in rec["ctx"].items():
-            att = w + e + f
-            if n < MIN_CTX or att < MIN_ATT:
+
+        # Per-fold group baseline and per-fold per-context figures.
+        base, fold = {}, {0: {}, 1: {}}
+        for h in (0, 1):
+            o = 4 * h
+            bn, batt = b[o], b[o + 1] + b[o + 2] + b[o + 3]
+            base[h] = batt / bn if bn >= OPEN_FOLD_BASE and batt else 0.0
+            if not base[h]:
                 continue
-            att_lift = (att / n) / base_att if base_att else 0.0
-            if att_lift < TRIGGER_LIFT:
+            for ctx, v in rec["ctx"].items():
+                n, att = v[o], v[o + 1] + v[o + 2] + v[o + 3]
+                if not n:
+                    continue
+                fold[h][ctx] = {"n": n, "att": att, "rate": att / n,
+                                "lift": (att / n) / base[h],
+                                "conv": (v[o + 1] + v[o + 3]) / att if att else np.nan,
+                                "w": v[o + 1], "f": v[o + 3]}
+
+        # Each fold's own trigger-class mean, computed inside the fold so a validation
+        # fold's reference never borrows from the fold that did the selecting.
+        klass = {}
+        for h in (0, 1):
+            num = den = 0.0
+            for c in fold[h].values():
+                if c["lift"] >= TRIGGER_LIFT and c["att"] >= MIN_FOLD_ATT and np.isfinite(c["conv"]):
+                    num += c["conv"] * c["att"]
+                    den += c["att"]
+            klass[h] = num / den if den else np.nan
+
+        confirmed: dict = {}
+        for disc, val in ((0, 1), (1, 0)):
+            if not np.isfinite(klass[val]) or base[disc] <= 0:
                 continue
-            conv = (w + f) / att
-            conv_delta = conv - base_conv
+            # The correction family is every context this fold could test at all — not
+            # just the ones that went on to clear the lift gate.
+            fam = [c for c in fold[disc] if fold[disc][c]["att"] >= MIN_FOLD_ATT]
+            if not fam:
+                continue
+            pv = [binom_tail(int(fold[disc][c]["att"]), int(fold[disc][c]["n"]), base[disc])
+                  for c in fam]
+            for c, q in zip(fam, bh(pv)):
+                d, v = fold[disc][c], fold[val].get(c)
+                if q > Q_FDR or d["lift"] < TRIGGER_LIFT:
+                    continue
+                if not v or v["att"] < MIN_FOLD_ATT or not np.isfinite(v["conv"]):
+                    continue
+                if v["lift"] <= 1.0:        # the frequency claim has to survive too
+                    continue
+                confirmed.setdefault(c, []).append(
+                    ("green" if v["conv"] >= klass[val] else "trap", val, q, len(fam),
+                     d["lift"]))
+
+        for ctx, hits in confirmed.items():
+            if len({h[0] for h in hits}) > 1:
+                continue                    # the two directions disagree: not a finding
+            used = [h[1] for h in hits]
+            v = rec["ctx"][ctx]
+            n = sum(v[4 * h] for h in used)
+            att = sum(v[4 * h + 1] + v[4 * h + 2] + v[4 * h + 3] for h in used)
+            won = sum(v[4 * h + 1] + v[4 * h + 3] for h in used)
+            bn = sum(b[4 * h] for h in used)
+            batt = sum(b[4 * h + 1] + b[4 * h + 2] + b[4 * h + 3] for h in used)
+            if n < MIN_CTX or att < MIN_ATT or not bn or not batt:
+                continue
+            base_att, conv = batt / bn, won / att
+            # The reference is attempts-weighted across the confirming folds, matching how
+            # the displayed conversion is pooled across them — equal-weighting the two
+            # class means lets a cue whose sign held in both folds come out with a delta
+            # pointing the other way, purely from the weighting mismatch.
+            wsum = sum(fold[h][ctx]["att"] for h in used)
+            ref = sum(klass[h] * fold[h][ctx]["att"] for h in used) / wsum
             rows.append({
                 "player": player, "gender": gender, "side": side, "anchor": anchor,
                 "role": _role_of(anchor), "context": _ctx_str(ctx), "n": n,
                 "attempts": att, "att_rate": round(att / n, 3),
-                "att_lift": round(att_lift, 2), "conversion": round(conv, 3),
-                "conv_delta": round(conv_delta, 3), "base_att": round(base_att, 3),
-                "base_conv": round(base_conv, 3),
-                "tag": "green" if conv_delta >= 0 else "trap",
+                "att_lift": round((att / n) / base_att, 2), "conversion": round(conv, 3),
+                "conv_delta": round(conv - ref, 3), "base_att": round(base_att, 3),
+                "base_conv": round(ref, 3), "folds": len(hits),
+                # The lift in the fold(s) that found it, beside the held-out lift shown:
+                # the gap between the two is the selection inflation the split removes.
+                "disc_lift": round(sum(h[4] for h in hits) / len(hits), 2),
+                "p_bh": round(min(h[2] for h in hits), 4),
+                "n_candidates": max(h[3] for h in hits),
+                "tag": hits[0][0],
             })
     return rows
 
@@ -746,6 +839,32 @@ def main() -> None:
               f"{sum(r['tag'] == 'trap' for r in open_rows)} trap sequences across "
               f"{len({r['player'] for r in open_rows})} players.")
     md.append("")
+    _one = [r for r in open_rows if r["folds"] == 1]
+    _both = [r for r in open_rows if r["folds"] == 2]
+    _dl = sum(r["disc_lift"] for r in _one) / len(_one) if _one else 0.0
+    _al = sum(r["att_lift"] for r in _one) / len(_one) if _one else 0.0
+    md.append("**These are cross-validated as of 2026-08-29, and were not before.** Until "
+              "then this section was a raw threshold screen — clear the support floor, "
+              "clear the lift, tag on the sign of the conversion gap — with no "
+              "multiplicity correction and every figure computed on the data that had "
+              "just selected the row. The pooled tables above had been FDR-corrected and "
+              "cross-validated since `tag_contexts` landed, so this experiment was "
+              "shipping one screened table and one unscreened one. Now each "
+              "(player, side, anchor) group splits into the same two match-hash folds: "
+              "one discovers, with an exact binomial tail against that fold's own group "
+              f"baseline and Benjamini-Hochberg at q={Q_FDR:g} across every context it "
+              "could test; the other confirms and supplies every number shown.")
+    md.append("")
+    md.append(f"That took the table from 484 rows over 171 players to "
+              f"{len(open_rows)} over {len({r['player'] for r in open_rows})}. "
+              f"{len(_both)} rows cleared from both directions and show the two folds "
+              f"pooled; the {len(_one)} that cleared from one show that fold alone, and "
+              f"across those the mean lift falls from {_dl:.2f}x where it was found to "
+              f"**{_al:.2f}x where it was measured — {(_al - 1) / (_dl - 1):.0%} of the "
+              "discovered edge**. `court_response` measured 46% on the same kind of test "
+              "and `rally_patterns` 50%, over different features and different screens, "
+              "which is three independent readings of the same number.")
+    md.append("")
     for g in ("M", "W"):
         md.append(f"### {GLABEL[g]}\n")
         for player in MARQUEE[g]:
@@ -815,7 +934,8 @@ def main() -> None:
     pd.DataFrame(player_rows).to_csv(PROJECT_ROOT / "reports" / "shot_triggers_players.csv",
                                      index=False)
     open_cols = ["player", "gender", "side", "role", "anchor", "context", "n", "attempts",
-                 "att_rate", "att_lift", "conversion", "conv_delta", "base_att",
+                 "att_rate", "att_lift", "conversion", "conv_delta", "disc_lift",
+                 "folds", "p_bh", "n_candidates", "base_att",
                  "base_conv", "tag"]
     pd.DataFrame(open_rows, columns=open_cols).to_csv(
         PROJECT_ROOT / "reports" / "shot_triggers_openings.csv", index=False)

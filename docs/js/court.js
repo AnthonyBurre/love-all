@@ -159,9 +159,10 @@ function bounces(tokens, court) {
 // strokes *before* the player's aggressive shot and hitters alternate, so ownership runs
 // backwards from the end: the last token is always the ball the opponent sent them — the
 // one they attacked, and the reason the sequence is in the panel — and every second token
-// before it is theirs. That makes token 1 the player's own when K is even (every shipped
-// 2-shot trigger) and the opponent's when it is odd (the K=3 deep patterns, which are most
-// of them), and it puts the player's half wherever the last ball lands.
+// before it is theirs. Every shipped cue is a 2-shot lead-up, so token 1 is the player's
+// own — the odd-K branch is kept because the drawing is written for any K and a deeper
+// tier has shipped here before — and it puts the player's half wherever the last ball
+// lands.
 //
 // Everything else follows from that one fact, in pairSvg's vocabulary: their half tinted,
 // their own balls solid and in their colour, the opponent's dashed and neutral, and a
@@ -217,10 +218,14 @@ function labelToToken(label, mirror = false) {
 // shot rather than the half of the court it landed in and two players' sequences can be
 // compared — and a drawing has to undo that or it draws a lefty's rally into the wrong
 // third. So it is set from the player's hand alone, not from which family the row is in.
-export function patternSvg(pattern, mirror = false) {
+// `court` matters only when the sequence opens with a serve, and then it matters a lot:
+// a wide serve is a different physical ball on the two sides, which is the whole reason
+// the opening cues are split by court at all. Pooled cues have no side to pass and keep
+// rallySvg's default; an opening cue passes its own.
+export function patternSvg(pattern, mirror = false, court = "deuce") {
   const labels = String(pattern).match(SHOT_RE);
   if (!labels || !labels.length) return "";
-  return rallySvg(labels.map((l) => labelToToken(l, mirror)));
+  return rallySvg(labels.map((l) => labelToToken(l, mirror)), court);
 }
 
 // --- court-state patterns (player_patterns table) ----------------------------------------

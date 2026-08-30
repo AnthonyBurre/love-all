@@ -283,7 +283,7 @@ def aggressive_shot(shots: list, i: int, n_shots: "int | None" = None) -> "tuple
     ``(winner + induced) / total``.
 
     Returns all zeros for a rally ball. Shared by every experiment that counts these
-    (``shot_triggers``, ``deep_patterns``, ``context_length``, ``serve_side``) so the
+    (``shot_triggers``, ``rally_patterns``, ``context_length``, ``serve_side``) so the
     numerator cannot drift between them — see ``experiments/shot_triggers/README.md``
     for why induced forced errors are in it.
     """
