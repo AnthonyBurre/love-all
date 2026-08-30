@@ -218,10 +218,14 @@ function labelToToken(label, mirror = false) {
 // shot rather than the half of the court it landed in and two players' sequences can be
 // compared — and a drawing has to undo that or it draws a lefty's rally into the wrong
 // third. So it is set from the player's hand alone, not from which family the row is in.
-export function patternSvg(pattern, mirror = false) {
+// `court` matters only when the sequence opens with a serve, and then it matters a lot:
+// a wide serve is a different physical ball on the two sides, which is the whole reason
+// the opening cues are split by court at all. Pooled cues have no side to pass and keep
+// rallySvg's default; an opening cue passes its own.
+export function patternSvg(pattern, mirror = false, court = "deuce") {
   const labels = String(pattern).match(SHOT_RE);
   if (!labels || !labels.length) return "";
-  return rallySvg(labels.map((l) => labelToToken(l, mirror)));
+  return rallySvg(labels.map((l) => labelToToken(l, mirror)), court);
 }
 
 // --- court-state patterns (player_patterns table) ----------------------------------------

@@ -77,7 +77,8 @@ pairing is; on a finished draw the shading turns per-match, and the drawer links
 that match's full chart on Tennis Abstract or invites you to be the one who charts it. Click
 any match and a drawer opens with, for each player: a style archetype, serve and return
 rates against the tour average, average point length, shot variety, serve direction, court
-patterns, and shot-making triggers. All of it is queried in the browser with
+patterns, shot-making triggers, and those triggers again split by service court. All
+of it is queried in the browser with
 **DuckDB-WASM**, with no backend.
 
 The panel deliberately does **not** predict the match. A pre-match win probability shipped

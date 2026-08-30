@@ -61,6 +61,13 @@ async function playerData(name, gender) {
       "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, attempts " +
       "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
   } catch (e) { /* stale insights db: show the card without tendencies */ }
+  let openings = [];
+  try {
+    openings = await query(
+      "SELECT side, role, anchor, context, tag, att_rate, att_lift, conversion, " +
+      "conv_delta, n, attempts FROM player_openings WHERE player = ? AND gender = ? " +
+      "ORDER BY att_lift DESC", [name, gender]);
+  } catch (e) { /* insights db predates the openings table: skip the section */ }
   let patterns = [];
   try {
     patterns = await query(
@@ -82,7 +89,7 @@ async function playerData(name, gender) {
       "SELECT year, matches, points FROM player_years WHERE player = ? AND gender = ? " +
       "ORDER BY year", [name, gender]);
   } catch (e) { /* stale insights db: the coverage band prints its counts without the chart */ }
-  return { s: s[0], triggers, patterns, serve, years };
+  return { s: s[0], triggers, openings, patterns, serve, years };
 }
 
 // The shot-quality verdict used to print here — "ahead of / typical for / behind similar
@@ -102,8 +109,8 @@ async function playerData(name, gender) {
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
 // drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
 // pattern has no chartable direction, so there's nothing to draw.
-function rallyDrawer(pattern, mirror = false) {
-  const svg = patternSvg(pattern, mirror);
+function rallyDrawer(pattern, mirror = false, court = "deuce") {
+  const svg = patternSvg(pattern, mirror, court);
   return svg ? `<details class="rally"><summary>ball path</summary>
     <div class="court">${svg}</div></details>` : "";
 }
@@ -348,6 +355,46 @@ function trigBase(d) {
       <span class="lift">the tick on each cue below marks this rate</span></p>
     <div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i></div>
   </div>`;
+}
+
+// One opening cue. Same currency as a pooled trigger — a lead-up that shifts the
+// player's aggressive shot frequency — but every number is against their own norm for that
+// same shot on that same service court, which is what the pooled row above cannot say. The
+// court is named in the row rather than left to the drawing, because the drawing is
+// collapsed by default and the court is the whole point of the row.
+//
+// The service court is also passed to the drawing, which pooled cues cannot do: a wide
+// serve is a different physical ball on the two sides, so drawing an ad-court cue on the
+// deuce court would contradict the row above it.
+function openLine(o, hand) {
+  const trap = o.tag === "trap";
+  const conv = Math.round(o.conversion * 100);
+  const att = num(o.attempts);
+  const counts = att == null ? `n=${Number(o.n)}`
+    : `n=${Number(o.n)}, ${att} attempt${att === 1 ? "" : "s"}`;
+  const payoff = trap
+    ? `converts only <b>${conv}%</b> <span class="lift">${Math.round(o.conv_delta * 100)}pp
+       vs their other opening cues</span>`
+    : `converts <b>${conv}%</b>`;
+  return `<div class="trig ${trap ? "bait" : "green"}">
+    <p class="tcue"><span class="ocourt">${esc(o.side)} court · ${esc(o.anchor)}</span>
+      after <code>${esc(o.context)}</code></p>
+    <p class="tnum">aggressive <b>${Math.round(o.att_rate * 100)}%</b>
+      <span class="lift">${Number(o.att_lift).toFixed(1)}× their ${esc(o.side)}
+      ${esc(o.anchor)} norm</span> · ${payoff} <span class="lift">${counts}</span></p>
+    ${trigMeter(o)}
+    ${rallyDrawer(o.context, hand === "L", o.side)}</div>`;
+}
+
+// Greens first then traps, matching the section above; two of each at most, so a player
+// with cues on both courts does not push the other player's column out of step.
+function openSets(d) {
+  if (!d || !d.openings || !d.openings.length) return "";
+  const greens = d.openings.filter((o) => o.tag === "green")
+    .sort((a, b) => b.att_lift - a.att_lift).slice(0, 2);
+  const traps = d.openings.filter((o) => o.tag === "trap")
+    .sort((a, b) => a.conv_delta - b.conv_delta).slice(0, 2);
+  return [...greens, ...traps].map((o) => openLine(o, d.s.hand)).join("");
 }
 
 // A player's triggers, in the order the panel shows them: their own baseline rate, then the
@@ -1378,6 +1425,10 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
       frequency — and whether it converts as well as their other cues
       do${meterLegend("their rate with no cue")}`,
       a, b, ta, tb, "text") +
+    section("opening cues by court", `the same question as above, asked separately of
+      each service court — a wide serve opens opposite wings on the two sides, so a
+      pooled cue averages two different serves${meterLegend("their norm for that shot and court")}`,
+      a, b, openSets(pa), openSets(pb), "text") +
     (pa || pb ? COV_NOTE : "");
 }
 

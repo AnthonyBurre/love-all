@@ -88,12 +88,40 @@ that same shot and side*. Everything deeper in the rally stays pooled, where the
 sample per context is thin enough already.
 
 The output is per-player favorable (green) and trap opening sequences, separated
-by serving vs returning role and by side, with per-side denominators and the same
-`MIN_CTX` / `MIN_ATT` / `TRIGGER_LIFT` floors as the pooled analysis. Full rows in
+by serving vs returning role and by side, with per-side denominators. Full rows in
 `reports/shot_triggers_openings.csv`; the report shows the marquee players. This
 reproduces known shapes without being told them — Nadal's deuce-court `serve wide`
-serve+1 fires at 3× his norm — and separates side-specific traps a pooled view
-can't (a sequence that baits a player only when they serve to one court).
+serve+1 runs at 2.5× his deuce serve+1 norm — and separates side-specific traps a
+pooled view can't (a sequence that baits a player only when they serve to one court).
+
+**This section was screened properly on 2026-08-29, and was not before.** It had
+been a raw threshold screen since it was written: clear the support floor, clear
+`TRIGGER_LIFT`, tag on the sign of the conversion gap. No multiplicity correction,
+and every displayed figure computed on the data that had just selected the row —
+while the pooled table above it had been FDR-corrected and cross-validated since
+`tag_contexts` landed. One experiment, two tables, one of them screened.
+
+Each `(player, side, anchor)` group now splits into the same two match-hash folds
+the pooled screen uses. One fold discovers — exact binomial tail against that
+fold's own group baseline, Benjamini-Hochberg at q=0.10 across every context it
+could test, then a `TRIGGER_LIFT` lift to be a candidate — and the other confirms
+and supplies every number shown. The group is the correction family rather than
+the player, because a deuce serve+1 cue only ever competed against other deuce
+serve+1 contexts.
+
+It cost more than the same fix cost elsewhere: **484 rows over 171 players became
+217 over 104.** Of those, 118 cleared from both directions and 99 from one, and
+across that 99 — the clean out-of-sample read — the mean lift falls from 1.69× where
+it was found to **1.31× where it was measured, 45% of the discovered edge**.
+`court_response` measured 46% on the same kind of test and `rally_patterns` 50%,
+over different features and different screens. Three independent readings of the
+same number is the most useful thing to come out of any of this.
+
+These rows ship to the site as the panel's **opening cues by court** section. The
+pooled cues above still ship too and still contain opening lead-ups; that overlap
+is deliberate. The pooled row says a lead-up raises the player's aggression, and
+the court-split row says which of the two service courts is doing it — a refinement
+rather than a contradiction, and the panel shows them adjacent so it reads that way.
 
 ## Honest limitations
 

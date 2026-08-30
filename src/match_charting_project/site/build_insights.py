@@ -332,6 +332,33 @@ def build() -> int:
     # weekly and still writes reports/rally_patterns.csv; if the charting grows enough for a
     # current player to earn one, this is where it would come back.
 
+    # Opening cues by service court (shot_triggers' openings section). Same currency as
+    # the pooled triggers above — a lead-up that shifts the player's aggressive shot
+    # frequency — but scored against their own norm *for that shot and that court*, which
+    # the pooled table cannot do: a wide serve opens a right-hander's forehand in the
+    # deuce court and their backhand in the ad court, so the pooled row averages two
+    # different serves and names neither. 310 of the pooled rows above are opening cues
+    # shown that way; these are the same shots told properly.
+    #
+    # This waited until 2026-08-29 for a reason worth recording: the experiment produced
+    # this table from the start, but as a raw threshold screen with no multiplicity
+    # correction and its figures read off the data that selected them, while the pooled
+    # table beside it was FDR-corrected and cross-validated. Shipping it in that state
+    # would have put the panel's least-screened numbers next to its most-screened. It is
+    # now on the same footing as everything else here.
+    openings = pd.DataFrame()
+    op_path = REPORTS / "shot_triggers_openings.csv"
+    if op_path.exists():
+        op = pd.read_csv(op_path)
+        if len(op):
+            og = (op[op.tag == "green"].sort_values("att_lift", ascending=False)
+                  .groupby(["player", "gender"]).head(2))
+            ot = (op[op.tag == "trap"].sort_values("conv_delta")
+                  .groupby(["player", "gender"]).head(2))
+            openings = pd.concat([og, ot])[
+                ["player", "gender", "side", "role", "anchor", "context", "tag",
+                 "att_rate", "att_lift", "conversion", "conv_delta", "n", "attempts"]]
+
     # ``sigma`` is not taken. It printed as the profile column's "shot selection" figure and
     # was cut by the test that retired the shot-quality score: it correlates -0.81 (men) /
     # -0.59 (women) with rally length, two thirds of the men's spread is the player's own
@@ -366,7 +393,8 @@ def build() -> int:
     OUT.unlink(missing_ok=True)     # fresh file: dropped tables must not ship forever
     out = duckdb.connect(str(OUT))
     tables = [("player_summary", summary), ("player_triggers", triggers),
-              ("player_patterns", patterns), ("player_years", years), ("meta", meta),
+              ("player_patterns", patterns), ("player_openings", openings),
+              ("player_years", years), ("meta", meta),
               ("charted_matches", charted)]
     if serve is not None:
         tables.append(("player_serve", serve))

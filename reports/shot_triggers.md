@@ -109,7 +109,7 @@
 
 **Trigger sequences** (lead-ups that most raise the frequency):
 
-**No trap contexts** — no cue that raises the frequency converts below the rest of their cues in *both* halves of their charted matches. Unbaitable (at this resolution).
+**No trap contexts** — no cue that raises the frequency was found to convert below the rest of their cues when tested on matches that had no part in selecting it. Unbaitable (at this resolution).
 
 ### Steffi Graf
 *aggressive on 21.4% of strokes, converting 57%; across their trigger cues, 71%; 18,226 contextful strokes*
@@ -177,116 +177,89 @@ The cue lists move more than the leaderboard does. Of the 1,425 contexts either 
 
 ## Opening sequences by serve side (deuce vs ad)
 
-The pooled tables above average over the court the point was served to, but the first four plies mean different things on the two sides: a wide serve opens the forehand in the deuce court and the backhand in the ad court. Here the opening aggressive shots — the return, the serve+1, and the return+1 — are split by side and scored against the player's own norm *for that same shot and side*. Everything deeper in the rally stays pooled (above). Full rows in `reports/shot_triggers_openings.csv`; 308 green / 176 trap sequences across 171 players.
+The pooled tables above average over the court the point was served to, but the first four plies mean different things on the two sides: a wide serve opens the forehand in the deuce court and the backhand in the ad court. Here the opening aggressive shots — the return, the serve+1, and the return+1 — are split by side and scored against the player's own norm *for that same shot and side*. Everything deeper in the rally stays pooled (above). Full rows in `reports/shot_triggers_openings.csv`; 125 green / 92 trap sequences across 104 players.
+
+**These are cross-validated as of 2026-08-29, and were not before.** Until then this section was a raw threshold screen — clear the support floor, clear the lift, tag on the sign of the conversion gap — with no multiplicity correction and every figure computed on the data that had just selected the row. The pooled tables above had been FDR-corrected and cross-validated since `tag_contexts` landed, so this experiment was shipping one screened table and one unscreened one. Now each (player, side, anchor) group splits into the same two match-hash folds: one discovers, with an exact binomial tail against that fold's own group baseline and Benjamini-Hochberg at q=0.1 across every context it could test; the other confirms and supplies every number shown.
+
+That took the table from 484 rows over 171 players to 217 over 104. 118 rows cleared from both directions and show the two folds pooled; the 99 that cleared from one show that fold alone, and across those the mean lift falls from 1.69x where it was found to **1.31x where it was measured — 45% of the discovered edge**. `court_response` measured 46% on the same kind of test and `rally_patterns` 50%, over different features and different screens, which is three independent readings of the same number.
 
 ### Men
 
 ### Roger Federer
 
 **Serve, deuce court**
-- ✅ `serve T · BH slice→1` → serve+1 aggressive 59% (1.8×), converts 77% (+7% vs norm) (n=213)
-- ✅ `serve wide · BH slice→2` → serve+1 aggressive 57% (1.7×), converts 86% (+16% vs norm) (n=174)
+- ✅ `serve wide · BH slice→2` → serve+1 aggressive 57% (1.7×), converts 86% (+4% vs norm) (n=174)
+- ✅ `serve T · BH slice→2` → serve+1 aggressive 54% (1.6×), converts 82% (+1% vs norm) (n=1392)
+- ⚠️ `serve wide · FH slice→1` → serve+1 aggressive 44% (1.3×) but converts only 70% (-15% vs norm) (n=75)
+- ⚠️ `serve T · BH slice→1` → serve+1 aggressive 59% (1.8×) but converts only 77% (-5% vs norm) (n=213)
 
 **Serve, ad court**
-- ✅ `serve wide · BH slice→1` → serve+1 aggressive 66% (2.0×), converts 83% (+15% vs norm) (n=142)
-- ✅ `serve T · BH slice→2` → serve+1 aggressive 63% (1.9×), converts 78% (+10% vs norm) (n=158)
+- ✅ `serve wide · BH slice→2` → serve+1 aggressive 62% (1.9×), converts 84% (+1% vs norm) (n=781)
 
 **Return, deuce court**
-- ✅ `FH drive→3 · BH slice→2` → return+1 aggressive 46% (2.2×), converts 69% (+17% vs norm) (n=92)
-- ✅ `BH drive→2 · BH net→3` → return+1 aggressive 46% (2.2×), converts 81% (+29% vs norm) (n=81)
-- ⚠️ `FH drive→1 · BH drive→2` → return+1 aggressive 32% (1.5×) but converts only 50% (-2% vs norm) (n=63)
+- ✅ `BH drive→2 · BH net→3` → return+1 aggressive 46% (2.2×), converts 81% (+14% vs norm) (n=81)
+- ⚠️ `BH drive→1 · FH drive→2` → return+1 aggressive 26% (1.2×) but converts only 58% (-14% vs norm) (n=73)
 
 **Return, ad court**
-- ✅ `FH drive→3 · BH slice→2` → return+1 aggressive 44% (2.0×), converts 67% (+14% vs norm) (n=62)
-- ✅ `FH drive→1 · FH drive→2` → return+1 aggressive 41% (1.9×), converts 60% (+8% vs norm) (n=61)
-- ⚠️ `FH drive→2 · BH drive→2` → return+1 aggressive 33% (1.5×) but converts only 38% (-14% vs norm) (n=213)
+- ⚠️ `FH drive→2 · BH drive→2` → return+1 aggressive 30% (1.4×) but converts only 40% (-30% vs norm) (n=115)
+- ⚠️ `FH drive→3 · BH drive→2` → return+1 aggressive 34% (1.6×) but converts only 57% (-8% vs norm) (n=316)
 
 ### Novak Djokovic
 
 **Serve, deuce court**
-- ✅ `serve wide · BH slice→3` → serve+1 aggressive 45% (1.8×), converts 88% (+20% vs norm) (n=73)
-- ✅ `serve wide · BH slice→2` → serve+1 aggressive 44% (1.8×), converts 78% (+10% vs norm) (n=236)
+- ✅ `serve wide · FH slice→2` → serve+1 aggressive 44% (1.8×), converts 85% (+4% vs norm) (n=433)
+- ✅ `serve wide · FH slice→3` → serve+1 aggressive 34% (1.4×), converts 90% (+8% vs norm) (n=62)
+- ⚠️ `serve wide · BH slice→2` → serve+1 aggressive 44% (1.8×) but converts only 78% (-3% vs norm) (n=236)
+- ⚠️ `serve T · BH slice→2` → serve+1 aggressive 38% (1.6×) but converts only 79% (-2% vs norm) (n=1050)
 
 **Serve, ad court**
-- ✅ `serve wide · BH slice→2` → serve+1 aggressive 47% (1.9×), converts 89% (+23% vs norm) (n=584)
-- ✅ `serve T · BH slice→2` → serve+1 aggressive 39% (1.6×), converts 82% (+16% vs norm) (n=204)
+- ⚠️ `serve body · BH slice→2` → serve+1 aggressive 31% (1.2×) but converts only 72% (-14% vs norm) (n=80)
+- ⚠️ `serve T · BH slice→2` → serve+1 aggressive 39% (1.6×) but converts only 82% (-3% vs norm) (n=204)
 
 **Return, deuce court**
-- ✅ `FH drive→3 · BH slice→3` → return+1 aggressive 28% (2.0×), converts 67% (+11% vs norm) (n=98)
-- ✅ `BH drive→1 · BH drive→2` → return+1 aggressive 24% (1.8×), converts 68% (+13% vs norm) (n=79)
-- ⚠️ `BH drive→3 · BH slice→3` → return+1 aggressive 24% (1.8×) but converts only 45% (-11% vs norm) (n=119)
+- ✅ `BH drive→1 · FH drive→2` → return+1 aggressive 19% (1.4×), converts 68% (+6% vs norm) (n=130)
+
+**Return, ad court**
+- ⚠️ `FH drive→2 · FH drive→2` → return+1 aggressive 16% (1.1×) but converts only 54% (-21% vs norm) (n=261)
 
 ### Rafael Nadal
 
 **Serve, deuce court**
-- ✅ `serve wide · FH slice→2` → serve+1 aggressive 47% (2.6×), converts 81% (+16% vs norm) (n=77)
-- ✅ `serve T · BH slice→1` → serve+1 aggressive 46% (2.5×), converts 79% (+14% vs norm) (n=93)
-- ⚠️ `serve wide · BH drive→3` → serve+1 aggressive 30% (1.6×) but converts only 57% (-8% vs norm) (n=149)
+- ✅ `serve wide · FH slice→2` → serve+1 aggressive 47% (2.6×), converts 81% (+2% vs norm) (n=77)
+- ✅ `serve T · BH slice→3` → serve+1 aggressive 36% (2.0×), converts 88% (+9% vs norm) (n=200)
+- ⚠️ `serve wide · FH slice→3` → serve+1 aggressive 44% (2.5×) but converts only 68% (-11% vs norm) (n=90)
+- ⚠️ `serve wide · BH drive→2` → serve+1 aggressive 26% (1.4×) but converts only 74% (-4% vs norm) (n=90)
 
 **Serve, ad court**
-- ✅ `serve wide · BH slice→1` → serve+1 aggressive 45% (1.9×), converts 80% (+7% vs norm) (n=283)
-- ✅ `serve wide · BH slice→2` → serve+1 aggressive 45% (1.9×), converts 88% (+15% vs norm) (n=568)
+- ✅ `serve wide · BH slice→2` → serve+1 aggressive 45% (1.9×), converts 88% (+2% vs norm) (n=568)
+- ✅ `serve wide · BH slice→3` → serve+1 aggressive 44% (1.8×), converts 93% (+7% vs norm) (n=168)
+- ⚠️ `serve T · FH slice→2` → serve+1 aggressive 35% (1.4×) but converts only 78% (-10% vs norm) (n=66)
+- ⚠️ `serve wide · BH slice→1` → serve+1 aggressive 45% (1.9×) but converts only 80% (-6% vs norm) (n=283)
 
-**Return, deuce court**
-- ✅ `FH drive→3 · FH drive→2` → return+1 aggressive 22% (1.5×), converts 79% (+18% vs norm) (n=87)
+**Return, ad court**
+- ⚠️ `FH drive→1 · FH drive→2` → return+1 aggressive 20% (1.2×) but converts only 48% (-19% vs norm) (n=118)
+- ⚠️ `FH drive→1 · BH drive→2` → return+1 aggressive 21% (1.3×) but converts only 62% (-6% vs norm) (n=280)
 
 ### Pete Sampras
 
 **Serve, ad court**
-- ✅ `serve wide · BH slice→2` → serve+1 aggressive 63% (1.6×), converts 75% (+5% vs norm) (n=161)
-
-**Return, deuce court**
-- ✅ `BH drive→2 · FH net→3` → return+1 aggressive 41% (1.6×), converts 71% (+14% vs norm) (n=85)
-- ⚠️ `BH slice→2 · BH net→3` → return+1 aggressive 38% (1.5×) but converts only 44% (-14% vs norm) (n=60)
+- ⚠️ `serve wide · BH slice→2` → serve+1 aggressive 59% (1.4×) but converts only 74% (-4% vs norm) (n=93)
 
 ### Andre Agassi
 
-**Serve, deuce court**
-- ✅ `serve T · BH slice→1` → serve+1 aggressive 37% (1.5×), converts 80% (+17% vs norm) (n=82)
-
-**Serve, ad court**
-- ✅ `serve wide · BH slice→2` → serve+1 aggressive 42% (1.6×), converts 77% (+14% vs norm) (n=438)
-
-**Return, deuce court**
-- ✅ `BH drive→3 · BH net→3` → return+1 aggressive 35% (1.8×), converts 70% (+6% vs norm) (n=65)
-- ✅ `BH drive→2 · BH net→3` → return+1 aggressive 36% (1.8×), converts 80% (+16% vs norm) (n=110)
-
 **Return, ad court**
-- ✅ `BH drive→3 · BH net→1` → return+1 aggressive 38% (1.7×), converts 93% (+23% vs norm) (n=77)
-- ⚠️ `FH drive→2 · FH net→3` → return+1 aggressive 40% (1.8×) but converts only 66% (-5% vs norm) (n=72)
+- ⚠️ `FH drive→2 · FH net→3` → return+1 aggressive 40% (1.8×) but converts only 66% (-17% vs norm) (n=72)
 
 ### Women
 
 ### Serena Williams
 
-**Serve, deuce court**
-- ✅ `serve wide · FH slice→2` → serve+1 aggressive 50% (1.7×), converts 61% (+5% vs norm) (n=92)
-- ✅ `serve T · BH slice→2` → serve+1 aggressive 44% (1.5×), converts 69% (+14% vs norm) (n=88)
-
-**Serve, ad court**
-- ✅ `serve wide · BH slice→2` → serve+1 aggressive 53% (1.8×), converts 74% (+17% vs norm) (n=97)
-- ✅ `serve T · FH slice→2` → serve+1 aggressive 44% (1.5×), converts 80% (+23% vs norm) (n=93)
-
-**Return, deuce court**
-- ⚠️ `BH drive→2 · FH drive→2` → return+1 aggressive 42% (1.6×) but converts only 49% (-2% vs norm) (n=118)
-
 **Return, ad court**
-- ✅ `FH drive→1 · FH drive→2` → return+1 aggressive 40% (1.6×), converts 76% (+25% vs norm) (n=63)
+- ⚠️ `FH drive→3 · BH drive→2` → return+1 aggressive 31% (1.3×) but converts only 65% (-9% vs norm) (n=64)
 
 ### Iga Swiatek
 
 **Serve, deuce court**
-- ✅ `serve wide · FH slice→1` → serve+1 aggressive 57% (2.2×), converts 69% (+8% vs norm) (n=84)
-- ✅ `serve T · BH slice→2` → serve+1 aggressive 55% (2.1×), converts 80% (+19% vs norm) (n=64)
-
-**Serve, ad court**
-- ✅ `serve T · FH slice→2` → serve+1 aggressive 51% (1.9×), converts 80% (+19% vs norm) (n=80)
-
-### Steffi Graf
-
-**Serve, deuce court**
-- ✅ `serve T · BH slice→2` → serve+1 aggressive 40% (1.6×), converts 67% (+10% vs norm) (n=144)
-
-**Serve, ad court**
-- ✅ `serve wide · BH slice→2` → serve+1 aggressive 46% (2.0×), converts 70% (+18% vs norm) (n=95)
+- ⚠️ `serve wide · FH slice→1` → serve+1 aggressive 57% (2.2×) but converts only 69% (-6% vs norm) (n=84)
+- ⚠️ `serve wide · BH drive→2` → serve+1 aggressive 27% (1.1×) but converts only 71% (-4% vs norm) (n=62)
 

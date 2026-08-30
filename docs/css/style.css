@@ -1265,6 +1265,11 @@ a { color: var(--acc-d); }
 .trig::before { position: absolute; left: 0; top: 0; }
 .trig.green::before { content: "▲"; color: var(--up); font-size: 10px; }
 .trig.bait::before { content: "⚠"; color: var(--warn); font-size: 11px; }
+/* The service court and which ball of the opening this is, said in the row rather than
+   left to the collapsed drawing — the court is the whole reason the row exists, so it
+   cannot be behind a disclosure triangle. Recessive against the cue string it labels. */
+.ocourt { color: var(--muted); font-weight: 600; text-transform: uppercase;
+  font-size: 9px; letter-spacing: 0.04em; margin-right: 5px; }
 .trig.immune { color: var(--acc-d); font-weight: 600; }
 .trig.immune::before { content: "◆"; font-size: 10px; }
 /* The player's own rate, heading their column of cues. It keeps .trig's left inset with no
