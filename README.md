@@ -75,9 +75,10 @@ finished events of every other tier. On a live match each box is shaded by how c
 pairing is; on a finished draw the shading turns per-match, and the drawer links straight to
 that match's full chart on Tennis Abstract or invites you to be the one who charts it. Click
 any match and a drawer opens with, for each player: a style archetype, serve and return rates
-against the tour average, average point length, shot variety, serve direction, court patterns,
-shot-making triggers, and those triggers again split by service court. All of it is queried in
-the browser with **DuckDB-WASM**, no backend.
+with the games they turn into held and broken, the points won outright at either end (aces,
+winners off the return) and the ones given away (double faults), average point length, shot
+variety, serve direction, court patterns, shot-making triggers, and those triggers again split
+by service court. All of it is queried in the browser with **DuckDB-WASM**, no backend.
 
 The panel deliberately does **not** predict the match. The score tree in `winprob_match.py` is
 exact, but the only inputs available to it are career charted rates over a volunteer-selected

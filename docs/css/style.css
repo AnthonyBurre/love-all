@@ -870,21 +870,31 @@ a { color: var(--acc-d); }
 .ct-bounce { fill: var(--card); stroke: var(--muted); stroke-width: 1.1; }
 
 /* --- the comparison strip, headed "side by side" ---------------------------------
-   Both players' headline numbers on one axis: bars grow outward from a shared centre,
-   so a gap reads as a shape rather than as arithmetic between two distant columns. The
-   hairline on each bar is the tour average, where the metric has one. */
+   Both players' headline numbers on one axis, bent into a ring: each sweeps out of a shared
+   origin at the foot, so a gap reads as a shape rather than as arithmetic between two distant
+   columns. A spoke across the band carries a second figure of that player's own, the games
+   the sweep turns into. See the note over donut() in matchup.js for what a ring encodes and
+   why only two metrics are drawn on one. */
 /* --dn-size is the drawn diameter of one ring, set here because the box it sits in is what
-   there is to divide up. The rings stack one per row at every width (see .tapemain), so a
+   there is to divide up. The narrow value came down from 156 when the flanks took on a second
+   qualifier: a phone gives the ring's row 321px and the ring is the part of it that can give
+   width back, so 144 plus an 8px gap leaves ~80px a side. That is what the headline figure and
+   its unit need on one line at the highest serve rate on tour ("72.4% points", 77px); the
+   double-fault line is longer than that and wraps, which is the right one of the two to break. The rings stack one per row at every width (see .tapemain), so a
    ring never shares its row with a second one — it spends the whole width on one larger ring
    instead of two side by side.
    Sized against measured slack rather than guessed at. A ring's row is shrink-to-fit inside a
    centred track (.dn has min-width:0 in a centre-aligned column), so the flanking figures are
    not squeezed as the ring grows — the row simply widens until it fills its track, and the
-   track is 336px narrow / 340px wide against a row that was using 255 / 271. These sizes spend
-   part of that and leave ~58px / ~46px still standing, so the longest qualifier on the panel
-   ("10.4% aces") keeps its own line at either width. */
+   ring keeps these sizes while the track is widened to whatever the qualifiers beside it
+   need. The longest line a flank can carry is 88px — "10.5% double faults" and "5.5% return
+   winners" come out the same width, both measured off the worst rate on the charted tour
+   rather than off whichever players happened to be on screen. The track that gets a flank to
+   88 is 380, not the 368 the parts add up to: the ring's row is shrink-to-fit inside it and
+   the fr tracks either side of the ring do not hand over their last few pixels until the
+   track has them to give. Measured rather than derived, and set a little over. */
 .tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0;
-  --dn-size: 156px; }
+  --dn-size: 144px; }
 /* The first thing in the scroll, right under a header that just named this match — so
    without a label over them, the numbers below default to reading as this match's. They're
    the opposite, which is what the "not this one" half says outright rather than trusting
@@ -1060,7 +1070,10 @@ a { color: var(--acc-d); }
      stack now sets the height of. Only the stack itself is asked to centre — align-self on
      .dnstack alone — so it climbs to the middle of that height while the rule at the top of
      each style column stays put. */
-  .tapemain { grid-template-columns: 1fr minmax(270px, 340px) 1fr;
+  /* The ring track takes what the flanks need and the style columns give it up: they hold
+     three short lines each against a 90px min-content, so the ~22px apiece this costs them is
+     slack rather than a squeeze. */
+  .tapemain { grid-template-columns: 1fr minmax(270px, 384px) 1fr;
     grid-template-areas: "sa rings sb"; align-items: start; }
   .dnstack { align-self: center; }
   /* Room to spend, now the rings have a track of their own instead of sharing a row with a
@@ -1094,7 +1107,8 @@ a { color: var(--acc-d); }
    length, and sized to them the ring would sit off-centre by half the difference — which is
    the one thing this layout exists to avoid. */
 .dnrow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center; gap: 10px; }
+  align-items: center; gap: 8px; }
+@media (min-width: 761px) { .dnrow { gap: 10px; } }
 /* The ring is now one box exactly the drawing's size, with everything else laid over it: the
    two scale ends and the name all sit in the hole. It was a flex column stacking a cap, the
    drawing and a cap, which made its height the drawing plus two lines of type — so the row it
@@ -1121,7 +1135,27 @@ a { color: var(--acc-d); }
 .dv { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
   color: var(--muted); line-height: 1.2; }
 .dv.lead { color: var(--ink); font-weight: 800; }
-.ds { font-size: 10px; color: var(--muted); line-height: 1.4; }
+/* The denominator, hung off the figure the way "shots" hangs off rally length in the style
+   column beside it. Its own colour and weight rather than inherited ones: the leader's figure
+   is set in bold ink, and a unit that came along would make the word "points" the loudest
+   thing in a flank whose subject is the number in front of it. */
+.dv .dvu { margin-left: 3px; font-size: 10px; font-weight: 500; color: var(--muted); }
+/* Tabular figures, like the total above them. The two flanks are set to be read against each
+   other, and with proportional digits two qualifiers of the same length measure differently —
+   enough, in an 80px gutter, for one side's line to wrap where the other's did not. */
+.ds { font-size: 10px; color: var(--muted); line-height: 1.4;
+  font-variant-numeric: tabular-nums; }
+/* The games figure, wearing the tick it is drawn as on the band. A little air above it
+   because it is a different measurement from the line before it — the ace/double-fault pair
+   is points, this is games — and because the tick's halo needs the room. The glyph carries
+   its own 3px of side margin, so it is pulled back by that much on the leading edge to keep
+   the line's text edge flush with the figure above it on both sides of the ring. */
+.dmark { margin-top: 3px; }
+/* The glyph carries 3px of air either side. On the b flank that lands at the line's leading
+   edge and pushes the whole line off the left the lines above it keep, so it is taken back.
+   The a flank is right-aligned, where the glyph's margin falls at the far end of the line and
+   nothing is out of true. */
+.dside.b .dmark { margin-left: -3px; }
 
 /* The unreached part of the domain, and the only thing saying how far a sweep could have
    gone. A full circle, because the two half-turns either side of 12 o'clock are the whole
@@ -1135,21 +1169,24 @@ a { color: var(--acc-d); }
 .dseg.b { stroke: var(--b); }
 /* the missed half of the same decision: same hue, drained of it */
 .dseg.miss { opacity: .38; }
-/* The other way an arc splits. An ace is a service point won like every other point in that
-   sweep — there is no failed half to drain — so the ace share deepens instead of the rest
-   draining. Drained, it was the wrong shape of statement and the wrong weight: aces are a
-   twelfth of a good server's points won, so ~90% of the serve ring would go faint and come
-   out paler than the return ring beside it. Deepened, the ring keeps its weight and the
-   marked part is the one that reads as emphatic, which is what winning a point outright is.
-   It starts at 12 o'clock, so the two players' cores meet at the origin. */
+/* The other way an arc splits. An ace, or a winner off the return, is a point won like every
+   other point in that sweep — there is no failed half to drain — so the outright share deepens
+   instead of the rest draining. Drained, it was the wrong shape of statement and the wrong
+   weight: aces are a twelfth of a good server's points won, so ~90% of the serve ring would go
+   faint and come out paler than the return ring beside it. Deepened, the ring keeps its weight
+   and the marked part is the one that reads as emphatic, which is what winning a point
+   outright is.
+   It is the first segment of the sweep, so it starts at the foot and the two players' cores
+   meet at the origin. */
 .dseg.a.deep { stroke: color-mix(in srgb, var(--a) 60%, #000); }
 .dseg.b.deep { stroke: color-mix(in srgb, var(--b) 60%, #000); }
-/* The tour average, as a spoke across the ring. It has to be legible on the saturated arc
-   *and* on the empty track behind it, and no single colour manages both — on a violet or red
-   arc a dark mark is simply not there, which is the half of the ring the average usually
-   lands in. So it is a light core over a dark halo, drawn as two lines because SVG has no
-   box-shadow. The cue bars under the shot-making triggers wear the same mark, in CSS, for
-   the same reason and against the same two grounds. */
+/* The player's hold or break rate, as a spoke across the ring. It stands on both of the ring's
+   grounds — inside the arc on the return ring, on open track past the arc's end on the serve
+   ring — and no single colour is legible against both: on a violet or red arc a dark mark is
+   simply not there, and on the near-white track a light one is not. So it is a light core over
+   a dark halo, one of the two carrying it whichever ground it lands on, drawn as two lines
+   because SVG has no box-shadow. The cue bars under the shot-making triggers wear the same
+   mark, in CSS, for the same reason and against the same two grounds. */
 .dtickhalo { stroke: color-mix(in srgb, var(--ink) 50%, transparent); stroke-width: 3.6;
   stroke-linecap: butt; }
 .dtick { stroke: var(--card); stroke-width: 1.8; stroke-linecap: butt; }
@@ -1186,8 +1223,8 @@ a { color: var(--acc-d); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
 .segkey.deep { background: color-mix(in srgb, var(--muted) 60%, #000); }
-/* the key wears the mark it is a key for, halo and all — hence the margin, which is the
-   room the halo needs to not sit on the words either side of it */
+/* The figure wears the mark it is drawn as, halo and all — hence the margin, which is the
+   room the halo needs to not sit on the words either side of it. */
 .tickkey { display: inline-block; width: 2px; height: 11px; background: var(--card);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 50%, transparent);
   vertical-align: -2px; margin: 0 3px; }

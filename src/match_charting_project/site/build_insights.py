@@ -91,9 +91,9 @@ def _charted_matches(con) -> pd.DataFrame:
 
 
 def _player_facts(con) -> pd.DataFrame:
-    """Handedness and ace rate per ``(gender, player)``, straight from the main DB.
+    """Handedness, ace rate and double-fault rate per ``(gender, player)``, from the main DB.
 
-    Both are facts about the player rather than findings about them, so neither comes
+    All three are facts about the player rather than findings about them, so none comes
     through an experiment: they are read here and shipped beside the rates.
 
     Hand is the modal value across their charted matches, not the first one seen. A
@@ -102,10 +102,11 @@ def _player_facts(con) -> pd.DataFrame:
     vote rather than allowed to win one — and a player charted only in those rows comes
     out null, which the panel prints as nothing.
 
-    Ace rate is aces over service points across every charted match, and needs the floor
-    because it is the one number here that isn't shrunk toward anything: over a single
-    charted match a couple of aces in a short set reads as a 15% ace rate. 200 service
-    points is about two matches.
+    Ace and double-fault rates are both over service points across every charted match,
+    on one denominator so the panel can print them as a pair: points taken without
+    playing them, points given the same way. They need the floor because neither is
+    shrunk toward anything — over a single charted match a couple of aces in a short set
+    reads as a 15% ace rate. 200 service points is about two matches.
     """
     hands = con.execute(
         "WITH seen AS ("
@@ -117,14 +118,129 @@ def _player_facts(con) -> pd.DataFrame:
         "         row_number() OVER (PARTITION BY gender, player ORDER BY count(*) DESC) rn"
         "  FROM seen WHERE hand IN ('R', 'L') GROUP BY gender, player, hand) "
         "SELECT gender, player, hand FROM voted WHERE rn = 1").fetchall()
-    aces = con.execute(
+    serves = con.execute(
         "SELECT gender, player,"
-        "       sum(CAST(aces AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE) AS ace_rate "
+        "       sum(CAST(aces AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE) AS ace_rate,"
+        "       sum(CAST(dfs AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE) AS df_rate "
         "FROM stats_overview WHERE set = 'Total' "
         "GROUP BY gender, player HAVING sum(CAST(serve_pts AS INT)) >= 200").fetchall()
     facts = pd.DataFrame(hands, columns=["gender", "player", "hand"])
-    return facts.merge(pd.DataFrame(aces, columns=["gender", "player", "ace_rate"]),
-                       on=["gender", "player"], how="outer")
+    return facts.merge(
+        pd.DataFrame(serves, columns=["gender", "player", "ace_rate", "df_rate"]),
+        on=["gender", "player"], how="outer")
+
+
+# A hold or a break needs enough games behind it to mean anything. 100 on each side is
+# roughly four matches of serving, and it is a floor on nonsense rather than a claim of
+# precision — the same job RATE_MIN_PTS does for the rates these marks sit on. At the
+# panel's own 2,000-charted-point gate it excludes nobody: the thinnest player who gets a
+# ring has 144 service games and 148 return games.
+MIN_GAMES = 100
+
+# Every game in the corpus, with who served it and who won it.
+#
+# The winner is the winner of the game's last point. That is true by definition for a game
+# that finished, and checked rather than assumed: against the independent reading — whose
+# game count went up on the first point of the next game — the two agree on 262,191 of
+# 262,193 games played inside a set. The two that disagree are charting errors, and the
+# rule is kept because the score-progression reading cannot score the last game of a match
+# at all, having no next game to read.
+#
+# Tiebreaks are dropped. Both players serve in one, so it is nobody's hold to lose, and
+# the notation records the real server per point — which is also how they are found:
+# more than one server in a game, or a game played at 6-6. That is 4,986 of 292,431 games.
+_GAMES_SQL = """
+WITH p AS (
+  SELECT match_id, CAST(pt AS INT) AS pt, CAST(game_num AS INT) AS gn,
+         gm1, gm2, svr, pt_winner
+  FROM points WHERE svr IN (1, 2) AND pt_winner IN (1, 2)),
+g AS (
+  SELECT match_id, gn, count(DISTINCT svr) AS nsv, min(svr) AS svr,
+         min(gm1) AS g1, min(gm2) AS g2, max(pt) AS last_pt
+  FROM p GROUP BY match_id, gn),
+decided AS (
+  SELECT g.match_id, g.svr, p.pt_winner
+  FROM g JOIN p ON p.match_id = g.match_id AND p.pt = g.last_pt
+  WHERE g.nsv = 1 AND NOT (g.g1 = 6 AND g.g2 = 6))
+SELECT m.gender,
+       CASE WHEN d.svr = {mine} THEN m.player1 ELSE m.player2 END AS player,
+       count(*) AS n,
+       sum(CASE WHEN d.pt_winner {test} d.svr THEN 1 ELSE 0 END) AS won
+FROM decided d JOIN matches m USING (match_id)
+GROUP BY 1, 2 HAVING count(*) >= {floor}
+"""
+
+
+def _game_rates(con) -> pd.DataFrame:
+    """Hold and break rate per ``(gender, player)`` — the panel's two ring marks.
+
+    Games rather than points, which is the whole reason they are worth drawing beside the
+    rings: a serve edge measured in points is small and measured in games is not. The
+    charted tour wins 64% of service points and holds 80% of service games (men), 57% and
+    66% (women), and the same lever works the other way on return — 36% of return points
+    becomes 20% of return games broken. The mark on each ring is that conversion, per
+    player, on the ring's own scale.
+    """
+    hold = pd.DataFrame(
+        con.execute(_GAMES_SQL.format(mine=1, test="=", floor=MIN_GAMES)).fetchall(),
+        columns=["gender", "player", "serve_games", "holds"])
+    brk = pd.DataFrame(
+        con.execute(_GAMES_SQL.format(mine=2, test="<>", floor=MIN_GAMES)).fetchall(),
+        columns=["gender", "player", "return_games", "breaks"])
+    hold["hold_rate"] = (hold.holds / hold.serve_games).round(4)
+    brk["break_rate"] = (brk.breaks / brk.return_games).round(4)
+    return hold[["gender", "player", "hold_rate", "serve_games"]].merge(
+        brk[["gender", "player", "break_rate", "return_games"]],
+        on=["gender", "player"], how="outer")
+
+
+# A return-winner rate is a small number over a large denominator, so its floor is set by how
+# many events sit behind it rather than by how many points do: at the modern men's rate of
+# about 1.2%, 1,000 return points is a dozen return winners. Below that the figure is mostly
+# the charter's rounding. It costs 5 of the 363 players who get a ring, and they go without
+# the line and the wedge rather than with a fragile version of both.
+MIN_RETURN_PTS = 1000
+
+# Points the returner won on the return itself: the point ended on the second shot, the
+# returner took it, and the notation calls it a winner. That is the whole rally — a serve and
+# one ball back — so there is no forced-error case to add: a forced error on the second shot is
+# the returner's own, and the server wins it.
+_RETURN_WINNER_SQL = """
+WITH r AS (
+  SELECT m.gender,
+         CASE WHEN p.svr = 1 THEN m.player2 ELSE m.player1 END AS player,
+         pp.rally_len, pp.outcome, pp.server_won
+  FROM points p
+  JOIN points_parsed pp USING (match_id, pt)
+  JOIN matches m USING (match_id)
+  WHERE p.svr IN (1, 2) AND p.pt_winner IN (1, 2) AND pp.parse_ok)
+SELECT gender, player,
+       sum(CASE WHEN rally_len = 2 AND outcome = 'winner' AND NOT server_won
+                THEN 1 ELSE 0 END) / CAST(count(*) AS DOUBLE) AS ret_winner_rate
+FROM r GROUP BY gender, player HAVING count(*) >= {floor}
+"""
+
+
+def _return_winners(con) -> pd.DataFrame:
+    """Return-winner rate per ``(gender, player)`` — the return ring's outright-win core.
+
+    The return side of the ace: a point the player won without playing a rally for it. It is
+    the one figure on these two rings that says something the arc beside it does not — it
+    correlates 0.03 (men) and -0.01 (women) with return points won, where an ace rate largely
+    explains why a server's arc is long.
+
+    Era matters more here than anywhere else on the panel, and it is real tennis rather than
+    charting drift. The men's rate has halved, 2.8% before 2009 to 1.3% in the 2020s, while
+    the women's has held near 2.5% throughout — which is what serve-and-volley leaving the
+    men's game looks like from the returner's end: a return that has to pass an incoming
+    server is a winner, and a return against a baseliner starts a rally. Both tours are
+    charted by the same volunteers under the same conventions, so a judgment shift would have
+    moved both. These are career charted rates and are not adjusted for it.
+    """
+    rows = con.execute(_RETURN_WINNER_SQL.format(floor=MIN_RETURN_PTS)).fetchall()
+    df = pd.DataFrame(rows, columns=["gender", "player", "ret_winner_rate"])
+    df["ret_winner_rate"] = df.ret_winner_rate.round(4)
+    return df
 
 
 def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
@@ -224,6 +340,8 @@ def build() -> int:
                              columns=["gender", "player", "year", "matches", "points"])
     charted = _charted_matches(con)
     facts = _player_facts(con)
+    games = _game_rates(con)
+    ret_win = _return_winners(con)
     con.close()
 
     summary = pd.DataFrame([
@@ -236,6 +354,11 @@ def build() -> int:
     ])
 
     summary = summary.merge(facts, on=["player", "gender"], how="left")
+    # Hold and break rate ride beside the point rates they are the game-level reading of.
+    # Left-joined like the rest: below MIN_GAMES they come through null and the ring simply
+    # goes without its mark, the same way a thin server's arc goes without its ace wedge.
+    summary = summary.merge(games, on=["player", "gender"], how="left")
+    summary = summary.merge(ret_win, on=["player", "gender"], how="left")
 
     # The same coverage the summary carries as four numbers, cut by season, for the panel's
     # charted-history chart. Inner-joined to the summary so the table only holds players the
