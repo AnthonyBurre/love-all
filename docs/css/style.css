@@ -894,7 +894,7 @@ a { color: var(--acc-d); }
    the fr tracks either side of the ring do not hand over their last few pixels until the
    track has them to give. Measured rather than derived, and set a little over. */
 .tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0;
-  --dn-size: 144px; }
+  --dn-size: 160px; --dn-pad: 76px; }
 /* The first thing in the scroll, right under a header that just named this match — so
    without a label over them, the numbers below default to reading as this match's. They're
    the opposite, which is what the "not this one" half says outright rather than trusting
@@ -1059,9 +1059,9 @@ a { color: var(--acc-d); }
   grid-template-areas: "sa sb" "rings rings"; align-items: start; }
 .tapemain > .pbside.a { grid-area: sa; }
 .tapemain > .pbside.b { grid-area: sb; }
-/* One ring per row, centred: each ring already pulls its own flanking numbers in against
-   itself (see .dside below), so a ring reads centred at any track width regardless of how
-   much of the row's width is actually spare either side of it. */
+/* One ring per row, centred. A ring is a fixed-size drawing with a fixed reserve either side
+   for the figures that hang off it (see .dn), so it reads centred at any track width
+   regardless of how much of the row is actually spare. */
 .dnstack { grid-area: rings; display: flex; flex-direction: column; align-items: center;
   gap: 22px; min-width: 0; }
 @media (min-width: 761px) {
@@ -1073,14 +1073,23 @@ a { color: var(--acc-d); }
   /* The ring track takes what the flanks need and the style columns give it up: they hold
      three short lines each against a 90px min-content, so the ~22px apiece this costs them is
      slack rather than a squeeze. */
-  .tapemain { grid-template-columns: 1fr minmax(270px, 384px) 1fr;
+  .tapemain { grid-template-columns: 1fr minmax(270px, 356px) 1fr;
     grid-template-areas: "sa rings sb"; align-items: start; }
   .dnstack { align-self: center; }
   /* Room to spend, now the rings have a track of their own instead of sharing a row with a
-     second ring: the wider a ring is drawn, the more its arc can say. */
-  .tape { --dn-size: 172px; }
+     second ring: the wider a ring is drawn, the more its arc can say — and the further apart
+     two figures land when the values behind them are close, which is what decides whether a
+     label sits beside its own mark or on top of its neighbour. */
+  .tape { --dn-size: 200px; --dn-pad: 76px; }
 }
-.dn { min-width: 0; }
+/* The room the figures need outside the drawing. A label's anchor sits just past the band, so
+   the one nearest nine or three o'clock starts a twentieth of the ring's width from its edge
+   and the whole line hangs past it — which makes this a function of the longest line a ring
+   carries rather than of the ring's size, and very nearly a constant across the two.
+   76px, from the widest case the data actually produces: a leader's points figure — set
+   heavier than the other side's, and so wider — on a return ring where the arc ends near nine
+   o'clock. Measured across all 363 players the rings print for, at both ring sizes. */
+.dn { min-width: 0; padding: 0 var(--dn-pad) 20px; }
 /* The two ends of the ring's scale, at the two ends of the ring: zero at the foot both sweeps
    leave from, the ceiling at the top they climb toward. Printed rather than assumed, because
    the two rings do not share one — "67%" against an arc at two thirds says nothing without it
@@ -1102,60 +1111,81 @@ a { color: var(--acc-d); }
   font-variant-numeric: tabular-nums; line-height: 1.3; pointer-events: none; }
 .dncap.top { top: calc(19% + 2px); }
 .dncap.zero { bottom: calc(19% + 2px); }
-/* The ring on the panel's own centre line, with a player either side of it. Equal outer
-   tracks rather than tracks sized to their contents: the two qualifiers are rarely the same
-   length, and sized to them the ring would sit off-centre by half the difference — which is
-   the one thing this layout exists to avoid. */
-.dnrow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center; gap: 8px; }
-@media (min-width: 761px) { .dnrow { gap: 10px; } }
-/* The ring is now one box exactly the drawing's size, with everything else laid over it: the
-   two scale ends and the name all sit in the hole. It was a flex column stacking a cap, the
-   drawing and a cap, which made its height the drawing plus two lines of type — so the row it
-   sits in, and the stack of rows, carried that twice over for no picture. */
+/* One box exactly the drawing's size, with everything else laid over it: the two ends of the
+   scale and the ring's name sit in the hole, and the six figures sit outside the band against
+   their own marks. Those reach past this box, which is what .dn's padding holds room for. */
 .dnring { position: relative; width: var(--dn-size); height: var(--dn-size); }
-.dnring svg { display: block; width: 100%; height: 100%; }
+/* overflow visible so the leaders can run past the foot of the viewBox to the row the
+   outright-win figures sit on — see dnLead(). Nothing else is drawn outside the box. */
+.dnring svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* The leader from a wedge to its figure. A hairline, and lighter than the figure it arrives
+   at: it is the connection that matters, not the line. 0.6 of the viewBox's 100 units comes
+   out near a physical pixel at both ring sizes, which is what keeps it from reading as a mark
+   on the drawing in its own right. */
+.dlead { fill: none; stroke: color-mix(in srgb, var(--muted) 55%, transparent);
+  stroke-width: 0.6; }
 /* The ring's name, in its own hole rather than set as a line of print over the row — see
    donut(). Shrunk and shortened (tapeRows' `short`) to fit the clear space the ring's stroke
    leaves at its centre, and centred there, which keeps it clear of the two scale ends tucked
    against the top and foot of the same hole. */
 .dnttl { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  margin: 0; width: 64px; text-align: center; font-size: 9px; font-weight: 700;
+  margin: 0; width: 88px; text-align: center; font-size: 9px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .03em; line-height: 1.25; color: var(--muted);
   pointer-events: none; }
-/* Each player's pair reads outward from the ring: the number against it, the qualifier
-   under the number. No colour chip on either — the side is the key, and it is the same side
-   the player's own arc climbs. */
-.dside { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.dside.a { align-items: flex-end; text-align: right; }
-.dside.b { align-items: flex-start; text-align: left; }
-/* one ring's figure and its qualifier, kept together; the gap above separates the pairs
-   where a cell nests two rings */
-.dpair { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.dv { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
-  color: var(--muted); line-height: 1.2; }
-.dv.lead { color: var(--ink); font-weight: 800; }
+/* The hole is 62% of the ring across — 124px on the desktop drawing against 99 on the phone —
+   so the name can be set at the size it is actually the title of something at, rather than at
+   the size the smaller hole allows. */
+@media (min-width: 761px) {
+  .dnttl { width: 108px; font-size: 12.5px; letter-spacing: .04em; }
+}
+/* --- the floating figures ----------------------------------------------------------
+   Every number the ring carries is set against the mark it is read off, rather than in a
+   column beside the drawing — see the note over dnLabel() in matchup.js.
+   Absolutely placed inside .dnring, which is exactly the drawing's size, so the percentages
+   the JS writes resolve against the same square the viewBox does and hold at every ring size.
+   The transform is what pushes each label clear of the band: side A's box ends at its anchor
+   and reads back to the left, side B's begins at its anchor and reads right, which is the half
+   of the ring that player's own arc climbs. So position still says whose a figure is, exactly
+   as the two columns used to, and it now says which figure it is as well. */
+.dlab { position: absolute; white-space: nowrap; line-height: 1.2; color: var(--muted);
+  font-variant-numeric: tabular-nums; pointer-events: none; }
+.dlab.a { transform: translate(-100%, -50%); text-align: right; }
+.dlab.b { transform: translate(0, -50%); }
+/* The points total, still the largest thing on the ring: it is the figure the arc is drawn
+   for, and the other two are read against it. */
+.dpts { font-size: 14px; font-weight: 600; }
+.dpts.lead { color: var(--ink); font-weight: 800; }
 /* The denominator, hung off the figure the way "shots" hangs off rally length in the style
-   column beside it. Its own colour and weight rather than inherited ones: the leader's figure
-   is set in bold ink, and a unit that came along would make the word "points" the loudest
-   thing in a flank whose subject is the number in front of it. */
-.dv .dvu { margin-left: 3px; font-size: 10px; font-weight: 500; color: var(--muted); }
-/* Tabular figures, like the total above them. The two flanks are set to be read against each
-   other, and with proportional digits two qualifiers of the same length measure differently —
-   enough, in an 80px gutter, for one side's line to wrap where the other's did not. */
-.ds { font-size: 10px; color: var(--muted); line-height: 1.4;
-  font-variant-numeric: tabular-nums; }
-/* The games figure, wearing the tick it is drawn as on the band. A little air above it
-   because it is a different measurement from the line before it — the ace/double-fault pair
-   is points, this is games — and because the tick's halo needs the room. The glyph carries
-   its own 3px of side margin, so it is pulled back by that much on the leading edge to keep
-   the line's text edge flush with the figure above it on both sides of the ring. */
-.dmark { margin-top: 3px; }
-/* The glyph carries 3px of air either side. On the b flank that lands at the line's leading
-   edge and pushes the whole line off the left the lines above it keep, so it is taken back.
-   The a flank is right-aligned, where the glyph's margin falls at the far end of the line and
-   nothing is out of true. */
-.dside.b .dmark { margin-left: -3px; }
+   column. Its own colour and weight rather than inherited ones: the leader's figure is set in
+   bold ink, and a unit that came along would make the word "points" the loudest thing here. */
+.dpts .dvu { margin-left: 3px; font-size: 10px; font-weight: 500; color: var(--muted); }
+/* Side A sets the unit ahead of the number (see labels() in matchup.js), so the gap it
+   carries moves to its trailing edge to keep the same air between word and figure. */
+.dlab.a.dpts .dvu { margin-left: 0; margin-right: 3px; }
+/* The two smaller figures, each wearing the mark it names. A tier down from the total between
+   them, because they are both parts of it — the games figure is what it converts to, the
+   wedge figure is a slice of it — and three numbers at one size would be three headlines
+   around one ring. */
+.dgms, .dwdg { font-size: 10px; }
+/* The outright-win figures, in a row of their own under the ring — see dnLabel() for why they
+   are the two that come off the circle. Split either side of the centre line, which is the
+   same rule the other four follow and the only thing keeping the two players' apart when both
+   their wedges are a couple of degrees. Placed against 50% rather than by a transform, so the
+   gap either side of centre is the 5px it says and not a share of however long the text is. */
+/* Both halves of the placement have to out-specify .dlab.a / .dlab.b, which carry the
+   transform that pushes a circle label clear of the band. A bare .dwdg loses that tie and the
+   row is dragged a full label-width sideways and half a line up.
+   Set in percentages of the ring box, which is the same square the viewBox resolves against,
+   so 104% is DN_LEAD_Y and 30% is where the leader's horizontal run stops 2 units short. The
+   figure and the line that arrives at it therefore stay joined at every ring size, which they
+   would not if either end were pinned in pixels. */
+.dlab.a.dwdg, .dlab.b.dwdg { top: 104%; transform: translateY(-50%); }
+.dlab.a.dwdg { left: auto; right: 70%; }
+.dlab.b.dwdg { left: 70%; }
+/* The empty half of a ring, where a player is under the charting floor. It takes the foot
+   row, on that player's side of the centre line, so the gap is marked on the drawing and not
+   only in the note under it. */
+.dnone { font-size: 12px; opacity: .7; }
 
 /* The unreached part of the domain, and the only thing saying how far a sweep could have
    gone. A full circle, because the two half-turns either side of 12 o'clock are the whole
@@ -1222,7 +1252,6 @@ a { color: var(--acc-d); }
 .figkey .unitdef b { color: var(--ink); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
-.segkey.deep { background: color-mix(in srgb, var(--muted) 60%, #000); }
 /* The figure wears the mark it is drawn as, halo and all — hence the margin, which is the
    room the halo needs to not sit on the words either side of it. */
 .tickkey { display: inline-block; width: 2px; height: 11px; background: var(--card);

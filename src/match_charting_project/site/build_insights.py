@@ -91,10 +91,10 @@ def _charted_matches(con) -> pd.DataFrame:
 
 
 def _player_facts(con) -> pd.DataFrame:
-    """Handedness, ace rate and double-fault rate per ``(gender, player)``, from the main DB.
+    """Handedness, ace rate and the two serve-in rates per ``(gender, player)``, from the DB.
 
-    All three are facts about the player rather than findings about them, so none comes
-    through an experiment: they are read here and shipped beside the rates.
+    All are facts about the player rather than findings about them, so none comes through
+    an experiment: they are read here and shipped beside the rates.
 
     Hand is the modal value across their charted matches, not the first one seen. A
     handful of rows in the upstream matches CSV are column-shifted (the hand column
@@ -102,11 +102,19 @@ def _player_facts(con) -> pd.DataFrame:
     vote rather than allowed to win one — and a player charted only in those rows comes
     out null, which the panel prints as nothing.
 
-    Ace and double-fault rates are both over service points across every charted match,
-    on one denominator so the panel can print them as a pair: points taken without
-    playing them, points given the same way. They need the floor because neither is
-    shrunk toward anything — over a single charted match a couple of aces in a short set
-    reads as a 15% ace rate. 200 service points is about two matches.
+    Ace rate is over service points across every charted match. The two serve-in rates are
+    each over the serves that were actually hit: first serves over every point served,
+    second serves over the points where the first one missed.
+
+    No double-fault rate ships. The panel still prints one, but it is exactly
+    ``(1 - second_in_pct) * (1 - first_in_pct)`` — the share of points that reach a second
+    serve, times the share of those the second serve misses — so shipping it as well would
+    be shipping the same fact twice and inviting the two copies to disagree. Recovered from
+    the two rounded rates it is out by at most 0.003pp, against a figure printed to a tenth.
+
+    They need the floor because none is shrunk toward anything: over a single charted match
+    a couple of aces in a short set reads as a 15% ace rate. 200 service points is about
+    two matches.
     """
     hands = con.execute(
         "WITH seen AS ("
@@ -120,13 +128,19 @@ def _player_facts(con) -> pd.DataFrame:
         "SELECT gender, player, hand FROM voted WHERE rn = 1").fetchall()
     serves = con.execute(
         "SELECT gender, player,"
-        "       sum(CAST(aces AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE) AS ace_rate,"
-        "       sum(CAST(dfs AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE) AS df_rate "
+        "       sum(CAST(aces AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE)"
+        "         AS ace_rate,"
+        "       sum(CAST(first_in AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE)"
+        "         AS first_in_pct,"
+        "       (sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)) - sum(CAST(dfs AS INT)))"
+        "         / CAST(NULLIF(sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)), 0)"
+        "                AS DOUBLE) AS second_in_pct "
         "FROM stats_overview WHERE set = 'Total' "
         "GROUP BY gender, player HAVING sum(CAST(serve_pts AS INT)) >= 200").fetchall()
     facts = pd.DataFrame(hands, columns=["gender", "player", "hand"])
     return facts.merge(
-        pd.DataFrame(serves, columns=["gender", "player", "ace_rate", "df_rate"]),
+        pd.DataFrame(serves, columns=["gender", "player", "ace_rate",
+                                      "first_in_pct", "second_in_pct"]),
         on=["gender", "player"], how="outer")
 
 
