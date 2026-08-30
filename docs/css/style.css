@@ -952,6 +952,9 @@ a { color: var(--acc-d); }
    column is not wide enough for "shot selection" to sit under a figure without wrapping. */
 .pbfig { margin: 7px 0 0; line-height: 1.2; display: flex; align-items: baseline; gap: 4px; }
 .pbfig b { font-size: 14px; font-weight: 700; color: var(--ink); }
+/* The losing side of a figure with a better end — winner stays in ink, this drops to regular
+   weight and the muted grey. Matches .pbcmp-row b.trail on the phone and the rings' lead/trail. */
+.pbfig b.trail { font-weight: 400; color: var(--muted); }
 .pbfig span { font-size: 10px; color: var(--muted); }
 .pbfig em { font-style: normal; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--muted); }
@@ -1059,6 +1062,44 @@ a { color: var(--acc-d); }
   grid-template-areas: "sa sb" "rings rings"; align-items: start; }
 .tapemain > .pbside.a { grid-area: sa; }
 .tapemain > .pbside.b { grid-area: sb; }
+
+/* The phone comparison of the two style columns (profileCompare). The flanking .pbside pair
+   is ~150px wide apiece on a phone and prints every label twice; on the narrow layout this
+   replaces them with one row per figure — A's value, the label once, B's value — so the two
+   numbers sit across a centre line. The wide layout keeps the columns, where the rings run
+   between them. Hidden until the media query at the foot of this block turns it on. */
+.pbcmp { display: none; }
+/* The player-colour key, same split rule the scoreboard and each .pbside carry, with a gap
+   cut at the centre so it doesn't read as one bar. */
+.pbcmp::before { content: ""; display: block; height: 4px; margin-bottom: 11px;
+  background: linear-gradient(to right, var(--a) 0 calc(50% - 8px),
+    transparent calc(50% - 8px) calc(50% + 8px), var(--b) calc(50% + 8px) 100%); }
+.pbcmp-head { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px;
+  align-items: start; }
+.pbcmp-head .b { text-align: right; }
+.pbcmp-head.arch span { font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--ink); }
+.pbcmp-head.hand { margin-top: 2px; }
+.pbcmp-head.hand span { font-size: 11px; color: var(--muted); }
+.pbcmp-head.hand + .pbcmp-row, .pbcmp-head.arch + .pbcmp-row { margin-top: 15px; }
+.pbcmp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 12px; align-items: baseline; margin-top: 10px; }
+.pbcmp-row b { font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+/* The losing side of a figure that has a better end — the winner stays in ink, this drops to
+   regular weight and the muted grey, matching the rings' lead/trail split. */
+.pbcmp-row b.trail { font-weight: 400; color: var(--muted); }
+.pbcmp-row .a { text-align: left; }
+.pbcmp-row .b { text-align: right; }
+.pbcmp-row .pbcu { font-size: 9px; font-weight: 500; color: var(--muted); }
+/* The label, printed once between the pair. Set as the figures' own caption — small caps,
+   muted — so the eye reads across the two numbers and drops to the word only to place them. */
+.pbcmp-row .pbcl { text-align: center; font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+@media (max-width: 760px) {
+  .tapemain { grid-template-areas: "cmp cmp" "rings rings"; }
+  .tapemain > .pbside { display: none; }
+  .pbcmp { display: block; grid-area: cmp; }
+}
 /* One ring per row, centred. A ring is a fixed-size drawing with a fixed reserve either side
    for the figures that hang off it (see .dn), so it reads centred at any track width
    regardless of how much of the row is actually spare. */
@@ -1092,7 +1133,7 @@ a { color: var(--acc-d); }
 .dn { min-width: 0; padding: 0 var(--dn-pad) 20px; }
 /* The two ends of the ring's scale, at the two ends of the ring: zero at the foot both sweeps
    leave from, the ceiling at the top they climb toward. Printed rather than assumed, because
-   the two rings do not share one — "67%" against an arc at two thirds says nothing without it
+   the two rings do not share one — "67" against an arc at two thirds says nothing without it
    — and printed on the drawing rather than in a caption above it, because this is where a
    reader looks to find out what an arc has reached.
    Set inside the hole, hard against the band's inner edge — the end of the scale each one
@@ -1167,6 +1208,9 @@ a { color: var(--acc-d); }
    wedge figure is a slice of it — and three numbers at one size would be three headlines
    around one ring. */
 .dgms, .dwdg { font-size: 10px; }
+/* Bolded in ink on the side that holds or breaks more — the same lead mark .dpts carries, a
+   tier lighter to match the smaller figure. */
+.dgms.lead { font-weight: 700; color: var(--ink); }
 /* The outright-win figures, in a row of their own under the ring — see dnLabel() for why they
    are the two that come off the circle. Split either side of the centre line, which is the
    same rule the other four follow and the only thing keeping the two players' apart when both
@@ -1238,18 +1282,6 @@ a { color: var(--acc-d); }
    players and this is about the measuring, and inside a bordered box a margin on its own reads
    as a gap rather than as a change of subject. */
 .figkey { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
-/* The unit glossary closing that key (figureKey). Ruled off from the definitions above it,
-   because the subject changes: those say what is measured, these say what it is measured in,
-   and without the rule they read as three more paragraphs of the same kind.
-   Selected as "the first .unitdef after something that isn't one" rather than :first-of-type,
-   which counts divs and would land on the first definition instead. There is always a
-   definition ahead of it — a unit only prints when the figure using it does. */
-.figkey .keytext div:not(.unitdef) + .unitdef { margin-top: 10px; padding-top: 9px;
-  border-top: 1px solid var(--line); }
-/* The unit is the subject of its own line, so it leads in its own right rather than as the
-   bolded first words of a sentence — and it is set in the same lowercase the figures print it
-   in, so "bits" here is visibly the "bits" beside the number up there. */
-.figkey .unitdef b { color: var(--ink); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
 /* The figure wears the mark it is drawn as, halo and all — hence the margin, which is the

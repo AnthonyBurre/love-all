@@ -545,7 +545,7 @@ function tapeRows() {
     // that they never had to play for — see outright() above.
     {
       k: "serve_rate", label: "serve points won", short: ["serves", "won"],
-      hi: 1, top: "100%", better: "hi", fmt: pct, unit: "points",
+      hi: 1, top: "100", better: "hi", fmt: pct, unit: "points",
       mark: { k: "hold_rate", label: "games" },
       wedge: { k: "ace_rate", label: "aces" }
     },
@@ -558,7 +558,7 @@ function tapeRows() {
     // between rings.
     {
       k: "return_rate", label: "return points won", short: ["returns", "won"],
-      hi: 0.67, top: "67%", better: "hi", fmt: pct, unit: "points",
+      hi: 0.67, top: "67", better: "hi", fmt: pct, unit: "points",
       mark: { k: "break_rate", label: "games" },
       wedge: { k: "ret_winner_rate", label: "return winners" }
     },
@@ -758,14 +758,20 @@ function donut(r, sa, sb) {
   const va = sa ? num(sa[r.k]) : null;
   const vb = sb ? num(sb[r.k]) : null;
   if (va == null && vb == null) return "";
-  const lead = r.better && va != null && vb != null && va !== vb
-    ? ((va > vb) === (r.better === "hi") ? "a" : "b") : "";
+  // Which side has the better figure of a pair — "" when either is missing, they tie, or the
+  // metric has no better end. Used for the points total and, the same way, for the games
+  // figure across the band: winning more games is better whichever the sweep direction, so
+  // the mark rides `r.better` too.
+  const leadOf = (xa, xb) => r.better && xa != null && xb != null && xa !== xb
+    ? ((xa > xb) === (r.better === "hi") ? "a" : "b") : "";
+  const lead = leadOf(va, vb);
   const at = (v) => clamp01(v / r.hi) * 180;
   // The three figures, read out of the player's row once each and used by both the drawing
   // and the label beside it — the tick and its number, the wedge and its number, are the same
   // value twice and come from the same lookup.
   const markOf = (s) => (!r.mark || !s ? null : num(s[r.mark.k]));
   const wedgeOf = (s) => (!r.wedge || !s ? null : num(s[r.wedge.k]));
+  const markLead = leadOf(markOf(sa), markOf(sb));
   // An arc is one colour unless the player has an outright-win rate to split it with; then
   // the segments are shares of that player's own sweep, laid from the foot up, so both
   // players' cores start at the shared origin and stay directly comparable.
@@ -802,8 +808,10 @@ function donut(r, sa, sb) {
     const out = [dnLabel(pa.x, pa.y, side, `dpts${lead === side ? " lead" : ""}`, pts)];
     if (ga) {
       // No key glyph. The figure is set against the tick it names, close enough that a
-      // second copy of the mark beside the number was labelling the label.
-      out.push(dnLabel(ga.x, ga.y, side, "dgms", flank(r.mark.label, pct(m))));
+      // second copy of the mark beside the number was labelling the label. Bolded on the side
+      // that holds or breaks more, the same lead mark the points total carries.
+      out.push(dnLabel(ga.x, ga.y, side, `dgms${markLead === side ? " lead" : ""}`,
+        flank(r.mark.label, pct(m))));
     }
     // Placed by the stylesheet rather than by angle, and joined to its wedge by a leader
     // drawn on the ring — see dnLead().
@@ -962,20 +970,18 @@ function profileBand(da, db) {
     ${coverageSide(da, "a", sc)}${coverageSide(db, "b", sc)}</div>`;
 }
 
-// Variety and shot selection, as the two figures they are. They had a section and a scatter of
-// their own; both now print here, under shot quality, because that is what they are — a
-// per-player fact belonging with the player, in the band that already holds the other one.
+// Variety, as the figure it is. It had a section and a scatter of its own; it now prints here,
+// under shot quality, because that is what it is — a per-player fact belonging with the player,
+// in the band that already holds the other one.
 //
-// The units are the units the experiments measure in, and neither is a scale a reader arrives
-// knowing. What the scatter did about that was draw the rest of the tour behind them; what
-// takes its place is the band the middle half of the tour occupies, quoted once in the
-// definitions the section can open (see figureKey) rather than restated beside every figure.
+// Bits are not a scale a reader arrives knowing. What the scatter did about that was draw the
+// rest of the tour behind the figure; what takes its place is the band the middle half of the
+// tour occupies, quoted once in the definitions the section can open (see figureKey) rather
+// than restated beside the figure.
 //
 // Kept as a list because everything downstream wants the same things — the key, how to print
-// it, what to call it, what its unit means — and a second copy of "σ, times 100, one decimal"
-// in the definitions is the copy that drifts. The unit gloss rides here for the same reason:
-// each unit belongs to exactly one figure, so it should not be possible to add a figure and
-// forget to say what it is measured in.
+// it, what to call it — and a second copy of "times 100, one decimal" in the definitions is
+// the copy that drifts.
 // How the serve behaves before anyone plays a point off it, and the reason this list is not
 // only "figures with an exotic unit". None of the three is a share of any arc the rings draw —
 // they draw points won, and these are about where the ball landed — so on a ring each could
@@ -1001,27 +1007,25 @@ const dfOf = (s) => {
   return f == null || sec == null ? null : (1 - sec) * (1 - f);
 };
 
+// `better` marks the figures with a right side — a serve that lands is better than one that
+// doesn't, a double fault is worse — so the phone comparison can set the winner in ink and let
+// the other go quiet. Variety and rally length have no better end and stay level.
 const FIGS = [
-  {
-    k: "first_in_pct", label: "1st serves in", unit: "",
-    fmt: (v) => pct(v), say: (v) => pct(v),
-  },
-  {
-    k: "second_in_pct", label: "2nd serves in", unit: "",
-    fmt: (v) => pct(v), say: (v) => pct(v),
-  },
-  {
-    k: "df_rate", label: "double faults", unit: "", get: dfOf,
-    fmt: (v) => pct(v), say: (v) => pct(v),
-  },
   {
     k: "bits", label: "variety", unit: "bits",
     fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} bits`,
-    // The compounding is the part worth saying. A reader who takes bits for a linear score
-    // reads 3.0 against 3.2 as almost nothing, when the tour's whole middle half is 0.3 wide.
-    unitDef: `measure surprise. A shot the model gave even odds to scores 1 bit, and every
-      extra bit is a shot half as likely again — the scale multiplies rather than adds, so
-      the step from 3.0 to 3.2 is a bigger claim than it looks.`,
+  },
+  {
+    k: "first_in_pct", label: "1st serves in", unit: "", better: "hi",
+    fmt: (v) => pct(v), say: (v) => pct(v),
+  },
+  {
+    k: "second_in_pct", label: "2nd serves in", unit: "", better: "hi",
+    fmt: (v) => pct(v), say: (v) => pct(v),
+  },
+  {
+    k: "df_rate", label: "double faults", unit: "", get: dfOf, better: "lo",
+    fmt: (v) => pct(v), say: (v) => pct(v),
   },
   // No "shot selection" figure (sigma) ships. It correlates -0.81 (men) / -0.59 (women) with
   // rally length, two thirds of the men's spread is the player's own baseline aggressive shot
@@ -1044,10 +1048,11 @@ const FIGS = [
 // are what every number in the panel is measured against and earn the title to themselves;
 // style, hand, and the figures here are the first *comparison*, which is what this section is
 // for.
-// Empty for an uncharted player: the invitation to go chart them already ran under "Charted
-// history", and a second empty box here would only repeat it.
-function profileSide(d, tag) {
-  if (!d) return "";
+// The column's contents pulled out as data, so the wide flanking columns (profileSide) and
+// the narrow stacked comparison (profileCompare) build from one extraction rather than two
+// that drift.
+function profileParts(d) {
+  if (!d) return null;
   const s = d.s;
   // Printed for right-handers too, though most players are one: a key that only appears
   // sometimes leaves the reader to guess what its absence meant.
@@ -1067,33 +1072,90 @@ function profileSide(d, tag) {
   //
   // Labelled "avg point length" rather than "avg rally": the figure counts the serve and the
   // return like every other stroke, and "rally" invites the reader to assume those are left
-  // out. The unit above it already says "shots", so the label only has to say what is averaged.
-  const rally = num(s.avg_rally_len);
-  const rallyFig = rally == null ? "" : `
-    <p class="pbq"><b>${rally.toFixed(1)}</b><span>shots</span>
-      <em>avg point length</em></p>`;
-  // The secondary tier, and deliberately a tier down: rally length is the figure this band
-  // leads on, and three numbers all set at 22px would be three headlines and no hierarchy.
-  // Each prints on its own line rather than two-up — "shot selection" is a two-word label, and
-  // in half a phone column beside a figure it wraps to two lines and buys nothing for it.
-  //
-  // Independently gated. The two come from different experiments with different qualification
-  // thresholds, so a player can easily have one and not the other; a figure held back because
-  // its neighbour is missing is a fact withheld for no reason.
+  // out. The unit says "shots", so the label only has to say what is averaged.
+  const r = num(s.avg_rally_len);
+  const rally = r == null ? null
+    : { v: r.toFixed(1), unit: "shots", label: "avg point length" };
+  // Independently gated. The figures come from different experiments with different
+  // qualification thresholds, so a player can easily have one and not the other; a figure
+  // held back because its neighbour is missing is a fact withheld for no reason.
   const figs = FIGS.map((f) => {
     const v = figOf(f, s);
-    return v == null ? "" : `<p class="pbfig"><b>${f.fmt(v)}</b>${f.unit ? `<span>${esc(f.unit)}</span>` : ""}<em>${esc(f.label)}</em></p>`;
-  }).join("");
-  // The column carries no judgement — style, hand, and two measurements. Every shot-quality
-  // verdict tried here graded players on rally length; see the note near the top of this file.
-  // Nothing replaces it, because the honest version of that claim does not exist at this
-  // resolution yet.
-  if (!arch && !hand && !rallyFig && !figs) return "";
+    return v == null ? null
+      : { v: f.fmt(v), raw: v, unit: f.unit, label: f.label, better: f.better };
+  }).filter(Boolean);
+  return { arch, hand, rally, figs };
+}
+
+// Which of two paired figures carries the win — "a" is the first argument, "b" the second, ""
+// when neither: no better end, a value missing, a tie, or two values that print the same.
+// Shared by the wide columns and the phone comparison so the bolding matches.
+function figWinner(xa, xb) {
+  const bd = (xa || xb || {}).better;
+  if (!xa || !xb || !bd || xa.v === xb.v) return "";
+  return (xa.raw > xb.raw) === (bd === "hi") ? "a" : "b";
+}
+
+// Empty for an uncharted player: the invitation to go chart them already ran under "Charted
+// history", and a second empty box here would only repeat it.
+//
+// Rally length leads at headline size and the rest sit a tier down: three numbers all set at
+// 22px would be three headlines and no hierarchy. Each figure prints on its own line rather
+// than two-up — half a phone column is not wide enough for a two-word label beside a figure.
+//
+// `opp` is the other player, passed so a figure with a better end can set the winner in ink
+// and let this side go quiet where it loses — the same lead/trail split the rings and the
+// phone comparison use.
+function profileSide(d, opp, tag) {
+  const p = profileParts(d);
+  if (!p || (!p.arch && !p.hand && !p.rally && !p.figs.length)) return "";
+  const oppFigs = new Map(((profileParts(opp) || { figs: [] }).figs).map((x) => [x.label, x]));
+  const fig = (x, cls) => {
+    const trail = x.better && figWinner(x, oppFigs.get(x.label)) === "b" ? ' class="trail"' : "";
+    return `<p class="${cls}"><b${trail}>${x.v}</b>${x.unit ? `<span>${esc(x.unit)}</span>` : ""}<em>${esc(x.label)}</em></p>`;
+  };
   return `<div class="pbside ${tag}" data-side="${tag}">
-    ${arch ? `<p class="pbstyle">${esc(arch)}</p>` : ""}
-    ${hand ? `<p class="pbhand">${esc(hand)}</p>` : ""}
-    ${rallyFig}${figs}
+    ${p.arch ? `<p class="pbstyle">${esc(p.arch)}</p>` : ""}
+    ${p.hand ? `<p class="pbhand">${esc(p.hand)}</p>` : ""}
+    ${p.rally ? fig(p.rally, "pbq") : ""}${p.figs.map((x) => fig(x, "pbfig")).join("")}
   </div>`;
+}
+
+// The same figures for a phone, where the two flanking columns are a ~150px pair and every
+// label prints twice. One grid row per figure — A's value, the label once, B's value — so the
+// two numbers sit across a centre line and read against each other directly. Renders whenever
+// either side has anything, filling the other side with an em dash; the flanking columns take
+// the wide layout, where the rings run between them and each figure sits by its own mark.
+function profileCompare(da, db) {
+  const raw = (d) => profileParts(d) || { arch: "", hand: "", rally: null, figs: [] };
+  const A = raw(da), B = raw(db);
+  const any = (p) => p.arch || p.hand || p.rally || p.figs.length;
+  if (!any(A) && !any(B)) return "";
+  const map = (p) => {
+    const m = new Map();
+    if (p.rally) m.set(p.rally.label, p.rally);
+    for (const x of p.figs) m.set(x.label, x);
+    return m;
+  };
+  const ma = map(A), mb = map(B);
+  const seq = [];
+  if (A.rally || B.rally) seq.push((A.rally || B.rally).label);
+  for (const f of FIGS) if (ma.has(f.label) || mb.has(f.label)) seq.push(f.label);
+  const val = (x) => x == null ? "—"
+    : `${x.v}${x.unit ? ` <span class="pbcu">${esc(x.unit)}</span>` : ""}`;
+  // For a figure with a better end (serve-in rates, double faults) the winner keeps the ink
+  // and the other side goes quiet — see figWinner().
+  const rows = seq.map((l) => {
+    const xa = ma.get(l), xb = mb.get(l), win = figWinner(xa, xb);
+    const cls = (side) => side + (win && win !== side ? " trail" : "");
+    return `<div class="pbcmp-row"><b class="${cls("a")}">${val(xa)}</b>` +
+      `<span class="pbcl">${esc(l)}</span><b class="${cls("b")}">${val(xb)}</b></div>`;
+  }).join("");
+  const head = (a, b, cls) => a || b
+    ? `<div class="pbcmp-head ${cls}"><span class="a">${esc(a || "—")}</span>` +
+    `<span class="b">${esc(b || "—")}</span></div>` : "";
+  return `<div class="pbcmp">${head(A.arch, B.arch, "arch")}` +
+    `${head(A.hand, B.hand, "hand")}${rows}</div>`;
 }
 
 // The one line over the whole body. The scoreboard above it never says "this match" — it
@@ -1159,37 +1221,23 @@ function figureKey(sa, sb, spread) {
   // The style line is a string, not a figure, so it needs its own test — num() on an
   // archetype name is NaN and `has` would drop the entry that most needs to exist.
   const hasStyle = [sa, sb].some((s) => s && s.archetype);
-  // The unit rides on the upper bound only: "between 2.9 bits and 3.2 bits" says bits twice
-  // for one range.
-  // Looked up by key, never by position in FIGS: indexing meant that adding a figure to the
-  // head of that list silently repointed another figure's tour band at the newcomer's spread,
-  // and a band that quietly resolves to nothing prints as no band at all rather than as an
-  // error. `spread` only carries the two figures whose quantiles the site cuts (see
-  // tourSpread), so anything else here correctly gets no band.
-  const bandFor = (k) => band(FIGS.find((f) => f.k === k));
-  const band = (f) => {
-    const b = f && spread && spread[f.k];
-    return b ? ` Half the charted tour sits between ${esc(f.fmt(b.lo))} and
-      ${esc(f.say(b.hi))}.` : "";
-  };
+
   const defs = [
     // The style line leads the key because it leads the column, and because it is the one
     // item here that sometimes declines to answer. A reader who meets "Between styles" with
     // no explanation has to guess whether it means missing data, a hedge, or a finding — it
     // is the third, and saying so is the whole point of this entry. It is also the panel's
     // most common non-answer: about a third of the players who qualify get it.
-    !hasStyle ? "" : `<div><b>Style</b> is where a player sits among twelve measured
-      tendencies — where they serve, how much they slice, how often they come forward, how
-      long their points run, how their winners and errors fall. Players with similar
-      fingerprints are grouped, and each group is named for what its centre looks like.
+    !hasStyle ? "" : `<div><b>Style</b> is based on a clustering exercise using twelve measured 
+      tennis metrics. Players with similar charted fingerprints are grouped, and each group is 
+      named for what its center looks like.
       ${/* The gate is not a detail. Style is a continuum: the clustering scores a silhouette
            near 0.12, and for about a third of players the nearest two groups fit equally
            well. Those are exactly the players whose label flipped wholesale when a fifth of a
            percent of the charting corpus was removed and their own fingerprint had not moved
            at all. Naming one of them is a coin toss reported as a finding, so the panel
            doesn't. */""}
-      <b>"Between styles"</b> means the two nearest groups fit this player about equally well,
-      so naming one would be a coin toss.</div>`,
+      <b>"Between styles"</b> means the two nearest groups fit this player about equally well.</div>`,
     // The key follows the column, so it opens on the figure the column leads with. Kept to one
     // line: the concept is plain, and the only thing a reader needs told is what gets counted.
     !has("avg_rally_len") ? "" : `<div><b>Average point length</b> counts the serve that starts it and the
@@ -1197,21 +1245,15 @@ function figureKey(sa, sb, spread) {
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from
       tour norms. A model built on the whole tour predicts each next shot from the two before
       it, and variety is how surprised that model is by this player, averaged over their shots
-      and measured in bits. It rewards uncommon shot types about as much as uncommon order, so
-      slicers and serve-volleyers score high. A player needs 800 charted strokes to
-      get one.${bandFor("bits")}</div>`,
+      and measured in bits: a shot the model gave even odds scores 1 bit, and every bit past
+      that is a shot half as likely again. It rewards uncommon shot types about as much as
+      uncommon order, so slicers and serve-volleyers score high. A player needs 800 charted
+      strokes to get one.</div>`,
   ].filter(Boolean);
   if (!defs.length) return "";
-  // The units, after the figures that use them. They come last because a reader who wants to
-  // know what shot selection is should not have to read what a percentage point is first, and
-  // gated the same way, since a unit with nothing on screen measured in it is a definition of
-  // nothing. Set as a glossary — the unit is the subject of its own line — rather than folded
-  // into the figure above, which already carries two thresholds and a tour band.
-  const units = FIGS.filter((f) => has(f.k) && f.unitDef).map((f) =>
-    `<div class="unitdef"><b>${esc(f.unit)}</b> ${f.unitDef}</div>`);
   return `<details class="notekey figkey">
     <summary>How these figures are measured</summary>
-    <div class="keytext">${defs.join("")}${units.join("")}</div>
+    <div class="keytext">${defs.join("")}</div>
   </details>`;
 }
 
@@ -1223,7 +1265,7 @@ function tape(da, db, spread) {
   // empty half is never left reading as "no charting" when it means "not enough of it".
   const sa = wellCharted(da) ? da.s : null, sb = wellCharted(db) ? db.s : null;
   const cells = sa || sb ? tapeRows().map((r) => donut(r, sa, sb)).join("") : "";
-  const sideA = profileSide(da, "a"), sideB = profileSide(db, "b");
+  const sideA = profileSide(da, db, "a"), sideB = profileSide(db, da, "b");
   if (!cells && !sideA && !sideB) return "";
   const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
   // Named, not just omitted. A blank half beside a full one is the panel making a claim about
@@ -1235,16 +1277,17 @@ function tape(da, db, spread) {
     ? `<p class="tapenote">Serve and return rates need ${RATE_MIN_PTS.toLocaleString()}
        charted points to print; ${esc(thin.join(" and "))}
        ${thin.length > 1 ? "are" : "is"} below that.</p>` : "";
-  return `<section class="msec">
-    <h3 class="sechead">side by side</h3>
-    <section class="tape">
-    <div class="tapemain">${sideA}${rings}${sideB}</div>
+  // No header and no section wrapper: it carries straight on from the charted-history coverage
+  // above it, which every figure here is measured against, so a labelled gap between the two
+  // would only push them apart. The bordered box is its own boundary.
+  return `<section class="tape">
+    <div class="tapemain">${sideA}${rings}${sideB}${profileCompare(da, db)}</div>
     ${/* No key under the rings. Every mark on them now carries its own figure against it,
          wearing the mark as a glyph, so a key would be naming things the drawing has already
          named — and naming them a screen away from where they are. */""}
     ${thinNote}
     ${figureKey(sa || (da && da.s), sb || (db && db.s), spread)}
-  </section></section>`;
+  </section>`;
 }
 
 // --- shared-header sections ---------------------------------------------------------
@@ -1585,10 +1628,9 @@ function bodyHtml(m, pa, pb, gates, spread) {
     section("serve direction", `recency weighted measures of first serve direction by court side`, a, b,
       serveHtml(pa, gates), serveHtml(pb, gates), "text") +
     none +
-    section("serve + 1", `what they do with the returns they serve up, by service
-      court and return depth${PAYOFF_LEGEND}`, a, b,
+    section("serve + 1", `what they do with returns${PAYOFF_LEGEND}`, a, b,
       familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
-    section("court patterns", `their answer to an incoming ball, × how often the tour
+    section("court patterns", `what they do with an incoming ball, × how often the tour
       of their own era plays it from the same
       spot${COURT_LEGEND}${PAYOFF_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
