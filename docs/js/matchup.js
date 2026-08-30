@@ -1721,29 +1721,23 @@ function onPanelKey(e) {
 // So once the body starts moving it condenses to the names and the score, and comes back
 // when you return to the top. The two thresholds are hysteresis: one value would flicker
 // as the collapse itself changes what is under the fold.
-let condFit = 0;
+// Condensing takes nothing away from the names: the close button leaves the panel at this
+// size rather than reserving a lane across the right-hand one, and everything else it
+// changes — the name size, the score size — only ever makes them smaller. So the fit
+// reached at the top of the scroll still holds at the bottom, and the header settles on one
+// layout per match per width instead of trading between two as you read.
 function onBodyScroll() {
   const panel = document.getElementById("matchup");
   const t = document.getElementById("matchupBody").scrollTop;
-  const was = panel.classList.contains("cond");
   if (t > 24) panel.classList.add("cond");
   else if (t < 8) panel.classList.remove("cond");
-  if (panel.classList.contains("cond") === was) return;
-  // Condensing is not only a shrink. It also moves the right-hand name into the close
-  // button's lane (see --close-lane), and that is width taken off a name fitHeader() sized
-  // without it — so "S. Tsitsipas", fitted at the top of the scroll, came back one line
-  // down and then, once overflow-wrap ran out of patience, broken across the middle of a
-  // word. So the fit is re-asked on the transition, which happens twice a scroll at most;
-  // on every scroll event it would force layout several times a frame to answer a question
-  // that hasn't changed.
-  // After the band's size transition, not during it: .mp animates its font-size, and a
-  // name measured mid-transition is measured at a size it is on its way out of — which
-  // resolves, every time, toward abbreviating a name that would have fitted.
-  clearTimeout(condFit);
-  condFit = setTimeout(fitHeader, 200);
 }
 
-// Has either name been broken over more than one line?
+// Has either name run past `lines` lines?
+//
+// The number is a parameter because the ladder below asks the question twice with two
+// different answers in mind: one line is what the cheap rungs are trying to buy, and two is
+// what the staggered layout can still carry before it is worth giving up.
 //
 // Line count, and not a width comparison, because there is no width here that answers the
 // question. A name is a flex item with min-width:0, so it never gets wider than its track —
@@ -1754,10 +1748,10 @@ function onBodyScroll() {
 // clientHeight, not a rect: the panel opens under the `pop` animation, which scales it to
 // .97, and a rect is the *visual* box. Height and line-height are both layout, so the
 // animation cannot be seen from here — which matters, since this runs during it.
-function namesWrap(grid) {
+function namesOver(grid, lines) {
   for (const n of grid.querySelectorAll(".mname")) {
     const lh = parseFloat(getComputedStyle(n).lineHeight);
-    if (lh > 0 && n.clientHeight > lh * 1.5) return true;
+    if (lh > 0 && n.clientHeight > lh * (lines + 0.5)) return true;
   }
   return false;
 }
@@ -1765,7 +1759,7 @@ function namesWrap(grid) {
 // Fit the scoreboard to the match in front of it, measured rather than assumed, giving up
 // the cheapest thing first.
 //
-// Three things to spend, in the order they are worth least.
+// Four things to spend, in the order they are worth least.
 //
 // The gap either side of the score is the cheapest: it keeps the games off the end of a
 // name, which is worth 40px when 40px is spare and worth nothing at all beside a name broken
@@ -1778,12 +1772,19 @@ function namesWrap(grid) {
 // is the part a media query could never do. The old rule abbreviated at 700px flat, so every
 // phone got initials whether the full name would have fitted or not.
 //
+// A second line on a name comes next, and it is the last thing spent before the layout.
+// The stagger carries a two-line name perfectly well — each scoreline is still out beside
+// the name it belongs to — and it carries it in less height than the fallback needs: a
+// five-set phone header measures 102px staggered over two lines against 113px stacked over
+// one. A wrap looks like the failure and isn't; the fallback is the failure.
+//
 // The staggered layout is the dear one. It is what ties each scoreline to the name it
 // belongs to, and its fallback — both names level, the games stacked between them — works
-// at any width but says less. So it is given up last, and only when a closed-up gap and an
-// abbreviated name together still leave something wrapping.
+// at any width but says less: the games become two columns either side of a centre line
+// with nothing but position to say whose are whose. So it is given up last, and only when a
+// closed-up gap and an abbreviated name still leave a name needing a third line.
 //
-// The gap is re-spent after each of the other two, because every one of them changes what
+// The gap is re-spent after each of the other three, because every one of them changes what
 // the names have to fit into and the cheapest thing is worth re-offering against the new
 // question.
 //
@@ -1794,30 +1795,30 @@ function namesWrap(grid) {
 //
 // Above 620px the stacked class is inert (see the stylesheet): there is room on a wide panel
 // for a long name to take two lines, and the stagger is still the better header. Setting it
-// there changes nothing, so the second gap pass simply re-reaches the same answer.
+// there changes nothing, so the last gap pass simply re-reaches the same answer.
 //
-// Runs on open and on resize, and deliberately not on the body's scroll: each pass forces
-// layout several times over, and condensing only ever makes the names smaller, so it cannot
-// introduce a wrap that wasn't already there.
-// Set the widest gap in [min, max] that still holds every name on one line, and say whether
-// there was one. Left at the full gap when even min can't manage it, since a gap given up to
-// a wrap that happened regardless is just a narrower gap.
+// Runs on open and on resize, and not on the body's scroll: each pass forces layout several
+// times over, and condensing takes nothing off a name — see onBodyScroll.
+// Set the widest gap in [min, max] that still holds every name inside `lines` lines, and say
+// whether there was one. Left at the full gap when even min can't manage it, since a gap
+// given up to a wrap that happened regardless is just a narrower gap.
 //
 // Searched rather than calculated: what a name needs is only knowable by laying it out, and
 // the arithmetic — a gap surrendered returns twice itself to the two name tracks — quietly
-// stops holding once both names are against the limit at the same time. Wrapping is
+// stops holding once both names are against the limit at the same time. Line count is
 // monotonic in the gap, though; narrowing it can only ever give the names room. So the
 // boundary can be bisected, with lo always fitting and hi never, in five or six passes.
-function fitGap(grid, max, min) {
+function fitGap(grid, max, min, lines) {
   const setGap = (g) => grid.style.setProperty("--mgap", `${g}px`);
-  if (!namesWrap(grid)) return true;                   // fits at the full gap
+  const over = () => namesOver(grid, lines);
+  if (!over()) return true;                            // fits at the full gap
   setGap(min);
-  if (namesWrap(grid)) { grid.style.removeProperty("--mgap"); return false; }
+  if (over()) { grid.style.removeProperty("--mgap"); return false; }
   let lo = min, hi = max;
   while (hi - lo > 1) {
     const mid = Math.floor((lo + hi) / 2);
     setGap(mid);
-    if (namesWrap(grid)) hi = mid; else lo = mid;
+    if (over()) hi = mid; else lo = mid;
   }
   setGap(lo);
   return true;
@@ -1837,13 +1838,15 @@ function fitHeader() {
   const min = parseFloat(cs.getPropertyValue("--mgap-min")) || 0;
 
   // full names, staggered — spend only the gap
-  if (fitGap(grid, max, min)) return;
+  if (fitGap(grid, max, min, 1)) return;
   // first name to an initial, and the gap offered again against the shorter names
   grid.classList.add("abbr");
-  if (fitGap(grid, max, min)) return;
+  if (fitGap(grid, max, min, 1)) return;
+  // a second line, still staggered, and the gap spent again to hold the names to two
+  if (fitGap(grid, max, min, 2)) return;
   // still not enough: give the stagger up too, and spend the gap into what replaced it
   grid.classList.add("stacked");
-  fitGap(grid, max, min);
+  fitGap(grid, max, min, 1);
 }
 
 let fitQueued = false;

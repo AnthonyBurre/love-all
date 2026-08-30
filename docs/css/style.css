@@ -461,23 +461,26 @@ a { color: var(--acc-d); }
    target is on the panel (nothing is clipped away by the sheet's own overflow), the mark
    is flush in the corner, and the top row of chrome comes out one height across the band.
    --close-lane, which is what a condensed name keeps clear of, measures off the target and
-   not the chip: what you have to not collide with is the thing you can press. */
+   not the chip: what you have to not collide with is the thing you can press.
+   On the phone sheet the lane is not paid at all — the button rises out of the panel there
+   instead, since a phone's name track cannot spare it. See the sheet's own block. */
 .matchup { --close-size: 44px; --close-chip-w: 32px; }
 .matchup .close { position: absolute; top: 0; right: 0; z-index: 3;
   border: 0; background: none; padding: 0;
   width: var(--close-size); height: var(--close-size);
-  line-height: 1; cursor: pointer; color: var(--hd-mut); }
+  line-height: 1; cursor: pointer; color: var(--hd-mut);
+  transition: top .18s ease; }
 .matchup .close::before { content: ""; position: absolute; top: 0; right: 0;
   width: var(--close-chip-w); height: var(--chip-h);
   background: var(--card); border: 1px solid var(--hd-line);
   border-top-width: 0; border-right-width: 0; clip-path: var(--chip-clip-r);
-  transition: background .12s ease, border-color .12s ease; }
+  transition: background .12s ease, border-color .12s ease, top .18s ease; }
 /* Centred on the chip, not on the target — the two do not share a centre. Both the
    ::before and the glyph are positioned, so they stack in source order and the mark stays
    on top without a z-index. */
 .matchup .close svg { position: absolute; display: block; fill: currentColor;
   top: calc(var(--chip-h) / 2); right: calc(var(--close-chip-w) / 2);
-  transform: translate(50%, -50%); }
+  transform: translate(50%, -50%); transition: top .18s ease; }
 .matchup .close:hover { color: var(--hd-ink); }
 .matchup .close:hover::before { background: color-mix(in srgb, var(--hd-mut) 9%, var(--card));
   border-color: color-mix(in srgb, var(--hd-mut) 45%, var(--hd-line)); }
@@ -500,11 +503,9 @@ a { color: var(--acc-d); }
    having to be parked next to something. The band itself stays flat and neutral: the rule
    is the statement, and a surface tinted underneath it only made the same point twice,
    more weakly. */
-/* --close-lane is how far the close button's box reaches past the content edge, plus a
-   gap: anything sharing the button's row keeps out of it, and nothing else has to know
-   the button's size or inset. It was three hand-tuned numbers before — 38px here, 36px on
-   the condensed name, 34px of padding on the phone — which is three chances to move the
-   button and leave one of them behind. */
+/* --close-lane is how far the close button's box reaches past the content edge, plus a gap:
+   anything sharing the button's row keeps out of it, and nothing else has to know the
+   button's size or inset. */
 /* The padding is the names' padding. Everything else in the band — the two label chips, the
    close button, the chart button — is pulled back out through it to the panel's own edges,
    so the four of them are the corners of the band rather than four things standing on it.
@@ -636,14 +637,18 @@ a { color: var(--acc-d); }
    those would go on pulling the names up through the band's padding. */
 .matchup.cond .mcorner { gap: 0; margin: 0; }
 .matchup.cond .mp { font-size: 17px; }
+.matchup.cond .sg { font-size: 14px; }
 /* condensed, the names come up level with the close button, so the right-hand one keeps
    clear of it — the event line that does that job in the full header is gone at this size.
-   Same lane the corner keeps, because it is the same button being kept clear of. */
+   Same lane the corner keeps, because it is the same button being kept clear of. On a wide
+   panel that lane is affordable: the same collapse takes the names from 24px to 17px, which
+   is ~100px back on a track this one costs 32. The sheet, where it is not affordable, does
+   not pay it — see the max-width: 700px block. */
 .matchup.cond .mp.b { padding-right: var(--close-lane); }
-.matchup.cond .sg { font-size: 14px; }
 .matchup.cond .mflag { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) {
-  .mtop, .mcorner, .mevent, .mstate, .mp, .matchup .close { transition: none; }
+  .mtop, .mcorner, .mevent, .mstate, .mp,
+  .matchup .close, .matchup .close::before, .matchup .close svg { transition: none; }
 }
 /* Two staggered lines, each a player: their name at their own end and their games run
    along it, with both scorelines sharing the middle column so a set still reads down a
@@ -1573,7 +1578,36 @@ a { color: var(--acc-d); }
   .site-head .billing { font-size: 12.5px; }
   .nm { font-size: 13px; }
   /* the dialog becomes a bottom sheet: full width, rounded top, slides up */
-  .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; animation: sheet .2s ease-out; }
+  /* The sheet stands on the bottom edge, so every pixel it gives up is above it — which is
+     the end the condensed close button rises into. The second term keeps that room a fixed
+     --close-size rather than a share of the screen: 8% is 44px only from 550px of height up,
+     and under that the button went off the top. overflow goes visible with it, since the
+     button is the one thing on this panel that is meant to be outside it. */
+  .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%;
+    max-height: min(92dvh, calc(100dvh - var(--close-size)));
+    overflow: visible; animation: sheet .2s ease-out; }
+  /* Condensed, the button leaves the sheet and stands on the scrim above it. In the full
+     header the corner is the button's own — the event and date chips are opposite it and the
+     names are a row below. Condensed that row is gone, the names come up level with it, and
+     the corner becomes the end of the right-hand name.
+     A lane across that name is what the dialog spends and what a phone cannot: 38px off a
+     track already down to ~104px is what broke "F. Auger-Aliassime" over four lines and sent
+     the scoreboard to its stacked fallback on matches whose names fit a single line either
+     side of the score. So here the button is the thing that moves, and the band keeps its
+     full width. */
+  .matchup.cond .mp.b { padding-right: 0; }
+  .matchup.cond .close { top: calc(-1 * var(--close-size)); }
+  /* Raised, the chip is still against two edges — the screen's on its right and the sheet's
+     underneath — so it keeps those two sides square and gives up their borders, exactly as
+     it does down in the corner. Only the pair of edges changes. It moves to the foot of the
+     target rather than its head so the mark is the part against the sheet, and the rest of
+     the 44px reaches up into the scrim, which has nothing in it to collide with. Written as
+     a top offset in both states, not top in one and bottom in the other, so the move is a
+     length the chip can be animated along rather than a jump between two anchors. */
+  .matchup.cond .close::before { top: calc(var(--close-size) - var(--chip-h));
+    border-width: 1px; border-right-width: 0; border-bottom-width: 0;
+    clip-path: var(--chip-clip-r); }
+  .matchup.cond .close svg { top: calc(var(--close-size) - var(--chip-h) / 2); }
   /* three columns in a phone's width: the first name goes to an initial before any name
      has to wrap, and the seed badge drops — it is in the draw behind the panel anyway */
   /* Names back to the outer ends instead of pulled in toward the score. Pulling them in
