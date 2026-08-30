@@ -92,19 +92,12 @@ async function playerData(name, gender) {
   return { s: s[0], triggers, openings, patterns, serve, years };
 }
 
-// The shot-quality verdict used to print here — "ahead of / typical for / behind similar
-// players", banded off class_rel_z at ±0.5. It is gone, for the same reason and by the same
-// test as the 0-100 score it was the residual of (see profileSide below): measured on the
-// built table it correlates -0.99 with that score, 66% of its variance is rally length, and
-// it says no male serve-volleyer has ever been ahead of similar players against half of all
-// grinders. The residual is not orthogonal to the benchmark it is taken against — the ridge
-// λ is bisected to match the class means' R², which buys that R² by explaining a shrunken
-// copy of the whole style axis and leaves the rest of it in the residual.
-//
-// class_rel_z still ships in player_summary; nothing renders it. Restoring it means
-// orthogonalising against style_expected first, which moves 45% (men) / 41% (women) of the
-// verdicts — Karlovic behind→ahead, Sorribes Tormo ahead→behind — and even then the
-// style-stripped split-half is 0.43/0.60, which will not carry three bands.
+// No shot-quality verdict prints here. class_rel_z still ships in player_summary and
+// nothing renders it: it correlates -0.99 with the raw score it is a residual of and 66% of
+// its variance is rally length, so it grades players on how long their points run. Rendering
+// it would mean orthogonalising against style_expected first, and even then the
+// style-stripped split-half is 0.43/0.60, which will not carry three bands. See
+// experiments/class_relative_wpa.
 
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
 // drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
@@ -149,19 +142,17 @@ function trigMeter(t) {
 // means one piece of tennis whoever plays it. The drawing is the one place that wants the
 // real court back, so it mirrors again on the way out.
 function trigLine(t, hand) {
-  // Every cue here is a two-shot lead-up. There used to be a starred 3-4 shot tier
-  // alongside them (deep_patterns, then rally_patterns); it is gone because the patterns
-  // were not there — 71% of the old tier's evidence sat in the opening, which the two
-  // sections above already cover, and on serve-blind ground two of 1,752 candidates
-  // survived a screen whose figures were held out. See experiments/rally_patterns.
+  // Every cue here is a two-shot lead-up. No starred 3-4 shot tier ships: on serve-blind
+  // ground two of 1,752 three-shot candidates survive a held-out screen, and both belong to
+  // retired players. See experiments/rally_patterns.
   const trap = t.tag === "trap";
   const cls = trap ? "bait" : "green";
   const conv = Math.round(t.conversion * 100);
   // A cue's conversion is measured against the player's *other* cues, not against their
   // all-strokes rate. Conditional on a lead-up raising the frequency at all, conversion
-  // already sits well above that rate — the balls you attack on are the ones you were
-  // well placed to attack — so the old comparison put the line far below the middle of
-  // the class it was splitting and called the bottom of a normal spread a trap.
+  // already sits well above that rate — the balls you attack on are the ones you were well
+  // placed to attack — so the all-strokes line would sit far below the middle of the class
+  // it is splitting and call the bottom of a normal spread a trap.
   const payoff = trap
     ? `converts only <b>${conv}%</b>
        <span class="lift">${Math.round(t.conv_delta * 100)}pp vs their other cues</span>`
@@ -239,8 +230,8 @@ function serveHtml(d, gates) {
   // Significant *and* big enough to act on. The experiment's test is correctly
   // multiplicity-corrected, but significance on a player with a thousand charted break
   // points certifies shifts of three or four points that no returner can prepare against —
-  // eleven of the fifty-eight lines this used to print were that. A returner adjusts to
-  // "he goes wider here", so the line only appears where the shift reaches five points.
+  // eleven of fifty-eight qualifying lines. A returner adjusts to "he goes wider here", so
+  // the line only appears where the shift reaches five points.
   const BP_MIN = 0.05;
   if (d.s && Number(d.s.serve_bp_sig) === 1 && delta != null && Math.abs(delta) >= BP_MIN) {
     const pts = Math.round(Math.abs(delta) * 100);
@@ -268,12 +259,11 @@ function serveHtml(d, gates) {
 // to share with three other numbers.
 function patternCard(p) {
   // Payoff: their point-win rate playing this response against their own rate answering
-  // the same incoming ball however else they answer it. It used to be measured against
-  // the tour's rate for the same response, which mostly ranked players rather than
-  // choices — that gap runs about +0.43 with a player's overall serve-plus-return rate,
-  // so the strongest thirty beat the tour on nearly every pattern they own and the
-  // weakest thirty trail on nearly all of theirs, whatever the shot is worth. Both
-  // numbers here are the same player on the same ball, so the difference is the choice.
+  // the same incoming ball however else they answer it. Baselining against the tour's rate
+  // for that response would mostly rank players rather than choices — that gap runs about
+  // +0.43 with a player's overall serve-plus-return rate, so the strongest thirty would beat
+  // the tour on nearly every pattern they own whatever the shot is worth. Both numbers here
+  // are the same player on the same ball, so the difference is the choice.
   // Level is stated rather than left blank, so a missing arrow always means the
   // comparison is genuinely unavailable and never that the gap rounded to zero.
   let payoff = "";
@@ -295,8 +285,8 @@ function patternCard(p) {
     }
   }
   // What the lift is taken against. "3.4x the tour" is two very different claims off a
-  // 27% base and off a 0.4% one, and the card used to print only the multiple — so a
-  // mild over-index on the tour's own favourite shot and a genuine oddity looked alike.
+  // 27% base and off a 0.4% one; without the share, a mild over-index on the tour's own
+  // favourite shot and a genuine oddity look alike.
   const share = num(p.field_share);
   const vs = share == null ? "" : ` <span class="pshare">tour ${share < 0.01
     ? "under 1" : Math.round(share * 100)}%</span>`;
@@ -350,8 +340,7 @@ function trigBase(d) {
       : ` · converts <b>${Math.round(conv * 100)}%</b>`}
       ${/* This *is* the tick below, exactly: trigMeter draws it at att_rate / att_lift, and
            att_lift is the cue's rate over this same pooled figure, so the division returns
-           it unchanged. The line used to claim the tick was this rate with that cue's own
-           balls removed, which is a different and better number that nothing computes. */""}
+           it unchanged. */""}
       <span class="lift">the tick on each cue below marks this rate</span></p>
     <div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i></div>
   </div>`;
@@ -402,8 +391,8 @@ function openSets(d) {
 //
 // The baseline comes from player_summary rather than from the trigger table, so it prints for
 // a player charted enough to have a rate but not enough for any cue to clear the significance
-// test — which is most of the tour, and which used to leave their column saying only "nothing
-// at this player's coverage".
+// test — which is most of the tour. Otherwise their column would say only "nothing at this
+// player's coverage".
 function trigSets(d) {
   if (!d) return "";
   const base = trigBase(d);
@@ -426,7 +415,7 @@ function trigSets(d) {
 }
 
 // --- "side by side": one ring per metric ----------------------------------------------
-// The axis the two players used to diverge along, bent into a circle. 12 o'clock is the
+// One shared axis, bent into a circle. 12 o'clock is the
 // bottom of the drawing domain for both of them, A sweeps counter-clockwise and B clockwise,
 // and a half-turn each is the top of it. So they still grow from a shared origin and the
 // comparison is still "whose reaches further" — read as a sweep rather than as a length, and
@@ -445,18 +434,15 @@ function trigSets(d) {
 // written out under the metric's name, so the sweep is proportional to the figure beside it:
 // twice the arc is twice the number, and a fifth of the ring is a fifth of the ceiling.
 //
-// This used to be a *zoomed* window per metric — 50–80% for serve points, 5–32% for winners
-// and errors — picked so that two tour pros, whose numbers differ by a point or two, drew
-// visibly different bars. On bars that was defensible; a track with no ends doesn't claim to
-// be anything. On a ring it wasn't: a closed loop reads as a whole, so "how full" reads as a
-// share of it, and identical circles side by side invite exactly the comparison the windows
-// didn't support. It showed: 66.5% of serve points and 19.8% of rally strokes drew the same
-// 99° arc, because each sat 55% of the way through its own window.
+// Not a zoomed window per metric. A closed loop reads as a whole, so "how full" reads as a
+// share of it, and identical circles side by side invite exactly the comparison a zoomed
+// window cannot support: on a 50–80% window for serve points and 5–32% for rally strokes,
+// 66.5% and 19.8% draw the same 99° arc.
 //
-// The cost of zeroing them is real and is paid in resolution. 66.5% against 68.1% is under
-// three degrees, which nobody can see. The figures either side of the ring carry that
-// comparison now, the leader is the one set in ink, and the tour tick is where the picture
-// still says something — it shows how narrow these gaps genuinely are.
+// Zeroing them costs resolution, and that is paid for elsewhere. 66.5% against 68.1% is under
+// three degrees, which nobody can see, so the figures either side of the ring carry that
+// comparison, the leader is the one set in ink, and the tour tick shows how narrow these gaps
+// genuinely are.
 //
 // Which is also why only two metrics are left on rings. A ring that runs from a real zero to
 // a ceiling anyone could reach says something about both players at a glance; one where every
@@ -491,11 +477,10 @@ const num = (v) => (v == null ? null : Number(v));
 // adjusted for the opponents a volunteer chose to chart, so the number above the floor is
 // still a charted rate and not a true one.
 //
-// This floor is also what let the shrinkage go. The rates used to be pulled toward the tour
-// mean by 100 pseudo-points, which existed to keep a thin player from producing a confident
-// pre-match prediction — a number the panel no longer prints. Once the floor excludes the
-// thin players outright, the pull was only biasing a displayed measurement toward a prior
-// the reader cannot see, so the rings now show the player's own charted rate.
+// The floor is also what makes shrinkage unnecessary. Pulling the rates toward the tour mean
+// would bias a displayed measurement toward a prior the reader cannot see, and the thin
+// players it would protect are already excluded, so the rings show each player's own charted
+// rate.
 const RATE_MIN_PTS = 2000;
 const wellCharted = (d) => !!d && (Number(d.s.points_charted) || 0) >= RATE_MIN_PTS;
 
@@ -522,11 +507,10 @@ function tapeRows(mu) {
     },
     // Ceilinged at 0–67% rather than 0–100%. Returning is the half of tennis nobody wins
     // outright — the best charted return games on either tour reach 46% (men) and 52%
-    // (women) — so against a full 100% this ring spent two thirds of its climb on ground no
-    // player has ever stood on, and the whole metric sat in the first third of the arc.
-    // The cost is that its arcs are no longer the same scale as the rings either side of it:
-    // 41.1% here climbs about as far as 66.5% does on serve points. That is what the scale
-    // under the name is for, and why the note below stops short of saying arcs compare
+    // (women) — so a full 100% would spend two thirds of the climb on ground no player has
+    // ever stood on. The cost is that these arcs are not the same scale as the rings either
+    // side: 41.1% here climbs about as far as 66.5% does on serve points. That is what the
+    // scale under the name is for, and why the note below stops short of saying arcs compare
     // between rings.
     {
       k: "return_rate", label: "return points won", short: ["return pts", "won"],
@@ -624,9 +608,9 @@ const dnFlank = (it, tag) => `<div class="dside ${tag}">
     ${it.sub ? `<span class="ds">${esc(it.sub)}</span>` : ""}
   </div></div>`;
 
-// A ring cell: a player, the ring, and the other player. The name used to run as a line of
-// small print over the row; it now sits in the ring's own hole, so nothing above the row
-// answers a question the ring itself already sits under.
+// A ring cell: a player, the ring, and the other player. The metric's name sits in the ring's
+// own hole rather than as small print over the row, so nothing above the row answers a
+// question the ring itself already sits under.
 const dnCell = (a, art, b) => `<div class="dn">
   <div class="dnrow">${a}${art}${b}</div>
 </div>`;
@@ -659,12 +643,11 @@ function donut(r, sa, sb) {
   // anything — and put there they are read off the picture rather than remembered from a
   // caption above it.
   //
-  // Inside the ring rather than above and below it, which is where they used to sit. The hole
-  // is empty space the drawing already owns; the two rows outside it were height spent on
-  // twelve characters, and they pushed the ceiling a whole label away from the arc that climbs
-  // toward it. Tucked just inside the band, each number sits against the end of the scale it
-  // marks, and the ring is one object instead of three stacked ones. They join the ring's own
-  // name in there, spaced clear of it — see .dncap in the stylesheet for the geometry.
+  // Inside the ring rather than above and below it. The hole is empty space the drawing
+  // already owns, and rows outside it would push the ceiling a whole label away from the arc
+  // climbing toward it. Tucked just inside the band, each number sits against the end of the
+  // scale it marks, and the ring is one object instead of three stacked ones — see .dncap in
+  // the stylesheet for the geometry.
   return dnCell(
     dnFlank(item(va, sa, "a"), "a"),
     `<div class="dnring">
@@ -828,15 +811,14 @@ const FIGS = [
       extra bit is a shot half as likely again — the scale multiplies rather than adds, so
       the step from 3.0 to 3.2 is a bigger claim than it looks.`,
   },
-  // "shot selection" (sigma) stood here and is gone, cut by the test that retired the
-  // shot-quality score: it correlates -0.81 (men) / -0.59 (women) with rally length. Two
-  // thirds of the men's spread is the player's own baseline aggressive shot frequency, which
-  // the shot-making triggers section prints in plain percent further down, and the top of the
-  // leaderboard is a serve-volley artifact — restricted to rally-only lead-ups Rafter falls
-  // from 14.9pp, top of the tour, to a below-median 3.8pp. It is also independent of whether
-  // the extra aggression pays (rho = -0.07 with trap count), so one number described an
-  // adaptive player and a baited one identically. The triggers section answers the same
-  // question concretely, with a direction, and keeps it.
+  // No "shot selection" figure (sigma) ships. It correlates -0.81 (men) / -0.59 (women) with
+  // rally length, two thirds of the men's spread is the player's own baseline aggressive shot
+  // frequency — which the triggers section prints in plain percent further down — and the top
+  // of its leaderboard is a serve-volley artifact: restricted to rally-only lead-ups Rafter
+  // falls from 14.9pp, top of the tour, to a below-median 3.8pp. It is also independent of
+  // whether the extra aggression pays (rho = -0.07 with trap count), so one number described
+  // an adaptive player and a baited one identically. The triggers section answers the same
+  // question concretely and with a direction.
 ];
 
 // Who these two players are: what kind of player this is, which hand they hold the racket in,
@@ -875,15 +857,6 @@ function profileSide(d, tag) {
   // hits per point — and "rally" invites the reader to assume the serve and the return are
   // excluded from a figure that counts both. The unit above it already says "shots", so the
   // label only has to say what they are counted over.
-  //
-  // It stands where the 0-100 shot-quality score used to. That score was a reliable
-  // measurement of the wrong thing: WPA telescopes inside a point, so the average win
-  // probability conceded per stroke is identically the concession per point divided by the
-  // strokes per point, and the second factor runs the figure. It correlated -0.84 with rally
-  // length, the style fingerprint predicted 91% of it out-of-fold, and set against a 0.93
-  // split-half reliability that left about 2% of its spread as reliable non-style signal. It
-  // put Santoro and Wilander at the top and Laver and Karlovic at the bottom, which is a
-  // rally-length table with a quality label on it. So the panel prints the rally length.
   const rally = num(s.avg_rally_len);
   const rallyFig = rally == null ? "" : `
     <p class="pbq"><b>${rally.toFixed(1)}</b><span>shots</span>
@@ -901,11 +874,10 @@ function profileSide(d, tag) {
     return v == null ? "" : `<p class="pbfig"><b>${f.fmt(v)}</b><span>${esc(f.unit)}</span>
       <em>${esc(f.label)}</em></p>`;
   }).join("");
-  // The column now carries no judgement at all — style, hand, and two measurements. The
-  // shot-quality verdict that used to lead it was the one thing here that graded a player,
-  // and it graded them on rally length; see the note above ratingLabel's grave for the
-  // numbers. Nothing replaces it, because the honest version of that claim does not exist at
-  // this resolution yet.
+  // The column carries no judgement — style, hand, and two measurements. Every shot-quality
+  // verdict tried here graded players on rally length; see the note near the top of this file.
+  // Nothing replaces it, because the honest version of that claim does not exist at this
+  // resolution yet.
   if (!arch && !hand && !rallyFig && !figs) return "";
   return `<div class="pbside ${tag}" data-side="${tag}">
     ${arch ? `<p class="pbstyle">${esc(arch)}</p>` : ""}
@@ -918,13 +890,13 @@ function profileSide(d, tag) {
 // can't, nothing under here is about this match — so the body has to say what it is itself,
 // before any of its numbers do.
 //
-// It used to ride inside the strip and head only what followed the strip, which left serve
-// direction above it uncovered once that section moved to the top. Everything in the body is
-// the same thing: what the charting has of these two players. So the line heads all of it.
+// It heads the whole body rather than riding inside the strip, because everything below is
+// the same thing: what the charting has of these two players.
 //
-// "Their charted matches, not this one", and no longer "career totals": serve direction is a
-// recent-form window rather than a career total, and a subtitle that covers the body has to
-// be true of every section in it. The section says which window in its own caption.
+// It reads "their charted matches, not this one" rather than "career totals", because serve
+// direction is a recent-form window rather than a career total, and a subtitle covering the
+// body has to be true of every section in it. Each section names its own window in its
+// caption.
 //
 // The asterisk is the other half of COV_NOTE below, which opens with one. It had no
 // counterpart anywhere in the panel, so the note at the foot read as a footnote to nothing
@@ -961,12 +933,11 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
 // wants once and then never again, so it opens on request rather than spending the panel's
 // width on prose every reader has already read.
 //
-// The tour bands here do the job the scatter used to. Bits and percentage points are not
-// scales anyone arrives knowing, and the crowd of grey ×s behind the old field was what
-// supplied one; the band the middle half of the tour occupies says the same thing in a
-// clause. It is read off the build rather than written into the sentence, because a hardcoded
-// "2.9 to 3.2" is correct until the next rebuild and quietly wrong after it — which is exactly
-// how the README came to be quoting a correlation the data had stopped supporting.
+// The tour bands supply a scale. Bits and percentage points are not units anyone arrives
+// knowing, and the band the middle half of the tour occupies says in a clause what a scatter
+// of the whole field would take a chart to say. It is read off the build rather than written
+// into the sentence, because a hardcoded "2.9 to 3.2" is correct until the next rebuild and
+// quietly wrong after it.
 //
 // Only the figures at least one of these two players actually has get defined. A key that
 // explains a number nowhere on screen sends the reader looking for it.
@@ -1007,8 +978,7 @@ function figureKey(sa, sb, spread) {
       panel says for roughly a third of the players it can place at all. A named style is a
       description of a centre, not a box: a player near the edge of their group genuinely
       plays some of the neighbouring one.</div>`,
-    // The key follows the column, so it opens on the figure the column now leads with. The
-    // shot-quality entry that used to head it went when the verdict did.
+    // The key follows the column, so it opens on the figure the column leads with.
     !has("avg_rally_len") ? "" : `<div><b>Shots per point</b> is how many strokes the average
       point lasts, counting both players and the serve, over every charted point this player
       appeared in. It is as much a fact about the tennis they get drawn into as about them,
@@ -1107,9 +1077,9 @@ function section(title, note, a, b, aHtml, bHtml, kind = "cards") {
   // Whose column is whose is said once per layout, and only where the layout stops saying it
   // by itself. Side by side — at any width — each column is capped by a rule in its player's
   // colour, in the same left-right order as the split under the scoreboard, which never
-  // scrolls away. A phone used to get a second pair of names in the sticky bar as well, so a
-  // court-pattern section arrived carrying the same key twice over columns that had not moved.
-  // Stacked, the position is genuinely gone, and each column names its own player.
+  // scrolls away — so repeating the names in the sticky bar would carry the same key twice
+  // over columns that had not moved. Stacked, the position is genuinely gone, and each column
+  // names its own player.
   return `<section class="msec ${kind}">
     <h3 class="sechead">${title}</h3>
     ${note ? `<p class="secnote">${note}</p>` : ""}
@@ -1228,8 +1198,8 @@ function notationHelp() {
 // control, and the site's controls carry SVG glyphs, not characters. A font's → is also
 // the wrong weight beside 700 uppercase at 9.5px — it is drawn for running text and comes
 // out a hairline. fill: currentColor, so the state that colours the label colours it too.
-// The ✓ that used to lead the charted label is gone: no other mark on the site is a
-// checkmark, and the two states already read apart on their words and their colour.
+// No ✓ leads the charted label: no other mark on the site is a checkmark, and the two states
+// already read apart on their words and their colour.
 const GO_ICON = `<svg class="gly" viewBox="0 0 11 8" width="11" height="8" aria-hidden="true">
   <rect x="0" y="2.9" width="7.4" height="2.2"/><path d="M6.4 0.4 11 4 6.4 7.6z"/></svg>`;
 
@@ -1305,9 +1275,9 @@ function eyebrow(t, round) {
 
 // When. A scheduled match carries its date and start time inside ESPN's detail string once
 // it has a court and a session, so printing the long date beside that would just say the day
-// twice. Before that the detail is the literal word "TBD" — which used to win here, because
-// it is a non-empty string, and printed itself over a date the feed already knew — so an
-// unscheduled match falls back to its day. A finished one says only the day: the state it
+// twice. Before that the detail is the literal word "TBD", which is a non-empty string and
+// would print itself over a date the feed already knows, so an unscheduled match falls back
+// to its day. A finished one says only the day: the state it
 // is in is already on the scoreboard, in the caret against the winner's name, and a word
 // for it beside the date was the same fact a second time in weaker type. ESPN's detail
 // here is only ever "Final" or "Retired", so nothing else is being dropped with it.
@@ -1396,8 +1366,8 @@ function headHtml(m, t, round) {
 // The three pattern sections then run in the order a point does: where the serve goes, what the
 // server does with the ball it comes back as ("off the return"), and only then the mid-rally
 // exchange ("court patterns"). Off the return is built out of the service court and the serve's
-// own direction, so it continues the section above it — it used to sit below court patterns,
-// which put a mid-rally ball between the serve and the shot the serve sets up.
+// own direction, so it continues the section above it. Below court patterns it would put a
+// mid-rally ball between the serve and the shot the serve sets up.
 //
 // The title is gated on there being a player under it. With neither side charted the body is
 // the invitation to go and chart one, and "Charted history" over "Neither player has Match
@@ -1563,8 +1533,8 @@ function namesWrap(grid) {
 //
 // When that happens depends on the match as much as on the window: five sets of games take
 // twice the middle of the band that straight sets do, and "A. Zverev" is not the width of
-// "Q. Halys". A breakpoint can see none of that — this used to switch at 620px, wider than
-// any phone in portrait, so every phone got the fallback and none of them needed it.
+// "Q. Halys". A breakpoint can see none of that: switching at 620px, wider than any phone in
+// portrait, gives every phone a fallback none of them needs.
 //
 // Above 620px the stacked class is inert (see the stylesheet): there is room on a wide panel
 // for a long name to take two lines, and the stagger is still the better header. Setting it

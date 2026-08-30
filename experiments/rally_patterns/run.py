@@ -2,33 +2,25 @@
 
 Run:  python experiments/rally_patterns/run.py
 
-Replaces ``deep_patterns``. That experiment mined 3-4 shot contexts anywhere in the
-point, and 71% of its gold patterns' occurrences sat inside the first four plies, where
-``shot_triggers``' openings section and ``serve_plus_one`` measure the same shots with
-more support behind them and at a resolution that knows which service court the point was
-played to. Nine of its 36 patterns were pure serve sequences, one resting on 66 strokes.
-
-This one blinds the opening (serve, return, serve+1, return+1) and mines what is left.
-The blind is not there to keep experiments off each other's territory — the opening and
-the rally can both be worth reporting on the same ball, and in different currencies they
-usually are. It is there because the opening is where the assumptions break. With the
-serve still inside the window there is no way to test whether a player's serving and
-returning points are one population, and no way to state a rally finding that is not
-partly a serve finding. Past ply 4 both become answerable, and the first of them is
-tested here rather than assumed — which is what ``deep_patterns`` did, by citing
-``serve_side``.
+Blinds the opening (serve, return, serve+1, return+1) and mines what is left. The blind
+is there because the opening is where the assumptions break. With the serve still inside
+the window there is no way to test whether a player's serving and returning points are
+one population, and no way to state a rally finding that is not partly a serve finding.
+Past ply 4 both become answerable, and the first of them is tested here rather than
+assumed. ``shot_triggers``' openings section and ``serve_plus_one`` measure the opening
+itself, with more support and at a resolution that knows which service court the point
+was played to.
 
 Blinding is swept rather than chosen. Under ``window`` no part of the context or the
 struck ball touches the opening; under ``target`` only the struck ball has to clear it,
-which is effectively what ``deep_patterns`` did. The gap between them is how much of the
-deep-pattern yield was the serve.
+so the context may reach back. The gap between them is how much of a deep-pattern yield
+is really the serve.
 
 **Every displayed figure is held out.** Each fold of a player's matches takes a turn
 discovering — support floor, parent-lift gate, exact binomial against the parent, and a
 per-player Benjamini-Hochberg correction across every context that fold screened — and
 the rate, lift, conversion and tag are read off the other fold, which had no part in the
-selection. ``deep_patterns`` gated on both halves and then displayed lift computed on
-all of it, so every effect size it shipped was measured on data used to select it.
+selection.
 
 Writes reports/rally_patterns.{md,csv}, reports/rally_patterns_sweep.csv,
 reports/rally_patterns_calibration.csv, reports/figures/rally_patterns.png.
@@ -72,8 +64,8 @@ MIN_CAL = 10            # records a (rule, depth) needs before its calibration i
 
 # Cell layout: two folds x [strokes, aggressive shots, converted, summed ply index,
 # occurrences whose context reaches back into the opening]. The last is always 0 under
-# the `window` rule; under `target` it is the retrospective — how much of a pattern's
-# evidence is the serve — which is the number that motivated replacing deep_patterns.
+# the `window` rule; under `target` it measures how much of a pattern's evidence is
+# really the serve.
 N, ATT, WIN, PLY, OPEN, W = 0, 1, 2, 3, 4, 5
 GLABEL = {"M": "Men", "W": "Women"}
 COLOR = {"window": "#2a78d6", "target": "#eb6834"}
@@ -86,8 +78,8 @@ MARQUEE = {"M": ["Roger Federer", "Novak Djokovic", "Rafael Nadal", "Daniil Medv
 def pool(con, gender: str) -> "tuple[set, dict]":
     """Players with >=MIN_STROKES strokes they actually hit past the opening.
 
-    Gating on *charted points* (what ``deep_patterns`` did, at 10k) is the wrong
-    denominator here: a point contributes strokes to this experiment only if it
+    Gating on *charted points* would be the wrong denominator here: a point
+    contributes strokes to this experiment only if it
     survives the blind, and how often that happens is exactly the thing that varies
     most between players. A big server's 10k points fund far less rally than a
     grinder's. So the gate counts the strokes the experiment will actually see, and it
@@ -200,14 +192,13 @@ def collect(con, gender: str, keep: set, hands: dict):
 def parents(tab: dict) -> dict:
     """The (K-1)-shot suffix table, summed over exactly the K-eligible strokes.
 
-    ``deep_patterns`` looked its parent up in a table built over *all* of that parent's
-    own occurrences, which is a wider and differently-distributed set of strokes than the
-    child's — the child could only occur where a K-shot window was legal, the parent
-    anywhere a (K-1)-shot one was. So part of every parent lift it reported was the two
-    contexts being measured on different populations rather than the extra shot doing
-    anything. Deriving the parent from the child cells by dropping the leading token
-    fixes that by construction: both sides of the ratio are now the same strokes, and the
-    only difference between them is the token the gate is asking about.
+    Looking the parent up in a table built over *all* of its own occurrences would
+    compare differently-distributed sets of strokes: the child can only occur where a
+    K-shot window is legal, the parent anywhere a (K-1)-shot one is, so part of every
+    parent lift would be the two contexts being measured on different populations rather
+    than the extra shot doing anything. Deriving the parent from the child cells by
+    dropping the leading token fixes that by construction — both sides of the ratio are
+    the same strokes, and the only difference is the token the gate is asking about.
     """
     par = defaultdict(lambda: [0] * (2 * W))
     for (pl, ctx), v in tab.items():
@@ -358,10 +349,10 @@ def poolability(role: dict, min_arm: int = 60) -> dict:
     """Do serving/returning role and deuce/ad court still matter once the serve is blind?
 
     Every other table here pools them, so this is the assumption the experiment rests on.
-    ``deep_patterns`` asserted it by citing ``serve_side``'s model evaluation, which is a
-    different test on different data. This one asks it directly of the cells being
-    pooled, and calibrates against a coin-flip arm split of the same cells: whatever
-    rejection rate the random split produces is what a real effect has to beat.
+    Rather than cite ``serve_side``'s model evaluation — a different test on different
+    data — this asks it directly of the cells being pooled, calibrated against a
+    coin-flip arm split of the same cells: whatever rejection rate the random split
+    produces is what a real effect has to beat.
     """
     out = {}
     for label, (a, b, c, d) in (("role", (0, 1, 2, 3)), ("side", (4, 5, 6, 7))):
@@ -505,13 +496,12 @@ def _ctx_str(ctx) -> str:
 
 def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
     md = ["# Rally patterns — shot sequences with the opening blinded out", ""]
-    md.append("*Generated by `experiments/rally_patterns/run.py`. Replaces "
-              f"`deep_patterns`. The first {BLIND} plies — serve, return, serve+1, "
-              "return+1 — are blinded out, not to keep this off ground other sections "
-              "cover, but because the opening is where the pooling assumption below "
-              "breaks and where a rally claim stops being a rally claim. Every rate, "
-              "lift, conversion and tag is read off a fold of the player's matches that "
-              "had no part in selecting the pattern.*")
+    md.append("*Generated by `experiments/rally_patterns/run.py`. The first "
+              f"{BLIND} plies — serve, return, serve+1, return+1 — are blinded out, "
+              "because the opening is where the pooling assumption below breaks and "
+              "where a rally claim stops being a rally claim. Every rate, lift, "
+              "conversion and tag is read off a fold of the player's matches that had "
+              "no part in selecting the pattern.*")
     md.append("")
 
     md.append("## The pool")
@@ -541,10 +531,10 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
     md.append("## Can serving and returning points be pooled?")
     md.append("")
     md.append("Everything here pools a player's serving and returning points, and the "
-              "deuce and ad courts. `deep_patterns` pooled them too, on the strength of "
-              "`serve_side`'s model evaluation — a different test on different data. "
-              "This asks the cells being pooled directly, against a coin-flip split of "
-              "the same cells as the calibration.")
+              "deuce and ad courts. Rather than lean on `serve_side`'s model "
+              "evaluation — a different test on different data — this asks the cells "
+              "being pooled directly, against a coin-flip split of the same cells as "
+              "the calibration.")
     md.append("")
     md.append("| | test | cells | rejected at q=0.10 |")
     md.append("|---|---|--:|--:|")
@@ -554,17 +544,16 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
             md.append(f"| {GLABEL[g]} | {name} | {r['cells']:,} | "
                       f"{r['rejects']} ({r['rejects'] / max(r['cells'], 1):.1%}) |")
     md.append("")
-    md.append("So the pooling is justified rather than assumed, and the "
-              "`deep_patterns` side-refinement pass — a Holm-corrected Fisher test over "
-              "every survivor — is not needed on this ground and is gone.")
+    md.append("So the pooling is justified rather than assumed, and no per-survivor "
+              "side-refinement pass is needed on this ground.")
     md.append("")
 
     md.append("## The blinding sweep")
     md.append("")
     md.append("`window` blinds the whole K-shot window plus the struck ball. `target` "
               "blinds only the struck ball, letting the context reach back into the "
-              "opening — which is effectively what `deep_patterns` did. The difference "
-              "between the two columns is how much of a deep-pattern yield is the serve.")
+              "opening. The difference between the two columns is how much of a "
+              "deep-pattern yield is really the serve.")
     md.append("")
     md.append("A screen this strict can come back empty, and an empty result only reads "
               "next to the pool it started from. `candidates` counts every "
@@ -601,14 +590,8 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
     if open_share is not None:
         md.append(f"Under `target`, **{open_share:.0%} of the surviving patterns' "
                   "evidence sits in occurrences whose context reaches back into the "
-                  "opening.** The same measurement on `deep_patterns`' shipped set read "
-                  "71%, and the two are not directly comparable — that screen put no "
-                  "floor on the struck ball at all, so its contexts could start at the "
-                  "serve, where this arm still requires the struck ball past ply "
-                  f"{BLIND}. The 44% is therefore the *understated* version of the "
-                  "problem, and it is the redundancy this experiment removes: those "
-                  "occurrences are serve patterns, and `shot_triggers` and "
-                  "`serve_plus_one` already report them at higher support and split by "
+                  "opening.** Those occurrences are serve patterns, and `shot_triggers` "
+                  "and `serve_plus_one` already report them at higher support and split by "
                   "service court, which a pooled deep context cannot do.")
         md.append("")
     md.append("![rally patterns](figures/rally_patterns.png)")
@@ -670,22 +653,19 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
               "comparison inherit the same selection, so it largely cancels for the "
               "lift over the parent. It does not cancel for anything read across "
               "players.")
-    md.append("- **The screen is stricter than the one it replaces**, so the counts are "
-              "not comparable to `deep_patterns`' 36. That screen asked for 60 strokes "
-              f"pooled across all the data; this one asks for {MIN_CTX} in the "
+    md.append(f"- **The screen is strict.** A pattern needs {MIN_CTX} strokes in the "
               f"discovery fold alone and a further {MIN_VAL_CTX} in the validation "
-              "fold, so a surviving pattern rests on more evidence, not less — and its "
-              "displayed lift was never measured on a stroke that helped select it.")
+              "fold, and its displayed lift is never measured on a stroke that helped "
+              "select it. Counts here are not comparable to a screen that pools all the "
+              "data before gating.")
     md.append("- **Era-mixing is inherited.** A twenty-year career is one bag of "
-              "strokes here, as it was in `deep_patterns`. `court_response` weights its "
-              "field to a player's own era; this screen compares a player only against "
-              "themselves, so era enters through which contexts they faced rather than "
-              "through the baseline.")
-    md.append("- **One numerator.** `deep_patterns` carried a shadow pass re-running "
-              "the screen on the narrower finishing-shot reading. That question was "
-              "settled by `shot_triggers` on far more support (the wider numerator "
-              "replicates better, split-half r +0.811 vs +0.762), and the multiplicity "
-              "budget here is spent on the blinding sweep instead.")
+              "strokes. `court_response` weights its field to a player's own era; this "
+              "screen compares a player only against themselves, so era enters through "
+              "which contexts they faced rather than through the baseline.")
+    md.append("- **One numerator.** `shot_triggers` settled aggressive-shot vs "
+              "finishing-shot on far more support (the wider numerator replicates "
+              "better, split-half r +0.811 vs +0.762), so the multiplicity budget here "
+              "is spent on the blinding sweep instead.")
     md.append("- **The pool is coverage-defined**, so it skews to players charted "
               "across many years, and to the ones whose points last long enough to "
               "leave strokes behind after the blind.")

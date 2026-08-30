@@ -18,11 +18,10 @@
      pairing is belongs to the data, not to the tournament it happens at. Themed, the top
      tier was green at Wimbledon and clay-red at Roland Garros — the scale changed meaning
      between events, and on the clay band it changed places with the tier below it.
-     Gold is the top step now and not the second one. A saturated gold beside a
-     desaturated accent is the one being pointed at whatever the legend says, which is
-     why the old mid tier read as the deep one.
-     --cov-thin and --cov-none are three steps apart in lightness where they used to be
-     one; at #c8cfd9 against #dde2ea the bottom two tiers were the same mark. */
+     Gold is the top step, not the second one: a saturated gold beside a desaturated accent
+     is the one being pointed at whatever the legend says.
+     --cov-thin and --cov-none are three steps apart in lightness; one step apart, at
+     #c8cfd9 against #dde2ea, the bottom two tiers are the same mark. */
   --cov-rich: #c8901a;     /* deep charting — gold */
   --cov-some: #e6c885;     /* decent — the same hue, drained */
   --cov-thin: #93a0b2;     /* thin — neutral: too little to read patterns from */
@@ -86,7 +85,7 @@
 
 /* Tournament / season themes (picked by app.js from the selected event).
    Only the three colours the event actually owns change; ink, bg, line and the meta
-   tint are shared, so a theme can no longer drift its own contrast. */
+   tint are shared, so a theme cannot drift its own contrast. */
 [data-theme="clay"] {
   --acc: #b4552f; --acc-d: #7d3319; --trim: #f0c65a;
 }
@@ -102,8 +101,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); }
 /* The meta line is a tint of the event's own accent rather than a hand-picked colour per
-   theme — four hand-picked tints is four chances to get one wrong, and one of them was:
-   the old aus-hard pair measured 3.27:1 on its band, under the 4.5 small text needs.
+   theme — four hand-picked tints is four chances to get one wrong, and one hand-picked
+   aus-hard pair measured 3.27:1 on its band, under the 4.5 small text needs.
    At 28% it measures 6.19:1 at Roland Garros and 9.04:1 at the US Open, against the
    colour actually under the text. That last part matters: the band is a 112° gradient, so
    "on the band" is not one number. This row sits at ~0.60 along the gradient line — past
@@ -130,17 +129,17 @@ a { color: var(--acc-d); }
 .site-head > .wrap { position: relative; z-index: 2; }
 .site-head::before { content: ""; position: absolute; inset: 0 0 0 auto; width: 40%;
   background: linear-gradient(102deg, transparent 50%, rgba(255,255,255,.05) 50%); }
-/* The trim used to be a 4px rule the full width of the band. As a rule it had to be a
-   colour that could hold its own across the whole edge, and the clay one couldn't — dark
-   green on terracotta measured 1.30:1, which is to say it wasn't there. As a short wedge
-   it only has to be seen once, so it can be the bright accent the event actually wants. */
+/* A short wedge, not a rule the full width of the band. A full-width rule has to hold its
+   own across the whole edge, which the clay one cannot — dark green on terracotta measures
+   1.30:1, which is to say it isn't there. A wedge only has to be seen once, so it can be
+   the bright accent the event actually wants. */
 .site-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
   background: var(--trim); clip-path: polygon(0 0, 34% 0, 30% 100%, 0 100%); }
 .site-head .brand { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: var(--head-meta); }
 .site-head h1 { margin: 4px 0 8px; font-size: 40px; font-weight: 800; line-height: 1.05; letter-spacing: -0.035em; }
-/* The only prose in the band now that the site's general blurb is gone: it describes the
-   draw you are looking at rather than the site, so it takes the full-strength ink and
-   enough weight to read as part of the title block instead of a footnote to it. */
+/* The only prose in the band: it describes the draw you are looking at rather than the
+   site, so it takes the full-strength ink and enough weight to read as part of the title
+   block instead of a footnote to it. */
 .site-head .billing { margin: 0; max-width: 760px; line-height: 1.5;
   font-size: 13.5px; font-weight: 600; letter-spacing: .01em; color: var(--head-ink); }
 .billing-line { display: block; }
@@ -168,8 +167,8 @@ a { color: var(--acc-d); }
 .tourselect:hover { border-color: var(--acc); }
 .tourselect:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
 
-/* match-tier legend. The tier used to be a thick left border; it is now the same corner
-   wedge the match cards wear, so the legend and the thing it explains are the same shape.
+/* match-tier legend. The tier is the same corner wedge the match cards wear, not a left
+   border, so the legend and the thing it explains are the same shape.
    The wedge is drawn from currentColor so one rule sets both triangle edges. */
 .legend { display: inline-flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap; }
 .legend .chip { position: relative; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 4px 9px 4px 14px; clip-path: var(--chip-clip); background-color: var(--card); border: 1px solid var(--line); }
@@ -233,11 +232,11 @@ a { color: var(--acc-d); }
    card is still a rectangle to read, and 9px of corner is width the names and the games
    were never using. The 8-across row cuts less (6px): its cards are ~135px wide, and a cut
    sized for a 250px card eats into a 12px name there.
-   corner-shape, and not the clip-path this used to be. A clip is applied *after* everything
-   the element paints, so it took the border off the four diagonals and erased the offset
-   hover shadow and the focus ring entirely — three separate things then had to be rebuilt
-   inside the box (a hand-drawn evenodd ring for the outline, inset shadows standing in for
-   a lift). A bevel is the box's own geometry instead: border, box-shadow and outline all
+   corner-shape, not a clip-path. A clip is applied *after* everything the element paints,
+   so it takes the border off the four diagonals and erases the offset hover shadow and the
+   focus ring entirely, leaving three separate things to rebuild inside the box (a
+   hand-drawn evenodd ring for the outline, inset shadows standing in for a lift). A bevel
+   is the box's own geometry instead: border, box-shadow and outline all
    follow it for free, which is why every rule below this point is simply the full draw's,
    inherited. Where corner-shape isn't supported the whole block is skipped and the cards
    come out square — the full draw's corner, which is the right thing to degrade to.
@@ -249,8 +248,8 @@ a { color: var(--acc-d); }
   /* --- charting depth, told by the corners ------------------------------------------
      The tier mark moves into the facets the bevel opens up, and *how many are filled*
      is the depth: four for deep charting, two for decent, one for thin, none for
-     uncharted. The colour still says it — same ramp as the legend — but it is no longer
-     the only thing saying it, and a count survives what a shade does not: a greyscale
+     uncharted. The colour still says it — same ramp as the legend — but it is not the only
+     thing saying it, and a count survives what a shade does not: a greyscale
      print, a red-green reader, and the corner of the eye halfway down a 32-card draw.
      Which is the job this mark actually has. Nobody reads a card to learn its tier;
      they sweep a draw looking for the matches worth opening.
@@ -374,11 +373,10 @@ a { color: var(--acc-d); }
 .match.t-some { --tier: var(--cov-some); background-color: var(--tint-some); }
 .match.t-thin { --tier: var(--cov-thin); }
 .match.t-none { --tier: var(--cov-none); }
-/* Transparent used to mean "the page's own colour", since nothing sat between a card and
-   var(--bg) — so an undecided slot and the page itself were the same fill, and the card
-   only read as a card at all because of its dashed edge. A step of --line off --card does
-   the same job the tint does for the charted tiers: the fill itself now says "nothing
-   decided here" instead of leaving that entirely to the border. */
+/* Not transparent. Nothing sits between a card and var(--bg), so a transparent fill makes
+   an undecided slot and the page itself the same colour, leaving the dashed edge as the
+   only thing marking it as a card. A step of --line off --card does the job the tint does
+   for the charted tiers: the fill itself says "nothing decided here". */
 .match.t-tbd { --tier: var(--line); border-style: dashed;
   background-color: color-mix(in srgb, var(--line) 22%, var(--card)); }
 .match.ghost { cursor: default; }
@@ -468,7 +466,7 @@ a { color: var(--acc-d); }
   background: var(--card); border: 1px solid var(--hd-line);
   border-top-width: 0; border-right-width: 0; clip-path: var(--chip-clip-r);
   transition: background .12s ease, border-color .12s ease; }
-/* Centred on the chip, not on the target — the two no longer share a centre. Both the
+/* Centred on the chip, not on the target — the two do not share a centre. Both the
    ::before and the glyph are positioned, so they stack in source order and the mark stays
    on top without a z-index. */
 .matchup .close svg { position: absolute; display: block; fill: currentColor;
@@ -555,21 +553,20 @@ a { color: var(--acc-d); }
   color: var(--hd-mut); background: var(--card); border: 1px solid var(--hd-line); }
 /* Top left, which is where you start reading — the event and round say which match this is
    before the names say who is in it. It leaves the top right to the close button alone, so
-   this row no longer has to keep out of --close-lane; the lane is still what the condensed
+   this row does not have to keep out of --close-lane; the lane is what the condensed
    right-hand name uses, since that one does come up level with the button.
-   The two pills run along the row rather than stacking down it. Stacked, they were two
-   boxes of different widths with nothing to line up on but their outer ends, which is the
-   shape a ragged edge takes; and the second one cost the header 21px that a scheduled match
-   paid and a finished one didn't, so the same panel came out two heights. Side by side they
-   read as one line of chrome and the header is one height. They still wrap when a long event
-   name and a start time won't share a phone's width, left-aligned to the same edge. */
+   The two pills run along the row rather than stacking down it. Stacked, they are two boxes
+   of different widths with nothing to line up on but their outer ends, and the second one
+   costs the header 21px that a scheduled match pays and a finished one doesn't, so the same
+   panel comes out two heights. Side by side they read as one line of chrome and the header
+   is one height. They still wrap when a long event name and a start time won't share a
+   phone's width, left-aligned to the same edge. */
 /* The negative margins take the row out through the band's padding and pin it to the
-   panel's top-left corner; the 14 underneath is the air the names need, which the padding
-   used to be providing from above. */
-/* The row stops --close-chip-w short of the panel's right edge, plus a gap. It could always
-   grow to the band's own content edge, which used to be a dead click zone under an
-   invisible button and is now the close button's chip: a long enough event name ran under
-   a thing you can see. Written off the panel's width rather than the band's, since that is
+   panel's top-left corner; the 14 underneath is the air the names need, which the band's
+   padding would otherwise provide from above. */
+/* The row stops --close-chip-w short of the panel's right edge, plus a gap. Grown to the
+   band's own content edge it would run a long enough event name under the close button's
+   chip. Written off the panel's width rather than the band's, since that is
    what the chip is pinned to — 100% here is the content box, and the two paddings put it
    back. Reaching the limit wraps the date to a second line, which is what the row already
    did on a phone.

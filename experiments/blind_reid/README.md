@@ -8,11 +8,9 @@ The unit here is a single **performance**: one player, in one match. Strip the i
 turn the performance into a vector of shot tendencies, and ask whether the vector still
 points back at the human who produced it. If it does, players have signatures that
 survive a change of opponent, surface and decade. If it doesn't, "playing style" is
-mostly a career-average artifact that dissolves the moment you look at one afternoon.
-
-The framing came from a specific hunch worth testing: that some players' performances
-might resemble *each other* more than they resemble their own showing from a few years
-earlier. That is a claim about whether identity or era dominates, and it is measurable.
+mostly a career-average artifact that dissolves the moment you look at one afternoon. Put
+the other way: do some players' performances resemble *each other* more than they resemble
+their own showing from a few years earlier? That asks whether identity or era dominates.
 
 ## The serve is quarantined on purpose
 
@@ -97,12 +95,11 @@ to 0.620 at six to nine years apart, giving up roughly a third of the lift above
 Still clearly recognisable, measurably less reliably. That agrees with `career_splits`
 rather than cutting against it, and puts a rate on the drift.
 
-Two traps here that the report spells out, because I fell into the second one first. The
-ten-plus band rebounds, which is survivorship rather than recovery: only decade-spanning
-careers are in it, and era separation spreads the different-player pairs too. And a
-*cumulative* "6+ years apart" cut reads much flatter (0.678) than the six-to-nine band,
-because pooling gap bands mixes distance scales and inflates the pooled AUC. Per-band is
-the number to trust.
+Two traps, both spelled out in the report. The ten-plus band rebounds, which is
+survivorship rather than recovery: only decade-spanning careers are in it, and era
+separation spreads the different-player pairs too. And a *cumulative* "6+ years apart" cut
+reads much flatter (0.678) than the six-to-nine band, because pooling gap bands mixes
+distance scales and inflates the pooled AUC. Per-band is the number to trust.
 
 **The crossings are real but rare, and concentrated.** A handful of different-player pairs
 do sit closer to each other than to either player's own other showings. The report lists
@@ -117,7 +114,7 @@ The women's series is noisier and not monotone, so this is clear for the men and
 directional for the women. A rate from a 90-point match is mostly sampling noise; the same
 rate over a five-setter is a measurement.
 
-## Honest limits
+## Limits
 
 - A high AUC narrows the field, it does not name a human. Two players with genuinely
   similar games stay confusable no matter how much data is added.

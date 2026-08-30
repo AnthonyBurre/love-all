@@ -33,7 +33,7 @@ paired bootstrap CI on the log-loss difference; plus the per-surface breakdown
 (clay and grass are where the signal should live — hard is most of the data and
 closest to career-average conditions).
 
-## Honest limitations
+## Limitations
 
 - **Charted matches only.** Rates come from the charted sample, which skews to
   TV courts and later rounds; a player's charted-clay sample is not a random

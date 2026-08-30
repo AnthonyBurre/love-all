@@ -39,11 +39,10 @@ That matches the numerator behind
 (Lowell West, via the Match Charting Project), so the figures here are on the
 same footing as published ones.
 
-Until 2026-08-05 this experiment left induced forced errors out, on the reasoning
-that being beaten isn't a shot the opponent chose. Call that narrower reading the
-**finishing shot frequency**. The report now carries a section testing the two
-against each other, because the reasonable worry was that forced/unforced is the
-most charter-subjective call in the notation and the extra events might be noise:
+Including induced forced errors is a choice worth defending, since forced/unforced
+is the most charter-subjective call in the notation and the extra events could be
+noise. The report tests the wide numerator against the narrower winners-plus-unforced
+reading — the **finishing shot frequency**:
 
 | | finishing (w+ue) | aggressive (+induced FE) |
 |---|--:|--:|
@@ -56,11 +55,11 @@ twice, so charter disagreement sits inside the noise this is testing. The wider
 numerator replicates better, and does it while carrying a higher binomial noise
 floor (base rate 18.0% → 22.9%). Player rankings barely move (r = +0.99), but the
 composition does: induced forced errors run from 14% of a player's aggressive
-shots (Opelka) to 34% (Santoro), so the old numerator quietly under-credited
-players whose aggression works by pressure rather than clean winners. The cue
-lists move most of all — traps fall from 137 to 115, because a shot that forced
-an error used to count as neither success nor aggression, which read as low
-conversion and drew a trap label it hadn't earned.
+shots (Opelka) to 34% (Santoro), so the narrow numerator under-credits players whose
+aggression works by pressure rather than clean winners. The cue lists move most of
+all — traps fall from 137 to 115, since under the narrow reading a shot that forced
+an error counts as neither success nor aggression, reading as low conversion and
+drawing a trap label it has not earned.
 
 The definition lives in one place, `shots/notation.py:aggressive_shot`, and every
 experiment that counts these imports it.
@@ -94,36 +93,28 @@ reproduces known shapes without being told them — Nadal's deuce-court `serve w
 serve+1 runs at 2.5× his deuce serve+1 norm — and separates side-specific traps a
 pooled view can't (a sequence that baits a player only when they serve to one court).
 
-**This section was screened properly on 2026-08-29, and was not before.** It had
-been a raw threshold screen since it was written: clear the support floor, clear
-`TRIGGER_LIFT`, tag on the sign of the conversion gap. No multiplicity correction,
-and every displayed figure computed on the data that had just selected the row —
-while the pooled table above it had been FDR-corrected and cross-validated since
-`tag_contexts` landed. One experiment, two tables, one of them screened.
+This section is screened the same way the pooled table is. Each `(player, side,
+anchor)` group splits into the same two match-hash folds. One fold discovers — exact
+binomial tail against that fold's own group baseline, Benjamini-Hochberg at q=0.10
+across every context it could test, then a `TRIGGER_LIFT` lift to be a candidate —
+and the other confirms and supplies every number shown. The group is the correction
+family rather than the player, because a deuce serve+1 cue only ever competed
+against other deuce serve+1 contexts.
 
-Each `(player, side, anchor)` group now splits into the same two match-hash folds
-the pooled screen uses. One fold discovers — exact binomial tail against that
-fold's own group baseline, Benjamini-Hochberg at q=0.10 across every context it
-could test, then a `TRIGGER_LIFT` lift to be a candidate — and the other confirms
-and supplies every number shown. The group is the correction family rather than
-the player, because a deuce serve+1 cue only ever competed against other deuce
-serve+1 contexts.
-
-It cost more than the same fix cost elsewhere: **484 rows over 171 players became
-217 over 104.** Of those, 118 cleared from both directions and 99 from one, and
-across that 99 — the clean out-of-sample read — the mean lift falls from 1.69× where
-it was found to **1.31× where it was measured, 45% of the discovered edge**.
-`court_response` measured 46% on the same kind of test and `rally_patterns` 50%,
-over different features and different screens. Three independent readings of the
-same number is the most useful thing to come out of any of this.
+The screen is expensive here: **484 raw rows over 171 players become 217 over 104.**
+Of those, 118 clear from both directions and 99 from one, and across that 99 — the
+clean out-of-sample read — the mean lift falls from 1.69× where it was found to
+**1.31× where it was measured, 45% of the discovered edge**. `court_response`
+measures 46% on the same kind of test and `rally_patterns` 50%, over different
+features and different screens.
 
 These rows ship to the site as the panel's **opening cues by court** section. The
-pooled cues above still ship too and still contain opening lead-ups; that overlap
-is deliberate. The pooled row says a lead-up raises the player's aggression, and
-the court-split row says which of the two service courts is doing it — a refinement
-rather than a contradiction, and the panel shows them adjacent so it reads that way.
+pooled cues above ship too and still contain opening lead-ups; that overlap is
+deliberate. The pooled row says a lead-up raises the player's aggression, the
+court-split row says which service court is doing it, and the panel shows them
+adjacent so it reads as a refinement rather than a contradiction.
 
-## Honest limitations
+## Limitations
 
 - **"Aggressive shot" is a proxy.** Not every unforced error is a failed
   finishing shot (some are routine misses), and some winners are gifts. At our

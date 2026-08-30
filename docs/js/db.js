@@ -90,9 +90,7 @@ export async function serveGates() {
 // scale that hid what it was doing. This says the same thing in the unit it is actually in.
 //
 // The quartiles are cut in SQL rather than by shipping the players down and cutting them here.
-// This used to send every charted player's coordinates to draw a crowd of them behind the two
-// in the match; with the crowd gone, that is a couple of hundred rows fetched per tour to
-// derive four numbers from.
+// Shipping them would fetch a couple of hundred rows per tour to derive four numbers from.
 //
 // Each metric is measured over its own qualifying players rather than over the players who
 // have both — they are separate experiments with separate thresholds, and intersecting them

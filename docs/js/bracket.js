@@ -19,9 +19,9 @@ const el = (tag, cls, text) => {
 // `cov` is null until the insights database answers, and stays null if it never does. Absent
 // coverage is not zero coverage: with the table treated as empty, every named player scored 0
 // and the whole draw painted itself "uncharted", which is a claim about the data made out of
-// not having the data. It flashed on every load and stuck permanently on a load where the
-// database didn't arrive at all — see db.js on why that used to take the page with it. The per-
-// match branch above is unaffected: `m.charted` rides in the draw feed, not in the database.
+// not having the data — flashing on every load, and sticking on a load where the database never
+// arrives. The per-match branch above is unaffected: `m.charted` rides in the draw feed, not in
+// the database.
 export function matchTier(m, gender, cov) {
   if (m.bye) return { cls: "t-tbd", note: "bye — through to the next round unplayed" };
   if (m.placeholder) return { cls: "t-tbd", note: "path to this match — not decided yet" };
@@ -566,9 +566,9 @@ export function renderQuarters(t, root, cov, onClick, section) {
   const head = headRows(n);
 
   // Round names come from the feed ("Round 1"…"Round 4", "Quarterfinal", "Semifinal",
-  // "Final") — the same ones the full draw prints. This view used to carry its own list
-  // and name the early rounds by size instead ("Round of 32"), so the two views called
-  // the same round two different things.
+  // "Final") — the same ones the full draw prints, rather than a second list naming the early
+  // rounds by size ("Round of 32"), which would have the two views calling one round two
+  // different things.
   const rows = rs.slice(n - head).reverse().map((r) => ({
     label: r.label, matches: r.matches,
   }));
@@ -627,10 +627,9 @@ export function renderQuarters(t, root, cov, onClick, section) {
     if (hot) p.setAttribute("class", "hot");
     svg.appendChild(p);
   };
-  // Below the chip row, the hot line used to stop dead. It traced the picked section down from
-  // the final, fanned out of the chip, and then everything under it was drawn the same weight —
-  // so the half of the picture that actually answers "how did these two get here" was the half
-  // with no thread through it.
+  // The hot line does not stop at the chip row. Stopping there would draw everything below it
+  // at one weight, leaving the half of the picture that answers "how did these two get here"
+  // as the half with no thread through it.
   //
   // It runs on once the section's own match has two named players: from there each of them is
   // followed back down round by round, and the wire into the match they actually played is hot.

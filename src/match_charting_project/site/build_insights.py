@@ -252,9 +252,8 @@ def build() -> int:
     # though it were the stable half.
     # avg_rally_len travels with the archetype because it is the same measurement pass:
     # mean strokes in the points the player appeared in, keyed by the same era entity. It
-    # replaced the shot-quality score in the panel's profile column — see the note where
-    # class_relative_wpa used to be merged, below, for why that score and the verdict built
-    # on top of it could not carry the weight they were given.
+    # It is the panel's profile-column figure; see the class_relative_wpa note below for why
+    # no shot-quality score stands there instead.
     # avg_rally_len is point-weighted across a split career; the archetype and its
     # confidence flag stay latest-era. The two want different things from the same row —
     # see _collapse — and n_points is the weight because it is the denominator the figure
@@ -268,9 +267,9 @@ def build() -> int:
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
     summary = summary.merge(lang, on=["player", "gender"], how="left")
 
-    # Court-state response profiles: the player's stable, hand-normalized answers to a
-    # given incoming ball. These replaced the old signature pairs, which mostly surfaced
-    # generic rally geometry and handedness artifacts — see experiments/court_response.
+    # Court-state response profiles: the player's stable, hand-normalized answers to a given
+    # incoming ball. Preferred over raw signature pairs, which mostly surface generic rally
+    # geometry and handedness artifacts — see experiments/court_response.
     #
     # Two experiments feed one table, split by family. The rally family is
     # court_response's. The return family — the server's third ball — comes from
@@ -280,30 +279,17 @@ def build() -> int:
     # does not ship it, since the two would describe one shot two ways on one page.
     patterns = _patterns()
 
-    # Class-relative shot quality no longer ships in any form, so nothing from
-    # class_relative_wpa is merged here.
-    #
-    # The 0-100 ``accuracy`` score went first: WPA telescopes within a point, so avg_wpa_lost
-    # is identically (win probability conceded per point) / (strokes per point) and the second
-    # factor dominates. On the current build it correlates -0.87 (men) / -0.83 (women) with
-    # rally length, the style fingerprint predicts 91% / 82% of it out-of-fold, and against a
-    # split-half reliability of 0.94 / 0.93 that leaves 3% / 11% of its spread as reliable
-    # non-style signal. It ranked Santoro and Wilander over Laver and Karlovic.
-    #
-    # The three-band ``class_rel_z`` verdict that replaced it went the same way and for the
-    # same reason: the residual correlates -0.99 with the score it is taken from and 66% of
-    # its variance is still rally length, because the ridge lambda is solved to match the four
-    # class means' R2 and buys that by leaving a scaled copy of the style axis behind. It
-    # reported that no male serve-volleyer had ever been ahead of similar players, against half
-    # of all grinders.
-    #
-    # The columns are not carried as dead weight: reports/class_relative_wpa.{csv,md} keep the
-    # full record, and the experiment stands as a negative result. This file ships what the
-    # panel renders.
+    # Nothing from class_relative_wpa is merged here: no shot-quality figure survives its own
+    # validation. WPA telescopes within a point, so avg_wpa_lost is identically (win
+    # probability conceded per point) / (strokes per point) and the second factor dominates —
+    # it correlates -0.87 (men) / -0.83 (women) with rally length. The class-relative residual
+    # is no better: it correlates -0.99 with the score it is taken from and 66% of its variance
+    # is still rally length. reports/class_relative_wpa.{csv,md} keep the full record; this
+    # file ships what the panel renders.
 
     # Shot-making triggers (shot_triggers experiment): green lights by aggressive shot
-    # frequency lift, traps by how far conversion falls below the player's norm. (These
-    # superseded the old separate winner/error pattern books — see experiments/shot_triggers.)
+    # frequency lift, traps by how far conversion falls below the player's norm. One book,
+    # not separate winner and error books — see experiments/shot_triggers.
     tr = pd.read_csv(REPORTS / "shot_triggers.csv")
     greens = (tr[tr.tag == "green"].sort_values("att_lift", ascending=False)
               .groupby(["player", "gender"]).head(3))
@@ -319,18 +305,12 @@ def build() -> int:
         ["player", "gender", "tag", "context", "att_rate", "att_lift",
          "conversion", "conv_delta", "n", "attempts"]]
 
-    # A starred 3-4 shot tier used to ride along here, from deep_patterns and then from
-    # rally_patterns, and it is gone rather than replaced. Two findings retired it, and
-    # neither is that it overlapped another section — overlap is fine, and the panel has
-    # useful overlap elsewhere. 71% of the old tier's evidence sat in windows reaching into
-    # the opening, where it measured the same shots with less support and no idea which
-    # service court they were played to, and its lift was computed on the same data that
-    # selected it. Screened properly, with the
-    # opening blinded and every figure read off a fold that had no part in the selection,
-    # two of 1,752 three-shot candidates survive, both for retired players who appear in no
-    # draw. A section that renders for nobody is not a section. The experiment still runs
-    # weekly and still writes reports/rally_patterns.csv; if the charting grows enough for a
-    # current player to earn one, this is where it would come back.
+    # No starred 3-4 shot tier ships. Screened with the opening blinded and every figure
+    # read off a fold that had no part in the selection, two of 1,752 three-shot
+    # candidates survive, both for retired players who appear in no draw — see
+    # experiments/rally_patterns. That experiment still runs weekly and still writes
+    # reports/rally_patterns.csv, so this is where the tier would come back if the
+    # charting ever funds one for a current player.
 
     # Opening cues by service court (shot_triggers' openings section). Same currency as
     # the pooled triggers above — a lead-up that shifts the player's aggressive shot

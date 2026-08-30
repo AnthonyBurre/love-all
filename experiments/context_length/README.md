@@ -5,9 +5,8 @@ sequences** (`shot_language`) are bigrams — one incoming shot, one response.
 **Shot-making triggers** (`shot_triggers`) condition on exactly two prior
 shots. Longer contexts are strictly more specific ("serve wide → short slice →
 FH drive to 3" is a real tactic; "FH drive to 3" is a shot), but every added
-token multiplies sparsity by the ~35-token alphabet. This experiment finds
-where the tradeoff actually lands, with three tests that don't care about
-anyone's intuition:
+token multiplies sparsity by the ~35-token alphabet. Three tests find where that
+tradeoff lands:
 
 1. **Held-out information** (triggers) — split every player's strokes by match
    into two halves; train per-context aggressive shot tables on one half, predict the
@@ -27,7 +26,7 @@ anyone's intuition:
    context, 12 aggressive shots, lift ≥ 1.5 / 25 occurrences per signature), how many
    qualifying patterns and covered players survive at each length.
 
-## Honest limitations
+## Limitations
 
 - The split is by match (hash), not time, so "stability" means sampling
   stability, not stability of a player's tactics across their career — era
