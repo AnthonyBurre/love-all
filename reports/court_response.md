@@ -4,7 +4,7 @@
 
 ## What the screen turns away
 
-Until 2026-08-29 this experiment applied no multiplicity correction and printed a lift measured on the same data its gates had just used to select the pattern — the only pattern-mining screen in the repo still doing either. Both are fixed above. The accounting:
+Without a multiplicity correction, and reading the lift off the same data the gates used to select the pattern, this table would be a search rather than a test. The accounting for the screen that runs instead:
 
 | | players screened | candidates tested | directions confirmed | surfaced |
 |---|--:|--:|--:|--:|

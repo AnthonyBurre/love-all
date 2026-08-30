@@ -262,8 +262,8 @@ def main() -> None:
               "a third to a half of the total, so plenty of style is still sitting inside "
               "the published residual and lending it a stability that is not skill. The "
               "right column removes every bit of style the fingerprint can reach and is "
-              "the honest ceiling on the skill claim — a verdict's worth of signal, not a "
-              "score's, which is how the site prints it.\n")
+              "the honest ceiling on the skill claim: a three-band verdict's worth of "
+              "signal, not a score's.\n")
     md.append("What the raw metric ranks, most to least (accuracy score, with the average "
               "rally length of the points they played):\n")
     for g in ("M", "W"):
@@ -279,9 +279,9 @@ def main() -> None:
             md.append(f"| {t.player} | {t.accuracy:.1f} | {t.avg_rally_len:.1f} | "
                       f"{b.player} | {b.accuracy:.1f} | {b.avg_rally_len:.1f} |")
         md.append("")
-    md.append("That is a grinder-to-servebot ordering. It is why the site stopped printing "
-              "the 0–100 score as a figure and prints rally length plus the three-band "
-              "class-relative verdict instead.\n")
+    md.append("That is a grinder-to-servebot ordering, which is why neither this score nor "
+              "the class-relative verdict built on it ships to the site. The panel prints "
+              "rally length and no quality judgement at all.\n")
     for g in ("M", "W"):
         sub = out[out.gender == g]
         md.append(f"## {'Men' if g == 'M' else 'Women'}\n")

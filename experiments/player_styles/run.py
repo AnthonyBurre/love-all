@@ -152,7 +152,7 @@ def main() -> None:
         # presentation choice rather than something the data pins down; 4 reads cleanly and
         # is stable.
         #
-        # It is *not* flat including k=2, and this comment used to say it was. Measured on
+        # It is *not* flat including k=2. Measured on
         # the shipped fingerprints: men 0.362 at k=2 against 0.134-0.136 for k=3..5, women
         # 0.506 at k=2 against 0.117-0.151 — so the one split the geometry strongly supports
         # is two-way (net-rushers from everyone else on the men's side, slicers from everyone

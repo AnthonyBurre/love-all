@@ -631,8 +631,8 @@ a { color: var(--acc-d); }
 .matchup.cond .mcorner { gap: 0; margin: 0; }
 .matchup.cond .mp { font-size: 17px; }
 /* condensed, the names come up level with the close button, so the right-hand one keeps
-   clear of it — the event line that used to do that job is the thing that just left. Same
-   lane the corner keeps, because it is the same button being kept clear of. */
+   clear of it — the event line that does that job in the full header is gone at this size.
+   Same lane the corner keeps, because it is the same button being kept clear of. */
 .matchup.cond .mp.b { padding-right: var(--close-lane); }
 .matchup.cond .sg { font-size: 14px; }
 .matchup.cond .mflag { font-size: 13px; }
@@ -691,19 +691,18 @@ a { color: var(--acc-d); }
 .mp.lose { color: var(--hd-mut); }
 /* Both renderings of the name ship, and fitHeader() picks between them — the full name by
    default, the first name down to an initial once the gap has been spent and the name would
-   otherwise break over two lines. It used to be a straight media-query swap at 700px, which
-   abbreviated every name on every phone whether or not it was the one that didn't fit;
-   "Q. Halys" was being shown where "Quentin Halys" had room to spare. */
+   otherwise break over two lines. A straight media-query swap at 700px would abbreviate
+   every name on every phone whether or not it was the one that didn't fit, showing
+   "Q. Halys" where "Quentin Halys" has room to spare. */
 .mabbr { display: none; }
 .mgrid.abbr .mfull { display: none; }
 .mgrid.abbr .mabbr { display: inline; }
-/* The winner's caret, pointing into their name from the score side. Dark and 12px it was
-   the same weight as a full stop sitting at the end of the name, and that is what it looked
-   like. It is now the only thing in the header saying the match is over — the word that used
-   to say so beside the date is gone — so it is sized to be found rather than merely noticed.
-   Still short of the 24px names: a caret that matches them competes with the thing it is
-   marking, and this one only has to be seen once. One gold both sides — see --win.
-   ◀ is a fuller glyph than the ◂ it replaced — solid, and drawn to the em rather than
+/* The winner's caret, pointing into their name from the score side. Dark and 12px it reads
+   as a full stop at the end of the name. It is the only thing in the header saying the match
+   is over — nothing beside the date says so — so it is sized to be found rather than merely
+   noticed. Still short of the 24px names: a caret that matches them competes with the thing
+   it is marking, and this one only has to be seen once. One gold both sides — see --win.
+   ◀ is a fuller glyph than ◂ — solid, and drawn to the em rather than
    inset — so 18px here would land bigger than the 18px before it. 14px holds the size
    the mark actually read at. */
 .mwin { flex: none; font-size: 14px; line-height: 1; color: var(--win); margin-left: -2px; }
@@ -769,9 +768,10 @@ a { color: var(--acc-d); }
    placeholder. */
 /* flex, not inline-flex: an inline-level box sits on a line box, and a line box is at least
    one line of leading tall whether or not the box on it has any height. Collapsed to
-   max-height:0 for the condensed header this one still left ~19px of blank line behind it —
-   the header shrank around a gap the button was no longer in. Block-level it takes exactly
-   its own height, which when collapsed is none. width:fit-content still shrink-wraps it. */
+   max-height:0 for the condensed header, an inline-level box still leaves ~19px of blank
+   line behind it and the header shrinks around a gap the button is not in. Block-level it
+   takes exactly its own height, which when collapsed is none. width:fit-content still
+   shrink-wraps it. */
 /* The negative margins take the row out through the band's padding to the panel's edges,
    the way the corner row does at the top. The bottom one stops it on the split rule rather
    than at the band's floor — the rule is the band's own edge as far as anything inside it
@@ -874,9 +874,9 @@ a { color: var(--acc-d); }
    so a gap reads as a shape rather than as arithmetic between two distant columns. The
    hairline on each bar is the tour average, where the metric has one. */
 /* --dn-size is the drawn diameter of one ring, set here because the box it sits in is what
-   there is to divide up. The rings stack one per row now at every width (see .tapemain), so
-   the ring no longer shares its row with a second one below 761px either — it can spend the
-   width that used to buy two rings side by side on one, larger ring instead.
+   there is to divide up. The rings stack one per row at every width (see .tapemain), so a
+   ring never shares its row with a second one — it spends the whole width on one larger ring
+   instead of two side by side.
    Sized against measured slack rather than guessed at. A ring's row is shrink-to-fit inside a
    centred track (.dn has min-width:0 in a centre-aligned column), so the flanking figures are
    not squeezed as the ring grows — the row simply widens until it fills its track, and the
@@ -919,10 +919,10 @@ a { color: var(--acc-d); }
    half of them wrap — which is fine, it is the one thing here worth two lines. */
 .pbstyle { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--ink); }
 .pbhand { margin: 1px 0 0; font-size: 11px; color: var(--muted); }
-/* The column's headline figure — rally length, where the shot-quality score used to be; see
-   profileSide() for why that score is no longer a number. The unit is set small and the name
-   smaller still: the figure is what is being read, and "shots" and "per point" are both there
-   to tell you what it is once. */
+/* The column's headline figure — rally length; see profileSide() for why no shot-quality
+   score stands here instead. The unit is set small and the name smaller still: the figure is
+   what is being read, and "shots" and "per point" are both there to tell you what it is
+   once. */
 .pbq { margin: 9px 0 0; line-height: 1.1; }
 /* Proportional figures, not tabular. Equal-width digits are for numbers that have to line up
    down a column; on a standalone figure at this size they set every 1 in the width of a 0 and
@@ -958,9 +958,9 @@ a { color: var(--acc-d); }
 .pbverdict + .pbq { margin-top: 13px; }
 /* The shot-quality verdict, leading the figures. It takes .pbq's shape — finding first, label
    under it — at a smaller size, because it is a finding of the same kind and not a footnote to
-   the figure below it: the score it used to caption is gone, so it stands on its own subject
-   now and the label under it is what says which subject that is.
-   Deliberately not set at .pbq's 22px even though it now comes first. It is a phrase, not a
+   the figure below it: it stands on its own subject, and the label under it says which
+   subject that is.
+   Deliberately not set at .pbq's 22px even though it comes first. It is a phrase, not a
    digit, and at that size it is a headline sentence over three lines in half a phone column —
    so the one number in the column stays the one thing set large, and order rather than size is
    what puts the judgement first.
@@ -1074,9 +1074,9 @@ a { color: var(--acc-d); }
    — and printed on the drawing rather than in a caption above it, because this is where a
    reader looks to find out what an arc has reached.
    Set inside the hole, hard against the band's inner edge — the end of the scale each one
-   marks. They used to sit outside, in a row above and a row below, which cost the stack two
-   lines of height per ring for twelve characters and left the ceiling floating a whole label
-   away from the arc climbing toward it.
+   marks. Outside, in a row above and a row below, they cost the stack two lines of height
+   per ring for twelve characters and leave the ceiling floating a whole label away from the
+   arc climbing toward it.
    19% is where the hole starts. The band's inner edge is DN_R - DN_W/2 = 31 of the viewBox's
    100 units from the centre, and the centre is at 50, so the hole's top is at 19 and its foot
    at 81. Percentages here resolve against .dnring, which is exactly --dn-size square, so the
@@ -1206,7 +1206,7 @@ a { color: var(--acc-d); }
 /* Both columns run on the same rows, so each player's first finding sits level with the
    other's — two independent stacks drift apart the moment one description wraps a line
    further than its opposite number, and a comparison you have to scroll between isn't
-   one. Browsers without subgrid drop the rule and get the old stacks. */
+   one. Browsers without subgrid drop the rule and get two independent stacks. */
 .seccols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 0;
   grid-template-rows: repeat(var(--rows, 1), auto); }
 /* The player's colour caps the column instead of running down its left edge. A left rule
@@ -1224,10 +1224,9 @@ a { color: var(--acc-d); }
 
 /* one court pattern: the drawing, then the lift, then what it is and what it earns */
 .pcard2 { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 12px; }
-/* 88px of box, not the 96 it was: the drawing is cropped to the court now (see FRAME in
-   court.js) instead of carrying 20 units of blank field either side, so a narrower box
-   holds a court an eighth wider than the old one did. The width it gives back goes to the
-   description beside it. */
+/* 88px of box, not 96: the drawing is cropped to the court (see FRAME in court.js) rather
+   than carrying 20 units of blank field either side, so a narrower box holds a court an
+   eighth wider. The width it gives back goes to the description beside it. */
 .pcourt { flex: 0 0 88px; }
 .pcourt svg { width: 88px; height: auto; display: block; }
 /* These thumbnails render at ~0.72 scale, so the drawn balls need extra weight in viewBox
@@ -1410,11 +1409,9 @@ a { color: var(--acc-d); }
    while the other half showed none. Relative changes nothing about the flow. */
 .rlist .match { position: relative; }
 /* Tighter gap than the list's own — this is the visual grouping that says these two meet
-   next round. It used to carry its own right-side bracket too, drawn independently of the
-   round-nav thread preview added alongside it; the two were redundant on every round that
-   has a right nav zone (which is every round but the final), each saying "these two meet
-   next round" in a different style stacked one after the other. The thread preview already
-   draws that exact first hop, so the in-list bracket is gone rather than kept twice over. */
+   next round. No in-list right-side bracket: the round-nav thread preview already draws that
+   exact first hop on every round that has a right nav zone, which is every round but the
+   final. */
 .rlist .pair { display: flex; flex-direction: column; gap: 6px; }
 
 /* Tap zones flanking the round: left steps back, right steps forward. A flex row so each
@@ -1490,7 +1487,7 @@ a { color: var(--acc-d); }
 @keyframes sheet { from { opacity: 0; transform: translateY(28px); } }
 
 /* phone panel: everything stacks, so each column names its own player rather than relying
-   on a position that no longer holds. */
+   on a left-right position that stacking removes. */
 @media (max-width: 620px) {
   .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
   .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }

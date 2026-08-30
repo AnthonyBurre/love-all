@@ -66,13 +66,12 @@ GLABEL = {"M": "Men", "W": "Women"}
 # Surfacing gates. The first five are court_response's, unchanged, so a tier-"pooled"
 # row here is built on the same support as the same row there.
 #
-# The *screens* diverged on 2026-08-29, and a reader comparing the two should know how.
-# court_response now discovers in one half of a player's matches and reads its lift off
-# the other, so its figures are held out; this one still selects on both halves with the
-# gate below and prints the pooled lift, which is inflated by however much of the lift
-# was the luck that got it selected — 46% of a discovered edge survived that treatment
-# over there, so the gap is not small. The FDR correction below is applied in both.
-# Giving this experiment the same two-fold treatment is the obvious next change here.
+# The *screens* differ, and a reader comparing the two should know how. court_response
+# discovers in one half of a player's matches and reads its lift off the other, so its
+# figures are held out; this one selects on both halves with the gate below and prints the
+# pooled lift, which is inflated by however much of the lift was the luck that got it
+# selected — 46% of a discovered edge survived that treatment over there, so the gap is not
+# small. The FDR correction below is applied in both.
 MIN_STATE = 80        # times a player must face a state to be profiled on it
 MIN_CELL = 10         # raw count behind any surfaced response
 MIN_FIELD = 500       # field observations of the state (minus the player's own)
@@ -86,8 +85,8 @@ Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
 
 # The lift gate above is a threshold on a point estimate, and a full-tier player is put
 # through it on the order of fifty to a hundred times — once per state x response cell
-# their charting funds. Without a correction that is a search, not a test: of the 770
-# rows this used to ship, 170 sat above an uncorrected p=0.001 against the field share
+# their charting funds. Without a correction that is a search, not a test: of 770 rows
+# surfaced by the gate alone, 170 sit above an uncorrected p=0.001 against the field share
 # they were measured on, 57 above p=0.01 and 9 above p=0.05.
 #
 # So every cell that has a field baseline gets an exact binomial tail against that
@@ -151,6 +150,30 @@ class State(NamedTuple):
 
 def tier_of(st: State) -> str:
     return "full" if st.sdir else ("side" if st.side else "pooled")
+
+
+def st_key(st: State) -> tuple:
+    """A total order over states, for iterating them reproducibly.
+
+    States are accumulated into dicts keyed by the tuple, so ``set(h0) | set(h1)``
+    comes out in hash order, which Python randomizes per process. That order reaches
+    the output through every stable sort downstream, which settles a tie on whichever
+    candidate happened to be generated first. Sorting here fixes the input those sorts
+    see; the sorts themselves carry explicit tiebreaks on top. ``side`` and ``sdir``
+    are None at the coarser tiers, so they sort as empty strings rather than raising.
+    """
+    return tuple(v or "" for v in st)
+
+
+def top_response(c: Counter):
+    """The most-played response, with ties broken on the response itself.
+
+    ``Counter.most_common(1)`` breaks a tie on insertion order, and the counters are
+    filled in whatever order DuckDB hands back a 1.85M-row scan — which is not fixed
+    between runs, since the query has no ORDER BY and the join is parallel. Taking the
+    max over (count, response) instead makes the choice a property of the counts.
+    """
+    return max(c.items(), key=lambda kv: (kv[1], kv[0]))[0]
 
 
 TIERS = ("full", "side", "pooled")
@@ -246,7 +269,7 @@ def tier_states(res, name, tier) -> dict:
     """{state: total} for one player at one tier, states below MIN_STATE dropped."""
     h0, h1 = res["per"][name]
     out = {}
-    for st in set(h0) | set(h1):
+    for st in sorted(set(h0) | set(h1), key=st_key):
         if tier_of(st) != tier:
             continue
         n = h0[st].total() + h1[st].total()
@@ -323,7 +346,9 @@ def profile(res, name, tier) -> list:
     for (pval, row), q in zip(pending, bh([p for p, _ in pending])):
         if row is not None and q <= Q_FDR:
             out.append(row)
-    out.sort(key=lambda r: -r[0])
+    # Evidence first; the state and response break a tie, since a stable sort would
+    # otherwise settle it on the order the candidates were generated in.
+    out.sort(key=lambda r: (-r[0], st_key(r[2]), r[3]))
     return out[:TOP_PER_PLAYER]
 
 
@@ -373,7 +398,7 @@ def side_flips(res, name) -> list:
     """
     h0, h1 = res["per"][name]
     by_pooled = defaultdict(dict)
-    for st in set(h0) | set(h1):
+    for st in sorted(set(h0) | set(h1), key=st_key):
         if tier_of(st) != "side":
             continue
         c = h0[st] + h1[st]
@@ -383,11 +408,14 @@ def side_flips(res, name) -> list:
     for key, sides in by_pooled.items():
         if len(sides) < 2:
             continue
-        (rd, nd), (ra, na) = ((sides[s].most_common(1)[0][0], sides[s].total())
+        (rd, nd), (ra, na) = ((top_response(sides[s]), sides[s].total())
                               for s in ("deuce", "ad"))
         if rd != ra:
             st = State(None, None, *key)
             out.append((st, rd, nd, ra, na))
+    # Best-supported first, so the two the report prints are the two worth printing
+    # rather than whichever two came out of the dict first.
+    out.sort(key=lambda r: (-(r[2] + r[4]), st_key(r[0])))
     return out
 
 
@@ -438,7 +466,7 @@ def stability_cells(res, min_half=40, min_total=10, k=15):
     check on the finest state, where the counts are thinnest and the claim boldest."""
     xs, ys = [], []
     for name, (h0, h1) in res["per"].items():
-        for st in set(h0) | set(h1):
+        for st in sorted(set(h0) | set(h1), key=st_key):
             if tier_of(st) != "full":
                 continue
             c0, c1 = h0[st], h1[st]
@@ -449,7 +477,7 @@ def stability_cells(res, min_half=40, min_total=10, k=15):
             bn = base.total()
             if bn < MIN_FIELD:
                 continue
-            for resp in set(c0) | set(c1):
+            for resp in sorted(set(c0) | set(c1)):
                 if c0[resp] + c1[resp] < min_total:
                     continue
                 bf = base.get(resp, 0)
@@ -494,7 +522,9 @@ def main():
         res["stab"] = stability_cells(res)
         counts[g] = Counter()
         flips_by_g[g] = {}
-        for name in res["per"]:
+        # Sorted, so the emitted row order is a property of the data rather than of
+        # the order DuckDB happened to hand back the scan.
+        for name in sorted(res["per"]):
             tier = assign_tier(res, name)
             counts[g][tier] += 1
             tiers[name] = tier

@@ -645,7 +645,7 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
                   f"{(gap.abs() > 1).mean():.0%} are more than a ply away.")
     md.append("")
 
-    md.append("## Honest limitations")
+    md.append("## Limitations")
     md.append("")
     md.append("- **Conditional on survival.** See exposure above. This is selection, "
               "not noise, and no amount of data fixes it — blinding deeper makes it "

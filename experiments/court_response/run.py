@@ -248,13 +248,12 @@ def profile(res, name, audit=None):
     Returns ``(ev, lift, state, resp, n, c, disc_lift, folds, conv, fconv, p_field,
     sconv, q, n_cand)``.
 
-    Two things changed here on 2026-08-29, both of which this screen was missing and every
-    other pattern-mining experiment in the repo already had.
+    Two things keep this screen honest.
 
     **A multiplicity correction.** A player is screened on a median of 17 (state, response)
-    candidates and up to 208 — 35,979 across the tour — and the old gates were a fixed lift
-    threshold with no test behind it, so nothing accounted for how many tendencies had been
-    tried on a player before one cleared. Each fold's candidates now get an exact binomial
+    candidates and up to 208 — 35,979 across the tour — so a fixed lift threshold with no
+    test behind it would not account for how many tendencies had been tried on a player
+    before one cleared. Each fold's candidates get an exact binomial
     tail against the field's share for that state, Benjamini-Hochberg adjusted across every
     cell that fold screened for that player. Within player is the right family: the panel's
     claim is "this player answers this ball unusually", so the multiplicity that matters is
@@ -506,7 +505,9 @@ def main():
     audit = {g: Counter() for g in ("M", "W")}
     for g in ("M", "W"):
         r = results[g]
-        for name in r["per"]:
+        # Sorted, so the emitted row order is a property of the data rather than of
+        # the order DuckDB happened to hand back the scan.
+        for name in sorted(r["per"]):
             hand = hands[name]
             for (ev, lift, state, resp, n, c, disc_lift, folds,
                  conv, fconv, pf, sconv, q, ncand) in profile(r, name, audit[g]):
@@ -558,10 +559,9 @@ def main():
     # that halves a table produce the same number; only the candidate count separates them.
     md.append("## What the screen turns away")
     md.append("")
-    md.append("Until 2026-08-29 this experiment applied no multiplicity correction and "
-              "printed a lift measured on the same data its gates had just used to select "
-              "the pattern — the only pattern-mining screen in the repo still doing either. "
-              "Both are fixed above. The accounting:")
+    md.append("Without a multiplicity correction, and reading the lift off the same data "
+              "the gates used to select the pattern, this table would be a search rather "
+              "than a test. The accounting for the screen that runs instead:")
     md.append("")
     md.append("| | players screened | candidates tested | directions confirmed | surfaced |")
     md.append("|---|--:|--:|--:|--:|")

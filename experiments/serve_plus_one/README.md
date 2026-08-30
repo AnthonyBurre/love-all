@@ -59,7 +59,7 @@ charted, and only 87 men's and 120 women's observations lack it — under a tent
 of a percent. Requiring the return's *depth* has already selected points from
 charters working at full detail, and those charters record the serve.
 
-**Court disagreements.** 366 situations across 139 men, and 236 across 121 women,
+**Court disagreements.** 362 situations across 139 men, and 235 across 121 women,
 where both courts are independently well charted and the player's most-played
 answer differs between them. These are exactly what a pooled state cannot report:
 it names whichever response won the average and buries the other. Sampras answers

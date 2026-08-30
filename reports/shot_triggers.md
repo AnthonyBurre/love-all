@@ -131,7 +131,7 @@ Across 274 qualifying players, the correlation between a context's winner rate a
 
 ## Why the numerator counts induced forced errors
 
-Through 2026-08-05 this experiment counted only shots that ended the point on the player's own racquet — a winner or their own unforced error. Call that the **finishing shot frequency**. The wider and standard reading also credits a shot that forced the reply into an error, which is the **aggressive shot frequency** shipped above. The worry about widening it is that the forced/unforced call is the most charter-subjective field in the notation, so the extra events might be mostly noise. They are not.
+The narrow reading counts only shots that ended the point on the player's own racquet — a winner or their own unforced error. Call that the **finishing shot frequency**. The wider and standard reading also credits a shot that forced the reply into an error, which is the **aggressive shot frequency** shipped above. The worry about widening it is that the forced/unforced call is the most charter-subjective field in the notation, so the extra events might be mostly noise. They are not.
 
 Each player's matches are split at random into halves and every well-supported context (≥25 strokes in *both* halves) is measured twice. The correlation between the two measurements is the share of the apparent between-context spread that replicates. Because the split is by match, charters disagreeing with each other lands inside the noise term this is testing.
 
@@ -147,7 +147,7 @@ The wider numerator wins, and it wins against a handicap: a base rate moving fro
 
 Two things follow. First, the player ranking barely moves — the two frequencies correlate +0.991 across players — so this is not a rewrite of who is aggressive. Second, the *composition* moves a lot, and not at random: induced forced errors are 21% of the numerator on average but range from 14% to 34%. The narrow definition systematically under-credited players whose aggression works by pressure rather than by clean winners.
 
-| most under-credited by the old numerator | induced FE share | least |  induced FE share |
+| most under-credited by the narrow numerator | induced FE share | least |  induced FE share |
 |---|--:|---|--:|
 | Fabrice Santoro (M) | 34% | Reilly Opelka (M) | 14% |
 | Monica Niculescu (W) | 31% | Benoit Paire (M) | 14% |
@@ -155,7 +155,7 @@ Two things follow. First, the player ranking barely moves — the two frequencie
 | Mats Wilander (M) | 28% | Daniel Altmaier (M) | 16% |
 | Novak Djokovic (M) | 28% | Anett Kontaveit (W) | 16% |
 
-The cue lists move more than the leaderboard does. Of the 1,425 contexts either definition flags, they agree on 50%; the old numerator flagged 983 and this one flags 1,203. Traps fall from 436 to 546, which is the substantive correction: a shot that forced an error used to count as neither a success nor an aggressive shot, so a cue that reliably produced them read as low-conversion and got labelled a trap it had not earned.
+The cue lists move more than the leaderboard does. Of the 1,425 contexts either definition flags, they agree on 50%; the narrow numerator flags 983 and the wide one flags 1,203. Traps fall from 436 to 546, which is the substantive difference: under the narrow reading a shot that forced an error counts as neither a success nor an aggressive shot, so a cue that reliably produces them reads as low-conversion and draws a trap label it has not earned.
 
 ![definitions](figures/shot_triggers_definitions.png)
 
@@ -179,7 +179,7 @@ The cue lists move more than the leaderboard does. Of the 1,425 contexts either 
 
 The pooled tables above average over the court the point was served to, but the first four plies mean different things on the two sides: a wide serve opens the forehand in the deuce court and the backhand in the ad court. Here the opening aggressive shots — the return, the serve+1, and the return+1 — are split by side and scored against the player's own norm *for that same shot and side*. Everything deeper in the rally stays pooled (above). Full rows in `reports/shot_triggers_openings.csv`; 125 green / 92 trap sequences across 104 players.
 
-**These are cross-validated as of 2026-08-29, and were not before.** Until then this section was a raw threshold screen — clear the support floor, clear the lift, tag on the sign of the conversion gap — with no multiplicity correction and every figure computed on the data that had just selected the row. The pooled tables above had been FDR-corrected and cross-validated since `tag_contexts` landed, so this experiment was shipping one screened table and one unscreened one. Now each (player, side, anchor) group splits into the same two match-hash folds: one discovers, with an exact binomial tail against that fold's own group baseline and Benjamini-Hochberg at q=0.1 across every context it could test; the other confirms and supplies every number shown.
+**These are cross-validated**, on the same footing as the pooled tables above. A raw threshold screen — clear the support floor, clear the lift, tag on the sign of the conversion gap — would carry no multiplicity correction and compute every figure on the data that had just selected the row. Instead each (player, side, anchor) group splits into the same two match-hash folds: one discovers, with an exact binomial tail against that fold's own group baseline and Benjamini-Hochberg at q=0.1 across every context it could test; the other confirms and supplies every number shown.
 
 That took the table from 484 rows over 171 players to 217 over 104. 118 rows cleared from both directions and show the two folds pooled; the 99 that cleared from one show that fold alone, and across those the mean lift falls from 1.69x where it was found to **1.31x where it was measured — 45% of the discovered edge**. `court_response` measured 46% on the same kind of test and `rally_patterns` 50%, over different features and different screens, which is three independent readings of the same number.
 

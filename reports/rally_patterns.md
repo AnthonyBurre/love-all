@@ -66,7 +66,7 @@ Under `target`, **44% of the surviving patterns' evidence sits in occurrences wh
 
 Aggressive shot frequency drifts with how deep into the point a stroke sits, so a context arising early can read as aggressive for that reason alone. Two things hold it down here: blinding removes the steep part of the curve (past ply 7 the tour rate is flat to within about a point), and the parent is summed over exactly the strokes the child was eligible on, so both sides of every ratio share a population. What is left is where inside that population the two sit, measured rather than corrected: the median surviving pattern sits -0.30 plies from its parent, and 14% are more than a ply away.
 
-## Honest limitations
+## Limitations
 
 - **Conditional on survival.** See exposure above. This is selection, not noise, and no amount of data fixes it — blinding deeper makes it worse. The per-context framing is the defence: both sides of every comparison inherit the same selection, so it largely cancels for the lift over the parent. It does not cancel for anything read across players.
 - **The screen is strict.** A pattern needs 50 strokes in the discovery fold alone and a further 25 in the validation fold, and its displayed lift is never measured on a stroke that helped select it. Counts here are not comparable to a screen that pools all the data before gating.
