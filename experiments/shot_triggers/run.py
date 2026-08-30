@@ -98,7 +98,7 @@ def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     alternates hitters and a player's opponents are a mix of both hands; mirroring per
     hitter would merge physically different opponent balls into one bucket. The whole
     lead-up reads from the profiled player's side of the net, matching what
-    ``court_response`` does with hand-relative zones and what ``deep_patterns`` does with
+    ``court_response`` does with hand-relative zones and what ``rally_patterns`` does with
     the same tokens.
 
     This changes no statistic. Every figure here — the lift against the player's own

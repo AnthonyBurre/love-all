@@ -160,8 +160,8 @@ function bounces(tokens, court) {
 // backwards from the end: the last token is always the ball the opponent sent them — the
 // one they attacked, and the reason the sequence is in the panel — and every second token
 // before it is theirs. That makes token 1 the player's own when K is even (every shipped
-// 2-shot trigger) and the opponent's when it is odd (the K=3 deep patterns, which are most
-// of them), and it puts the player's half wherever the last ball lands.
+// 2-shot trigger, which is nearly all of them) and the opponent's when it is odd (the K=3
+// rally patterns), and it puts the player's half wherever the last ball lands.
 //
 // Everything else follows from that one fact, in pairSvg's vocabulary: their half tinted,
 // their own balls solid and in their colour, the opponent's dashed and neutral, and a

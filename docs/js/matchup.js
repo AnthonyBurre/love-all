@@ -142,8 +142,10 @@ function trigMeter(t) {
 // means one piece of tennis whoever plays it. The drawing is the one place that wants the
 // real court back, so it mirrors again on the way out.
 function trigLine(t, hand) {
-  // Gold: a 3-4 shot sequence that beats its own shorter pattern and replicates across
-  // halves of the player's data — only the hugely-charted earn these.
+  // Gold: a 3-4 shot sequence that beats its own shorter pattern on ground where the
+  // serve has been blinded out, with the figures read off a fold of the player's matches
+  // that had no part in selecting it (rally_patterns). Very few clear that — the tier
+  // used to be 36 patterns and most of them were serve sequences.
   const deep = Number(t.depth) > 2;
   const trap = t.tag === "trap";
   const cls = deep ? "gold" : trap ? "bait" : "green";

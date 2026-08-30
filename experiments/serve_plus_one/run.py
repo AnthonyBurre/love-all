@@ -86,7 +86,7 @@ Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
 # baseline, and the tails are Benjamini-Hochberg adjusted across that player's own
 # candidate cells. Within player is the right family: the panel's claim is "this player
 # does this unusually often", so what has to be controlled is how many tendencies were
-# tried on them. This is the same correction deep_patterns applies, and it is applied
+# tried on them. This is the same correction rally_patterns applies, and it is applied
 # here for the same reason — the two sections sit one above the other in the panel and a
 # reader has no way to tell that one was screened and the other was not.
 
