@@ -16,6 +16,10 @@ let covState = "loading";       // "loading" | "ready" | "down"
 // there are depends on the draw — eight sixteenths on a slam, four quarters on a 32 — so it
 // resets when you change event or tour rather than carrying an out-of-range index across.
 const sel = { key: null, gender: null, view: null, section: 0, round: null };
+// A resize that arrived while the matchup panel was up, and so was not spent on the draw
+// underneath it. See the resize listener in main() for why it waits, and dismiss() in
+// wireDrawer() for where it is spent.
+let resizedBehind = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -75,6 +79,13 @@ async function main() {
   wireDrawer();
   let raf = null;               // connectors are position-dependent: relayout on resize
   window.addEventListener("resize", () => {
+    // Not while the panel is open. render() replaces every card in the draw, and the draw
+    // is behind a modal and its scrim — so the relayout is work no one can see, and on a
+    // full slam draw it is ~1900 nodes rebuilt and a getBoundingClientRect per card to
+    // re-place the wires, on every resize frame. It is also destructive: one of the cards
+    // it throws away is the one the panel hands focus back to on close.
+    // Held instead, and spent once on close, before the panel goes.
+    if (!$("matchup").hidden) { resizedBehind = true; return; }
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(render);
   });
@@ -339,9 +350,18 @@ async function loadCoverage() {
 function wireDrawer() {
   // closeMatchup owns the rest of it — the page scroll lock and handing focus back to
   // the match tile that opened the panel.
-  $("matchupClose").onclick = closeMatchup;
-  $("scrim").onclick = closeMatchup;
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMatchup(); });
+  //
+  // The catch-up render goes first, while the panel is still up. Closing is what hands
+  // focus back to a card, so a render after it would replace the card it had just focused;
+  // before it, the panel is still covering the swap and closeMatchup finds the new card by
+  // the match id the old one carried.
+  const dismiss = () => {
+    if (resizedBehind) { resizedBehind = false; render(); }
+    closeMatchup();
+  };
+  $("matchupClose").onclick = dismiss;
+  $("scrim").onclick = dismiss;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") dismiss(); });
 }
 
 main();

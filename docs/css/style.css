@@ -431,8 +431,14 @@ a { color: var(--acc-d); }
      and the one that is a pseudo-element with none come out level */
   --chip-h: 20px; }
 .scrim { position: fixed; inset: 0; background: rgba(12,18,15,.45); backdrop-filter: blur(2.5px); z-index: 20; }
+/* dvh, the same unit the phone sheet takes, and for the same reason: a landscape phone is
+   wider than 700px — 844 on an iPhone, 915 on an Android — so it is this rule it lands on,
+   not the sheet's. vh there is the *large* viewport, the one with the browser's toolbar
+   retracted, and a toolbar out takes about 11% of a 390px-tall screen against the 12% this
+   leaves itself. The foot of the panel sat under it. dvh measures what is actually on
+   screen, so the 12% stays 12% whichever way the toolbar is. */
 .matchup { position: fixed; z-index: 21; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(880px, 94vw); max-height: min(88vh, 860px);
+  width: min(880px, 94vw); max-height: min(88dvh, 860px);
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--card); border: 0; border-radius: var(--radius);
   box-shadow: 0 24px 80px rgba(0,0,0,.35); animation: pop .16s ease-out; }
@@ -754,7 +760,12 @@ a { color: var(--acc-d); }
 /* --pad-t is the sticky section headings' business as much as this box's: they pin
    against the content edge, not the panel edge, so they have to pull back by exactly
    this much to sit flush under the scoreboard. Kept in one place so the two can't drift. */
-.mbody { --pad-t: 14px; overflow-y: auto; overscroll-behavior: contain; padding: var(--pad-t) 20px 22px; }
+/* The horizontal padding is --pad-l, the same token the band above sets its names by, so
+   the header and the scroll under it share one left edge at every width the panel has. A
+   literal here is a second copy of a number that changes at a breakpoint, and two copies
+   do not have to change at the same one. */
+.mbody { --pad-t: 14px; overflow-y: auto; overscroll-behavior: contain;
+  padding: var(--pad-t) var(--pad-l) 22px; }
 /* A match with no entrants on either side writes no body at all (see openMatchup), and an
    empty box still holding its own 14/22 leaves a dead band of card under the split rule —
    which reads as something that failed to load rather than as nothing to say. */
@@ -1297,7 +1308,8 @@ a { color: var(--acc-d); }
    passes behind it rather than through the gutters. */
 .msec { margin-top: 14px; }
 .sechead { position: sticky; top: calc(-1 * var(--pad-t, 0px)); z-index: 2; background: var(--card);
-  margin: 0 -20px 7px; padding: 6px 20px 5px; border-bottom: 1px solid var(--line);
+  margin: 0 calc(-1 * var(--pad-l)) 7px; padding: 6px var(--pad-l) 5px;
+  border-bottom: 1px solid var(--line);
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 /* read once, then out of the way — unlike the topic, it doesn't stick */
 .secnote { margin: 0 0 9px; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
@@ -1564,11 +1576,6 @@ a { color: var(--acc-d); }
   .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; animation: sheet .2s ease-out; }
   /* three columns in a phone's width: the first name goes to an initial before any name
      has to wrap, and the seed badge drops — it is in the draw behind the panel anyway */
-  /* All four ride on the panel, not the band — the close button reads them too, and the
-     band's own padding is now the number the pinned chrome pulls back out through, so it
-     has to be the variable and not a literal in the padding shorthand. A 13 here against a
-     14 there put the corner row a pixel over the panel's top edge, where it was clipped. */
-  .matchup { --pad-l: 14px; --pad-r: 34px; --band-t: 13px; --band-b: 12px; }
   /* Names back to the outer ends instead of pulled in toward the score. Pulling them in
      is a wide-panel move — it buys a scoreboard out of width the header was wasting. At
      this size there is no spare width to buy it with: the names already meet in the
@@ -1587,8 +1594,18 @@ a { color: var(--acc-d); }
 /* phone panel: everything stacks, so each column names its own player rather than relying
    on a left-right position that stacking removes. */
 @media (max-width: 620px) {
-  .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
-  .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+  /* The panel's gutter — the band's names, the body's scroll and the section headings all
+     take --pad-l, so this one number moves the whole panel's left edge at once.
+     It narrows here and not at 700 with the sheet: 620 is where the panel is on a phone,
+     and a sheet 660px across is a narrow window, wider than the desktop panel at the same
+     viewport and comfortable at the 20px edge that panel has.
+     All four ride on the panel, not the band — the close button reads them too, and the
+     band's own padding is the number the pinned chrome pulls back out through, so it has
+     to be the variable and not a literal in the padding shorthand. --band-t has to be that
+     number to the pixel: a 13 here against a 14 there puts the corner row over the panel's
+     top edge, where it is clipped. */
+  .matchup { --pad-l: 14px; --pad-r: 34px; --band-t: 13px; --band-b: 12px; }
+  .mbody { --pad-t: 12px; padding-bottom: 20px; }
   .tape { padding: 11px 12px 12px; }
   /* The court sections stay two-up. Stacking them puts a player's three drawings a
      screen and a half from the three they are meant to be read against, which is the
@@ -1596,17 +1613,25 @@ a { color: var(--acc-d); }
      survives the phone. The sequence sections have no drawing to trade and do stack. */
   .seccols { grid-template-columns: 1fr 1fr; column-gap: 10px; }
   /* stacked, there is nothing left to align across, so the shared rows come off —
-     left on, both columns would claim the same single cell and sit on top of each other */
+     left on, both columns would claim the same single cell and sit on top of each other.
+     The indent belongs to the stack and is set with it: a column on its own line reads as
+     a block under the player's name it now carries, and 8px is what sets it off the
+     panel's edge. A column still standing beside its opposite number is placed by that,
+     and an indent there only pushes its content off the left end of the colour rule
+     naming it. */
   .msec.text .seccols { grid-template-columns: 1fr; grid-template-rows: none; row-gap: 16px; }
-  .msec.text .seccol { display: block; grid-row: auto; }
-  .seccol { padding-left: 8px; }
+  .msec.text .seccol { display: block; grid-row: auto; padding-left: 8px; }
   .msec.text .colwho { display: flex; }
   /* Serve direction stays two-up like the court sections above, all the way down: it is
      the shortest text section in the panel and the boxes read fine at a phone's width, so
      stacking them would only add a scroll with nothing gained. :has(.srv) is how this one
-     text section is told apart from the others (triggers, deep patterns), which do stack. */
+     text section is told apart from the others (triggers, deep patterns), which do stack.
+     The stack's indent goes back with the rest of it, and here that is width rather than
+     alignment: this column is split into two boxes of two zones, so 8px off the front of
+     it is 8px off the four numbers the block below is already shrinking to fit. */
   .msec.text:has(.srv) .seccols { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(var(--rows, 1), auto); row-gap: 0; }
-  .msec.text:has(.srv) .seccol { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; }
+  .msec.text:has(.srv) .seccol { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid;
+    padding-left: 0; }
   .msec.text:has(.srv) .colwho { display: none; }
   /* Doubling up to four boxes across a phone's width leaves each zone ~35px, not the
      ~70px it was built for — the number was overflowing its own zone at 14px. Shrunk

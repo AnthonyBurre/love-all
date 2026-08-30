@@ -1651,6 +1651,12 @@ function bodyHtml(m, pa, pb, gates, spread) {
 // from — otherwise a keyboard lands back at the top of the page each time.
 const FOCUSABLE = "a[href], button:not([disabled]), summary, [tabindex]:not([tabindex='-1'])";
 let opener = null;          // the element that opened the panel, to hand focus back to
+// Which match that element was, so the hand-back survives the tile being replaced. The
+// draw re-renders whole — on a resize, or when the round or slice under it changes — and
+// the card that comes back is an equivalent one, not the node that was clicked. Holding
+// only the node, a re-render between open and close dropped focus to <body>, which is the
+// thing handing it back exists to prevent.
+let openerId = null;
 let wired = false;
 // Each open takes a ticket. The queries below are async and the panel writes its results
 // into slots looked up by id, so an open whose queries outlive it — close one match, open
@@ -1681,8 +1687,15 @@ export function closeMatchup() {
   panel.hidden = true;
   document.getElementById("scrim").hidden = true;
   lockPage(false);
-  if (opener && document.contains(opener)) opener.focus();
+  // Scanned rather than selected: a match id comes from the feed, so it is not something
+  // that can be dropped into a selector unescaped, and a draw is 127 cards at its largest.
+  const back = opener && document.contains(opener)
+    ? opener
+    : openerId && [...document.querySelectorAll(".match[data-mid]")]
+        .find((el) => el.dataset.mid === openerId);
+  if (back) back.focus();
   opener = null;
+  openerId = null;
 }
 
 function onPanelKey(e) {
@@ -1844,7 +1857,7 @@ export async function openMatchup(m, t) {
   const mine = ++openSeq;
   const panel = document.getElementById("matchup");
   const body = document.getElementById("matchupBody");
-  if (panel.hidden) opener = document.activeElement;
+  if (panel.hidden) { opener = document.activeElement; openerId = m.id; }
   panel.hidden = false;
   panel.setAttribute("aria-label", `${m.a.name || "TBD"} vs ${m.b.name || "TBD"}`);
   document.getElementById("scrim").hidden = false;
