@@ -159,9 +159,10 @@ function bounces(tokens, court) {
 // strokes *before* the player's aggressive shot and hitters alternate, so ownership runs
 // backwards from the end: the last token is always the ball the opponent sent them — the
 // one they attacked, and the reason the sequence is in the panel — and every second token
-// before it is theirs. That makes token 1 the player's own when K is even (every shipped
-// 2-shot trigger, which is nearly all of them) and the opponent's when it is odd (the K=3
-// rally patterns), and it puts the player's half wherever the last ball lands.
+// before it is theirs. Every shipped cue is a 2-shot lead-up, so token 1 is the player's
+// own — the odd-K branch is kept because the drawing is written for any K and a deeper
+// tier has shipped here before — and it puts the player's half wherever the last ball
+// lands.
 //
 // Everything else follows from that one fact, in pairSvg's vocabulary: their half tinted,
 // their own balls solid and in their colour, the opponent's dashed and neutral, and a

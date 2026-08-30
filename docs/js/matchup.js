@@ -58,7 +58,7 @@ async function playerData(name, gender) {
   let triggers = [];
   try {
     triggers = await query(
-      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, attempts, depth " +
+      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, attempts " +
       "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
   } catch (e) { /* stale insights db: show the card without tendencies */ }
   let patterns = [];
@@ -142,28 +142,24 @@ function trigMeter(t) {
 // means one piece of tennis whoever plays it. The drawing is the one place that wants the
 // real court back, so it mirrors again on the way out.
 function trigLine(t, hand) {
-  // Gold: a 3-4 shot sequence that beats its own shorter pattern on ground where the
-  // serve has been blinded out, with the figures read off a fold of the player's matches
-  // that had no part in selecting it (rally_patterns). Very few clear that — the tier
-  // used to be 36 patterns and most of them were serve sequences.
-  const deep = Number(t.depth) > 2;
+  // Every cue here is a two-shot lead-up. There used to be a starred 3-4 shot tier
+  // alongside them (deep_patterns, then rally_patterns); it is gone because the patterns
+  // were not there — 71% of the old tier's evidence sat in the opening, which the two
+  // sections above already cover, and on serve-blind ground two of 1,752 candidates
+  // survived a screen whose figures were held out. See experiments/rally_patterns.
   const trap = t.tag === "trap";
-  const cls = deep ? "gold" : trap ? "bait" : "green";
+  const cls = trap ? "bait" : "green";
   const conv = Math.round(t.conversion * 100);
-  // A deep pattern already claims the ⭐, so a deep *trap* would otherwise lose its
-  // warning entirely — it keeps a ⚠ on the number that makes it one.
-  // A shallow cue's conversion is now measured against the player's *other* cues, not
-  // against their all-strokes rate. Conditional on a lead-up raising the frequency at
-  // all, conversion already sits well above that rate — the balls you attack on are the
-  // ones you were well placed to attack — so the old comparison put the line far below
-  // the middle of the class it was splitting and called the bottom of a normal spread a
-  // trap. Deep patterns keep their own reference, the shorter pattern they beat.
+  // A cue's conversion is measured against the player's *other* cues, not against their
+  // all-strokes rate. Conditional on a lead-up raising the frequency at all, conversion
+  // already sits well above that rate — the balls you attack on are the ones you were
+  // well placed to attack — so the old comparison put the line far below the middle of
+  // the class it was splitting and called the bottom of a normal spread a trap.
   const payoff = trap
-    ? `converts only <b>${conv}%</b>${deep ? ' <span class="warnmark">⚠</span>' : ""}
-       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs ${deep
-      ? "the shorter pattern" : "their other cues"}</span>`
+    ? `converts only <b>${conv}%</b>
+       <span class="lift">${Math.round(t.conv_delta * 100)}pp vs their other cues</span>`
     : `converts <b>${conv}%</b>`;
-  const against = deep ? "the shorter pattern" : "their norm";
+  const against = "their norm";
   // Two denominators, both printed. The frequency is over every stroke from this lead-up
   // (n); the conversion is over the aggressive shots among them (attempts), which runs
   // about a third of n — and it was the unprinted one, so a conversion resting on 33
@@ -171,8 +167,7 @@ function trigLine(t, hand) {
   const att = num(t.attempts);
   const counts = att == null ? `n=${Number(t.n)}`
     : `n=${Number(t.n)}, ${att} attempt${att === 1 ? "" : "s"}`;
-  return `<div class="trig ${cls}"${deep
-    ? ` title="deep pattern: only visible with this player's huge charted history"` : ""}>
+  return `<div class="trig ${cls}">
     <p class="tcue">after <code>${esc(t.context)}</code></p>
     <p class="tnum">aggressive <b>${Math.round(t.att_rate * 100)}%</b>
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
@@ -229,10 +224,9 @@ function serveHtml(d, gates) {
       across their whole career</p>`;
   }
   // Break points: side-adjusted, since break points skew to the ad court and the court
-  // moves placement more than the score does. Starred like a deep pattern, and for the
-  // same reason — most players show nothing here, because most players' break-point
-  // placement is indistinguishable from their normal-point placement once the
-  // multiplicity correction is applied.
+  // moves placement more than the score does. Most players show nothing here, because
+  // most players' break-point placement is indistinguishable from their normal-point
+  // placement once the multiplicity correction is applied.
   let bp = "";
   const delta = d.s && d.s.serve_bp_wide_delta;
   // Significant *and* big enough to act on. The experiment's test is correctly
@@ -356,28 +350,24 @@ function trigBase(d) {
   </div>`;
 }
 
-// A player's triggers, split the way the panel shows them: their own baseline rate, then the
-// shallow green lights and traps, then the deep sequences, then the note that earns its place
-// by absence.
+// A player's triggers, in the order the panel shows them: their own baseline rate, then the
+// green lights and traps, then the note that earns its place by absence.
 //
 // The baseline comes from player_summary rather than from the trigger table, so it prints for
 // a player charted enough to have a rate but not enough for any cue to clear the significance
 // test — which is most of the tour, and which used to leave their column saying only "nothing
 // at this player's coverage".
 function trigSets(d) {
-  if (!d) return { main: "", gold: "" };
+  if (!d) return "";
   const base = trigBase(d);
-  if (!d.triggers.length) return { main: base, gold: "" };
-  const shallow = d.triggers.filter((t) => !(Number(t.depth) > 2));
-  const greens = shallow.filter((t) => t.tag === "green")
+  if (!d.triggers.length) return base;
+  const greens = d.triggers.filter((t) => t.tag === "green")
     .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
-  const traps = shallow.filter((t) => t.tag === "trap")
+  const traps = d.triggers.filter((t) => t.tag === "trap")
     .sort((a, b) => a.conv_delta - b.conv_delta).slice(0, 2);
-  const gold = d.triggers.filter((t) => Number(t.depth) > 2)
-    .sort((a, b) => b.att_lift - a.att_lift).slice(0, 3);
-  // The banner has to answer for the whole panel, not just the shallow tier. n_traps
-  // counts K=2 cues only, so a player with a deep trap starred two sections below was
-  // being told nothing baits them, directly above a ⚠ saying something does.
+  // n_traps comes from the experiment's own per-player table and the rows come from the
+  // top-N selection above, so the banner checks both rather than trusting one: a count
+  // that disagreed with the rows would print "nothing baits them" directly above a ⚠.
   const immune = d.s.n_traps != null && Number(d.s.n_traps) === 0
     && !d.triggers.some((t) => t.tag === "trap")
     ? `<div class="trig immune">no trap sequences — every lead-up that raises their
@@ -385,10 +375,7 @@ function trigSets(d) {
   // Bound explicitly rather than passed to .map directly, which would hand trigLine the
   // array index as its second argument and mirror every drawing on an odd row.
   const hand = d.s.hand;
-  return {
-    main: base + [...greens, ...traps].map((t) => trigLine(t, hand)).join("") + immune,
-    gold: gold.map((t) => trigLine(t, hand)).join(""),
-  };
+  return base + [...greens, ...traps].map((t) => trigLine(t, hand)).join("") + immune;
 }
 
 // --- "side by side": one ring per metric ----------------------------------------------
@@ -1101,9 +1088,9 @@ const COURT_LEGEND = `<span class="courtkey">
 
 // The key to the bar under each cue. Same marks the comparison strip's note uses, because
 // it is the strip's bar: a reader who has scrolled past one already knows this one.
-// `baseline` is what the tick stands for, and the two sections do not agree on it — a
-// shallow cue is measured against the player's own norm, a deep one against the shorter
-// pattern it is built out of — so it is the caller's word, not this string's.
+// `baseline` is what the tick stands for. It stays the caller's word rather than a
+// constant in here: the strip and the cue column word the same tick differently, and a
+// second cue section measured against something else has existed before and could again.
 const meterLegend = (baseline) => `<span class="meterkey">
   <span class="segkey"></span> landed <span class="segkey miss"></span> missed, out of the
   balls the cue provokes · <span class="tickkey"></span> ${baseline}</span>`;
@@ -1390,9 +1377,7 @@ function bodyHtml(m, pa, pb, mu, gates, spread) {
     section("shot-making triggers", `a lead-up that shifts their aggressive shot
       frequency — and whether it converts as well as their other cues
       do${meterLegend("their rate with no cue")}`,
-      a, b, ta.main, tb.main, "text") +
-    section("deep patterns ⭐", `3–4 shot sequences only chartable at this player's
-      coverage${meterLegend("the shorter pattern's rate")}`, a, b, ta.gold, tb.gold, "text") +
+      a, b, ta, tb, "text") +
     (pa || pb ? COV_NOTE : "");
 }
 

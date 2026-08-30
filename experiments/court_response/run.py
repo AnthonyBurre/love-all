@@ -53,10 +53,12 @@ import matplotlib  # noqa: E402
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 from match_charting_project.shots.notation import parse_point, stroke_kind  # noqa: E402
+from match_charting_project.stats import bh, binom_tail  # noqa: E402
 
 REPORTS = PROJECT_ROOT / "reports"
 FIG = REPORTS / "figures"
@@ -84,9 +86,11 @@ ERA_COV_MIN = 0.60    # share of a player's balls an era-matched field must cove
 ERAS = ((0, 2000, "pre-2000"), (2000, 2010, "2000s"), (2010, 9999, "2010+"))
 K_SHRINK = 30         # pseudo-count pull toward the field distribution
 K_CONV = 20           # pseudo-count pull of a pattern's win rate toward the field's
-LIFT_MIN = 1.4        # shrunk lift needed to surface
-HALF_LIFT_MIN = 1.15  # raw lift required in *both* halves of their matches
-HALF_MIN = 4          # raw count required in both halves
+LIFT_MIN = 1.4        # shrunk lift needed in the discovery fold to be a candidate
+VAL_LIFT_MIN = 1.15   # shrunk lift the validation fold must still show to confirm
+FOLD_STATE = 40       # times a player must face a state *within a fold*
+FOLD_CELL = 5         # raw count behind a response *within a fold*
+Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player and fold
 TOP_PER_PLAYER = 3    # rally patterns surfaced per player
 TOP_RETURN = 2        # return-depth patterns surfaced per player
 
@@ -238,50 +242,89 @@ def shrunk_lift(c, n, p_field, k=K_SHRINK):
     return ((c + k * p_field) / (n + k)) / p_field
 
 
-def profile(res, name):
-    """A player's surfaced patterns:
-    (ev, lift, state, resp, n_state, c, l0, l1, conv, fconv, p_field, sconv).
+def profile(res, name, audit=None):
+    """A player's surfaced patterns, each discovered in one fold and measured in the other.
 
-    Ranked by evidence = count x log2(lift), the cell's contribution to the
-    player's divergence from the field — raw lift alone crowns rare quirks
-    (a 5x lift on 60 of 29,000 balls) over bread-and-butter tendencies.
-    ``conv`` is the player's point-win rate playing that response (shrunk
-    toward the field's by K_CONV pseudo-counts); ``fconv`` is the field's,
-    same state and response, the player's own points excluded. ``p_field`` is
-    the share the lift is taken against, so a reader can be shown what the
-    player is unusual *relative to*. ``sconv`` is the player's own point-win
-    rate across every answer they give to this same ball.
+    Returns ``(ev, lift, state, resp, n, c, disc_lift, folds, conv, fconv, p_field,
+    sconv, q, n_cand)``.
 
-    ``sconv`` exists because ``conv`` against ``fconv`` is mostly a strength
-    comparison: the gap between the two correlates about +0.43 with a player's
-    overall serve-plus-return rate, so the strongest thirty players beat the tour
-    on nearly every pattern they have and the weakest thirty lose on nearly all
-    of theirs, whatever the tactic is worth. Both sides of ``conv`` vs ``sconv``
-    are the same player on the same incoming ball, so what is left is the choice.
+    Two things changed here on 2026-08-29, both of which this screen was missing and every
+    other pattern-mining experiment in the repo already had.
+
+    **A multiplicity correction.** A player is screened on a median of 17 (state, response)
+    candidates and up to 208 — 35,979 across the tour — and the old gates were a fixed lift
+    threshold with no test behind it, so nothing accounted for how many tendencies had been
+    tried on a player before one cleared. Each fold's candidates now get an exact binomial
+    tail against the field's share for that state, Benjamini-Hochberg adjusted across every
+    cell that fold screened for that player. Within player is the right family: the panel's
+    claim is "this player answers this ball unusually", so the multiplicity that matters is
+    how many answers were tried on them. (The responses to one state are multinomial rather
+    than independent binomials, so the per-cell tail is an approximation; BH across the
+    family is what the honesty rests on, not the exactness of any one tail.)
+
+    **Held-out figures.** The old screen required a raw lift in *both* halves and then
+    printed the pooled lift — so both halves voted on selection and the number shown was
+    measured on all of it, which is the winner's curse the panel had no defence against.
+    Now each fold takes a turn discovering, and the lift, payoff and counts are read off
+    the fold that had no part in it. A pattern confirmed from both directions shows the two
+    halves pooled, which is the mean of two held-out measurements rather than a return to
+    in-sample figures; one confirmed from a single direction shows that validation fold
+    alone. ``disc_lift`` carries the mean discovery-fold lift beside it, so the shrinkage
+    between finding a pattern and measuring it is visible per row.
+
+    Still ranked by evidence = count x log2(lift), the cell's contribution to the player's
+    divergence from the field — raw lift alone crowns rare quirks (a 5x lift on 60 of
+    29,000 balls) over bread-and-butter tendencies. ``conv`` is the player's point-win rate
+    playing that response (shrunk toward the field's by K_CONV pseudo-counts); ``fconv`` is
+    the field's, same state and response, the player's own points excluded. ``p_field`` is
+    the share the lift is taken against. ``sconv`` is the player's own point-win rate across
+    every answer they give to this same ball.
+
+    ``sconv`` exists because ``conv`` against ``fconv`` is mostly a strength comparison: the
+    gap between the two correlates about +0.43 with a player's overall serve-plus-return
+    rate, so the strongest thirty players beat the tour on nearly every pattern they have
+    and the weakest thirty lose on nearly all of theirs, whatever the tactic is worth. Both
+    sides of ``conv`` vs ``sconv`` are the same player on the same incoming ball, so what is
+    left is the choice.
+
+    **Not done here:** the opening and the rally are still pooled. A (player, state) cell
+    counts the serve+1 ball together with the same-described ball at shot 11, and for 691 of
+    4,218 well-supported cells (16.4%, against 0 of 5,040 on a coin-flip control) the
+    response a player picks differs measurably between the two. The fix is a heterogeneity
+    pass over the survivors below — split the cells that differ, leave the rest pooled with
+    evidence that pooling is justified — which costs no coverage and is a natural third test
+    in the family this function already corrects across. It is not implemented yet.
     """
-    h0, h1 = res["per"][name]
-    h0w, h1w = res["perw"][name]
-    out = []
+    halves, halvesw = res["per"][name], res["perw"][name]
+    h0, h1 = halves
+    # `audit` is how the report accounts for a screen that now rejects: without the
+    # candidate count beside the survivor count, a correction and a bug look the same.
+    if audit is not None:
+        audit["players"] += 1
+    h0w, h1w = halvesw
+
+    # Pass 1: every cell the screen looks at, per discovery fold, with its p-value. The
+    # pooled support gates stay exactly as they were, so nothing ships on less total
+    # evidence than before — the fold gates are additional, and roughly halve to match.
+    cand: dict = {0: [], 1: []}
+    shared: dict = {}          # (state, resp) -> field quantities, computed once
     for state in set(h0) | set(h1):
-        c0, c1 = h0[state], h1[state]
-        mine = c0 + c1
-        n = mine.total()
-        if n < MIN_STATE:
+        mine = h0[state] + h1[state]
+        n_pool = mine.total()
+        if n_pool < MIN_STATE:
             continue
         base = res["field"][state] - mine
         bn = base.total()
         if bn < MIN_FIELD:
             continue
-        # The player's own answer to this ball, over all their responses to it — the
-        # reference the payoff is read against. Shrunk toward the field's rate for the
+        # The player's own answer to this ball across all their responses to it — the
+        # reference the payoff is read against, shrunk toward the field's rate for the
         # same state on the same pseudo-counts as `conv`, so the two are comparable.
         mine_w = h0w[state] + h1w[state]
-        f_state = res["fieldw"][state] - mine_w
-        p_state = f_state.total() / bn
-        sconv = (mine_w.total() + K_CONV * p_state) / (n + K_CONV)
-        for resp, c in mine.items():
+        p_state = (res["fieldw"][state] - mine_w).total() / bn
+        for resp, c_pool in mine.items():
             bf = base.get(resp, 0)
-            if c < MIN_CELL or bf < 20:
+            if c_pool < MIN_CELL or bf < 20:
                 continue
             p_field = bf / bn
             fconv = (res["fieldw"][state].get(resp, 0)
@@ -289,28 +332,68 @@ def profile(res, name):
             # Era-standardized where the eras this player played in are thick enough to
             # price; pooled otherwise. A zero standardized share means the field of their
             # own era never played this at all, which the lift cannot divide by — that
-            # falls back too rather than reporting an infinite lift.
+            # falls back too rather than reporting an infinite lift. The baseline is
+            # deliberately identical for both folds: it is what the player is being
+            # compared against, not something the screen is selecting on.
             e_share, e_fconv, covered = era_baseline(res, name, state, resp)
-            if e_share and covered >= ERA_COV_MIN * n:
+            if e_share and covered >= ERA_COV_MIN * n_pool:
                 p_field = e_share
                 if e_fconv is not None:
                     fconv = e_fconv
-            lift = shrunk_lift(c, n, p_field)
-            if lift < LIFT_MIN:
+            shared[(state, resp)] = (p_field, fconv, p_state)
+            for disc in (0, 1):
+                n_d, c_d = halves[disc][state].total(), halves[disc][state][resp]
+                if n_d < FOLD_STATE or c_d < FOLD_CELL:
+                    continue
+                cand[disc].append((state, resp, binom_tail(c_d, n_d, p_field),
+                                   shrunk_lift(c_d, n_d, p_field)))
+
+    if audit is not None:
+        audit["candidates"] += len(cand[0]) + len(cand[1])
+
+    # Pass 2: correct inside the discovery fold, then confirm on the other one. The
+    # correction family is every cell that fold could test, not just the ones that went
+    # on to clear the lift gate — a candidate the screen looked at and turned away is not
+    # free, and leaving it out would count a search over hundreds as a search over three.
+    confirmed: dict = defaultdict(list)
+    for disc in (0, 1):
+        items = cand[disc]
+        if not items:
+            continue
+        for (state, resp, _pv, dlift), q in zip(items, bh([c[2] for c in items])):
+            if q > Q_FDR or dlift < LIFT_MIN:
                 continue
-            if min(c0[resp], c1[resp]) < HALF_MIN:
+            val = 1 - disc
+            n_v, c_v = halves[val][state].total(), halves[val][state][resp]
+            if n_v < FOLD_STATE or c_v < FOLD_CELL:
                 continue
-            l0 = (c0[resp] / c0.total()) / p_field
-            l1 = (c1[resp] / c1.total()) / p_field
-            if min(l0, l1) < HALF_LIFT_MIN:
+            if shrunk_lift(c_v, n_v, shared[(state, resp)][0]) < VAL_LIFT_MIN:
                 continue
-            wins = h0w[state][resp] + h1w[state][resp]
-            conv = (wins + K_CONV * fconv) / (c + K_CONV)
-            out.append((c * np.log2(lift), lift, state, resp, n, c, l0, l1,
-                        conv, fconv, p_field, sconv))
+            confirmed[(state, resp)].append((val, dlift, q, len(items)))
+
+    # Pass 3: the figures, off the fold(s) that did not do the selecting.
+    out = []
+    for (state, resp), hits in confirmed.items():
+        p_field, fconv, p_state = shared[(state, resp)]
+        used = (0, 1) if len(hits) == 2 else (hits[0][0],)
+        n = sum(halves[f][state].total() for f in used)
+        c = sum(halves[f][state][resp] for f in used)
+        wins = sum(halvesw[f][state][resp] for f in used)
+        state_wins = sum(halvesw[f][state].total() for f in used)
+        lift = shrunk_lift(c, n, p_field)
+        conv = (wins + K_CONV * fconv) / (c + K_CONV)
+        sconv = (state_wins + K_CONV * p_state) / (n + K_CONV)
+        out.append((c * np.log2(lift), lift, state, resp, n, c,
+                    sum(h[1] for h in hits) / len(hits), len(hits),
+                    conv, fconv, p_field, sconv,
+                    min(h[2] for h in hits), max(h[3] for h in hits)))
     out.sort(reverse=True)
     rally = [p for p in out if p[2][0] == "rally"][:TOP_PER_PLAYER]
     ret = [p for p in out if p[2][0] == "ret"][:TOP_RETURN]
+    if audit is not None:
+        audit["confirmed"] += sum(len(h) for h in confirmed.values())
+        audit["cells"] += len(confirmed)
+        audit["surfaced"] += len(rally) + len(ret)
     return rally + ret
 
 
@@ -420,12 +503,13 @@ def main():
 
     # Per-player export: one row per surfaced pattern.
     rows = []
+    audit = {g: Counter() for g in ("M", "W")}
     for g in ("M", "W"):
         r = results[g]
         for name in r["per"]:
             hand = hands[name]
-            for (ev, lift, state, resp, n, c, l0, l1,
-                 conv, fconv, pf, sconv) in profile(r, name):
+            for (ev, lift, state, resp, n, c, disc_lift, folds,
+                 conv, fconv, pf, sconv, q, ncand) in profile(r, name, audit[g]):
                 inc, out = physical_codes(state, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family=state[0],
@@ -436,7 +520,8 @@ def main():
                     inc_code=inc, resp_code=out,
                     n_state=n, count=c, lift=round(lift, 2),
                     evidence=round(ev, 1),
-                    lift_h1=round(l0, 2), lift_h2=round(l1, 2),
+                    disc_lift=round(disc_lift, 2), folds=folds,
+                    p_bh=round(q, 4), n_candidates=ncand,
                     field_share=round(pf, 4), state_win_rate=round(sconv, 3),
                     win_rate=round(conv, 3), tour_win_rate=round(fconv, 3)))
     with open(REPORTS / "court_response_players.csv", "w", newline="") as fh:
@@ -452,16 +537,74 @@ def main():
               "player's decision: wing, shot type, and line. Lift compares the "
               "player's response rate in that state to the rest of the field in the "
               "same state (their own shots excluded), shrunk toward 1 by "
-              f"{K_SHRINK} pseudo-counts. A pattern is surfaced only with "
-              f"n≥{MIN_STATE} in the state, count≥{MIN_CELL}, shrunk lift≥{LIFT_MIN}, "
-              f"and raw lift≥{HALF_LIFT_MIN} in both halves of the player's charted "
-              "matches. Patterns are ranked by evidence (count x log2 lift), so a "
+              f"{K_SHRINK} pseudo-counts. **Every figure shown is held out.** A player's "
+              "matches are split in two; each fold takes a turn discovering, with an exact "
+              "binomial tail against the field's share and a Benjamini-Hochberg correction "
+              f"at q={Q_FDR:g} across every cell that fold screened for that player; the "
+              "lift, payoff and counts are then read off the other fold, which had no part "
+              f"in the selection. Support floors: n≥{MIN_STATE} in the state and "
+              f"count≥{MIN_CELL} pooled, n≥{FOLD_STATE} and count≥{FOLD_CELL} within each "
+              f"fold, shrunk lift≥{LIFT_MIN} where it was found and ≥{VAL_LIFT_MIN} where "
+              "it was measured. Patterns are ranked by evidence (count x log2 lift), so a "
               "bread-and-butter tendency outranks a rare quirk with a flashier lift. "
               "Uncharted directions and unknown wings are excluded outright. Each "
               "pattern carries its payoff: the player's point-win rate after playing "
               f"that response (shrunk toward the field's by {K_CONV} pseudo-counts) "
               "next to the field's own rate playing the same response to the same "
               "ball — lift is the choice, payoff is what it earns.*")
+    md.append("")
+
+    # What the screen rejects, said out loud. A correction that halves a table and a bug
+    # that halves a table produce the same number; only the candidate count separates them.
+    md.append("## What the screen turns away")
+    md.append("")
+    md.append("Until 2026-08-29 this experiment applied no multiplicity correction and "
+              "printed a lift measured on the same data its gates had just used to select "
+              "the pattern — the only pattern-mining screen in the repo still doing either. "
+              "Both are fixed above. The accounting:")
+    md.append("")
+    md.append("| | players screened | candidates tested | directions confirmed | surfaced |")
+    md.append("|---|--:|--:|--:|--:|")
+    for g in ("M", "W"):
+        a = audit[g]
+        md.append(f"| {GLABEL[g]} | {a['players']:,} | {a['candidates']:,} | "
+                  f"{a['confirmed']:,} | {a['surfaced']:,} |")
+    md.append("")
+    df = pd.DataFrame(rows)
+    one = df[df.folds == 1]
+    both = df[df.folds == 2]
+    if len(one):
+        md.append("**What the winner's curse was worth here.** For the "
+                  f"{len(one):,} patterns confirmed from a single direction — where the "
+                  "displayed lift comes from a fold with no vote in the selection — the "
+                  f"mean discovery lift is {one.disc_lift.mean():.2f}x and the mean "
+                  f"displayed lift is {one.lift.mean():.2f}x, so "
+                  f"**{(one.lift.mean() - 1) / (one.disc_lift.mean() - 1):.0%} of the "
+                  "discovered edge survives out of sample**. That is close to what "
+                  "`rally_patterns` measured on a different screen over different "
+                  "features (50%), which is some evidence it is a property of this kind "
+                  "of search rather than of either experiment.")
+        md.append("")
+        md.append(f"The other {len(both):,} patterns cleared from both directions, each "
+                  "fold validating the other, and show the two halves pooled — so their "
+                  "displayed lift is not a clean out-of-sample read and is not quoted as "
+                  "one. Being findable twice independently is itself the stronger claim.")
+        md.append("")
+    md.append("The correction costs less here than it did elsewhere: it took "
+              "`deep_patterns` from 72 patterns to 36, and this table from 2,804 over 805 "
+              f"players to {len(df):,} over {df.player.nunique():,}. The split-half r "
+              "below is why — these cells were already stable, so correcting them mostly "
+              "removes the thin tail rather than the findings.")
+    md.append("")
+    md.append("**Still pooled, and known to be:** a cell counts the serve+1 ball together "
+              "with the same-described ball at shot 11. For 691 of 4,218 well-supported "
+              "cells (16.4%, against 0 of 5,040 on a coin-flip control) the response a "
+              "player picks differs measurably between the two, so those cells are "
+              "reporting an average of two situations and naming neither. The fix is a "
+              "heterogeneity pass over the survivors — split the cells that differ, leave "
+              "the rest pooled with evidence that pooling is justified — which costs no "
+              "coverage and is a natural third test in the family corrected above. "
+              "**Not implemented; it is the next thing this experiment should do.**")
     md.append("")
 
     old = old_signature_sharing()
@@ -495,16 +638,16 @@ def main():
 
         vol = sorted(prof, key=lambda n: -sum(p[4] for p in prof[n]))
         md.append("**Highest-volume profiles** (lift vs the field in the same state; "
-                  "both-halves lifts in parentheses):")
+                  "the discovery-fold lift in parentheses):")
         md.append("")
         for name in vol[:8]:
             parts = [f"{state_name(st)} → **{resp_name(st, rp)}** "
                      f"({lift:.1f}x vs {pf:.0%} of the era-matched field, "
-                     f"n={c}/{n}, halves {l0:.1f}/{l1:.1f}, "
+                     f"n={c}/{n} held out, found at {dl:.1f}x, "
                      f"wins {cv:.0%} vs {sc:.0%} on this ball overall, "
                      f"tour {fc:.0%})"
-                     for _ev, lift, st, rp, n, c, l0, l1, cv, fc, pf, sc in prof[name]
-                     if st[0] == "rally"]
+                     for _ev, lift, st, rp, n, c, dl, _fd, cv, fc, pf, sc, _q, _nc
+                     in prof[name] if st[0] == "rally"]
             md.append(f"- **{name}** ({hands[name]}): " + "; ".join(parts))
         md.append("")
 
@@ -514,13 +657,13 @@ def main():
                   "depth — strongest evidence first, one per player):")
         md.append("")
         seen = set()
-        for (ev, lift, st, rp, n, c, l0, l1, cv, fc, pf, sc), name in rets:
+        for (ev, lift, st, rp, n, c, dl, _fd, cv, fc, pf, sc, _q, _nc), name in rets:
             if name in seen:
                 continue
             seen.add(name)
             md.append(f"- **{name}**: {state_name(st)} → **{resp_name(st, rp)}** "
                       f"({lift:.1f}x vs {pf:.0%} of the era-matched field, "
-                      f"n={c}/{n}, halves {l0:.1f}/{l1:.1f}, "
+                      f"n={c}/{n} held out, found at {dl:.1f}x, "
                       f"wins {cv:.0%} vs {sc:.0%} on this ball overall, tour {fc:.0%})")
             if len(seen) >= 6:
                 break

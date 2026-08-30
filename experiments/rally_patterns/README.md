@@ -10,10 +10,15 @@ point, including inside the opening. Its own side-refinement pass counted how of
 that happened, and reading those counts back: **71% of its gold patterns' occurrences
 had a window reaching into the first four plies**, nine of the 36 were pure serve
 sequences that cannot occur mid-rally at all, and all three of its depth-4 patterns
-began with the serve. That is ground `shot_triggers`' openings section and
-`serve_plus_one` already cover, at higher support and split by service court — which a
-pooled deep context cannot do. Only 8 of the 36 still cleared the support floor on
-their non-opening occurrences alone.
+began with the serve. Only 8 of the 36 still cleared the support floor on their
+non-opening occurrences alone.
+
+The problem with that is not that another section was already there. `shot_triggers`'
+openings section and `serve_plus_one` do measure those same shots, and overlap between
+two experiments is fine — they ask different questions of the ball and a reader gains
+from both. The problem is that a pooled deep context measures them *worse*: less support,
+and no idea which service court the point was played to, when a wide serve opens opposite
+wings on the two sides.
 
 **Its effect sizes were measured on the data that selected them.** The screen gated on
 a pattern beating its parent in *both* match-hash halves, then displayed the lift
@@ -23,11 +28,12 @@ standard than the rows around it.
 
 ## What this does instead
 
-Blind the first four plies: serve, return, serve+1, return+1. That is exactly the span
-`shot_triggers` covers in its openings section, so the two partition the point with no
-overlap and no gap — the opening is its book, the rally is this one.
+Blind the first four plies: serve, return, serve+1, return+1. Not to draw a border —
+sections do not owe each other one, and the same ball is often worth reporting twice in
+different currencies. The blind earns its place because the opening is where this
+experiment's assumptions break, and past it they hold.
 
-Two things follow from the blind. The first is **pooling**. With the serve out of the
+Two things follow from that. The first is **pooling**. With the serve out of the
 window there is no reason a player's serving points, returning points, deuce points and
 ad points should be separate populations, and pooling them is what funds a per-player
 context table at all. `deep_patterns` pooled them too, but justified it by citing

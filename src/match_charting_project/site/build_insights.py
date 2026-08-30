@@ -318,28 +318,19 @@ def build() -> int:
     triggers = pd.concat([greens, traps])[
         ["player", "gender", "tag", "context", "att_rate", "att_lift",
          "conversion", "conv_delta", "n", "attempts"]]
-    triggers["depth"] = 2
 
-    # Gold-star deep patterns (rally_patterns experiment): 3-4 shot sequences that beat
-    # their own shorter parent, on ground where the serve has been blinded out. att_lift
-    # for these rows is the lift vs the parent pattern, not vs base rate.
-    #
-    # This replaced deep_patterns on 2026-08-28 and the table shrank hard — 36 patterns
-    # over 15 players to a handful. Two things did it. Deep contexts were allowed to
-    # reach back into the opening, and 71% of the old table's occurrences did, which put
-    # it in competition with shot_triggers' openings section and serve_plus_one on
-    # ground both of those cover at higher support and split by service court. And its
-    # lift was computed on the same data that selected it. Here the opening is blinded
-    # and every figure is read off a fold that had no part in the selection; of 1,752
-    # serve-blind 3-shot candidates screened, two survive. The starred tier is small
-    # now because that is how much of it was real — see reports/rally_patterns.md.
-    rp_path = REPORTS / "rally_patterns.csv"
-    if rp_path.exists():
-        rp = pd.read_csv(rp_path).rename(columns={"parent_lift": "att_lift"})
-        if len(rp):
-            deep = (rp.sort_values("att_lift", ascending=False)
-                    .groupby(["player", "gender"]).head(3))
-            triggers = pd.concat([triggers, deep[triggers.columns]])
+    # A starred 3-4 shot tier used to ride along here, from deep_patterns and then from
+    # rally_patterns, and it is gone rather than replaced. Two findings retired it, and
+    # neither is that it overlapped another section — overlap is fine, and the panel has
+    # useful overlap elsewhere. 71% of the old tier's evidence sat in windows reaching into
+    # the opening, where it measured the same shots with less support and no idea which
+    # service court they were played to, and its lift was computed on the same data that
+    # selected it. Screened properly, with the
+    # opening blinded and every figure read off a fold that had no part in the selection,
+    # two of 1,752 three-shot candidates survive, both for retired players who appear in no
+    # draw. A section that renders for nobody is not a section. The experiment still runs
+    # weekly and still writes reports/rally_patterns.csv; if the charting grows enough for a
+    # current player to earn one, this is where it would come back.
 
     # ``sigma`` is not taken. It printed as the profile column's "shot selection" figure and
     # was cut by the test that retired the shot-quality score: it correlates -0.81 (men) /
