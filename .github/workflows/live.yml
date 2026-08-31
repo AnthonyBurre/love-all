@@ -47,6 +47,14 @@ jobs:
           else
             echo "no insights release yet — brackets will render without player insights"
           fi
+          # The per-match sidecars ride on the same release. Absent, every charted match
+          # simply falls back to the career panel, so this is not fatal.
+          if gh release download insights-latest --pattern match_details.tar.gz --dir data --clobber; then
+            tar -xzf data/match_details.tar.gz -C data
+            echo "match details: $(ls data/match_details | wc -l) charted matches"
+          else
+            echo "no match-detail sidecars yet — charted matches show the career panel"
+          fi
 
       - name: Fetch accumulated draw history (from the Release)
         id: history

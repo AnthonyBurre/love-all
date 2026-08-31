@@ -45,6 +45,14 @@ jobs:
       - name: Build insights.duckdb
         run: uv run match-charting-project site build-insights
 
+      # The per-match sidecars the panel reads for a charted match. Built here rather than
+      # on the fast path because they are derived from the point notation in tennis.duckdb,
+      # which only this job has; the fast path selects the handful its draws reference.
+      - name: Build the per-match detail sidecars
+        run: |
+          uv run match-charting-project site build-match-details
+          tar -czf data/match_details.tar.gz -C data match_details
+
       - name: Publish insights.duckdb as a Release asset
         env:
           GH_TOKEN: ${{ github.token }}
@@ -52,3 +60,4 @@ jobs:
           gh release create insights-latest --title "Insights database" \
             --notes "Auto-built player insights" 2>/dev/null || true
           gh release upload insights-latest data/insights.duckdb --clobber
+          gh release upload insights-latest data/match_details.tar.gz --clobber

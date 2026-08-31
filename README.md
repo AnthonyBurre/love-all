@@ -80,11 +80,39 @@ winners off the return), how often each serve lands and how often neither does, 
 length, shot variety, serve direction, court patterns, shot-making triggers, and those triggers
 again split by service court. All of it is queried in the browser with **DuckDB-WASM**, no backend.
 
+When the match itself is charted, the drawer answers a different question. Instead of the two
+players' careers it shows the match: a win-probability curve after every point, the serve and
+return rings filled from this match alone, each serve figure set against the player's career
+number, the average length of the points each of them won, and where every first delivery went
+on both courts. Style, handedness and shot variety stay career figures, because one match is
+about 350 strokes and too few to measure them from. The rates carry no minimum-sample gate
+either, which the career rates do: a career rate estimates a skill and needs enough points
+behind it to mean anything, while a match rate counts what happened over the match's own
+points. Those numbers come from a small static file per match, fetched only when such a match
+is opened.
+
 The panel deliberately does **not** predict the match. The score tree in `winprob_match.py` is
 exact, but the only inputs available to it are career charted rates over a volunteer-selected
 sample with no opponent adjustment, and a plain Elo built on the same results beats it on both
 tours. Predicting the winner is the one thing this data is worst at, and the thing every other
 tennis site already does. What the charting is uniquely good for is what a player *does*.
+
+The same score tree does run over a match that has already been played, where it describes
+rather than forecasts. On a charted match the panel draws the win probability after every
+point, anchored on what the two players' charted records were worth going in, so the curve
+says how surprising the scoreline was against those records. It is not a price, it knows
+nothing about the day, and it is never drawn for a match still to come.
+
+Two things keep that curve honest. The anchor comes from `walk_forward_strength`, which scores
+a match only off matches charted **before its day** — the whole-career rate would put the match
+inside its own prior. And the tree is evaluated across the spread of strengths the match could
+have been played at rather than once at the best guess, because it is exact given a point-win
+probability and sharply non-linear in it, while that probability is not a constant a player
+carries between matches. Scored against its own predictions over 23,111 player-match serve
+lines, the model's residuals hold 6.6 points of standard deviation that coin-flipping does not
+explain. Carrying that spread is what stops the tree compounding a certainty nothing supports:
+without it a top seed against a thinly-charted opponent came out at 99.98%, and two comparable
+journeymen at 97% on whichever had the better charted fortnight.
 
 <details>
 <summary><b>Why neither Wikipedia feed is trusted blindly</b> — draw validation and calendar joining</summary>
@@ -118,16 +146,22 @@ Nothing either workflow generates is committed:
 
 - **`.github/workflows/insights.yml`** (weekly, or manual) rebuilds the compact
   `insights.duckdb`, one row per charted player plus the recent charted-match index the site
-  flags finished matches against, and publishes it as a Release asset.
+  flags finished matches against, and publishes it as a Release asset. It also writes the
+  per-match sidecars the drawer reads on a charted match, one small JSON each, and ships them
+  alongside. They are built here because they come from the point notation in `tennis.duckdb`,
+  which only this job has.
 - **`.github/workflows/live.yml`** (hourly) fetches current scores while a draw is on, picks up any
   newly-published draw sheet, refreshes the tour calendar when the season turns, folds any
   newly-finished event into the draw-history asset, reuses the insights DB, and deploys
-  `docs/` to Pages. The calendar and draw caches persist as a `feeds-cache` Release asset.
+  `docs/` to Pages. It copies across only the sidecars the draws it just built actually
+  reference, so `docs/` carries a few hundred KB of them rather than the whole set. The
+  calendar and draw caches persist as a `feeds-cache` Release asset.
 
 ```bash
 match-charting-project feeds calendar        # once; without it the site can't tell a 500 from a 250
 match-charting-project site build-insights
-match-charting-project site build-brackets   # then serve docs/
+match-charting-project site build-match-details   # per-match sidecars; needs tennis.duckdb
+match-charting-project site build-brackets        # then serve docs/
 ```
 
 `... feeds draws` fetches draw sheets by hand if you want to check them; the site build does

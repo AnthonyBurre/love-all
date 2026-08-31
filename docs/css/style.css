@@ -964,6 +964,97 @@ a { color: var(--acc-d); }
    "history" rather than as the first character of something else, and sits clear of it. */
 .tapestar { font-weight: 700; opacity: .6; padding-left: 1px; }
 
+/* --- the match, as a win-probability curve (wpChart) -----------------------------------
+   What stands where the coverage pyramid stands on an uncharted match. Same full-panel
+   width, same reason: the swing is read along the run, and a capped band would spend the
+   width it needs on margin.
+   Diverging about the halfway line. The fill above it is player A's colour and below it
+   player B's — the two the header rule, the coverage bars and every card cap already use
+   for these two players, so the split carries identity without a legend box. The pair sits
+   32 apart in OKLab under normal vision and 26 under protanopia against this surface, and
+   neither moves with the tournament theme, so the reading holds on all four.
+   The box stretches (preserveAspectRatio="none"): heights are a probability and widths a
+   point index, and neither has a natural aspect to preserve. Every stroke inside carries
+   vector-effect, so the widths below are rendered pixels rather than viewBox units. */
+.wp { margin: 0 0 16px; }
+.wpplot { position: relative; }
+.wpplot svg { display: block; width: 100%; height: 168px; overflow: visible; }
+@media (max-width: 640px) { .wpplot svg { height: 132px; } }
+/* Flat fills at low alpha: the line carries the shape, and the fill only says which side of
+   the halfway mark it is on. Solid enough to read on a phone in daylight, faint enough that
+   the set rules and the curve stay on top of it. */
+.wpfill { stroke: none; }
+/* fb is the upper half and fa the lower: the scoreline above stacks player B's row over
+   player A's, and the chart takes its vertical order from that header rather than from the
+   A-then-B order of the underlying data. */
+.wpfill.fa { fill: color-mix(in srgb, var(--a) 26%, transparent); }
+.wpfill.fb { fill: color-mix(in srgb, var(--b) 26%, transparent); }
+/* One 2px line for the whole curve, in ink rather than in either player's colour — it
+   crosses between the two territories constantly, and a line that changed colour at every
+   crossing would read as a different series each time. */
+.wpline { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round;
+  stroke-linecap: butt; }
+/* The last step, from the final serve to the result. Dashed, because it is the only part of
+   the run that is not a state the match passed through — it is where the match landed. */
+.wptail { stroke-dasharray: 3 3; opacity: .55; }
+.wphalf { stroke: var(--muted); stroke-width: 1; opacity: .5; stroke-dasharray: 2 3; }
+.wpset { stroke: var(--line); stroke-width: 1; }
+/* Both pointer marks are off until the wrapper says otherwise. Not the `hidden` attribute:
+   on an SVG element `hidden` is an expando that never reaches the attribute, and the UA's
+   own [hidden] rule does not apply in the SVG namespace, so the crosshair stayed on screen
+   in every state and sat wherever the pointer had last been. */
+.wpcross, .wpdot { display: none; }
+.wp.live .wpcross { display: inline; }
+.wp.live .wpdot { display: block; }
+.wpcross { stroke: var(--ink); stroke-width: 1; opacity: .45; }
+/* Placed in percent by the script — see the note at its call site. The ring is the surface
+   colour, the 2px spacer every overlapping mark in this panel wears. */
+.wpdot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px var(--card);
+  pointer-events: none; }
+/* The two ends of the scale, named by whose end it is. Set against the plot rather than
+   over it: the curve reaches both edges. */
+.wpcap { position: absolute; left: 0; font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; pointer-events: none; }
+.wpcap.top { top: 2px; color: var(--b); }
+.wpcap.bot { bottom: 2px; color: var(--a); }
+/* The set axis. A row of its own under the plot rather than labels inside it: the curve
+   reaches both edges of the box and crosses the middle constantly, so there is no band of
+   the drawing a label could sit in without landing on the data at some point in some match.
+   Each label is centred on its own set, placed in percent by the script. */
+.wpaxis { position: relative; height: 13px; margin-top: 3px; }
+.wpsetn { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap;
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); opacity: .8; }
+
+/* The readout. Holds the pre-match figure at rest and follows the pointer while it is on
+   the plot, so the chart answers "what was it here" without a floating tooltip to place. */
+.wpread { margin: 6px 0 0; font-size: 11px; color: var(--muted);
+  font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 5px; }
+.wpread b { font-size: 14px; color: var(--ink); }
+.wprl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.wprn { font-weight: 700; color: var(--b); }
+
+/* The career value under a match figure — what gives "67%" its scale. Block, so the label
+   above it keeps its own line in a ~150px column. */
+.pbanch { display: block; margin-top: 1px; font-style: normal; font-size: 9px;
+  font-weight: 500; color: var(--muted); letter-spacing: 0; text-transform: none; }
+.pbcmp-row .pbanch { font-size: 8.5px; }
+.pbside[data-side="b"] .pbanch { text-align: right; }
+
+/* Match-mode serve strip: three zones per box rather than two, count over share. */
+.msec.text .srvbox:has(.zpc) { grid-template-columns: 1fr 1fr 1fr; }
+.srvzone .zpc { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.srvzone .zref { font-style: normal; font-size: 8.5px; color: var(--muted); opacity: .8; }
+/* Only the first and last zone of a three-zone box hang on a court line; the body zone is
+   between them and stays centred, which is where the ball is. */
+.srvbox:has(.zpc) .srvzone:nth-child(2) { align-items: center; text-align: center; }
+/* The pooled second-serve strip, under the two first-serve boxes. Same anatomy, so the
+   two read as one section rather than a chart and its footnote; separated by a gap and by
+   its own label rather than by a different treatment. */
+.srvcourt.second { margin-top: 5px; }
+
 /* --- charted history, as a pyramid (profileBand) --------------------------------------
    One time axis down the centre, each player's seasons running out from it and meeting at
    it. One drawing on the band's own width rather than a half-width strip per player: two
@@ -1175,10 +1266,28 @@ a { color: var(--acc-d); }
    panel the rings read as rising to fill that gap rather than as a block dropped in beneath
    it. Named areas rather than source order, because which markup element is "left" changes
    between the two shapes and an area name says so without a second layout for the JS side. */
-.tapemain { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 18px;
-  grid-template-areas: "sa sb" "rings rings"; align-items: start; }
-.tapemain > .pbside.a { grid-area: sa; }
-.tapemain > .pbside.b { grid-area: sb; }
+/* One row per figure, shared by both columns, so each player's figure sits level with the
+   other's. Two independent stacks drift apart the moment one column's style label wraps to a
+   second line — every number below it drops by a line while its opposite number does not, and
+   a band whose whole job is reading a row across stops being readable. The same fix .seccols
+   makes for the same reason further down; browsers without subgrid fall back to two
+   independent stacks, which is where this started.
+   --pbrows is the shared row count, written by tape() off the plan both columns render from
+   (profilePlan), plus one row at the end for the rings.
+   row-gap is 0 because the rows are now figure rows: the spacing between figures is the
+   margin each one carries, and an 18px gutter repeated down the column would be four times
+   the space they ask for. The rings take that gutter back as a margin of their own. */
+.tapemain { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 0;
+  grid-template-rows: repeat(var(--pbrows, 1), auto) auto; align-items: start; }
+.tapemain > .pbside { display: grid; grid-template-rows: subgrid; grid-row: 1 / -2;
+  align-items: start; }
+.tapemain > .pbside.a { grid-column: 1; }
+.tapemain > .pbside.b { grid-column: 2; }
+/* The em-dash stand-in for a figure this player doesn't have. It holds the row open so the
+   other column's figure stays on its own line, and goes quiet — it is the absence of a
+   number, not a number. */
+.pbnone > b { font-weight: 400; color: var(--muted); opacity: .55; }
+.pbnone.pbstyle, .pbnone.pbhand { color: var(--muted); opacity: .55; }
 
 /* The phone comparison of the two style columns (profileCompare). The flanking .pbside pair
    is ~150px wide apiece on a phone and prints every label twice; on the narrow layout this
@@ -1213,14 +1322,18 @@ a { color: var(--acc-d); }
 .pbcmp-row .pbcl { text-align: center; font-size: 9.5px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 @media (max-width: 760px) {
-  .tapemain { grid-template-areas: "cmp cmp" "rings rings"; }
+  /* The columns go; the comparison and the rings take a row each. No subgrid to keep here —
+     the phone layout already puts both players' figures on one row apiece. */
+  .tapemain { grid-template-rows: auto auto; }
   .tapemain > .pbside { display: none; }
-  .pbcmp { display: block; grid-area: cmp; }
+  .pbcmp { display: block; grid-column: 1 / -1; grid-row: 1; }
+  .dnstack { grid-row: 2; }
 }
 /* One ring per row, centred. A ring is a fixed-size drawing with a fixed reserve either side
    for the figures that hang off it (see .dn), so it reads centred at any track width
    regardless of how much of the row is actually spare. */
-.dnstack { grid-area: rings; display: flex; flex-direction: column; align-items: center;
+.dnstack { grid-column: 1 / -1; grid-row: -2 / -1; margin-top: 18px;
+  display: flex; flex-direction: column; align-items: center;
   gap: 22px; min-width: 0; }
 @media (min-width: 761px) {
   /* align-items stays "start": the style columns keep the same top edge as the box and as
@@ -1231,9 +1344,11 @@ a { color: var(--acc-d); }
   /* The ring track takes what the flanks need and the style columns give it up: they hold
      three short lines each against a 90px min-content, so the ~22px apiece this costs them is
      slack rather than a squeeze. */
-  .tapemain { grid-template-columns: 1fr minmax(270px, 356px) 1fr;
-    grid-template-areas: "sa rings sb"; align-items: start; }
-  .dnstack { align-self: center; }
+  .tapemain { grid-template-columns: 1fr minmax(270px, 356px) 1fr; align-items: start; }
+  .tapemain > .pbside.b { grid-column: 3; }
+  /* A track of its own between the two columns, spanning every figure row rather than
+     sitting under them. */
+  .dnstack { grid-column: 2; grid-row: 1 / -1; margin-top: 0; align-self: center; }
   /* Room to spend, now the rings have a track of their own instead of sharing a row with a
      second ring: the wider a ring is drawn, the more its arc can say — and the further apart
      two figures land when the values behind them are close, which is what decides whether a
@@ -1775,6 +1890,20 @@ a { color: var(--acc-d); }
   .msec.text:has(.srv) .srvzone b { font-size: 11.5px; }
   .msec.text:has(.srv) .srvzone .zl { font-size: 9.5px; }
   .msec.text:has(.srv) .srvlabel { padding: 0 4px; font-size: 10px; }
+  /* The match strip carries three zones per box and a career figure under each of the two
+     outer ones. That will not go into half a phone's width — the career strip's two zones
+     already had to shrink to fit there, and six zones plus their anchors came out at 24px a
+     column with every number clipped. It takes the full row per player instead, which is
+     what .msec.text does by default and what these :has(.srv) rules are overriding; the
+     height it costs is affordable because a charted match runs three sections, not six. */
+  .msec.text:has(.zpc) .seccols { grid-template-columns: 1fr; grid-template-rows: none;
+    row-gap: 16px; }
+  .msec.text:has(.zpc) .seccol { display: block; grid-row: auto; padding-left: 8px; }
+  .msec.text:has(.zpc) .colwho { display: flex; }
+  .msec.text:has(.zpc) .srvzone { padding: 2px 8px 0; min-height: 54px; }
+  .msec.text:has(.zpc) .srvzone b { font-size: 14px; }
+  .msec.text:has(.zpc) .srvzone .zl { font-size: 10.5px; }
+  .msec.text:has(.zpc) .srvlabel { padding: 0 8px; font-size: 10.5px; }
   .msec.cards .pcard2 { display: block; margin-bottom: 14px; }
   /* Stacked, the court has the whole column to itself and was using half of it — 92px of
      drawing with 70px of nothing beside it, on the screen where the drawing is hardest to

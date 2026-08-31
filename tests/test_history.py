@@ -95,7 +95,7 @@ def test_prune_retires_a_combined_event_by_both_genders_at_once():
 
 def test_annotate_finds_charting_under_the_venue_city():
     # The db files this one as 'Washington'; the feed calls it 'Mubadala DC Open'.
-    charted = {("M", 2026, "washington", frozenset(("a one", "b two"))): "MID-9"}
+    charted = {("M", 2026, "washington", frozenset(("a one", "b two"))): ("MID-9", "a one")}
     t = _tour("888-2026", "M", _final("A One", "B Two"), tier="ATP / WTA 500",
               name="Mubadala DC Open")
     t["city"] = "Washington"
@@ -107,7 +107,7 @@ def test_annotate_finds_charting_under_the_venue_city():
 
 def test_annotate_still_finds_slams_by_name_not_city():
     # A slam's city ('London') is the wrong key — the db knows it as 'Wimbledon'.
-    charted = {("M", 2026, "wimbledon", frozenset(("a one", "b two"))): "MID-1"}
+    charted = {("M", 2026, "wimbledon", frozenset(("a one", "b two"))): ("MID-1", "a one")}
     t = _tour("188-2026", "M", _final("A One", "B Two"))
     t["city"] = "London"
     t["completed"], t["year"], t["season"] = True, 2026, 2026
@@ -116,7 +116,7 @@ def test_annotate_still_finds_slams_by_name_not_city():
 
 
 def test_annotate_charted_gate():
-    charted = {("M", 2025, "wimbledon", frozenset(("a one", "b two"))): "MID-1"}
+    charted = {("M", 2025, "wimbledon", frozenset(("a one", "b two"))): ("MID-1", "a one")}
     t = _tour("w", "M", [{"rank": 100, "label": "Final", "matches": [
         _match("m1", "A One", "B Two"),        # in the charted set
         _match("m2", "C Three", "D Four"),     # not charted
@@ -126,6 +126,33 @@ def test_annotate_charted_gate():
     ms = t["rounds"][0]["matches"]
     assert (ms[0]["charted"], ms[0]["chart_id"]) == (True, "MID-1")
     assert (ms[1]["charted"], ms[1]["chart_id"]) == (False, None)
+
+
+def test_annotate_flags_a_chart_filed_in_the_other_order():
+    """The draw orders a meeting by bracket slot, the chart by whoever filed it.
+
+    They disagree about half the time (48 of the 121 matches the live feed currently
+    carries), and everything in the per-match sidecar — the win-probability curve, both
+    box-score sides, the serve placement — is written from the chart's player1 forward.
+    Unflagged, the panel lays a match's numbers against the wrong two names and draws the
+    curve upside down, which is wrong in a way that still looks like a plausible match.
+    """
+    charted = {("M", 2026, "wimbledon", frozenset(("a one", "b two"))): ("MID-1", "b two")}
+    t = _tour("188-2026", "M", _final("A One", "B Two"))
+    t["completed"], t["year"], t["season"] = True, 2026, 2026
+    build_brackets._annotate(t, {"M": {}, "W": {}}, charted)
+    m = t["rounds"][0]["matches"][0]
+    # Same match, found under the unordered pair — but the chart leads with the draw's B.
+    assert m["chart_id"] == "MID-1"
+    assert m["chart_flip"] is True
+
+
+def test_annotate_does_not_flag_a_chart_in_draw_order():
+    charted = {("M", 2026, "wimbledon", frozenset(("a one", "b two"))): ("MID-1", "a one")}
+    t = _tour("188-2026", "M", _final("A One", "B Two"))
+    t["completed"], t["year"], t["season"] = True, 2026, 2026
+    build_brackets._annotate(t, {"M": {}, "W": {}}, charted)
+    assert t["rounds"][0]["matches"][0]["chart_flip"] is False
 
 
 def test_annotate_no_charting_leaves_null():
@@ -148,7 +175,7 @@ def test_recent_slams_orders_newest_started_first():
 
 
 def test_annotate_skips_charting_for_live_draws():
-    charted = {("M", 2025, "wimbledon", frozenset(("a one", "b two"))): "MID-1"}
+    charted = {("M", 2025, "wimbledon", frozenset(("a one", "b two"))): ("MID-1", "a one")}
     t = _tour("w", "M", [{"rank": 100, "label": "Final", "matches": [_match("m1", "A One", "B Two")]}])
     t["year"] = 2025                                        # but NOT completed
     build_brackets._annotate(t, {"M": {}, "W": {}}, charted)

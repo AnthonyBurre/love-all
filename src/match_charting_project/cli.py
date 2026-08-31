@@ -307,7 +307,8 @@ def main(argv: list[str] | None = None) -> None:
                     help="skip the read while the cached calendar is still fresh")
     fdsub.add_parser("draws", help="fetch any newly-published draw sheet for live events")
     site = sub.add_parser("site", help="build site data artifacts")
-    site.add_argument("what", choices=["build-insights", "build-brackets"])
+    site.add_argument("what", choices=["build-insights", "build-match-details",
+                                      "build-brackets"])
     sub.add_parser("validate", help="print the data-quality report")
     sub.add_parser("info", help="summarize the duckdb database")
 
@@ -346,11 +347,16 @@ def main(argv: list[str] | None = None) -> None:
             from match_charting_project.site import build_insights
             n = build_insights.build()
             print(f"  insights.duckdb: {n:,} players -> data/insights.duckdb")
+        elif args.what == "build-match-details":
+            from match_charting_project.site import build_match_details
+            n = build_match_details.build()
+            print(f"  match details: {n:,} charted matches -> data/match_details/")
         else:
             from match_charting_project.site import build_brackets
-            n, copied = build_brackets.build()
+            n, copied, details = build_brackets.build()
             note = " (+ insights.duckdb)" if copied else " (insights.duckdb MISSING — no player data)"
             print(f"  brackets.json: {n} tournaments -> docs/data/{note}")
+            print(f"  match details: {details} charted matches -> docs/data/matches/")
     elif args.cmd == "validate":
         _validate()
     elif args.cmd == "info":

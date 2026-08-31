@@ -9,7 +9,16 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
 const CHART_GUIDE =
   "https://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/";
 const last = (name) => String(name || "").split(" ").slice(-1)[0];
-const pct = (x) => (x * 100).toFixed(1) + "%";
+// One decimal, except at the two ends where that decimal is always a zero and says nothing
+// it hasn't already: a rate that rounds to the top prints "100%", and one that rounds to
+// nothing prints a bare "0" — no decimal, and no percent sign either, because a percentage
+// of nothing is nothing however it is measured and the sign is qualifying a magnitude that
+// isn't there. Rounded first and then read, so the rule keys off what the reader is shown:
+// 99.97% has no business printing "100.0%" and then keeping a decimal to prove it.
+const pct = (x) => {
+  const v = Math.round(Number(x) * 1000) / 10;
+  return v === 0 ? "0" : v === 100 ? "100%" : v.toFixed(1) + "%";
+};
 // The same two slot markers bracket.js treats as non-entrants: they fill a side of a card,
 // but there is no player behind them to look anything up for.
 const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== "Bye";
@@ -90,6 +99,86 @@ async function playerData(name, gender) {
       "ORDER BY year", [name, gender]);
   } catch (e) { /* stale insights db: the coverage band prints its counts without the chart */ }
   return { s: s[0], triggers, openings, patterns, serve, years };
+}
+
+// --- charted-match mode ---------------------------------------------------------------
+// The sidecar for one charted match: its win-probability curve and a two-sided box score,
+// written by `site build-match-details` and served as a static file per match. Fetched only
+// when the panel opens on a match that already carries a chart_id, so a visitor who never
+// opens one never pays for it.
+//
+// A failed fetch caches as null and the panel falls back to the career sections — the site
+// is deployed without the sidecars whenever the Release asset is missing, exactly as it is
+// for insights.duckdb, so absence is a state to fall back from rather than to report.
+const _details = new Map();
+
+async function matchDetail(id) {
+  if (!id) return null;
+  if (_details.has(id)) return _details.get(id);
+  let out = null;
+  try {
+    const res = await fetch(`./data/matches/${encodeURIComponent(id)}.json`);
+    if (res.ok) out = await res.json();
+  } catch (e) { /* offline, or no sidecars published: the career panel stands */ }
+  _details.set(id, out);
+  return out;
+}
+
+// The sidecar is written from the chart's player1 forward; the draw orders the same meeting
+// by bracket slot, and the two disagree about who comes first in roughly half of all matches
+// (48 of the 121 the site currently holds). `chart_flip` is the feed's answer, decided in the
+// build where the name normalisation lives — see build_brackets._chart_of.
+//
+// Mirrored rather than re-keyed, so everything downstream can go on reading index 0 as the
+// panel's side A. A win probability is one player's, so the other's is its complement;
+// leverage is the size of the swing and belongs to the point rather than to either player,
+// so it is carried across untouched.
+function orientDetail(det, flip) {
+  if (!det || !flip) return det;
+  const w = det.wp;
+  return {
+    ...det,
+    p: [det.p[1], det.p[0]],
+    s: [det.s[1], det.s[0]],
+    wp: {
+      ...w,
+      prior: [w.prior[1], w.prior[0]],
+      pre: +(1 - w.pre).toFixed(4),
+      won: w.won === 1 ? 2 : 1,
+      curve: w.curve.map(([pt, p, lev]) => [pt, +(1 - p).toFixed(4), lev]),
+    },
+  };
+}
+
+// This match's own rates, under the field names the rings and figures already read — so the
+// same donut() and the same profileParts() draw a match and a career without branching.
+//
+// No coverage floor applies to any of these, which is the opposite of the career path's
+// RATE_MIN_PTS. That floor exists because a career rate is an estimator of a latent skill
+// and 173 points is too thin an estimate of one. A match rate is not an estimate: 70 service
+// points is every service point there was, and 71.4% is what happened rather than a guess at
+// what would happen. Withholding it would be withholding a measurement for failing a test
+// written for estimates.
+function matchSide(det, i) {
+  if (!det || !det.s || !det.s[i]) return null;
+  const s = det.s[i], o = det.s[1 - i];
+  const rate = (w, n) => (n ? Number(w) / Number(n) : null);
+  return {
+    player: det.p[i],
+    serve_rate: rate(s.serve_won, s.serve_pts),
+    return_rate: rate(s.ret_won, s.ret_pts),
+    ace_rate: rate(s.aces, s.serve_pts),
+    ret_winner_rate: rate(s.ret_winners, s.ret_pts),
+    hold_rate: rate(s.held, s.sv_games),
+    // Break rate is read off the *other* player's service games: the games this player
+    // broke, over the games they had the chance to.
+    break_rate: o && o.sv_games ? (o.sv_games - o.held) / o.sv_games : null,
+    first_in_pct: rate(s.first_in, s.serve_pts),
+    second_in_pct: rate(s.second_pts - s.dfs, s.second_pts),
+    len_won: s.len_won == null ? null : Number(s.len_won),
+    dirs: s.dirs, dirs2: s.dirs2,
+    aces: s.aces, dfs: s.dfs, serve_pts: s.serve_pts,
+  };
 }
 
 // No shot-quality verdict prints here. class_rel_z still ships in player_summary and
@@ -261,6 +350,69 @@ function serveHtml(d, gates) {
   return `<div class="srv">
     <div class="srvcourt">${sorted.map(box).join("")}</div>
     ${caption}${moved}${bp}</div>`;
+}
+
+// The same strip, filled from the match. Three zones rather than the career section's two:
+// wide and T are what the career mix models, but a match has a real body count and dropping
+// it would leave two shares that don't sum to what was served.
+//
+// Counts lead and the share follows, because the count is the honest unit here — "17 of 62"
+// carries its own sample where "27%" hides it — and the career share sits under each zone as
+// the anchor, so a serve pattern that moved for this match reads as having moved.
+//
+// First deliveries, landed or faulted, which is the same convention the career mix uses
+// (serve_tendencies reads the direction off the raw first-serve column). Second serves are
+// counted separately in the sidecar and print as a line under the strip.
+function serveMatchHtml(d, md) {
+  if (!md || !md.dirs) return "";
+  const career = new Map(((d && d.serve) || []).map((r) => [r.side, r]));
+  const NAMES = ["wide", "body", "T"];
+  const zone = (label, n, tot, ref) => {
+    const f = tot ? n / tot : 0;
+    // A zone nobody served to says so once. The count above it is already a nought, and a
+    // "0%" under it is the same nothing a second time — kept as an empty line rather than
+    // dropped, so the zone beside it keeps its own share on the row it belongs on.
+    return `<span class="srvzone" style="--p:${(f * 100).toFixed(1)}%">
+      <span class="zl">${label}</span><b>${n}</b>
+      <span class="zpc">${n ? `${Math.round(f * 100)}%` : ""}</span>
+      ${ref == null ? "" : `<i class="zref">career ${Math.round(Number(ref) * 100)}%</i>`}</span>`;
+  };
+  const box = (dirs, side, serve, anchored) => {
+    const c = (dirs || {})[side] || [0, 0, 0];
+    const tot = c[0] + c[1] + c[2];
+    if (!tot) return "";
+    const ref = anchored ? career.get(side) : null;
+    // Outside-in on the deuce side, inside-out on the ad side — the order the four service
+    // box thirds actually sit in when read left to right, as in the career strip above.
+    const order = side === "ad" ? [2, 1, 0] : [0, 1, 2];
+    // career_wide / career_t, not wide / t: the latter pair is the recency-weighted window
+    // the career section prints under its own "last N charted matches" caption, and a line
+    // that says "career" has to be one. Both are shares of all three deliveries — they sum
+    // to about 0.87 across the corpus, with body taking the rest — so the match share and
+    // the anchor are the same measurement over different windows.
+    const refOf = (i) => (!ref ? null : i === 0 ? ref.career_wide : i === 2 ? ref.career_t : null);
+    return `<div class="srvbox">${order.map((i) => zone(NAMES[i], c[i], tot, refOf(i))).join("")}
+      <span class="srvlabel">${side} · ${tot} ${serve} serves</span></div>`;
+  };
+  const boxes = ["deuce", "ad"].map((k) => box(md.dirs, k, "first", true)).join("");
+  if (!boxes) return "";
+  // The second serve is split by court like the first, not pooled across the two. Pooling
+  // buys precision this panel is not spending: these are counts of what was struck, not
+  // estimates of a tendency, and forty deliveries over a match are forty however they are
+  // grouped. What pooling costs is the distinction the split exists for — the two courts
+  // open opposite wings, so a mix read across both is the average of two different serves,
+  // which is the argument the opening-cues section already makes about first serves. It
+  // holds harder here: a second serve is aimed at the returner's weaker side more
+  // deliberately than a first, and which side that is changes with the court.
+  //
+  // No career anchor under these. The shipped placement mix is first serves only
+  // (build_insights._serve_placement filters to them), so there is nothing to set them
+  // against, and a blank "career —" would read as a missing number rather than an absent one.
+  const second = ["deuce", "ad"].map((k) => box(md.dirs2, k, "second", false)).join("");
+  return `<div class="srv">
+    <div class="srvcourt">${boxes}</div>
+    ${second ? `<div class="srvcourt second">${second}</div>` : ""}
+    <p class="srvwin">this match only</p></div>`;
 }
 
 // Court-state patterns (court_response experiment): how the player answers a given
@@ -863,6 +1015,171 @@ function donut(r, sa, sb) {
     </div>`);
 }
 
+// --- the match, as a win-probability curve -------------------------------------------------
+// What replaces the charted-history pyramid when the match in front of the panel is itself
+// charted. The pyramid answers "how much of these two players does the charting have"; once
+// this match is charted that question is settled for the one match being looked at, and the
+// question worth the same space is how the match actually went.
+//
+// Diverging about the halfway line rather than a single line climbing an axis, because the
+// quantity has a neutral: 50% is the midpoint the swing happens around, and which side of it
+// the curve sits on is the thing being read. Above the line the fill is player A's colour and
+// below it player B's — the same two the header rule, the coverage bars and every card cap in
+// the panel already use for these two players, so the split needs no legend to be read. They
+// carry ΔE 26 apart under protanopia and 32 under normal vision against this surface, and
+// unlike --acc they don't move with the tournament theme.
+//
+// The curve opens on career form rather than at even odds. Anchored at 50% it would be
+// claiming every match starts a coin toss, and the gap between where the two players' charted
+// records put the match and where it ended up is most of what the drawing has to say.
+//
+// Strokes are non-scaling, so every width below is CSS pixels at any panel width — a viewBox
+// unit here is not a pixel, and the box is stretched across whatever the panel gives it.
+const WP_W = 720, WP_H = 168, WP_MID = WP_H / 2;
+
+function wpPath(curve) {
+  const n = curve.length;
+  const x = (i) => (n < 2 ? 0 : (i / (n - 1)) * WP_W);
+  // Player B climbs. The curve carries A's probability, so A's certainty is the *bottom*
+  // of the box: the scoreline above the chart stacks B's row over A's, and a drawing whose
+  // high side belonged to the lower name made the reader flip the panel over in their head
+  // to read it. Every other two-player mark in the panel takes its order from that header.
+  const y = (wp) => clamp01(Number(wp)) * WP_H;
+  const line = curve.map((c, i) => `${i ? "L" : "M"}${x(i).toFixed(2)},${y(c[1]).toFixed(2)}`).join("");
+  // The area is the same run of points closed back along the midline, so the two clipped
+  // copies of it below meet exactly on the line rather than overlapping by a hairline.
+  const area = `M${x(0).toFixed(2)},${WP_MID}L${line.slice(1)}` +
+    `L${x(n - 1).toFixed(2)},${WP_MID}Z`;
+  return { line, area, x, y };
+}
+
+function wpChart(det, a, b) {
+  const w = det && det.wp;
+  if (!w || !w.curve || w.curve.length < 2) return "";
+  // Who won, from the draw rather than from the charting. The sidecar infers it from the
+  // last charted point, which is right whenever a match ends by someone winning one — and
+  // wrong when it ends any other way. A retirement is the case: Musetti led Djokovic two
+  // sets to love in the 2026 Australian Open quarter-final and retired, so the draw's
+  // winner is the player two sets down, and no reading of the point record says so.
+  // The feed carries the result on every charted match the site holds.
+  const won = a.winner === true ? 1 : b.winner === true ? 2 : w.won;
+  const { line, area, x, y } = wpPath(w.curve);
+  const n = w.curve.length;
+  // Set boundaries as rules on the plot. They are the only structure the horizontal axis
+  // has that a reader already knows how to use — "the third set" is a place, "point 210"
+  // is not — so they are ruled and the point index is left to the readout.
+  const idxOf = (pt) => w.curve.findIndex((c) => c[0] >= pt);
+  const bounds = (w.sets || []).map(idxOf).filter((i) => i > 0);
+  const rules = bounds.map((i) => `<line class="wpset" x1="${x(i).toFixed(2)}" y1="0"
+      x2="${x(i).toFixed(2)}" y2="${WP_H}" vector-effect="non-scaling-stroke"/>`).join("");
+  // The rules are the only structure the horizontal run has that a reader already knows how
+  // to use, and unlabelled they only say "something changed here". Named, the axis becomes
+  // the thing a reader navigates by: "the third set" is a place on this chart, where "point
+  // 210" is a number they would have to count out.
+  //
+  // Each label is centred in its own band, in percent of the plot, so it lands with its set
+  // however long that set ran and whatever width the panel is. A set is a span rather than a
+  // tick — the boundary belongs to neither of the sets it separates — so the label sits
+  // between two edges rather than on one.
+  const edges = [0, ...bounds, n - 1];
+  const setLabels = edges.slice(0, -1).map((start, k) => {
+    const mid = n < 2 ? 0 : ((start + edges[k + 1]) / 2) / (n - 1) * 100;
+    return `<span class="wpsetn" style="left:${mid.toFixed(2)}%">set ${k + 1}</span>`;
+  }).join("");
+  // Where it ended. Every wp in the list is the state *before* a point is played, so the
+  // last one is not the result — the result is the sidecar's own `won`, and the curve is
+  // carried the last step to 0 or 1 rather than left hanging at the final serve.
+  const endY = won === 1 ? WP_H : 0;
+  const endX = WP_W;
+  const winner = won === 1 ? a : b;
+  // Quoted for the player the chart climbs toward, so "higher" and "more likely" agree.
+  // The stored curve is A's probability throughout; B's is its complement.
+  const pre = Math.round((1 - Number(w.pre)) * 100);
+  return `<div class="wp" data-n="${n}">
+    <div class="wpplot">
+      <svg viewBox="0 0 ${WP_W} ${WP_H}" preserveAspectRatio="none" role="img"
+        aria-label="${esc(`Win probability through the match: ${b.name} started at ${pre}%, ${winner.name} won`)}">
+        <defs>
+          <clipPath id="wpup"><rect x="0" y="0" width="${WP_W}" height="${WP_MID}"/></clipPath>
+          <clipPath id="wpdn"><rect x="0" y="${WP_MID}" width="${WP_W}" height="${WP_MID}"/></clipPath>
+        </defs>
+        <path class="wpfill fb" d="${area}" clip-path="url(#wpup)"/>
+        <path class="wpfill fa" d="${area}" clip-path="url(#wpdn)"/>
+        ${rules}
+        <line class="wphalf" x1="0" y1="${WP_MID}" x2="${WP_W}" y2="${WP_MID}"
+          vector-effect="non-scaling-stroke"/>
+        <path class="wpline" d="${line}" vector-effect="non-scaling-stroke"/>
+        <path class="wpline wptail" d="M${x(n - 1).toFixed(2)},${y(w.curve[n - 1][1]).toFixed(2)}L${endX},${endY}"
+          vector-effect="non-scaling-stroke"/>
+        <line class="wpcross" x1="0" y1="0" x2="0" y2="${WP_H}" vector-effect="non-scaling-stroke"/>
+      </svg>
+      ${/* The marker is an HTML element placed in percent, not an SVG circle. The box is
+           stretched to whatever width the panel gives it (preserveAspectRatio="none"), which
+           stretches the coordinate system with it — strokes survive that because they are
+           non-scaling, but a circle would come out an ellipse at every width but one. A
+           percentage of the plot resolves in real pixels, which is the same arithmetic the
+           coverage band does for the same reason. */""}
+      <span class="wpdot"></span>
+      <span class="wpcap top">${esc(shortName(b.name))}</span>
+      <span class="wpcap bot">${esc(shortName(a.name))}</span>
+    </div>
+    <div class="wpaxis">${setLabels}</div>
+    <p class="wpread"><span class="wprl">before a ball was struck</span>
+      <b>${pre}%</b> <span class="wprn">${esc(shortName(b.name))}</span></p>
+  </div>`;
+}
+
+// Surname alone. The chart's captions and its readout are set against the plot at 10-11px
+// and repeat every time the pointer moves; the header two inches above is where the full
+// names are, and a reader does not need them twice.
+const shortName = (name) => last(name || "") || String(name || "");
+
+// The crosshair. A line chart in a browser is an interactive thing whether or not it is
+// built as one, and the reader's question at any point of the curve — what was the score
+// here, who was ahead — is answered by the drawing only within about five percent. Wired
+// after render, on the fresh nodes, so it goes when the panel body is replaced.
+//
+// Pointer events rather than mouse ones, so a touch drag scrubs the curve on a phone. The
+// plot keeps its own last index so a re-entering pointer doesn't flash the pre-match state.
+function wireWpChart(root) {
+  const wrap = root.querySelector(".wp");
+  if (!wrap) return;
+  const plot = wrap.querySelector(".wpplot"), svg = wrap.querySelector("svg");
+  const read = wrap.querySelector(".wpread");
+  const cross = wrap.querySelector(".wpcross"), dot = wrap.querySelector(".wpdot");
+  // The oriented copy, handed over by the caller — _details holds the raw one, which is
+  // the wrong way round for half of all matches.
+  const w = root._wp;
+  if (!w) return;
+  const curve = w.curve, n = curve.length;
+  const home = read.innerHTML;
+  const topName = read.querySelector(".wprn").textContent;
+  const { x, y } = wpPath(curve);
+  // Which set a point index falls in, from the same boundaries the rules are drawn at.
+  const setOf = (i) => (w.sets || []).filter((pt) => curve[i][0] >= pt).length + 1;
+  const move = (ev) => {
+    const box = plot.getBoundingClientRect();
+    if (!box.width) return;
+    const f = clamp01((ev.clientX - box.left) / box.width);
+    const i = Math.min(n - 1, Math.round(f * (n - 1)));
+    const wp = Number(curve[i][1]);
+    cross.setAttribute("x1", x(i).toFixed(2));
+    cross.setAttribute("x2", x(i).toFixed(2));
+    dot.style.left = `${((n < 2 ? 0 : i / (n - 1)) * 100).toFixed(3)}%`;
+    dot.style.top = `${(clamp01(wp) * 100).toFixed(3)}%`;
+    wrap.classList.add("live");
+    read.innerHTML = `<span class="wprl">set ${setOf(i)}, point ${curve[i][0]}</span>
+      <b>${Math.round((1 - wp) * 100)}%</b> <span class="wprn">${esc(topName)}</span>`;
+  };
+  const rest = () => {
+    wrap.classList.remove("live");
+    read.innerHTML = home;
+  };
+  svg.addEventListener("pointermove", move);
+  svg.addEventListener("pointerdown", move);
+  svg.addEventListener("pointerleave", rest);
+}
+
 // --- charted history, as a pyramid ---------------------------------------------------------
 // How much of each player the charting actually has, under the title that names what these
 // counts are. An uncharted player is the site's whole invitation, so the ask sits here too
@@ -1159,9 +1476,9 @@ const FIGS = [
 // The column's contents pulled out as data, so the wide flanking columns (profileSide) and
 // the narrow stacked comparison (profileCompare) build from one extraction rather than two
 // that drift.
-function profileParts(d) {
-  if (!d) return null;
-  const s = d.s;
+function profileParts(d, md) {
+  if (!d && !md) return null;
+  const s = (d && d.s) || {};
   // Printed for right-handers too, though most players are one: a key that only appears
   // sometimes leaves the reader to guess what its absence meant.
   const hand = s.hand ? `${s.hand === "L" ? "left" : "right"}-handed` : "";
@@ -1181,16 +1498,36 @@ function profileParts(d) {
   // Labelled "avg point length" rather than "avg rally": the figure counts the serve and the
   // return like every other stroke, and "rally" invites the reader to assume those are left
   // out. The unit says "shots", so the label only has to say what is averaged.
-  const r = num(s.avg_rally_len);
+  //
+  // On a charted match the figure changes question: the length of the points this player
+  // *won*, which the career figure cannot ask. Averaged over every point either player
+  // played, point length is one number describing both of them, so the two columns print
+  // the same value and the comparison the panel is built around has nothing to compare.
+  // Restricted to the points a player won it is two numbers, and the gap between them is a
+  // real thing about the match — who was winning the short points and who the long ones.
+  const r = md ? md.len_won : num(s.avg_rally_len);
   const rally = r == null ? null
-    : { v: r.toFixed(1), unit: "shots", label: "avg point length" };
+    : { v: Number(r).toFixed(1), unit: "shots",
+        label: md ? "avg length of points won" : "avg point length" };
   // Independently gated. The figures come from different experiments with different
   // qualification thresholds, so a player can easily have one and not the other; a figure
   // held back because its neighbour is missing is a fact withheld for no reason.
+  //
+  // In match mode a figure the match can measure is taken from the match and carries the
+  // career value beneath it as the anchor — "67%" alone has no scale, and "67%, career 62%"
+  // is the whole story. A figure the match cannot measure keeps its career value and says
+  // so on the line. Variety is the one that cannot: it is a mean per-shot surprise under a
+  // tour-wide model, so it is unbiased at any sample size, but one match moves it by 0.18
+  // bits against a tour whose middle half spans 0.26 — two match figures side by side would
+  // be showing a gap that is mostly noise, and the career pair is the honest comparison.
   const figs = FIGS.map((f) => {
-    const v = figOf(f, s);
-    return v == null ? null
-      : { v: f.fmt(v), raw: v, unit: f.unit, label: f.label, better: f.better };
+    const career = figOf(f, s);
+    const mv = md ? figOf(f, md) : null;
+    const v = mv != null ? mv : career;
+    if (v == null) return null;
+    return { v: f.fmt(v), raw: v, unit: f.unit, label: f.label, better: f.better,
+             anchor: mv != null && career != null ? f.fmt(career) : null,
+             careerOnly: !!(md && mv == null) };
   }).filter(Boolean);
   return { arch, hand, rally, figs };
 }
@@ -1214,19 +1551,55 @@ function figWinner(xa, xb) {
 // `opp` is the other player, passed so a figure with a better end can set the winner in ink
 // and let this side go quiet where it loses — the same lead/trail split the rings and the
 // phone comparison use.
-function profileSide(d, opp, tag) {
-  const p = profileParts(d);
-  if (!p || (!p.arch && !p.hand && !p.rally && !p.figs.length)) return "";
-  const oppFigs = new Map(((profileParts(opp) || { figs: [] }).figs).map((x) => [x.label, x]));
+const EMPTY_PARTS = { arch: "", hand: "", rally: null, figs: [] };
+
+// The rows the two columns share, in a fixed order, built from both sides at once.
+//
+// Two things pull the columns out of step, and this answers the second of them. The figures
+// are independently gated, so a player missing one — variety needs 800 charted strokes, and
+// plenty of first-round entrants do not have them — used to have their remaining figures
+// close the gap and move up a row. That set one player's double-fault rate level with the
+// other's variety, in a band whose entire purpose is reading a row across. Every row either
+// player has is now a row both of them have, and the side without it says so.
+//
+// (The first cause is a style label wrapping to two lines, which is a layout problem and is
+// answered by the subgrid these rows feed — see .tapemain in the stylesheet.)
+function profilePlan(pa, pb) {
+  const rows = [];
+  const has = (p, l) => p.figs.some((x) => x.label === l);
+  if (pa.arch || pb.arch) rows.push({ kind: "arch" });
+  if (pa.hand || pb.hand) rows.push({ kind: "hand" });
+  if (pa.rally || pb.rally) rows.push({ kind: "rally" });
+  for (const f of FIGS) {
+    if (has(pa, f.label) || has(pb, f.label)) rows.push({ kind: "fig", label: f.label });
+  }
+  return rows;
+}
+
+function profileSide(p, o, tag, plan) {
+  if (!plan.length) return "";
+  const oppFigs = new Map(o.figs.map((x) => [x.label, x]));
   const fig = (x, cls) => {
     const trail = x.better && figWinner(x, oppFigs.get(x.label)) === "b" ? ' class="trail"' : "";
-    return `<p class="${cls}"><b${trail}>${x.v}</b>${x.unit ? `<span>${esc(x.unit)}</span>` : ""}<em>${esc(x.label)}</em></p>`;
+    // The anchor rides under the figure rather than beside it: the column is ~150px and a
+    // second number on the same line pushed the label to a third row.
+    const note = x.anchor ? `<i class="pbanch">career ${esc(x.anchor)}</i>`
+      : x.careerOnly ? `<i class="pbanch">career figure</i>` : "";
+    return `<p class="${cls}"><b${trail}>${x.v}</b>${x.unit ? `<span>${esc(x.unit)}</span>` : ""}<em>${esc(x.label)}</em>${note}</p>`;
   };
-  return `<div class="pbside ${tag}" data-side="${tag}">
-    ${p.arch ? `<p class="pbstyle">${esc(p.arch)}</p>` : ""}
-    ${p.hand ? `<p class="pbhand">${esc(p.hand)}</p>` : ""}
-    ${p.rally ? fig(p.rally, "pbq") : ""}${p.figs.map((x) => fig(x, "pbfig")).join("")}
-  </div>`;
+  // An em dash where this player has no figure, the same mark the phone comparison already
+  // uses for the same absence — the label rides with it, so the row still says which figure
+  // is missing rather than leaving an unexplained gap opposite a number.
+  const none = (cls, label) => `<p class="${cls} pbnone"><b>—</b>` +
+    (label ? `<em>${esc(label)}</em>` : "") + `</p>`;
+  const cell = (r) => {
+    if (r.kind === "arch") return p.arch ? `<p class="pbstyle">${esc(p.arch)}</p>` : none("pbstyle");
+    if (r.kind === "hand") return p.hand ? `<p class="pbhand">${esc(p.hand)}</p>` : none("pbhand");
+    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq", "avg point length");
+    const x = p.figs.find((y) => y.label === r.label);
+    return x ? fig(x, "pbfig") : none("pbfig", r.label);
+  };
+  return `<div class="pbside ${tag}" data-side="${tag}">${plan.map(cell).join("")}</div>`;
 }
 
 // The same figures for a phone, where the two flanking columns are a ~150px pair and every
@@ -1234,9 +1607,7 @@ function profileSide(d, opp, tag) {
 // two numbers sit across a centre line and read against each other directly. Renders whenever
 // either side has anything, filling the other side with an em dash; the flanking columns take
 // the wide layout, where the rings run between them and each figure sits by its own mark.
-function profileCompare(da, db) {
-  const raw = (d) => profileParts(d) || { arch: "", hand: "", rally: null, figs: [] };
-  const A = raw(da), B = raw(db);
+function profileCompare(A, B) {
   const any = (p) => p.arch || p.hand || p.rally || p.figs.length;
   if (!any(A) && !any(B)) return "";
   const map = (p) => {
@@ -1249,8 +1620,12 @@ function profileCompare(da, db) {
   const seq = [];
   if (A.rally || B.rally) seq.push((A.rally || B.rally).label);
   for (const f of FIGS) if (ma.has(f.label) || mb.has(f.label)) seq.push(f.label);
+  // The career anchor rides under the value here too, so the phone layout says the same
+  // thing the wide one does rather than dropping the half that gives the figure its scale.
   const val = (x) => x == null ? "—"
-    : `${x.v}${x.unit ? ` <span class="pbcu">${esc(x.unit)}</span>` : ""}`;
+    : `${x.v}${x.unit ? ` <span class="pbcu">${esc(x.unit)}</span>` : ""}` +
+      (x.anchor ? `<i class="pbanch">career ${esc(x.anchor)}</i>`
+        : x.careerOnly ? `<i class="pbanch">career</i>` : "");
   // For a figure with a better end (serve-in rates, double faults) the winner keeps the ink
   // and the other side goes quiet — see figWinner().
   const rows = seq.map((l) => {
@@ -1321,7 +1696,7 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
 //
 // Only the figures at least one of these two players actually has get defined. A key that
 // explains a number nowhere on screen sends the reader looking for it.
-function figureKey(sa, sb, spread) {
+function figureKey(sa, sb, spread, match) {
   const has = (k) => {
     const f = FIGS.find((x) => x.k === k);
     return [sa, sb].some((s) => s && (f ? figOf(f, s) : num(s[k])) != null);
@@ -1348,15 +1723,33 @@ function figureKey(sa, sb, spread) {
       <b>"Between styles"</b> means the two nearest groups fit this player about equally well.</div>`,
     // The key follows the column, so it opens on the figure the column leads with. Kept to one
     // line: the concept is plain, and the only thing a reader needs told is what gets counted.
-    !has("avg_rally_len") ? "" : `<div><b>Average point length</b> counts the serve that starts it and the
+    match
+      ? `<div><b>Average length of points won</b> counts the serve that starts a point and
+        the shot that ends it, over the points that player won. The career figure averages
+        every point either player played, which is one number for both of them; restricted
+        to the points won it is two, and the gap is who took the short points and who the
+        long ones.</div>`
+      : !has("avg_rally_len") ? "" : `<div><b>Average point length</b> counts the serve that starts it and the
       shot that ends it.</div>`,
+    !match ? "" : `<div>Every rate on this panel is <b>this match only</b> — the rings, the
+      serve-in rates, the double faults and the placement — except where a line says
+      "career". Those carry no minimum-sample gate, because they are not estimates of how
+      these players usually play: they are counts of what happened over the match's own
+      points.</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from
       tour norms. A model built on the whole tour predicts each next shot from the two before
       it, and variety is how surprised that model is by this player, averaged over their shots
       and measured in bits: a shot the model gave even odds scores 1 bit, and every bit past
       that is a shot half as likely again. It rewards uncommon shot types about as much as
       uncommon order, so slicers and serve-volleyers score high. A player needs 800 charted
-      strokes to get one.</div>`,
+      strokes to get one.${match ? ` It stays a career figure on a charted match: one match
+      is about 350 strokes, and it moves the number by 0.18 bits against a tour whose middle
+      half spans 0.26, so a match pair would mostly be comparing noise.` : ""}</div>`,
+    !match ? "" : `<div><b>Win probability</b> starts from what the two players' charted
+      records had done before this match — their serve and return rates, combined into a
+      point-win probability for each — and propagates it up the scoring tree, point to game
+      to set to match, after every point. It is not a live market price and knows nothing
+      about the day: it is what the scoreline was worth against those two records.</div>`,
   ].filter(Boolean);
   if (!defs.length) return "";
   return `<details class="notekey figkey">
@@ -1365,21 +1758,32 @@ function figureKey(sa, sb, spread) {
   </details>`;
 }
 
-function tape(da, db, spread) {
+function tape(da, db, spread, det) {
   // The rings take only the sides that clear the coverage floor; the profile columns beside
   // them take the player whole, since every figure in them carries its own gate already. A
   // side held back leaves its half of the ring empty, which is the shape the drawing already
   // has for a player the rates simply do not exist for — and the note says which it is, so an
   // empty half is never left reading as "no charting" when it means "not enough of it".
-  const sa = wellCharted(da) ? da.s : null, sb = wellCharted(db) ? db.s : null;
+  //
+  // On a charted match both rings are filled from the match itself and the floor does not
+  // apply — see matchSide(). A player with one charted match in their life still served a
+  // measurable number of points in this one.
+  const ma = matchSide(det, 0), mb = matchSide(det, 1);
+  const sa = ma || (wellCharted(da) ? da.s : null);
+  const sb = mb || (wellCharted(db) ? db.s : null);
   const cells = sa || sb ? tapeRows().map((r) => donut(r, sa, sb)).join("") : "";
-  const sideA = profileSide(da, db, "a"), sideB = profileSide(db, da, "b");
+  // Both columns' contents are extracted once and shared: the row plan is built from the two
+  // together, and the phone comparison reads the same pair rather than re-deriving them.
+  const pA = profileParts(da, ma) || EMPTY_PARTS;
+  const pB = profileParts(db, mb) || EMPTY_PARTS;
+  const plan = profilePlan(pA, pB);
+  const sideA = profileSide(pA, pB, "a", plan), sideB = profileSide(pB, pA, "b", plan);
   if (!cells && !sideA && !sideB) return "";
   const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
   // Named, not just omitted. A blank half beside a full one is the panel making a claim about
   // the thin player, and the claim it should make is about the charting rather than the
   // tennis.
-  const thin = [[da, sa], [db, sb]]
+  const thin = det ? [] : [[da, sa], [db, sb]]
     .filter(([d, s]) => d && !s).map(([d]) => last(d.s.player));
   const thinNote = thin.length
     ? `<p class="tapenote">Serve and return rates need ${RATE_MIN_PTS.toLocaleString()}
@@ -1389,12 +1793,12 @@ function tape(da, db, spread) {
   // above it, which every figure here is measured against, so a labelled gap between the two
   // would only push them apart. The bordered box is its own boundary.
   return `<section class="tape">
-    <div class="tapemain">${sideA}${rings}${sideB}${profileCompare(da, db)}</div>
+    <div class="tapemain" style="--pbrows:${plan.length}">${sideA}${rings}${sideB}${profileCompare(pA, pB)}</div>
     ${/* No key under the rings. Every mark on them now carries its own figure against it,
          wearing the mark as a glyph, so a key would be naming things the drawing has already
          named — and naming them a screen away from where they are. */""}
     ${thinNote}
-    ${figureKey(sa || (da && da.s), sb || (db && db.s), spread)}
+    ${figureKey(sa || (da && da.s), sb || (db && db.s), spread, !!det)}
   </section>`;
 }
 
@@ -1731,8 +2135,32 @@ function headHtml(m, t, round) {
 // the invitation to go and chart one, and "Charted history" over "Neither player has Match
 // Charting history yet" heads a section with the word "history" twice and no history in it.
 // The two conditions are exact opposites, so exactly one of them ever prints.
-function bodyHtml(m, pa, pb, gates, spread) {
+// The charted-match panel. Six career sections become three about the match: how it swung,
+// what each player's serve and return did in it, and where the serves went.
+//
+// Everything from "serve + 1" down is dropped rather than recomputed. Those sections are
+// lifts against the tour of a player's era — a court pattern rests on a median 334
+// observations of one incoming ball, a trigger on a rate over hundreds of rally strokes —
+// and a match supplies a handful of each. Recomputed per match they would print a 2.4×
+// lift off four balls; left career-wide under a match header they would read as findings
+// about a match they were not measured on. Neither is worth the four screens, and the panel
+// says what it can say about this match and stops.
+function matchBodyHtml(m, pa, pb, spread, det) {
   const a = m.a, b = m.b;
+  const ma = matchSide(det, 0), mb = matchSide(det, 1);
+  const by = det.charted_by
+    ? `<p class="covnote">Charted by ${esc(det.charted_by)} for the Match Charting Project.</p>` : "";
+  return `<p class="tapetitle">This match</p>` +
+    wpChart(det, a, b) +
+    tape(pa, pb, spread, det) +
+    section("serve placement", `where the first delivery went, by court side`, a, b,
+      serveMatchHtml(pa, ma), serveMatchHtml(pb, mb), "text") +
+    by;
+}
+
+function bodyHtml(m, pa, pb, gates, spread, det) {
+  const a = m.a, b = m.b;
+  if (det) return matchBodyHtml(m, pa, pb, spread, det);
   const ta = trigSets(pa), tb = trigSets(pb);
   const none = !pa && !pb
     ? `<p class="nochart">Neither player has Match Charting history yet.
@@ -2022,12 +2450,19 @@ export async function openMatchup(m, t) {
   body.innerHTML = `<div id="cardslot" class="loading">Loading…</div>
     ${notationHelp()}`;
 
-  let pa, pb, gates, spread;
+  let pa, pb, gates, spread, det;
   try {
-    [pa, pb] = await Promise.all([
+    // The sidecar rides alongside the two player queries rather than after them: it is a
+    // static file on the same origin and there is nothing in the panel that needs one
+    // before the other.
+    [pa, pb, det] = await Promise.all([
       playerData(m.a.matched, t.gender),
       playerData(m.b.matched, t.gender),
+      matchDetail(m.chart_id),
     ]);
+    // Oriented at use rather than in the cache: the sidecar is keyed by chart id and the
+    // side order belongs to the draw slot that opened it.
+    det = orientDetail(det, m.chart_flip);
     gates = (await serveGates())[t.gender] || {};
     spread = (await tourSpread())[t.gender] || {};
   } catch (e) {
@@ -2042,5 +2477,17 @@ export async function openMatchup(m, t) {
 
   const slot = document.getElementById("cardslot");
   slot.classList.remove("loading");
-  slot.innerHTML = bodyHtml(m, pa, pb, gates, spread);
+  slot.innerHTML = bodyHtml(m, pa, pb, gates, spread, det);
+  if (det) {
+    // The shot-notation key is written before the data arrives, and it sits outside the slot
+    // this line replaces. It explains court zones, rally patterns and the trigger framework —
+    // a key to four sections a charted match doesn't render, under a panel whose own jargon
+    // is explained by figureKey. It goes with them.
+    const key = body.querySelector(".notekey:not(.figkey)");
+    if (key) key.remove();
+    if (slot.querySelector(".wp")) {
+      slot._wp = det.wp;
+      wireWpChart(slot);
+    }
+  }
 }
