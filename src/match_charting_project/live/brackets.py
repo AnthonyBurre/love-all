@@ -80,7 +80,8 @@ def _side_dict(s) -> dict:
     """ESPN-native side fields only — no ``matched``/``charted`` (those are DB-derived and
     applied fresh at emit time, so an archived snapshot never carries stale annotation)."""
     return {"name": s.name, "country": s.country, "winner": s.winner,
-            "sets": s.sets, "seed": getattr(s, "seed", None)}
+            "sets": s.sets, "set_wins": getattr(s, "set_wins", []),
+            "seed": getattr(s, "seed", None)}
 
 
 def serialize(tournament, use_fixture: bool = True) -> dict:

@@ -42,15 +42,21 @@ export function matchTier(m, gender, cov) {
   return { cls: "t-none", note: `uncharted matchup — ${note}` };
 }
 
-// Per-set score cells: each set is its own span, bold when it's the higher score of
-// the set (that set's winner). The match winner then reads as the row with more bold
-// numbers — no need to hunt for the highlighted name. `theirs` is the opponent's sets.
-function setsEl(mine, theirs) {
+// Per-set score cells: each set is its own span, bold when this side took that set.
+// The match winner then reads as the row with more bold numbers — no need to hunt for
+// the highlighted name. `theirs` is the opponent's sets.
+//
+// `wins` is the feed's per-set verdict for this side (true won / false lost / null not
+// decided). When it's there, an undecided set is never bold — so a suspended match's
+// live fifth set doesn't read as won by whoever leads it. Older archived draws carry no
+// such list and are all finished, so there we fall back to the higher score.
+function setsEl(mine, theirs, wins) {
   const sets = el("span", "sets");
+  const known = Array.isArray(wins) && wins.length > 0;
   (mine || []).forEach((x, i) => {
     if (x == null) return;
     const t = theirs && theirs[i];
-    const won = t != null && Math.trunc(x) > Math.trunc(t);
+    const won = known ? wins[i] === true : t != null && Math.trunc(x) > Math.trunc(t);
     sets.append(el("span", "set" + (won ? " won" : ""), String(Math.trunc(x))));
   });
   return sets;
@@ -69,7 +75,7 @@ function sideRow(s, opp) {
   if (named) nm.dataset.full = s.name;
   if (s.seed) nm.append(el("span", "seed", s.seed));
   nm.append(document.createTextNode(s.name || "TBD"));
-  row.append(nm, setsEl(s.sets, opp && opp.sets));
+  row.append(nm, setsEl(s.sets, opp && opp.sets, s.set_wins));
   return row;
 }
 
@@ -127,7 +133,8 @@ function matchCard(m, t, cov, onClick, wide) {
     const names = el("div", "namesrow");
     names.append(nameSpan(m.a), nameSpan(m.b));
     const scores = el("div", "scoresrow");
-    scores.append(setsEl(m.a.sets, m.b.sets), setsEl(m.b.sets, m.a.sets));
+    scores.append(setsEl(m.a.sets, m.b.sets, m.a.set_wins),
+                  setsEl(m.b.sets, m.a.sets, m.b.set_wins));
     card.append(names, scores);
   } else {
     card.append(sideRow(m.a, m.b), sideRow(m.b, m.a));

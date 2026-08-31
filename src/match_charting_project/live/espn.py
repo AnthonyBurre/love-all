@@ -16,7 +16,7 @@ import json
 import re
 import sys
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from match_charting_project.analysis.tiers import (
@@ -52,6 +52,11 @@ class Side:
     country: "str | None"
     winner: bool
     sets: list          # per-set games won (linescores)
+    # Per-set outcome as the feed reports it: True where this side took the set, False
+    # where it lost it, None where the set isn't decided (in progress, or suspended
+    # mid-set). Parallel to `sets`. The site bolds a set score only where this is True,
+    # so a suspended match's live set doesn't read as won by whoever's ahead in it.
+    set_wins: list = field(default_factory=list)
 
 
 @dataclass
@@ -196,9 +201,11 @@ def _tier(event: dict, gender: str, cal: "dict | None" = None) -> str:
 def _side(comp: dict) -> Side:
     ath = comp.get("athlete") or {}
     flag = comp.get("flag") or ath.get("flag") or {}
+    lines = comp.get("linescores", [])
     return Side(name=ath.get("displayName") or "", country=flag.get("alt"),
                 winner=bool(comp.get("winner")),
-                sets=[ls.get("value") for ls in comp.get("linescores", [])])
+                sets=[ls.get("value") for ls in lines],
+                set_wins=[ls.get("winner") for ls in lines])
 
 
 def parse(raw: dict, cal: "dict | None" = None, fetched_at: str = "") -> "list[Tournament]":
@@ -222,6 +229,13 @@ def parse(raw: dict, cal: "dict | None" = None, fetched_at: str = "") -> "list[T
                 cs = c.get("competitors", [])
                 if rank is None or len(cs) != 2:
                     continue
+                # ESPN's `order` (1/2) is the competitor's slot in the box — 1 on top, 2
+                # below — and the only place the feed says which side of the bracket a
+                # player is on: it tracks the draw sheet, so across a round the winner of
+                # the upper feeder is the one carrying `order` 1. The competitors array is
+                # not itself in that order (it often arrives 2, 1), so read the field. A
+                # missing or odd value keeps feed order, via the stable sort.
+                cs = sorted(cs, key=lambda comp: comp.get("order") or 99)
                 st = (c.get("status") or {}).get("type") or {}
                 matches.append(Match(
                     id=str(c.get("id")), round_rank=rank,

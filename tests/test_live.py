@@ -54,6 +54,52 @@ def test_parse_singles_maindraw_only():
     assert m.a.country == "Spain"
 
 
+def test_parse_seats_sides_by_espn_bracket_order_not_array_order():
+    # ESPN's `order` (1 = top of the box, 2 = below) is the feed's own draw position, and
+    # the competitors array is often not in it — here it arrives 2 then 1. Side a must be
+    # the order-1 player regardless.
+    raw = {"events": [{"id": "189-2026", "name": "US Open", "major": True, "groupings": [
+        {"grouping": {"slug": "mens-singles"}, "competitions": [
+            {"id": "m1", "round": {"displayName": "Round 2"},
+             "status": {"type": {"state": "pre"}}, "competitors": [
+                 {"athlete": {"displayName": "Lower Half"}, "order": 2},
+                 {"athlete": {"displayName": "Upper Half"}, "order": 1}]},
+            {"id": "m2", "round": {"displayName": "Round 2"},
+             "status": {"type": {"state": "pre"}}, "competitors": [
+                 {"athlete": {"displayName": "First Listed"}},
+                 {"athlete": {"displayName": "Second Listed"}}]}]}]}]}
+    ms = {m.id: m for m in espn.parse(raw)[0].matches}
+    assert (ms["m1"].a.name, ms["m1"].b.name) == ("Upper Half", "Lower Half")
+    assert (ms["m2"].a.name, ms["m2"].b.name) == ("First Listed", "Second Listed")  # no order: as-is
+
+
+def test_parse_carries_the_per_set_winner_and_leaves_a_live_set_undecided():
+    # A suspended five-setter, resumed as a fresh "Scheduled" slot: four decided sets
+    # each carry a winner flag, the fifth (4-3, still on court) carries none on either
+    # side. The site keys set-score bold off this, so the live set stays unbolded.
+    raw = {"events": [{"id": "189-2026", "name": "US Open", "major": True, "groupings": [
+        {"grouping": {"slug": "mens-singles"}, "competitions": [
+            {"id": "s1", "round": {"displayName": "Round 1"},
+             "status": {"type": {"state": "pre", "shortDetail": "8/31 - 12:30 PM"}},
+             "competitors": [
+                 {"athlete": {"displayName": "Rei Sakamoto"}, "linescores": [
+                     {"value": 6, "winner": True}, {"value": 6, "winner": False},
+                     {"value": 6, "winner": True}, {"value": 3, "winner": False},
+                     {"value": 4}]},
+                 {"athlete": {"displayName": "Aleksandar Vukic"}, "linescores": [
+                     {"value": 4, "winner": False}, {"value": 7, "winner": True},
+                     {"value": 4, "winner": False}, {"value": 6, "winner": True},
+                     {"value": 3}]}]}]}]}]}
+    m = espn.parse(raw)[0].matches[0]
+    assert m.a.sets == [6, 6, 6, 3, 4]
+    assert m.a.set_wins == [True, False, True, False, None]
+    assert m.b.set_wins == [False, True, False, True, None]
+    # Round through serialize: the flag rides in the payload the site reads.
+    payload = brackets.serialize(espn.parse(raw)[0], use_fixture=False)
+    side = payload["rounds"][0]["matches"][0]["a"]
+    assert side["set_wins"] == [True, False, True, False, None]
+
+
 # --- tour level: the 500 roster vs. the name heuristics --------------------------------
 
 def _event(id, name, venue, slug="mens-singles", major=False, date="2026-07-27T14:00Z"):
