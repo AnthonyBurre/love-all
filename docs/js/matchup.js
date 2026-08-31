@@ -116,7 +116,16 @@ function rallyDrawer(pattern, mirror = false, court = "deuce") {
 // The cue's two numbers, drawn as the one bar they are: its length is the aggressive shot
 // frequency the cue provokes, where it changes colour is how much of that landed,
 // and the tick is the rate the shot gets played at *without* the cue — so the lift the
-// sentence states as "3.0× their norm" is also the gap between the tick and the bar's end.
+// sentence states as "3.0× their norm" is about the gap between the tick and the bar's end.
+//
+// About, and not exactly. The tick is the player's pooled no-cue rate, while a cue confirmed
+// in only one of the two held-out folds ships that fold's rate and that fold's lift, measured
+// against the half of their matches it was confirmed on. A half's baseline sits up to a couple
+// of points off the pooled one, so on about a third of cues the printed multiple and the gap
+// on the bar disagree a little. The tick still draws at the pooled rate, because it is the one
+// reference the whole column is read against: a tick that moved per row would put five bars in
+// a column against five different references, each of them visibly out of line with the
+// baseline bar at the top that is meant to be that same rate.
 //
 // Deliberately the same construction as the comparison strip's winners-and-errors row,
 // down to the drained second segment and the haloed reference tick, because it is the same
@@ -125,12 +134,17 @@ function rallyDrawer(pattern, mirror = false, court = "deuce") {
 // The domain is 0–1 rather than the strip's 0.05–0.32, though: a cue that does anything at
 // all pushes the frequency far past the range a player's rally balls average out to, and
 // on the strip's scale every one of these would sit clamped at the end of the bar.
-function trigMeter(t) {
+// `base` is the reference to draw the tick at. Pooled cues are handed the player's own
+// no-cue rate; opening cues have no such figure — each is against its own court-and-shot
+// norm — so they leave it out and the norm is recovered from the cue's own two numbers.
+function trigMeter(t, base) {
   const att = Number(t.att_rate);
   if (!isFinite(att)) return "";
   const conv = t.conversion == null ? null : Number(t.conversion);
   const lift = Number(t.att_lift);
-  const norm = isFinite(lift) && lift > 0 ? att / lift : null;
+  const ref = Number(base);
+  const norm = isFinite(ref) && ref > 0 ? ref
+    : isFinite(lift) && lift > 0 ? att / lift : null;
   const segs = conv == null ? `<span style="flex:1"></span>`
     : `<span style="flex:${conv}"></span><span class="miss" style="flex:${1 - conv}"></span>`;
   const tick = norm == null ? "" : `<u style="left:${(norm * 100).toFixed(1)}%"></u>`;
@@ -141,7 +155,7 @@ function trigMeter(t) {
 // contexts in the player's own frame, mirrored for a left-hander so that one cue string
 // means one piece of tennis whoever plays it. The drawing is the one place that wants the
 // real court back, so it mirrors again on the way out.
-function trigLine(t, hand) {
+function trigLine(t, hand, base) {
   // Every cue here is a two-shot lead-up. No starred 3-4 shot tier ships: on serve-blind
   // ground two of 1,752 three-shot candidates survive a held-out screen, and both belong to
   // retired players. See experiments/rally_patterns.
@@ -170,7 +184,7 @@ function trigLine(t, hand) {
     <p class="tnum">aggressive <b>${Math.round(t.att_rate * 100)}%</b>
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
       ${payoff} <span class="lift">${counts}</span></p>
-    ${trigMeter(t)}
+    ${trigMeter(t, base)}
     ${rallyDrawer(t.context, hand === "L")}</div>`;
 }
 
@@ -338,10 +352,8 @@ function trigBase(d) {
     <p class="tcue">every rally stroke, no cue</p>
     <p class="tnum">aggressive <b>${(att * 100).toFixed(1)}%</b>${conv == null ? ""
       : ` · converts <b>${Math.round(conv * 100)}%</b>`}
-      ${/* This *is* the tick below, exactly: trigMeter draws it at att_rate / att_lift, and
-           att_lift is the cue's rate over this same pooled figure, so the division returns
-           it unchanged. */""}
-      <span class="lift">the tick on each cue below marks this rate</span></p>
+      ${/* This *is* the tick below: trigSets hands this same rate to every bar in the
+           column to draw its tick at, so the bar here ends where those ticks stand. */""}</p>
     <div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i></div>
   </div>`;
 }
@@ -411,7 +423,8 @@ function trigSets(d) {
   // Bound explicitly rather than passed to .map directly, which would hand trigLine the
   // array index as its second argument and mirror every drawing on an odd row.
   const hand = d.s.hand;
-  return base + [...greens, ...traps].map((t) => trigLine(t, hand)).join("") + immune;
+  const norm = num(d.s.trig_att_rate);
+  return base + [...greens, ...traps].map((t) => trigLine(t, hand, norm)).join("") + immune;
 }
 
 // --- "side by side": one ring per metric ----------------------------------------------
@@ -999,8 +1012,7 @@ function coverPyramid(da, db, sc) {
   const A = by(da), B = by(db);
   const rows = [];
   for (let y = sc.hi; y >= sc.lo; y--) {
-    rows.push(`<div class="covrow">${coverBar(A.get(y), sc, "a")}<b class="covyr">${y}</b>${
-      coverBar(B.get(y), sc, "b")}</div>`);
+    rows.push(`<div class="covrow">${coverBar(A.get(y), sc, "a")}<b class="covyr">${y}</b>${coverBar(B.get(y), sc, "b")}</div>`);
   }
   // One fraction of a half, handed to the stylesheet, and both hairlines and both labels are
   // placed off it — so the type under a rule cannot drift off the rule it names.
@@ -1023,8 +1035,7 @@ function coverPyramid(da, db, sc) {
   const say = [`charted points by season, ${sc.lo} to ${sc.hi}`]
     .concat([[da, "left"], [db, "right"]].map(([d, side]) => {
       const p = peakOf(d);
-      return p ? `${last(d.s.player)}, ${side}: busiest ${p.y}, ${p.mt} ${
-        p.mt === 1 ? "match" : "matches"}` : "";
+      return p ? `${last(d.s.player)}, ${side}: busiest ${p.y}, ${p.mt} ${p.mt === 1 ? "match" : "matches"}` : "";
     }).filter(Boolean)).join("; ");
   // A season is a row of ~13px and thirty of them is a chart taller than the phone it is on.
   // Past eighteen the rows and their years step down together rather than the chart being cut
@@ -1723,8 +1734,9 @@ function bodyHtml(m, pa, pb, gates, spread) {
       spot${COURT_LEGEND}${PAYOFF_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("shot-making triggers", `a lead-up that shifts their aggressive shot
-      frequency — and whether it converts as well as their other cues
-      do${meterLegend("their rate with no cue")}`,
+      frequency — the share of their rally strokes that count
+      as a winner, their own unforced error, or a ball that forces the
+      error${meterLegend("their rate with no cue")}`,
       a, b, ta, tb, "text") +
     section("opening cues by court", `the same question as above, asked separately of
       each service court — a wide serve opens opposite wings on the two sides, so a
@@ -1780,7 +1792,7 @@ export function closeMatchup() {
   const back = opener && document.contains(opener)
     ? opener
     : openerId && [...document.querySelectorAll(".match[data-mid]")]
-        .find((el) => el.dataset.mid === openerId);
+      .find((el) => el.dataset.mid === openerId);
   if (back) back.focus();
   opener = null;
   openerId = null;
