@@ -1577,16 +1577,22 @@ function chartButton(m) {
 function scoreStack(a, b) {
   const n = Math.max((a.sets || []).length, (b.sets || []).length);
   if (!n) return `<div class="mscore none">vs</div>`;
-  const cell = (v, o) => {
+  // The feed's per-set verdict (true won / false lost / null not decided). Where it's
+  // there, an undecided set is never bold, so a suspended match's live set doesn't read
+  // as won by whoever leads it; older archived draws have no list and are all finished,
+  // so there the higher score stands.
+  const winsA = Array.isArray(a.set_wins) && a.set_wins.length ? a.set_wins : null;
+  const winsB = Array.isArray(b.set_wins) && b.set_wins.length ? b.set_wins : null;
+  const cell = (v, o, wins, i) => {
     if (v == null) return `<span class="sg"></span>`;
-    const won = o != null && Math.trunc(v) > Math.trunc(o);
+    const won = wins ? wins[i] === true : o != null && Math.trunc(v) > Math.trunc(o);
     return `<span class="sg${won ? " won" : ""}">${Math.trunc(v)}</span>`;
   };
   let cells = "";
   for (let i = 0; i < n; i++) {
     const x = a.sets && a.sets[i], y = b.sets && b.sets[i];
     if (x == null && y == null) continue;    // drop the pair, never half of one
-    cells += cell(x, y) + cell(y, x);
+    cells += cell(x, y, winsA, i) + cell(y, x, winsB, i);
   }
   return `<div class="mscore">${cells}</div>`;
 }

@@ -16,7 +16,7 @@ import json
 import re
 import sys
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from match_charting_project.analysis.tiers import (
@@ -52,6 +52,11 @@ class Side:
     country: "str | None"
     winner: bool
     sets: list          # per-set games won (linescores)
+    # Per-set outcome as the feed reports it: True where this side took the set, False
+    # where it lost it, None where the set isn't decided (in progress, or suspended
+    # mid-set). Parallel to `sets`. The site bolds a set score only where this is True,
+    # so a suspended match's live set doesn't read as won by whoever's ahead in it.
+    set_wins: list = field(default_factory=list)
 
 
 @dataclass
@@ -196,9 +201,11 @@ def _tier(event: dict, gender: str, cal: "dict | None" = None) -> str:
 def _side(comp: dict) -> Side:
     ath = comp.get("athlete") or {}
     flag = comp.get("flag") or ath.get("flag") or {}
+    lines = comp.get("linescores", [])
     return Side(name=ath.get("displayName") or "", country=flag.get("alt"),
                 winner=bool(comp.get("winner")),
-                sets=[ls.get("value") for ls in comp.get("linescores", [])])
+                sets=[ls.get("value") for ls in lines],
+                set_wins=[ls.get("winner") for ls in lines])
 
 
 def parse(raw: dict, cal: "dict | None" = None, fetched_at: str = "") -> "list[Tournament]":
