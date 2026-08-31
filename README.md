@@ -148,8 +148,11 @@ occasions rather than sampling a career evenly. That applies to every figure bel
 The section opens on how much of each player the charting actually has, as a total and as a bar
 per season. The total alone cannot tell a breakout year from a decade of steady work — "195
 matches, 2014–2026" reads the same either way — and those counts are the denominator of
-everything else. The bars are charted points, both players on one axis and one height scale, so
-a season lines up with the same season across the gap. Hover or press a bar for exact counts.
+everything else. The seasons run down a shared axis with the newest at the top, each player's
+bars reaching out from it to their own side. The bars are charted points, both players on one
+length scale, so a season is one row and the two are read across it. A hairline down each half
+marks a round number of points to read a bar against; an empty row is a season neither the
+charting nor the player reached. Hover or press either half of a row for its match count.
 
 Under it, a **profile band**: what kind of player each of them is, which hand they hold the
 racket in, and how long their average point runs. All of it is read through by everything

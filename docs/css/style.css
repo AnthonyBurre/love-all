@@ -931,13 +931,138 @@ a { color: var(--acc-d); }
    "history" rather than as the first character of something else, and sits clear of it. */
 .tapestar { font-weight: 700; opacity: .6; padding-left: 1px; }
 
-/* --- who these two are, over everything the body measures -----------------------------
-   Two halves, each capped by a rule in its player's colour — the same mark that caps every
-   column further down, and the same left-right order as the split under the scoreboard. No
-   name on either: the header above holds those and never scrolls away.
+/* --- charted history, as a pyramid (profileBand) --------------------------------------
+   One time axis down the centre, each player's seasons running out from it. One drawing on
+   the band's own width rather than a half-width strip per player: two strips spend a column
+   of width apiece on the same axis and still have no room to name a year in the middle of
+   it, and width is the dimension a phone has least of.
+   Capped and centred all the same. At the open panel's 840px an unbounded pyramid puts the
+   two players' longest seasons half a screen apart, which undoes the one thing a shared
+   baseline is for. The cap is a little over what the narrow layout gives it, so the drawing
+   is close to the same shape at both sizes rather than a different chart on each.
+   HTML bars rather than SVG, and deliberately. This has to be full-width at every viewport,
+   and an SVG that stretches to its box stretches its own coordinate system with it — bar
+   heights, gaps and hairlines all come out at whatever ratio the band happens to be, and
+   none of them are the length they were drawn as. Flex items sized in percent are laid out
+   in real pixels at whatever width the band resolves to, which is the same arithmetic done
+   by the thing that actually knows the answer. */
+.pband { --covgut: 46px; --covrow: 13px; --covbar: 8px; --covyrs: 10px;
+  max-width: 560px; margin: 0 auto 16px; }
+/* No colour key of its own. The scroll-locked header thirty pixels above ends in the same
+   A-to-B split rule and never scrolls away, so a second one here — narrower, with only the
+   section title between them — would be the same key twice. */
+/* Both totals on one line, each hanging on its own player's edge — mirrored like every
+   other two-player layout in the panel. One line where the strips took two, because there
+   is one chart under it now instead of two. */
+.covtop { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  margin: 0 0 8px; font-size: 11px; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.covsum { min-width: 0; }
+.covsum.b { text-align: right; }
+.covsum a { font-weight: 700; color: var(--warn); }
+
+/* --covf, the fraction of a half the ruler stands at, is set here by coverPyramid() so the
+   rules and the type naming them read it from one place and cannot drift apart. */
+.cov { position: relative; }
+.covgrid { position: relative; }
+/* One season. The year column is a fixed width, so a bar's baseline is at the same x on
+   every row and the two halves are equal without either of them being measured. */
+.covrow { position: relative; display: grid; align-items: stretch;
+  grid-template-columns: 1fr var(--covgut) 1fr; height: var(--covrow); }
+/* Each half's track, and the row's hit area — it takes the full row height and the whole
+   width of a column so the readout has something a thumb can land on. The bar inside grows
+   from the centre outward, so A packs to its right edge and B to its left, and the two share
+   the one baseline down the middle. */
+.covbar { position: relative; display: flex; align-items: center; min-width: 0; }
+.covbar.a { justify-content: flex-end; }
+.covbar.b { justify-content: flex-start; }
+/* Above the ruler, which is drawn behind the whole grid, and the positioning context for
+   this row's readout. */
+.covbar > i { position: relative; z-index: 1; flex: none; height: var(--covbar); }
+/* The floor, in pixels rather than as a share of the row. One charted match against a peak
+   season of nine thousand points is 2% of the length, which rounds to nothing — and "barely
+   charted" reading identically to "not charted" is the one confusion this band exists to
+   prevent. See coverBar().
+   Square ends, like every other mark on the site: --radius is 0, and a corner here is
+   either square or cut on the diagonal. A diagonal on the end of a bar would shorten the
+   one thing whose length is the measurement. */
+.covbar > i { min-width: 3px; }
+.covbar.a > i { background: var(--a); }
+.covbar.b > i { background: var(--b); }
+/* The year, printed on every row rather than at the two ends of the axis. This is what
+   turning the chart buys: the strips could label only their first and last season and every
+   year between them was a hover away, which on a phone is nowhere. Set as an axis — small,
+   muted, tabular — so the column reads as a scale the bars hang off rather than as a third
+   thing being said. */
+.covyr { display: flex; align-items: center; justify-content: center;
+  font-size: var(--covyrs); line-height: 1; font-weight: 500; color: var(--muted);
+  letter-spacing: .02em; font-variant-numeric: tabular-nums; opacity: .8; }
+/* The ruler: one hairline down each half at a round number of points (see rulerAt), so a bar
+   has a length to be read against and not only its neighbour. Without it the band can say
+   "more" and never "how much", and the readout that can is a hover away.
+   Solid and one shade off the ground, behind the bars — a dashed rule would read as a
+   threshold, and this is a tick. The offset is measured from the middle: half the band, out
+   past half the year column, then --covf of what a bar has to run in. */
+.covrule { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line);
+  z-index: 0; pointer-events: none; }
+.covrule.a { left: calc((100% - var(--covgut)) / 2 * (1 - var(--covf))); }
+.covrule.b { left: calc((100% + var(--covgut)) / 2
+  + (100% - var(--covgut)) / 2 * var(--covf)); }
+/* The ruler's value, once per side, centred on its own rule. The window rulerAt() picks in
+   keeps both labels clear of the year column at one end and of the band's edge at the
+   other, so neither needs to be measured or dropped. */
+.covfoot { position: relative; height: 12px; margin: 4px 0 0; font-size: 9px;
+  letter-spacing: .04em; color: var(--muted); opacity: .85;
+  font-variant-numeric: tabular-nums; }
+.covfoot span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.covfoot .a { left: calc((100% - var(--covgut)) / 2 * (1 - var(--covf))); }
+.covfoot .b { left: calc((100% + var(--covgut)) / 2
+  + (100% - var(--covgut)) / 2 * var(--covf)); }
+/* The unit, once, under the year column — the only stretch of the row that belongs to neither
+   player, and the only place it fits on a phone. */
+.covfoot .u { left: 50%; }
+/* The season readout, on hover *and* on press. `title` alone is a mouse affordance and this
+   band is read on a phone, so the match count behind a bar — the number people say out loud,
+   and the one thing here the drawing cannot show — was reachable only by the readers least
+   likely to need it. :active covers the thumb. The year is not in it: the row prints its own.
+   It opens above its row, and below on the top row, which has nothing above it to open into.
+   Each half answers for its own player. */
+.covbar[data-lbl]:hover::after, .covbar[data-lbl]:active::after {
+  content: attr(data-lbl); position: absolute; bottom: 100%; z-index: 4;
+  margin-bottom: 2px; padding: 3px 6px;
+  background: var(--ink); color: var(--bg); font-size: 9.5px; line-height: 1.3;
+  font-weight: 600; white-space: nowrap; pointer-events: none;
+}
+.covbar.a[data-lbl]:hover::after, .covbar.a[data-lbl]:active::after { right: 0; }
+.covbar.b[data-lbl]:hover::after, .covbar.b[data-lbl]:active::after { left: 0; }
+.covrow:first-of-type > .covbar[data-lbl]:hover::after,
+.covrow:first-of-type > .covbar[data-lbl]:active::after {
+  bottom: auto; top: 100%; margin: 2px 0 0; }
+/* Touch devices fire :hover as a sticky pseudo-state after a tap, which would leave the last
+   tapped season's readout pinned open. Press-and-hold is the affordance there, so hover is
+   dropped wherever the pointer is coarse. */
+@media (hover: none) {
+  .covbar[data-lbl]:hover::after { content: none; }
+}
+/* A veteran drawn against a teenager stretches the shared axis to thirty seasons. Past
+   eighteen the rows step down rather than the chart being cut short or scrolled inside
+   itself: every season the axis claims keeps a row, and every row keeps its year. */
+.cov.dense { --covrow: 10.5px; --covbar: 6px; --covyrs: 8.5px; --covgut: 40px; }
+/* A phone gives the pyramid about 330px to split. The rows tighten a little and the year
+   column with them; nothing else changes shape, which is the point of the form — it is the
+   same drawing at both sizes rather than two layouts. */
+@media (max-width: 760px) {
+  .pband { --covgut: 42px; --covrow: 12px; --covbar: 7px; }
+  .cov.dense { --covgut: 38px; --covrow: 10px; --covbar: 5.5px; }
+  .covtop { font-size: 10.5px; }
+}
+
+/* --- the two style columns (profileSide) ----------------------------------------------
+   Two halves, each capped by a rule in its player's colour — the same mark the split rule
+   over the pyramid above carries, and the same left-right order as the split under the
+   scoreboard. No name on either: the header above holds those and never scrolls away.
    Mirrored, like every other two-player layout in the panel: A reads out from the left edge
    and B in from the right, so each side's text hangs on the edge its own colour is. */
-.pband { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0 0 16px; }
 .pbside { min-width: 0; padding-top: 9px; border-top: 4px solid var(--shot); }
 .pbside[data-side="a"] { --shot: var(--a); }
 .pbside[data-side="b"] { --shot: var(--b); text-align: right; }
@@ -999,66 +1124,6 @@ a { color: var(--acc-d); }
 .pbverdict b { font-size: 13px; font-weight: 700; color: var(--ink); }
 .pbverdict em { display: block; margin-top: 1px; font-style: normal; font-size: 9.5px;
   font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-/* Leads the column now — see profileSide() — so it takes the top margin the rule's
-   padding-top already covers, and gives its own gap below instead of above. */
-.pbchart { margin: 0 0 9px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-
-/* --- charted history, by season (coverageChart) ---------------------------------------
-   HTML bars rather than SVG, and deliberately. This has to be full-column-wide at every
-   viewport, and an SVG that stretches to its box stretches its own coordinate system with
-   it — bar widths, gaps and hairlines all come out at whatever ratio the column happens to
-   be, and none of them are the length they were drawn as. Flex items sized in percent are
-   laid out in real pixels at whatever width the column resolves to, which is the same
-   arithmetic done by the thing that actually knows the answer.
-   Left to right in both columns. Everything else in a "b" column is mirrored to hang on its
-   own edge, but a time axis that ran right to left on one side of the panel would be the one
-   mirrored thing here that changes what it says. */
-.cchart { margin: 0; text-align: left; }
-.cbars { display: flex; align-items: flex-end; gap: 1px; height: 34px;
-  border-bottom: 1px solid var(--line); }
-/* Taller once the column is, because the column roughly trebles in width across that
-   breakpoint — half a phone is ~175px and half the open panel is ~415px — and a strip held at
-   its phone height there is a 12:1 box in which every season's difference from the next is a
-   couple of pixels. The extra height is resolution, not decoration. */
-@media (min-width: 761px) { .cbars { height: 46px; } }
-/* Each season's slot. Equal shares of the row, so a bar's x position is its year in both
-   columns and a season lines up with the same season across the gap. */
-.cbars > i { flex: 1 1 0; min-width: 0; }
-/* A charted season, in the column's own player colour — the same one capping the column
-   above it. Kept at full strength: this is the data, not furniture. */
-.cy { background: var(--shot); }
-/* The floor, in pixels rather than as a share of the row. One charted match against a peak
-   season of nine thousand points is 2% of the height, which rounds to nothing — and "barely
-   charted" reading identically to "not charted" is the one confusion this chart exists to
-   prevent. See coverageChart(). */
-.cy { min-height: 2px; }
-/* A season with no charted match holds its place and draws nothing. It is not a zero bar:
-   a zero bar at the floor above would be a season with a match in it. */
-.cy.none { background: none; }
-/* The season readout, on hover *and* on press. `title` alone is a mouse affordance, and this
-   band is read on a phone — so the exact year, match count and point count behind a bar were
-   reachable only by the readers least likely to need them. :active covers the thumb.
-   The chart needs the positioning context and has to stop clipping it for this to show. */
-.cchart { position: relative; }
-.cy[data-lbl]:hover::after, .cy[data-lbl]:active::after {
-  content: attr(data-lbl); position: absolute; left: 0; right: 0; bottom: 100%;
-  z-index: 3; margin-bottom: 3px; padding: 3px 5px; border-radius: 3px;
-  background: var(--ink); color: var(--bg); font-size: 9.5px; line-height: 1.3;
-  font-weight: 600; text-align: center; white-space: normal; pointer-events: none;
-}
-/* Touch devices fire :hover as a sticky pseudo-state after a tap, which would leave the last
-   tapped season's readout pinned open. Press-and-hold is the affordance there, so hover is
-   dropped wherever the pointer is coarse. */
-@media (hover: none) { .cy[data-lbl]:hover::after { content: none; } }
-/* The two ends of the axis, and nothing in between — a tick per season is unreadable at this
-   width, and the tooltip on each bar carries the exact year for anyone who wants one. Both
-   columns print both ends, rather than one shared axis under the pair: the two charts are
-   read as a pair but each has to stand up on its own on a phone, where the columns are half
-   a screen apart. */
-.cyears { display: flex; justify-content: space-between; margin: 3px 0 0; font-size: 9px;
-  letter-spacing: .04em; color: var(--muted); opacity: .85;
-  font-variant-numeric: tabular-nums; }
-.pbnone { margin: 0; font-size: 11.5px; color: var(--warn); line-height: 1.45; }
 /* the per-column dot, used where a stacked phone column has to name its own player */
 .tdot { flex: none; width: 9px; height: 9px; }
 .tdot.a { background: var(--a); }
@@ -1486,7 +1551,7 @@ a { color: var(--acc-d); }
 .rally .court { margin: 4px 0 2px; }
 .rally .court svg { width: 112px; height: auto; display: block; }
 .nochart { font-size: 12.5px; color: var(--warn); margin: 14px 0 0; }
-.nochart a, .pbnone a { font-weight: 700; color: var(--warn); }
+.nochart a { font-weight: 700; color: var(--warn); }
 
 .site-foot { border-top: 1px solid var(--line); margin-top: 24px; padding: 22px 0 40px; color: var(--muted); font-size: 13px; }
 .site-foot p { line-height: 1.55; max-width: 820px; }
