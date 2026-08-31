@@ -916,34 +916,28 @@ function yearScale(...rowsets) {
   return lo <= hi && max > 0 ? { lo, hi, max } : null;
 }
 
-// Where the ruler goes. Without one, a bar is only ever as long as its neighbour and the band
-// can say "more" but never "how much" — and the readout, which can, is a hover away. A single
-// hairline down each half at a round number of points gives every bar a length to be read
-// against, at the cost of two rules and one line of type.
+// Where the rulers go. Without one, a bar is only ever as long as its neighbour and the band
+// can say "more" but never "how much" — and the readout, which can, is a press away. Three
+// hairlines down each half give every bar lengths to be read against.
 //
-// Round in the 1/2/2.5/5 sense, and picked nearest half the peak so it lands mid-column. The
-// window is a guard rather than a preference: under 0.3 of the peak the rule stands in the
-// stubs, close enough to the year column that its label crowds it on a phone, and over 0.7 it
-// stands in the one or two seasons long enough to reach it, which is not where a ruler is any
-// use. The window is wider than the largest gap in the 1/2/2.5/5 ladder, so a step always
-// falls inside it.
-const NICE_STEPS = [1, 2, 2.5, 5];
-function rulerAt(max) {
-  let best = null;
-  for (let k = -1; k <= 6; k++) {
-    for (const m of NICE_STEPS) {
-      const v = m * Math.pow(10, k);
-      if (v < max * 0.3 || v > max * 0.7) continue;
-      const d = Math.abs(Math.log(v / (max / 2)));
-      if (!best || d < best.d) best = { v, d };
-    }
-  }
-  return best && best.v;
+// A quarter, half and three-quarters of the busiest bar: evenly spaced, always three, always
+// reaching toward the tip. The figures under them are those points rounded to two significant
+// figures (see kfmt) — the ruler is meant to be about right, and the exact count of any bar
+// is a tap away.
+const rulersAt = (max) => (max > 0 ? [0.25, 0.5, 0.75].map((f) => max * f) : []);
+
+// A ruler's figure: its value to two significant figures, then shortened — 2352 -> "2.4k",
+// 446 -> "450". Not an exact count of anything; the readout carries those.
+function kfmt(n) {
+  const mag = Math.pow(10, Math.floor(Math.log10(n)) - 1);
+  const r = Math.round(n / mag) * mag;
+  return r >= 1000 ? `${r / 1000}k` : `${r}`;
 }
 
-// One season's bar for one player. A season with no charted match draws nothing at all — the
-// year beside it still prints, so an empty row reads as a named gap rather than as a missing
-// row, and the gap is the finding on a player the charting picked up late or dropped.
+// One season's bar for one player. A season with no charted match draws nothing at all, but
+// its row is still there — the axis runs top to bottom in even year steps, so a blank row is
+// a year the charting missed, sitting at its right place between the seasons that have bars.
+// That gap is the finding on a player the charting picked up late or let go of for a while.
 //
 // Length is a percentage of the row's half, floored in CSS rather than here (see .covbar i) so
 // the floor is a pixel count and not a share of whatever width the half happens to be. Without
@@ -953,16 +947,21 @@ function rulerAt(max) {
 function coverBar(r, sc, tag) {
   if (!r) return `<span class="covbar ${tag}"></span>`;
   const pts = Number(r.points) || 0, mt = Number(r.matches) || 0;
-  // `title` is a mouse affordance and this band is read on a phone, where hover does not
-  // exist. `data-lbl` carries the same string to a CSS readout that opens on press as well as
-  // on hover (see .covbar i[data-lbl]), so a thumb can get at it. The bars stay out of the tab
-  // order deliberately — a thirty-season career would otherwise put sixty stops inside a modal.
+  // `title` is a mouse affordance; `data-lbl` carries the same string to a readout that opens
+  // on hover, on press, and on tap (see .covbar[data-lbl] in the stylesheet and onCovTap), so
+  // a thumb can get at it. The bars stay out of the tab order deliberately — a thirty-season
+  // career would otherwise put sixty stops inside a modal.
+  //
+  // It leads with the year. The axis names only its first and last season, so for every one
+  // between them this readout is the only place the year is written. Then the match count —
+  // the number people say out loud, and the one thing the drawing cannot show — and the point
+  // total the bar is drawn from.
   //
   // The readout hangs on the half rather than on the bar it names: a bar is eight pixels of
   // height and some seasons are three of length, which is not a thing a thumb can be asked to
   // land on. The half is the row's full height and the width of a column, it belongs to one
   // player throughout, and pressing anywhere along a season's left side asks about A's season.
-  const lbl = `${mt} ${mt === 1 ? "match" : "matches"} · ${pts.toLocaleString()} points`;
+  const lbl = `${r.year} · ${mt} ${mt === 1 ? "match" : "matches"} · ${pts.toLocaleString()} points`;
   return `<span class="covbar ${tag}" title="${esc(lbl)}" data-lbl="${esc(lbl)}"
     ><i style="width:${(pts / sc.max * 100).toFixed(1)}%"></i></span>`;
 }
@@ -1005,44 +1004,54 @@ function coverSum(d, tag) {
 // collect at the far end of the axis from "now" — at the bottom they trail off, and at the top
 // they would stand between the reader and the seasons every rate below is actually drawn from.
 // On a phone that is the difference between the current season being the first row and it being
-// a scroll away. The direction is safe to choose because the axis names every one of its rows;
-// it is a labelled column, not a bare edge to be inferred from.
+// a scroll away.
+//
+// The axis is two labels, not a column: the newest year over the midline, the oldest under it,
+// and the two players' bars meeting at that midline with nothing between them. Every year
+// between the ends is still a row in even steps, so height is the date — a reader finds a
+// season by where it sits on the run from top to bottom, and the exact year is in the readout.
 function coverPyramid(da, db, sc) {
   const by = (d) => new Map(((d && d.years) || []).map((r) => [Number(r.year), r]));
   const A = by(da), B = by(db);
   const rows = [];
   for (let y = sc.hi; y >= sc.lo; y--) {
-    rows.push(`<div class="covrow">${coverBar(A.get(y), sc, "a")}<b class="covyr">${y}</b>${coverBar(B.get(y), sc, "b")}</div>`);
+    rows.push(`<div class="covrow">${coverBar(A.get(y), sc, "a")}${coverBar(B.get(y), sc, "b")}</div>`);
   }
-  // One fraction of a half, handed to the stylesheet, and both hairlines and both labels are
-  // placed off it — so the type under a rule cannot drift off the rule it names.
-  const rule = rulerAt(sc.max);
-  const f = rule ? (rule / sc.max).toFixed(4) : null;
+  // Three gridlines per half, at a quarter, half and three-quarters of the peak (see
+  // rulersAt). Each line and the figure under it are placed by the same inline offset — a
+  // percentage of the half — so the type can't drift off the rule it names.
+  const ticks = rulersAt(sc.max);
   // Only over a half that has something in it. A player the charting has never reached gets an
-  // empty half, and a tick mark down the middle of it with a figure under it is a measurement
-  // offered for nothing — the emptiness is the finding and it does not need a scale.
-  const on = (d) => !!(rule && d && d.years && d.years.length);
-  const ruler = (on(da) ? `<i class="covrule a"></i>` : "") +
-    (on(db) ? `<i class="covrule b"></i>` : "");
-  // The tick's value once per side, and the unit once between them, under the year column: it
-  // is the one thing both halves share and that column is the one stretch of the row belonging
-  // to neither player. Repeating "points" beside each value puts a fifty-pixel label either
-  // side of a forty-pixel column, which on a phone is a collision.
+  // empty half, and tick marks down the middle of it with figures under them are a scale
+  // offered for nothing — the emptiness is the finding and it does not need one.
+  const on = (d) => !!(ticks.length && d && d.years && d.years.length);
+  // dir: -1 draws player A's half, out to the left of the midline; +1 draws B's, to the right.
+  const at = (v, dir) => 50 + dir * (v / sc.max * 50);
+  const marks = (d, tag, dir) => on(d)
+    ? ticks.map((v) => `<i class="covrule ${tag}" style="left:${at(v, dir).toFixed(2)}%"></i>`).join("")
+    : "";
+  const scale = (d, tag, dir) => on(d)
+    ? ticks.map((v) => `<span class="${tag}" style="left:${at(v, dir).toFixed(2)}%">${kfmt(v)}</span>`).join("")
+    : "";
+  const ruler = marks(da, "a", -1) + marks(db, "b", 1);
+  // The tick figures under each half, both sides, no unit word — the title above the band
+  // already says these are points, and "points" printed twice more here is a label the chart
+  // can be read without.
   const foot = ruler
-    ? `<p class="covfoot">${on(da) ? `<span class="a">${rule.toLocaleString()}</span>` : ""}
-       <span class="u">points</span>
-       ${on(db) ? `<span class="b">${rule.toLocaleString()}</span>` : ""}</p>` : "";
+    ? `<p class="covfoot">${scale(da, "a", -1)}${scale(db, "b", 1)}</p>` : "";
   const say = [`charted points by season, ${sc.lo} to ${sc.hi}`]
     .concat([[da, "left"], [db, "right"]].map(([d, side]) => {
       const p = peakOf(d);
       return p ? `${last(d.s.player)}, ${side}: busiest ${p.y}, ${p.mt} ${p.mt === 1 ? "match" : "matches"}` : "";
     }).filter(Boolean)).join("; ");
   // A season is a row of ~13px and thirty of them is a chart taller than the phone it is on.
-  // Past eighteen the rows and their years step down together rather than the chart being cut
-  // short or scrolled inside itself — every season the axis claims still holds a labelled row.
+  // Past eighteen the rows step down rather than the chart being cut short or scrolled inside
+  // itself — every season the axis spans still holds a row.
   const dense = sc.hi - sc.lo + 1 > 18 ? " dense" : "";
-  return `<div class="cov${dense}" style="${f ? `--covf:${f}` : ""}">
+  return `<div class="cov${dense}">
+    <b class="covend hi" aria-hidden="true">${sc.hi}</b>
     <div class="covgrid" role="img" aria-label="${esc(say)}">${ruler}${rows.join("")}</div>
+    <b class="covend lo" aria-hidden="true">${sc.lo}</b>
     ${foot}</div>`;
 }
 
@@ -1956,6 +1965,21 @@ function onResize() {
   requestAnimationFrame(() => { fitQueued = false; fitHeader(); });
 }
 
+// The charted-history readout opens on hover for a mouse. A coarse pointer has no hover — a
+// tap is a click there and nothing else — so on those devices a tap on a season's half of the
+// band pins its readout open, a tap on another season moves it, and a tap anywhere else in
+// the panel lets it go. One at a time: the readout is a floating strip and two would overlap.
+// Left to the mouse elsewhere, where :hover already does this and a pinned strip would just be
+// in the way.
+function onCovTap(e) {
+  if (!matchMedia("(hover: none)").matches) return;
+  const band = e.currentTarget;
+  const open = band.querySelector(".covbar.on");
+  const bar = e.target.closest(".covbar[data-lbl]");
+  if (open && open !== bar) open.classList.remove("on");
+  if (bar) bar.classList.toggle("on");
+}
+
 export async function openMatchup(m, t) {
   const mine = ++openSeq;
   const panel = document.getElementById("matchup");
@@ -1968,6 +1992,7 @@ export async function openMatchup(m, t) {
   if (!wired) {
     panel.addEventListener("keydown", onPanelKey);
     body.addEventListener("scroll", onBodyScroll, { passive: true });
+    body.addEventListener("click", onCovTap);
     window.addEventListener("resize", onResize, { passive: true });
     wired = true;
   }
