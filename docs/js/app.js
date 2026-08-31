@@ -91,17 +91,33 @@ async function main() {
   });
 }
 
-// Distinct tournament groups: live events first, then completed ones most-recent-first.
+// Where an event falls in the tennis calendar. The feed carries no start date, so this is what
+// orders two events of the same season by age: the four majors have fixed slots, everything
+// else sorts after them and falls back to the name. Roland Garros and its "French Open" alias
+// share slot 1.
+const CAL = [["australian open", 0], ["roland garros", 1], ["french open", 1],
+  ["wimbledon", 2], ["us open", 3]];
+const calSlot = (t) => {
+  const n = `${ename(t)} ${t.name || ""}`.toLowerCase();
+  const hit = CAL.find(([s]) => n.includes(s));
+  return hit ? hit[1] : 99;
+};
+
+// Distinct tournament groups: live events first, then completed ones newest-first — by season,
+// then by where the event sits in the calendar, so within a season the oldest sits at the
+// bottom of the list.
 function groups() {
   const seen = new Map();
   for (const t of data.tournaments) {
     const k = gkey(t);
     if (!seen.has(k)) {
-      seen.set(k, { key: k, label: glabel(t), completed: !!t.completed, season: t.season || 9999 });
+      seen.set(k, { key: k, label: glabel(t), completed: !!t.completed,
+        season: t.season || 9999, slot: calSlot(t) });
     }
   }
-  return [...seen.values()].sort(
-    (a, b) => (a.completed - b.completed) || (b.season - a.season) || a.label.localeCompare(b.label));
+  return [...seen.values()].sort((a, b) =>
+    (a.completed - b.completed) || (b.season - a.season) ||
+    (a.slot - b.slot) || a.label.localeCompare(b.label));
 }
 
 function gendersFor(key) {

@@ -638,6 +638,8 @@ a { color: var(--acc-d); }
 .matchup.cond .mcorner { gap: 0; margin: 0; }
 .matchup.cond .mp { font-size: 17px; }
 .matchup.cond .sg { font-size: 14px; }
+/* smaller names, shorter step off centre */
+.matchup.cond .mgrid { --mrule-step: 7px; }
 /* condensed, the names come up level with the close button, so the right-hand one keeps
    clear of it — the event line that does that job in the full header is gone at this size.
    Same lane the corner keeps, because it is the same button being kept clear of. On a wide
@@ -681,6 +683,9 @@ a { color: var(--acc-d); }
 .mgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-rows: auto auto; align-items: center; row-gap: 2px;
   --mgap-max: 40px; --mgap-min: 12px; column-gap: var(--mgap, var(--mgap-max));
+  /* the score divider's wings: how far each steps off centre, how far past the outermost
+     games it lands before it does, and how much the riser between the two leans outward — see .mrule */
+  --mrule-step: 10px; --mrule-pad: 3px; --mrule-splay: 18deg;
   margin-right: calc(var(--pad-l) - var(--pad-r)); }
 /* The names are the header. Everything else in the band — the event, the date, the button —
    is chrome describing the match, and sits a size or two below them so the ranking is read
@@ -715,12 +720,19 @@ a { color: var(--acc-d); }
    it is marking, and this one only has to be seen once. One gold both sides — see --win.
    ◀ is a fuller glyph than ◂ — solid, and drawn to the em rather than
    inset — so 18px here would land bigger than the 18px before it. 14px holds the size
-   the mark actually read at. */
-.mwin { flex: none; font-size: 14px; line-height: 1; color: var(--win); margin-left: -2px; }
+   the mark actually read at.
+   Its outer margin is pulled back the width of the glyph so the flex row sizes the name as
+   though the caret weren't in it — the glyph overhangs the gap toward the score instead. A
+   winner's name already carries the heavier weight (.mp.win .mname) and, on a phone, the
+   narrower of the two tracks; a slot of its own on top of that was turning a short winner
+   name ("N. Djokovic") onto two lines while a longer loser name opposite ("A. de Minaur")
+   stayed on one. */
+.mwin { flex: none; font-size: 14px; line-height: 1; color: var(--win); }
+.mp.a .mwin { margin: 0 -12px 0 -2px; }
 .mp.a .mwin::before { content: "\25C0"; }
-/* mirrored: the name is on its other side, so the caret turns and the nudge flips with it.
+/* mirrored: the name is on its other side, so the caret turns and both nudges flip with it.
    The colour does not — it is the same gold whoever won, which is the point of it. */
-.mp.b .mwin { margin: 0 -2px 0 0; }
+.mp.b .mwin { margin: 0 -2px 0 -12px; }
 .mp.b .mwin::before { content: "\25B6"; }
 .mflag { flex: none; font-size: 16px; line-height: 1; }
 .mseed { flex: none; font-size: 10px; font-weight: 700; color: var(--hd-mut); line-height: 1.6;
@@ -748,13 +760,34 @@ a { color: var(--acc-d); }
 /* nothing played yet: the gap between the names still needs to say what it is */
 .mscore.none { display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--hd-mut); }
-/* The line between the two scorelines. It spans the grid, so it runs the full width the
-   two players occupy rather than stopping at the score, and centring it in the two rows it
-   spans puts it on their shared boundary without anyone having to know how tall a row came
-   out. Gone on narrow screens, where both players share one row and the sets read across
-   instead of down — there is no boundary left to draw. */
-.mrule { grid-column: 1 / -1; grid-row: 1 / span 2; align-self: center;
-  height: 1px; background: color-mix(in srgb, var(--hd-mut) 28%, transparent); }
+/* The line between the two scorelines: which run of games belongs to which name. It steps —
+   up on the left, where player A's name sits below it, and down on the right, where B's sits
+   above it — so on each side the line pulls back from the name and leaves it room, then lands
+   level across the score itself, where the two scorelines have to stay cleanly apart. Four
+   right angles, two into each step.
+   Built off the score column, not the whole grid. This element is the level middle segment,
+   stretched --mrule-pad past the outermost games; each wing is a pseudo-element pinned to one
+   end of it — a raised (or dropped) horizontal border for the run, a side border for the
+   riser back to centre — carried out to 100vw, where the panel's own overflow clips it flush
+   at the edge. Gone on narrow screens, where both players share one row and the sets read
+   across instead of down: no boundary left to draw. */
+.mrule { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-self: stretch;
+  position: relative; margin: 0 calc(-1 * var(--mrule-pad)); height: 1px;
+  --mrule-c: color-mix(in srgb, var(--hd-mut) 28%, transparent); background: var(--mrule-c); }
+.mrule::before, .mrule::after { content: ""; position: absolute; width: 100vw;
+  height: var(--mrule-step); pointer-events: none; }
+/* left wing, raised: top border is the horizontal run, right border the riser dropping to the
+   middle segment at the score's left edge. Skewed from that joint — which is the fixed corner,
+   so the riser's foot stays on the segment while its head tips outward toward the panel edge,
+   and the run tips along with it. */
+.mrule::before { right: 100%; top: calc(50% - var(--mrule-step));
+  border-top: 1px solid var(--mrule-c); border-right: 1px solid var(--mrule-c);
+  transform-origin: 100% 100%; transform: skewX(var(--mrule-splay)); }
+/* right wing, dropped: mirror — bottom border the run, left border the riser at the score's
+   right edge, skewed from its joint so it leans out the other way. */
+.mrule::after { left: 100%; top: 50%;
+  border-bottom: 1px solid var(--mrule-c); border-left: 1px solid var(--mrule-c);
+  transform-origin: 0 0; transform: skewX(var(--mrule-splay)); }
 /* A live match answers "when" with itself, and it is the one thing in this corner with any
    urgency to it — so now that the chips are neutral, it is also the only coloured one, and
    the colour lands instead of being one tint among three. The stroke takes it too: the chip
@@ -932,22 +965,23 @@ a { color: var(--acc-d); }
 .tapestar { font-weight: 700; opacity: .6; padding-left: 1px; }
 
 /* --- charted history, as a pyramid (profileBand) --------------------------------------
-   One time axis down the centre, each player's seasons running out from it. One drawing on
-   the band's own width rather than a half-width strip per player: two strips spend a column
-   of width apiece on the same axis and still have no room to name a year in the middle of
-   it, and width is the dimension a phone has least of.
-   Capped and centred all the same. At the open panel's 840px an unbounded pyramid puts the
-   two players' longest seasons half a screen apart, which undoes the one thing a shared
-   baseline is for. The cap is a little over what the narrow layout gives it, so the drawing
-   is close to the same shape at both sizes rather than a different chart on each.
+   One time axis down the centre, each player's seasons running out from it and meeting at
+   it. One drawing on the band's own width rather than a half-width strip per player: two
+   strips spend a column of width apiece on the same axis, and width is the dimension a phone
+   has least of. The axis is two figures — its newest year and its oldest — with every season
+   between them a row in even steps, so a season is found by where its row sits on the run
+   from top to bottom and the exact year rides in the readout.
+   Full width of the panel, the same as every section below it — a capped band left an island
+   of chart adrift in a wide sheet. The comparison is read off the centre line the bars share,
+   not between their far tips, so a wider band only lengthens the run without costing the
+   reading; the rows keep the two players' seasons aligned however long they get.
    HTML bars rather than SVG, and deliberately. This has to be full-width at every viewport,
    and an SVG that stretches to its box stretches its own coordinate system with it — bar
    heights, gaps and hairlines all come out at whatever ratio the band happens to be, and
    none of them are the length they were drawn as. Flex items sized in percent are laid out
    in real pixels at whatever width the band resolves to, which is the same arithmetic done
    by the thing that actually knows the answer. */
-.pband { --covgut: 46px; --covrow: 13px; --covbar: 8px; --covyrs: 10px;
-  max-width: 560px; margin: 0 auto 16px; }
+.pband { --covrow: 13px; --covbar: 8px; margin: 0 0 16px; }
 /* No colour key of its own. The scroll-locked header thirty pixels above ends in the same
    A-to-B split rule and never scrolls away, so a second one here — narrower, with only the
    section title between them — would be the same key twice. */
@@ -961,14 +995,18 @@ a { color: var(--acc-d); }
 .covsum.b { text-align: right; }
 .covsum a { font-weight: 700; color: var(--warn); }
 
-/* --covf, the fraction of a half the ruler stands at, is set here by coverPyramid() so the
-   rules and the type naming them read it from one place and cannot drift apart. */
 .cov { position: relative; }
+/* The positioning context for the gridlines and the centre axis, both drawn behind the rows. */
 .covgrid { position: relative; }
-/* One season. The year column is a fixed width, so a bar's baseline is at the same x on
-   every row and the two halves are equal without either of them being measured. */
+/* The centre axis: the line the two players' bars meet at, running the height of the grid.
+   Where both have a season it is hidden under the bars and the A-to-B colour change carries
+   the split; where a season is thin or missing it is what still says which half is whose. */
+.covgrid::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: var(--line); transform: translateX(-50%); z-index: 0; }
+/* One season: two equal halves, no column between them, so the bars butt against the centre
+   axis from either side. */
 .covrow { position: relative; display: grid; align-items: stretch;
-  grid-template-columns: 1fr var(--covgut) 1fr; height: var(--covrow); }
+  grid-template-columns: 1fr 1fr; height: var(--covrow); }
 /* Each half's track, and the row's hit area — it takes the full row height and the whole
    width of a column so the readout has something a thumb can land on. The bar inside grows
    from the centre outward, so A packs to its right edge and B to its left, and the two share
@@ -989,71 +1027,69 @@ a { color: var(--acc-d); }
 .covbar > i { min-width: 3px; }
 .covbar.a > i { background: var(--a); }
 .covbar.b > i { background: var(--b); }
-/* The year, printed on every row rather than at the two ends of the axis. This is what
-   turning the chart buys: the strips could label only their first and last season and every
-   year between them was a hover away, which on a phone is nowhere. Set as an axis — small,
-   muted, tabular — so the column reads as a scale the bars hang off rather than as a third
-   thing being said. */
-.covyr { display: flex; align-items: center; justify-content: center;
-  font-size: var(--covyrs); line-height: 1; font-weight: 500; color: var(--muted);
-  letter-spacing: .02em; font-variant-numeric: tabular-nums; opacity: .8; }
-/* The ruler: one hairline down each half at a round number of points (see rulerAt), so a bar
-   has a length to be read against and not only its neighbour. Without it the band can say
-   "more" and never "how much", and the readout that can is a hover away.
+/* The axis, as its two ends: newest season over the midline, oldest under it. Centred on the
+   band, which is centred on the midline the bars meet at. Small, muted, tabular — a scale the
+   bars hang between, not a third thing being said. */
+.covend { display: block; text-align: center; font-size: 10px; line-height: 1;
+  font-weight: 500; letter-spacing: .02em; color: var(--muted);
+  font-variant-numeric: tabular-nums; opacity: .8; }
+.covend.hi { margin: 0 0 3px; }
+.covend.lo { margin: 3px 0 0; }
+/* The ruler: three hairlines down each half, at a quarter, half and three-quarters of the
+   peak (see rulersAt), so a bar has lengths to be read against and not only its neighbour.
+   Each line's left offset is set inline by coverPyramid() — a percentage of the band — and
+   the figure under it is placed off the same number, so type and rule cannot drift apart.
    Solid and one shade off the ground, behind the bars — a dashed rule would read as a
-   threshold, and this is a tick. The offset is measured from the middle: half the band, out
-   past half the year column, then --covf of what a bar has to run in. */
+   threshold, and this is a tick. */
 .covrule { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line);
   z-index: 0; pointer-events: none; }
-.covrule.a { left: calc((100% - var(--covgut)) / 2 * (1 - var(--covf))); }
-.covrule.b { left: calc((100% + var(--covgut)) / 2
-  + (100% - var(--covgut)) / 2 * var(--covf)); }
-/* The ruler's value, once per side, centred on its own rule. The window rulerAt() picks in
-   keeps both labels clear of the year column at one end and of the band's edge at the
-   other, so neither needs to be measured or dropped. */
+/* The tick figures, short (2.4k, 4.7k, …) and under both halves — the total above the band
+   already says these are points, so no unit word here. Each is centred on its own rule by the
+   inline left offset it shares with it. */
 .covfoot { position: relative; height: 12px; margin: 4px 0 0; font-size: 9px;
   letter-spacing: .04em; color: var(--muted); opacity: .85;
   font-variant-numeric: tabular-nums; }
 .covfoot span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
-.covfoot .a { left: calc((100% - var(--covgut)) / 2 * (1 - var(--covf))); }
-.covfoot .b { left: calc((100% + var(--covgut)) / 2
-  + (100% - var(--covgut)) / 2 * var(--covf)); }
-/* The unit, once, under the year column — the only stretch of the row that belongs to neither
-   player, and the only place it fits on a phone. */
-.covfoot .u { left: 50%; }
-/* The season readout, on hover *and* on press. `title` alone is a mouse affordance and this
-   band is read on a phone, so the match count behind a bar — the number people say out loud,
-   and the one thing here the drawing cannot show — was reachable only by the readers least
-   likely to need it. :active covers the thumb. The year is not in it: the row prints its own.
+/* The season readout, on hover, on press, and on tap. `title` alone is a mouse affordance and
+   this band is read on a phone, so the year and match count behind a bar — the year is on no
+   row now, and the match count is the number people say out loud — were reachable only by the
+   readers least likely to need them. :active covers a press; .on is set by onCovTap for a
+   plain tap on a coarse pointer, where :hover never fires and :active only flickers.
    It opens above its row, and below on the top row, which has nothing above it to open into.
    Each half answers for its own player. */
-.covbar[data-lbl]:hover::after, .covbar[data-lbl]:active::after {
+.covbar[data-lbl] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.covbar[data-lbl]:hover::after, .covbar[data-lbl]:active::after,
+.covbar[data-lbl].on::after {
   content: attr(data-lbl); position: absolute; bottom: 100%; z-index: 4;
   margin-bottom: 2px; padding: 3px 6px;
   background: var(--ink); color: var(--bg); font-size: 9.5px; line-height: 1.3;
   font-weight: 600; white-space: nowrap; pointer-events: none;
 }
-.covbar.a[data-lbl]:hover::after, .covbar.a[data-lbl]:active::after { right: 0; }
-.covbar.b[data-lbl]:hover::after, .covbar.b[data-lbl]:active::after { left: 0; }
+.covbar.a[data-lbl]:hover::after, .covbar.a[data-lbl]:active::after,
+.covbar.a[data-lbl].on::after { right: 0; }
+.covbar.b[data-lbl]:hover::after, .covbar.b[data-lbl]:active::after,
+.covbar.b[data-lbl].on::after { left: 0; }
 .covrow:first-of-type > .covbar[data-lbl]:hover::after,
-.covrow:first-of-type > .covbar[data-lbl]:active::after {
+.covrow:first-of-type > .covbar[data-lbl]:active::after,
+.covrow:first-of-type > .covbar[data-lbl].on::after {
   bottom: auto; top: 100%; margin: 2px 0 0; }
 /* Touch devices fire :hover as a sticky pseudo-state after a tap, which would leave the last
-   tapped season's readout pinned open. Press-and-hold is the affordance there, so hover is
-   dropped wherever the pointer is coarse. */
+   tapped season's readout pinned open. The tap-toggle (.on) is the affordance there, so hover
+   is dropped wherever the pointer is coarse. */
 @media (hover: none) {
   .covbar[data-lbl]:hover::after { content: none; }
 }
 /* A veteran drawn against a teenager stretches the shared axis to thirty seasons. Past
    eighteen the rows step down rather than the chart being cut short or scrolled inside
-   itself: every season the axis claims keeps a row, and every row keeps its year. */
-.cov.dense { --covrow: 10.5px; --covbar: 6px; --covyrs: 8.5px; --covgut: 40px; }
-/* A phone gives the pyramid about 330px to split. The rows tighten a little and the year
-   column with them; nothing else changes shape, which is the point of the form — it is the
-   same drawing at both sizes rather than two layouts. */
+   itself: every season the axis spans keeps a row. */
+.cov.dense { --covrow: 10.5px; --covbar: 6px; }
+.cov.dense .covend { font-size: 8.5px; }
+/* A phone gives the pyramid about 330px to split. The rows tighten a little; nothing else
+   changes shape, which is the point of the form — it is the same drawing at both sizes
+   rather than two layouts. */
 @media (max-width: 760px) {
-  .pband { --covgut: 42px; --covrow: 12px; --covbar: 7px; }
-  .cov.dense { --covgut: 38px; --covrow: 10px; --covbar: 5.5px; }
+  .pband { --covrow: 12px; --covbar: 7px; }
+  .cov.dense { --covrow: 10px; --covbar: 5.5px; }
   .covtop { font-size: 10.5px; }
 }
 
@@ -1680,7 +1716,7 @@ a { color: var(--acc-d); }
      this size there is no spare width to buy it with: the names already meet in the
      middle, and pulling them in only crowds them against the scoreline while the two
      edges sit empty. */
-  .mgrid { --mgap-max: 10px; --mgap-min: 4px; }
+  .mgrid { --mgap-max: 10px; --mgap-min: 4px; --mrule-step: 7px; --mrule-pad: 2px; }
   .mp { font-size: 17px; gap: 5px; justify-content: flex-start; }
   /* the seed badge goes unconditionally — it is in the draw behind the panel anyway, and
      unlike the name it is not something fitHeader trades away only when it has to */
