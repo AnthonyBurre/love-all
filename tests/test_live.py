@@ -54,6 +54,25 @@ def test_parse_singles_maindraw_only():
     assert m.a.country == "Spain"
 
 
+def test_parse_seats_sides_by_espn_bracket_order_not_array_order():
+    # ESPN's `order` (1 = top of the box, 2 = below) is the feed's own draw position, and
+    # the competitors array is often not in it — here it arrives 2 then 1. Side a must be
+    # the order-1 player regardless.
+    raw = {"events": [{"id": "189-2026", "name": "US Open", "major": True, "groupings": [
+        {"grouping": {"slug": "mens-singles"}, "competitions": [
+            {"id": "m1", "round": {"displayName": "Round 2"},
+             "status": {"type": {"state": "pre"}}, "competitors": [
+                 {"athlete": {"displayName": "Lower Half"}, "order": 2},
+                 {"athlete": {"displayName": "Upper Half"}, "order": 1}]},
+            {"id": "m2", "round": {"displayName": "Round 2"},
+             "status": {"type": {"state": "pre"}}, "competitors": [
+                 {"athlete": {"displayName": "First Listed"}},
+                 {"athlete": {"displayName": "Second Listed"}}]}]}]}]}
+    ms = {m.id: m for m in espn.parse(raw)[0].matches}
+    assert (ms["m1"].a.name, ms["m1"].b.name) == ("Upper Half", "Lower Half")
+    assert (ms["m2"].a.name, ms["m2"].b.name) == ("First Listed", "Second Listed")  # no order: as-is
+
+
 def test_parse_carries_the_per_set_winner_and_leaves_a_live_set_undecided():
     # A suspended five-setter, resumed as a fresh "Scheduled" slot: four decided sets
     # each carry a winner flag, the fifth (4-3, still on court) carries none on either

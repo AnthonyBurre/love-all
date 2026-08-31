@@ -229,6 +229,13 @@ def parse(raw: dict, cal: "dict | None" = None, fetched_at: str = "") -> "list[T
                 cs = c.get("competitors", [])
                 if rank is None or len(cs) != 2:
                     continue
+                # ESPN's `order` (1/2) is the competitor's slot in the box — 1 on top, 2
+                # below — and the only place the feed says which side of the bracket a
+                # player is on: it tracks the draw sheet, so across a round the winner of
+                # the upper feeder is the one carrying `order` 1. The competitors array is
+                # not itself in that order (it often arrives 2, 1), so read the field. A
+                # missing or odd value keeps feed order, via the stable sort.
+                cs = sorted(cs, key=lambda comp: comp.get("order") or 99)
                 st = (c.get("status") or {}).get("type") or {}
                 matches.append(Match(
                     id=str(c.get("id")), round_rank=rank,
