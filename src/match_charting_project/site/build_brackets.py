@@ -22,6 +22,7 @@ from match_charting_project.paths import PROJECT_ROOT
 
 DOCS_DATA = PROJECT_ROOT / "docs" / "data"
 INSIGHTS = PROJECT_ROOT / "data" / "insights.duckdb"
+MATCH_DETAILS = PROJECT_ROOT / "data" / "match_details"
 
 
 def _insights() -> "tuple[dict, dict]":
@@ -37,7 +38,12 @@ def _insights() -> "tuple[dict, dict]":
         for g, y, tk, p1, p2, mid in con.execute(
                 "SELECT gender, year, tourn_key, p1_norm, p2_norm, match_id "
                 "FROM charted_matches").fetchall():
-            charted[(g, int(y), tk, frozenset((p1, p2)))] = mid
+            # Keyed on the *unordered* pair, because the draw and the chart name the same
+            # meeting in either order. The chart's own player1 rides along in the value:
+            # the per-match sidecar is written from that player's perspective, and the panel
+            # has to know which of its two sides that is. Decided here rather than in the
+            # browser so the comparison runs through the same normalize() that built the key.
+            charted[(g, int(y), tk, frozenset((p1, p2)))] = (mid, p1)
     except duckdb.CatalogException:
         pass                              # older insights db without the table
     con.close()
@@ -56,15 +62,25 @@ def _tourn_keys(t: dict) -> "list[str]":
         players.tourn_key(v) for v in (t.get("city"), t.get("name")) if v))
 
 
-def _chart_id(m: dict, gender: str, year: int, tks: "list[str]", charted: dict) -> "str | None":
+def _chart_of(m: dict, gender: str, year: int, tks: "list[str]",
+              charted: dict) -> "tuple[str, bool] | None":
+    """This match's chart id, plus whether the chart's player1 is the draw's *B* side.
+
+    The draw and the chart order a meeting independently — a draw slot is fixed by the
+    bracket, a chart id by whoever filed it — so they disagree about which player comes
+    first roughly half the time. Everything the sidecar holds is written player1-first,
+    so the panel needs that flag to lay a match's own numbers against the right names.
+    """
     a, b = m["a"]["name"], m["b"]["name"]
     if not a or not b or a == "TBD" or b == "TBD":
         return None
-    pair = frozenset((players.normalize(a), players.normalize(b)))
+    na, nb = players.normalize(a), players.normalize(b)
+    pair = frozenset((na, nb))
     for tk in tks:
         found = charted.get((gender, year, tk, pair))
         if found:
-            return found
+            mid, chart_p1 = found
+            return mid, chart_p1 != na
     return None
 
 
@@ -97,12 +113,12 @@ def _annotate(t: dict, universe: dict, charted: dict) -> None:
                 named = s["name"] and s["name"] not in ("TBD", draws.BYE)
                 s["matched"] = (players.match_player(s["name"], t["gender"], universe)
                                 if named else None)
-            m["charted"], m["chart_id"] = None, None
+            m["charted"], m["chart_id"], m["chart_flip"] = None, None, None
 
     if not t.get("completed"):
         return
     tks = _tourn_keys(t)
-    ids = {m["id"]: _chart_id(m, t["gender"], t["year"], tks, charted)
+    ids = {m["id"]: _chart_of(m, t["gender"], t["year"], tks, charted)
            for r in t["rounds"] for m in r["matches"]}
     if not any(ids.values()):             # nothing charted yet → per-player shading
         return
@@ -110,8 +126,10 @@ def _annotate(t: dict, universe: dict, charted: dict) -> None:
         for m in r["matches"]:
             if m.get("placeholder"):
                 continue
-            m["chart_id"] = ids[m["id"]]
-            m["charted"] = ids[m["id"]] is not None
+            found = ids[m["id"]]
+            m["chart_id"] = found[0] if found else None
+            m["chart_flip"] = found[1] if found else None
+            m["charted"] = found is not None
 
 
 def payload() -> dict:
@@ -154,12 +172,45 @@ def payload() -> dict:
             "tournaments": tours}
 
 
-def build() -> "tuple[int, bool]":
-    """Write docs/data/brackets.json (+ copy insights.duckdb). Returns (tournaments, copied)."""
+def _copy_match_details(data: dict) -> int:
+    """Copy across the per-match sidecar for every charted match these draws reference.
+
+    The upstream set (``site build-match-details``, weekly) covers every charted slam/1000
+    match of the last two years, because that build cannot know which of them a draw
+    assembled days later will hold. This build does know — it has just written the feed —
+    so only the handful the site can actually open a panel for is served, and ``docs/``
+    stays a few hundred KB rather than eight megabytes.
+
+    Rebuilt from scratch each run: the archive prunes as events age out (see
+    ``live.history.prune``), and a sidecar for a draw no longer in the feed is dead weight
+    that would otherwise ship forever.
+    """
+    out = DOCS_DATA / "matches"
+    if out.exists():
+        shutil.rmtree(out)
+    if not MATCH_DETAILS.is_dir():
+        return 0
+    wanted = {m["chart_id"] for t in data["tournaments"] for r in t["rounds"]
+              for m in r["matches"] if m.get("chart_id")}
+    out.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for cid in wanted:
+        src = MATCH_DETAILS / f"{cid}.json"
+        if src.exists():
+            shutil.copy(src, out / f"{cid}.json")
+            copied += 1
+    return copied
+
+
+def build() -> "tuple[int, bool, int]":
+    """Write docs/data/brackets.json (+ insights.duckdb, + the per-match sidecars).
+
+    Returns (tournaments, insights copied, match sidecars copied).
+    """
     DOCS_DATA.mkdir(parents=True, exist_ok=True)
     data = payload()
     (DOCS_DATA / "brackets.json").write_text(json.dumps(data))
     copied = INSIGHTS.exists()
     if copied:
         shutil.copy(INSIGHTS, DOCS_DATA / "insights.duckdb")
-    return len(data["tournaments"]), copied
+    return len(data["tournaments"]), copied, _copy_match_details(data)

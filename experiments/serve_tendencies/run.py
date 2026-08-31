@@ -58,7 +58,7 @@ from model import pressure  # noqa: E402  (the score-aware leverage buckets)
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
 from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
-from match_charting_project.shots.notation import SHOT_LETTERS  # noqa: E402
+from match_charting_project.shots.notation import serve_dir  # noqa: E402
 from match_charting_project.shots.score import serve_side  # noqa: E402
 
 REPORTS = PROJECT_ROOT / "reports"
@@ -88,24 +88,6 @@ WINDOWS = (5, 10, 20, 40, 80, None)  # matches of history scored; None = whole c
 HALFLIVES = (10, 20, 40, 80)         # exponential decay in matches, same scoring
 SMOOTH_K = 25          # pseudo-counts pulling a window's mix toward the tour's
 FDR_Q = 0.10           # Benjamini-Hochberg level for the per-player tests
-
-
-def serve_dir(s: "str | None") -> str:
-    """Direction of the delivery charted in ``s``.
-
-    Returns 4/5/6, ``"0"`` when the charter explicitly recorded an unknown
-    target, or ``""`` when the string carries no target at all. Leading markers
-    (a net-cord ``c``) are skipped; a stroke letter means the serve went
-    unrecorded and we stop looking.
-    """
-    for ch in s or "":
-        if ch in "456":
-            return ch
-        if ch == "0":
-            return "0"
-        if ch in SHOT_LETTERS:
-            break
-    return ""
 
 
 def hand_map(con) -> dict:

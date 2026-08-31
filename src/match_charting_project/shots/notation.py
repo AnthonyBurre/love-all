@@ -74,6 +74,28 @@ def stroke_kind(letter: str, is_serve: bool) -> str:
     return "other"
 
 
+def serve_dir(serve_str: "str | None") -> str:
+    """Direction of the delivery charted in ``serve_str``: 4 / 5 / 6.
+
+    ``"0"`` where the charter explicitly recorded an unknown target, ``""`` where the
+    string carries no target at all. Leading markers (a net-cord ``c``) are skipped; a
+    stroke letter means the serve went unrecorded, so we stop looking rather than reading
+    a rally direction as a serve one.
+
+    Read straight off the raw column rather than off a parsed point, because the two
+    callers both want the *first* delivery — landed or faulted — and ``parse_point``
+    keeps only the serve that started the point.
+    """
+    for ch in serve_str or "":
+        if ch in "456":
+            return ch
+        if ch == "0":
+            return "0"
+        if ch in SHOT_LETTERS:
+            break
+    return ""
+
+
 def other_player(player: int) -> int:
     return 2 if player == 1 else 1
 

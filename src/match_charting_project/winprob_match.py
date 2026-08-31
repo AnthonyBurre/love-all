@@ -188,6 +188,60 @@ class MatchWP:
         return win - lose
 
 
+# -- predictive spread ----------------------------------------------------
+# How far a player's actual point-win probability in one match sits from the strength the
+# model predicted for them, over and above coin-flipping. Measured, not chosen: score every
+# player-match serve line in the corpus against its own walk-forward prediction, take the
+# variance of the residuals, and subtract the binomial variance those residuals would have
+# had if the prediction were exactly right. Over 23,111 lines that leaves 6.6 points of
+# standard deviation unexplained — 57% of the dispersion in the residuals.
+#
+# It is not estimation error. Estimation error shrinks as a player accumulates charting and
+# is about 1.5 points for a well-charted one; this does not shrink, because it is the player
+# actually playing differently — opponent, surface, conditions, the day. The score tree is
+# exact given p, and p is not a constant.
+#
+# Left out, the tree compounds a point probability it treats as known over 250 points, and
+# the answer is far too sure of itself: a top seed against a thinly-charted opponent came out
+# at 99.98%, and pairs of journeymen came out at 97% on which of them happened to have the
+# better charted week. Carried, the same numbers land where a reader can use them.
+FORM_SD = 0.066
+
+# Five-node Gauss-Hermite quadrature for the probabilists' weight, nodes in standard
+# deviations and weights summing to 1. Exact through the fourth moment, which is more than a
+# normal spread on a bounded probability needs. Hard-coded rather than derived at import: they
+# are constants, and this module carries no numpy dependency.
+_GH_X = (-2.856970, -1.355626, 0.0, 1.355626, 2.856970)
+_GH_W = (0.011257, 0.222076, 0.533333, 0.222076, 0.011257)
+
+
+def predictive_models(p1: float, p2: float, best_of: int = 3, sd: float = FORM_SD,
+                      lo: float = 0.30, hi: float = 0.92) -> "list[tuple[MatchWP, float]]":
+    """``(model, weight)`` pairs to average a win probability over.
+
+    Turns the plug-in answer — the tree evaluated at one best guess of each player's
+    strength — into a predictive one, by evaluating it across the spread of strengths the
+    match could actually be played at and averaging. The tree is sharply non-linear in those
+    strengths, so this is not the same number: averaging the answers is right and taking the
+    answer at the average is not.
+
+    Clamped to the same band ``matchup_strength`` uses, so a node in the tail cannot ask the
+    tree for a strength the model never claims.
+    """
+    out = []
+    for x1, w1 in zip(_GH_X, _GH_W):
+        a = min(hi, max(lo, p1 + sd * x1))
+        for x2, w2 in zip(_GH_X, _GH_W):
+            b = min(hi, max(lo, p2 + sd * x2))
+            out.append((MatchWP(a, b, best_of), w1 * w2))
+    return out
+
+
+def blend(models: "list[tuple[MatchWP, float]]", fn) -> float:
+    """Weighted mean of ``fn(model)`` over a ``predictive_models`` set."""
+    return sum(w * fn(m) for m, w in models)
+
+
 # -- serve+return strength inputs -----------------------------------------
 
 def parse_score(svr, set1, set2, gm1, gm2, pts, tb_games: int = 6) -> "Score | None":
