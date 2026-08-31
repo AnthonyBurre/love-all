@@ -103,9 +103,10 @@ const calSlot = (t) => {
   return hit ? hit[1] : 99;
 };
 
-// Distinct tournament groups: live events first, then completed ones newest-first — by season,
-// then by where the event sits in the calendar, so within a season the oldest sits at the
-// bottom of the list.
+// Distinct tournament groups: live events first, then completed ones strictly newest-to-oldest
+// down the list — by season, then by where the event sits in the calendar, so within a season
+// the later major (Wimbledon over the Australian Open) sits above the earlier one. Events the
+// calendar can't place have no real slot and fall to the bottom of their season.
 function groups() {
   const seen = new Map();
   for (const t of data.tournaments) {
@@ -115,9 +116,10 @@ function groups() {
         season: t.season || 9999, slot: calSlot(t) });
     }
   }
+  const recency = (g) => (g.slot === 99 ? -1 : g.slot);   // unplaced events last within a season
   return [...seen.values()].sort((a, b) =>
     (a.completed - b.completed) || (b.season - a.season) ||
-    (a.slot - b.slot) || a.label.localeCompare(b.label));
+    (recency(b) - recency(a)) || a.label.localeCompare(b.label));
 }
 
 function gendersFor(key) {
