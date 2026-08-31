@@ -151,6 +151,10 @@ function matchCard(m, t, cov, onClick, wide) {
     card.onclick = () => onClick(m, t);
     card.tabIndex = 0;
     card.setAttribute("role", "button");
+    // Which match this tile is, so the panel can find its way back to the tile it was
+    // opened from even when that is no longer the same element — a re-render between the
+    // two hands back an equivalent card, not the one that was clicked. See closeMatchup().
+    card.dataset.mid = m.id;
     card.onkeydown = (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();

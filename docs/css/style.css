@@ -431,8 +431,14 @@ a { color: var(--acc-d); }
      and the one that is a pseudo-element with none come out level */
   --chip-h: 20px; }
 .scrim { position: fixed; inset: 0; background: rgba(12,18,15,.45); backdrop-filter: blur(2.5px); z-index: 20; }
+/* dvh, the same unit the phone sheet takes, and for the same reason: a landscape phone is
+   wider than 700px — 844 on an iPhone, 915 on an Android — so it is this rule it lands on,
+   not the sheet's. vh there is the *large* viewport, the one with the browser's toolbar
+   retracted, and a toolbar out takes about 11% of a 390px-tall screen against the 12% this
+   leaves itself. The foot of the panel sat under it. dvh measures what is actually on
+   screen, so the 12% stays 12% whichever way the toolbar is. */
 .matchup { position: fixed; z-index: 21; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(880px, 94vw); max-height: min(88vh, 860px);
+  width: min(880px, 94vw); max-height: min(88dvh, 860px);
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--card); border: 0; border-radius: var(--radius);
   box-shadow: 0 24px 80px rgba(0,0,0,.35); animation: pop .16s ease-out; }
@@ -455,23 +461,26 @@ a { color: var(--acc-d); }
    target is on the panel (nothing is clipped away by the sheet's own overflow), the mark
    is flush in the corner, and the top row of chrome comes out one height across the band.
    --close-lane, which is what a condensed name keeps clear of, measures off the target and
-   not the chip: what you have to not collide with is the thing you can press. */
+   not the chip: what you have to not collide with is the thing you can press.
+   On the phone sheet the lane is not paid at all — the button rises out of the panel there
+   instead, since a phone's name track cannot spare it. See the sheet's own block. */
 .matchup { --close-size: 44px; --close-chip-w: 32px; }
 .matchup .close { position: absolute; top: 0; right: 0; z-index: 3;
   border: 0; background: none; padding: 0;
   width: var(--close-size); height: var(--close-size);
-  line-height: 1; cursor: pointer; color: var(--hd-mut); }
+  line-height: 1; cursor: pointer; color: var(--hd-mut);
+  transition: top .18s ease; }
 .matchup .close::before { content: ""; position: absolute; top: 0; right: 0;
   width: var(--close-chip-w); height: var(--chip-h);
   background: var(--card); border: 1px solid var(--hd-line);
   border-top-width: 0; border-right-width: 0; clip-path: var(--chip-clip-r);
-  transition: background .12s ease, border-color .12s ease; }
+  transition: background .12s ease, border-color .12s ease, top .18s ease; }
 /* Centred on the chip, not on the target — the two do not share a centre. Both the
    ::before and the glyph are positioned, so they stack in source order and the mark stays
    on top without a z-index. */
 .matchup .close svg { position: absolute; display: block; fill: currentColor;
   top: calc(var(--chip-h) / 2); right: calc(var(--close-chip-w) / 2);
-  transform: translate(50%, -50%); }
+  transform: translate(50%, -50%); transition: top .18s ease; }
 .matchup .close:hover { color: var(--hd-ink); }
 .matchup .close:hover::before { background: color-mix(in srgb, var(--hd-mut) 9%, var(--card));
   border-color: color-mix(in srgb, var(--hd-mut) 45%, var(--hd-line)); }
@@ -494,11 +503,9 @@ a { color: var(--acc-d); }
    having to be parked next to something. The band itself stays flat and neutral: the rule
    is the statement, and a surface tinted underneath it only made the same point twice,
    more weakly. */
-/* --close-lane is how far the close button's box reaches past the content edge, plus a
-   gap: anything sharing the button's row keeps out of it, and nothing else has to know
-   the button's size or inset. It was three hand-tuned numbers before — 38px here, 36px on
-   the condensed name, 34px of padding on the phone — which is three chances to move the
-   button and leave one of them behind. */
+/* --close-lane is how far the close button's box reaches past the content edge, plus a gap:
+   anything sharing the button's row keeps out of it, and nothing else has to know the
+   button's size or inset. */
 /* The padding is the names' padding. Everything else in the band — the two label chips, the
    close button, the chart button — is pulled back out through it to the panel's own edges,
    so the four of them are the corners of the band rather than four things standing on it.
@@ -630,14 +637,18 @@ a { color: var(--acc-d); }
    those would go on pulling the names up through the band's padding. */
 .matchup.cond .mcorner { gap: 0; margin: 0; }
 .matchup.cond .mp { font-size: 17px; }
+.matchup.cond .sg { font-size: 14px; }
 /* condensed, the names come up level with the close button, so the right-hand one keeps
    clear of it — the event line that does that job in the full header is gone at this size.
-   Same lane the corner keeps, because it is the same button being kept clear of. */
+   Same lane the corner keeps, because it is the same button being kept clear of. On a wide
+   panel that lane is affordable: the same collapse takes the names from 24px to 17px, which
+   is ~100px back on a track this one costs 32. The sheet, where it is not affordable, does
+   not pay it — see the max-width: 700px block. */
 .matchup.cond .mp.b { padding-right: var(--close-lane); }
-.matchup.cond .sg { font-size: 14px; }
 .matchup.cond .mflag { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) {
-  .mtop, .mcorner, .mevent, .mstate, .mp, .matchup .close { transition: none; }
+  .mtop, .mcorner, .mevent, .mstate, .mp,
+  .matchup .close, .matchup .close::before, .matchup .close svg { transition: none; }
 }
 /* Two staggered lines, each a player: their name at their own end and their games run
    along it, with both scorelines sharing the middle column so a set still reads down a
@@ -754,7 +765,12 @@ a { color: var(--acc-d); }
 /* --pad-t is the sticky section headings' business as much as this box's: they pin
    against the content edge, not the panel edge, so they have to pull back by exactly
    this much to sit flush under the scoreboard. Kept in one place so the two can't drift. */
-.mbody { --pad-t: 14px; overflow-y: auto; overscroll-behavior: contain; padding: var(--pad-t) 20px 22px; }
+/* The horizontal padding is --pad-l, the same token the band above sets its names by, so
+   the header and the scroll under it share one left edge at every width the panel has. A
+   literal here is a second copy of a number that changes at a breakpoint, and two copies
+   do not have to change at the same one. */
+.mbody { --pad-t: 14px; overflow-y: auto; overscroll-behavior: contain;
+  padding: var(--pad-t) var(--pad-l) 22px; }
 /* A match with no entrants on either side writes no body at all (see openMatchup), and an
    empty box still holding its own 14/22 leaves a dead band of card under the split rule —
    which reads as something that failed to load rather than as nothing to say. */
@@ -952,6 +968,9 @@ a { color: var(--acc-d); }
    column is not wide enough for "shot selection" to sit under a figure without wrapping. */
 .pbfig { margin: 7px 0 0; line-height: 1.2; display: flex; align-items: baseline; gap: 4px; }
 .pbfig b { font-size: 14px; font-weight: 700; color: var(--ink); }
+/* The losing side of a figure with a better end — winner stays in ink, this drops to regular
+   weight and the muted grey. Matches .pbcmp-row b.trail on the phone and the rings' lead/trail. */
+.pbfig b.trail { font-weight: 400; color: var(--muted); }
 .pbfig span { font-size: 10px; color: var(--muted); }
 .pbfig em { font-style: normal; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--muted); }
@@ -1059,6 +1078,44 @@ a { color: var(--acc-d); }
   grid-template-areas: "sa sb" "rings rings"; align-items: start; }
 .tapemain > .pbside.a { grid-area: sa; }
 .tapemain > .pbside.b { grid-area: sb; }
+
+/* The phone comparison of the two style columns (profileCompare). The flanking .pbside pair
+   is ~150px wide apiece on a phone and prints every label twice; on the narrow layout this
+   replaces them with one row per figure — A's value, the label once, B's value — so the two
+   numbers sit across a centre line. The wide layout keeps the columns, where the rings run
+   between them. Hidden until the media query at the foot of this block turns it on. */
+.pbcmp { display: none; }
+/* The player-colour key, same split rule the scoreboard and each .pbside carry, with a gap
+   cut at the centre so it doesn't read as one bar. */
+.pbcmp::before { content: ""; display: block; height: 4px; margin-bottom: 11px;
+  background: linear-gradient(to right, var(--a) 0 calc(50% - 8px),
+    transparent calc(50% - 8px) calc(50% + 8px), var(--b) calc(50% + 8px) 100%); }
+.pbcmp-head { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px;
+  align-items: start; }
+.pbcmp-head .b { text-align: right; }
+.pbcmp-head.arch span { font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--ink); }
+.pbcmp-head.hand { margin-top: 2px; }
+.pbcmp-head.hand span { font-size: 11px; color: var(--muted); }
+.pbcmp-head.hand + .pbcmp-row, .pbcmp-head.arch + .pbcmp-row { margin-top: 15px; }
+.pbcmp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 12px; align-items: baseline; margin-top: 10px; }
+.pbcmp-row b { font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+/* The losing side of a figure that has a better end — the winner stays in ink, this drops to
+   regular weight and the muted grey, matching the rings' lead/trail split. */
+.pbcmp-row b.trail { font-weight: 400; color: var(--muted); }
+.pbcmp-row .a { text-align: left; }
+.pbcmp-row .b { text-align: right; }
+.pbcmp-row .pbcu { font-size: 9px; font-weight: 500; color: var(--muted); }
+/* The label, printed once between the pair. Set as the figures' own caption — small caps,
+   muted — so the eye reads across the two numbers and drops to the word only to place them. */
+.pbcmp-row .pbcl { text-align: center; font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+@media (max-width: 760px) {
+  .tapemain { grid-template-areas: "cmp cmp" "rings rings"; }
+  .tapemain > .pbside { display: none; }
+  .pbcmp { display: block; grid-area: cmp; }
+}
 /* One ring per row, centred. A ring is a fixed-size drawing with a fixed reserve either side
    for the figures that hang off it (see .dn), so it reads centred at any track width
    regardless of how much of the row is actually spare. */
@@ -1092,7 +1149,7 @@ a { color: var(--acc-d); }
 .dn { min-width: 0; padding: 0 var(--dn-pad) 20px; }
 /* The two ends of the ring's scale, at the two ends of the ring: zero at the foot both sweeps
    leave from, the ceiling at the top they climb toward. Printed rather than assumed, because
-   the two rings do not share one — "67%" against an arc at two thirds says nothing without it
+   the two rings do not share one — "67" against an arc at two thirds says nothing without it
    — and printed on the drawing rather than in a caption above it, because this is where a
    reader looks to find out what an arc has reached.
    Set inside the hole, hard against the band's inner edge — the end of the scale each one
@@ -1167,6 +1224,9 @@ a { color: var(--acc-d); }
    wedge figure is a slice of it — and three numbers at one size would be three headlines
    around one ring. */
 .dgms, .dwdg { font-size: 10px; }
+/* Bolded in ink on the side that holds or breaks more — the same lead mark .dpts carries, a
+   tier lighter to match the smaller figure. */
+.dgms.lead { font-weight: 700; color: var(--ink); }
 /* The outright-win figures, in a row of their own under the ring — see dnLabel() for why they
    are the two that come off the circle. Split either side of the centre line, which is the
    same rule the other four follow and the only thing keeping the two players' apart when both
@@ -1238,18 +1298,6 @@ a { color: var(--acc-d); }
    players and this is about the measuring, and inside a bordered box a margin on its own reads
    as a gap rather than as a change of subject. */
 .figkey { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
-/* The unit glossary closing that key (figureKey). Ruled off from the definitions above it,
-   because the subject changes: those say what is measured, these say what it is measured in,
-   and without the rule they read as three more paragraphs of the same kind.
-   Selected as "the first .unitdef after something that isn't one" rather than :first-of-type,
-   which counts divs and would land on the first definition instead. There is always a
-   definition ahead of it — a unit only prints when the figure using it does. */
-.figkey .keytext div:not(.unitdef) + .unitdef { margin-top: 10px; padding-top: 9px;
-  border-top: 1px solid var(--line); }
-/* The unit is the subject of its own line, so it leads in its own right rather than as the
-   bolded first words of a sentence — and it is set in the same lowercase the figures print it
-   in, so "bits" here is visibly the "bits" beside the number up there. */
-.figkey .unitdef b { color: var(--ink); }
 .segkey { display: inline-block; width: 13px; height: 8px; background: var(--muted); vertical-align: 0; }
 .segkey.miss { opacity: .38; }
 /* The figure wears the mark it is drawn as, halo and all — hence the margin, which is the
@@ -1265,7 +1313,8 @@ a { color: var(--acc-d); }
    passes behind it rather than through the gutters. */
 .msec { margin-top: 14px; }
 .sechead { position: sticky; top: calc(-1 * var(--pad-t, 0px)); z-index: 2; background: var(--card);
-  margin: 0 -20px 7px; padding: 6px 20px 5px; border-bottom: 1px solid var(--line);
+  margin: 0 calc(-1 * var(--pad-l)) 7px; padding: 6px var(--pad-l) 5px;
+  border-bottom: 1px solid var(--line);
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 /* read once, then out of the way — unlike the topic, it doesn't stick */
 .secnote { margin: 0 0 9px; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
@@ -1529,14 +1578,38 @@ a { color: var(--acc-d); }
   .site-head .billing { font-size: 12.5px; }
   .nm { font-size: 13px; }
   /* the dialog becomes a bottom sheet: full width, rounded top, slides up */
-  .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%; max-height: 92dvh; animation: sheet .2s ease-out; }
+  /* The sheet stands on the bottom edge, so every pixel it gives up is above it — which is
+     the end the condensed close button rises into. The second term keeps that room a fixed
+     --close-size rather than a share of the screen: 8% is 44px only from 550px of height up,
+     and under that the button went off the top. overflow goes visible with it, since the
+     button is the one thing on this panel that is meant to be outside it. */
+  .matchup { top: auto; bottom: 0; left: 0; transform: none; width: 100%;
+    max-height: min(92dvh, calc(100dvh - var(--close-size)));
+    overflow: visible; animation: sheet .2s ease-out; }
+  /* Condensed, the button leaves the sheet and stands on the scrim above it. In the full
+     header the corner is the button's own — the event and date chips are opposite it and the
+     names are a row below. Condensed that row is gone, the names come up level with it, and
+     the corner becomes the end of the right-hand name.
+     A lane across that name is what the dialog spends and what a phone cannot: 38px off a
+     track already down to ~104px is what broke "F. Auger-Aliassime" over four lines and sent
+     the scoreboard to its stacked fallback on matches whose names fit a single line either
+     side of the score. So here the button is the thing that moves, and the band keeps its
+     full width. */
+  .matchup.cond .mp.b { padding-right: 0; }
+  .matchup.cond .close { top: calc(-1 * var(--close-size)); }
+  /* Raised, the chip is still against two edges — the screen's on its right and the sheet's
+     underneath — so it keeps those two sides square and gives up their borders, exactly as
+     it does down in the corner. Only the pair of edges changes. It moves to the foot of the
+     target rather than its head so the mark is the part against the sheet, and the rest of
+     the 44px reaches up into the scrim, which has nothing in it to collide with. Written as
+     a top offset in both states, not top in one and bottom in the other, so the move is a
+     length the chip can be animated along rather than a jump between two anchors. */
+  .matchup.cond .close::before { top: calc(var(--close-size) - var(--chip-h));
+    border-width: 1px; border-right-width: 0; border-bottom-width: 0;
+    clip-path: var(--chip-clip-r); }
+  .matchup.cond .close svg { top: calc(var(--close-size) - var(--chip-h) / 2); }
   /* three columns in a phone's width: the first name goes to an initial before any name
      has to wrap, and the seed badge drops — it is in the draw behind the panel anyway */
-  /* All four ride on the panel, not the band — the close button reads them too, and the
-     band's own padding is now the number the pinned chrome pulls back out through, so it
-     has to be the variable and not a literal in the padding shorthand. A 13 here against a
-     14 there put the corner row a pixel over the panel's top edge, where it was clipped. */
-  .matchup { --pad-l: 14px; --pad-r: 34px; --band-t: 13px; --band-b: 12px; }
   /* Names back to the outer ends instead of pulled in toward the score. Pulling them in
      is a wide-panel move — it buys a scoreboard out of width the header was wasting. At
      this size there is no spare width to buy it with: the names already meet in the
@@ -1555,8 +1628,18 @@ a { color: var(--acc-d); }
 /* phone panel: everything stacks, so each column names its own player rather than relying
    on a left-right position that stacking removes. */
 @media (max-width: 620px) {
-  .mbody { --pad-t: 12px; padding: var(--pad-t) 14px 20px; }
-  .sechead { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+  /* The panel's gutter — the band's names, the body's scroll and the section headings all
+     take --pad-l, so this one number moves the whole panel's left edge at once.
+     It narrows here and not at 700 with the sheet: 620 is where the panel is on a phone,
+     and a sheet 660px across is a narrow window, wider than the desktop panel at the same
+     viewport and comfortable at the 20px edge that panel has.
+     All four ride on the panel, not the band — the close button reads them too, and the
+     band's own padding is the number the pinned chrome pulls back out through, so it has
+     to be the variable and not a literal in the padding shorthand. --band-t has to be that
+     number to the pixel: a 13 here against a 14 there puts the corner row over the panel's
+     top edge, where it is clipped. */
+  .matchup { --pad-l: 14px; --pad-r: 34px; --band-t: 13px; --band-b: 12px; }
+  .mbody { --pad-t: 12px; padding-bottom: 20px; }
   .tape { padding: 11px 12px 12px; }
   /* The court sections stay two-up. Stacking them puts a player's three drawings a
      screen and a half from the three they are meant to be read against, which is the
@@ -1564,17 +1647,25 @@ a { color: var(--acc-d); }
      survives the phone. The sequence sections have no drawing to trade and do stack. */
   .seccols { grid-template-columns: 1fr 1fr; column-gap: 10px; }
   /* stacked, there is nothing left to align across, so the shared rows come off —
-     left on, both columns would claim the same single cell and sit on top of each other */
+     left on, both columns would claim the same single cell and sit on top of each other.
+     The indent belongs to the stack and is set with it: a column on its own line reads as
+     a block under the player's name it now carries, and 8px is what sets it off the
+     panel's edge. A column still standing beside its opposite number is placed by that,
+     and an indent there only pushes its content off the left end of the colour rule
+     naming it. */
   .msec.text .seccols { grid-template-columns: 1fr; grid-template-rows: none; row-gap: 16px; }
-  .msec.text .seccol { display: block; grid-row: auto; }
-  .seccol { padding-left: 8px; }
+  .msec.text .seccol { display: block; grid-row: auto; padding-left: 8px; }
   .msec.text .colwho { display: flex; }
   /* Serve direction stays two-up like the court sections above, all the way down: it is
      the shortest text section in the panel and the boxes read fine at a phone's width, so
      stacking them would only add a scroll with nothing gained. :has(.srv) is how this one
-     text section is told apart from the others (triggers, deep patterns), which do stack. */
+     text section is told apart from the others (triggers, deep patterns), which do stack.
+     The stack's indent goes back with the rest of it, and here that is width rather than
+     alignment: this column is split into two boxes of two zones, so 8px off the front of
+     it is 8px off the four numbers the block below is already shrinking to fit. */
   .msec.text:has(.srv) .seccols { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(var(--rows, 1), auto); row-gap: 0; }
-  .msec.text:has(.srv) .seccol { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; }
+  .msec.text:has(.srv) .seccol { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid;
+    padding-left: 0; }
   .msec.text:has(.srv) .colwho { display: none; }
   /* Doubling up to four boxes across a phone's width leaves each zone ~35px, not the
      ~70px it was built for — the number was overflowing its own zone at 14px. Shrunk
