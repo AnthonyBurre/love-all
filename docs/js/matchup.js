@@ -116,7 +116,16 @@ function rallyDrawer(pattern, mirror = false, court = "deuce") {
 // The cue's two numbers, drawn as the one bar they are: its length is the aggressive shot
 // frequency the cue provokes, where it changes colour is how much of that landed,
 // and the tick is the rate the shot gets played at *without* the cue — so the lift the
-// sentence states as "3.0× their norm" is also the gap between the tick and the bar's end.
+// sentence states as "3.0× their norm" is about the gap between the tick and the bar's end.
+//
+// About, and not exactly. The tick is the player's pooled no-cue rate, while a cue confirmed
+// in only one of the two held-out folds ships that fold's rate and that fold's lift, measured
+// against the half of their matches it was confirmed on. A half's baseline sits up to a couple
+// of points off the pooled one, so on about a third of cues the printed multiple and the gap
+// on the bar disagree a little. The tick still draws at the pooled rate, because it is the one
+// reference the whole column is read against: a tick that moved per row would put five bars in
+// a column against five different references, each of them visibly out of line with the
+// baseline bar at the top that is meant to be that same rate.
 //
 // Deliberately the same construction as the comparison strip's winners-and-errors row,
 // down to the drained second segment and the haloed reference tick, because it is the same
@@ -125,12 +134,17 @@ function rallyDrawer(pattern, mirror = false, court = "deuce") {
 // The domain is 0–1 rather than the strip's 0.05–0.32, though: a cue that does anything at
 // all pushes the frequency far past the range a player's rally balls average out to, and
 // on the strip's scale every one of these would sit clamped at the end of the bar.
-function trigMeter(t) {
+// `base` is the reference to draw the tick at. Pooled cues are handed the player's own
+// no-cue rate; opening cues have no such figure — each is against its own court-and-shot
+// norm — so they leave it out and the norm is recovered from the cue's own two numbers.
+function trigMeter(t, base) {
   const att = Number(t.att_rate);
   if (!isFinite(att)) return "";
   const conv = t.conversion == null ? null : Number(t.conversion);
   const lift = Number(t.att_lift);
-  const norm = isFinite(lift) && lift > 0 ? att / lift : null;
+  const ref = Number(base);
+  const norm = isFinite(ref) && ref > 0 ? ref
+    : isFinite(lift) && lift > 0 ? att / lift : null;
   const segs = conv == null ? `<span style="flex:1"></span>`
     : `<span style="flex:${conv}"></span><span class="miss" style="flex:${1 - conv}"></span>`;
   const tick = norm == null ? "" : `<u style="left:${(norm * 100).toFixed(1)}%"></u>`;
@@ -141,7 +155,7 @@ function trigMeter(t) {
 // contexts in the player's own frame, mirrored for a left-hander so that one cue string
 // means one piece of tennis whoever plays it. The drawing is the one place that wants the
 // real court back, so it mirrors again on the way out.
-function trigLine(t, hand) {
+function trigLine(t, hand, base) {
   // Every cue here is a two-shot lead-up. No starred 3-4 shot tier ships: on serve-blind
   // ground two of 1,752 three-shot candidates survive a held-out screen, and both belong to
   // retired players. See experiments/rally_patterns.
@@ -170,7 +184,7 @@ function trigLine(t, hand) {
     <p class="tnum">aggressive <b>${Math.round(t.att_rate * 100)}%</b>
       <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
       ${payoff} <span class="lift">${counts}</span></p>
-    ${trigMeter(t)}
+    ${trigMeter(t, base)}
     ${rallyDrawer(t.context, hand === "L")}</div>`;
 }
 
@@ -338,10 +352,8 @@ function trigBase(d) {
     <p class="tcue">every rally stroke, no cue</p>
     <p class="tnum">aggressive <b>${(att * 100).toFixed(1)}%</b>${conv == null ? ""
       : ` · converts <b>${Math.round(conv * 100)}%</b>`}
-      ${/* This *is* the tick below, exactly: trigMeter draws it at att_rate / att_lift, and
-           att_lift is the cue's rate over this same pooled figure, so the division returns
-           it unchanged. */""}
-      <span class="lift">the tick on each cue below marks this rate</span></p>
+      ${/* This *is* the tick below: trigSets hands this same rate to every bar in the
+           column to draw its tick at, so the bar here ends where those ticks stand. */""}</p>
     <div class="tmeter"><i style="width:${(att * 100).toFixed(1)}%">${segs}</i></div>
   </div>`;
 }
@@ -411,7 +423,8 @@ function trigSets(d) {
   // Bound explicitly rather than passed to .map directly, which would hand trigLine the
   // array index as its second argument and mirror every drawing on an odd row.
   const hand = d.s.hand;
-  return base + [...greens, ...traps].map((t) => trigLine(t, hand)).join("") + immune;
+  const norm = num(d.s.trig_att_rate);
+  return base + [...greens, ...traps].map((t) => trigLine(t, hand, norm)).join("") + immune;
 }
 
 // --- "side by side": one ring per metric ----------------------------------------------
@@ -850,34 +863,45 @@ function donut(r, sa, sb) {
     </div>`);
 }
 
+// --- charted history, as a pyramid ---------------------------------------------------------
 // How much of each player the charting actually has, under the title that names what these
-// counts are — matches, points, and the span of years they were charted across. An uncharted
-// player is the site's whole invitation, so the ask sits here too rather than only in the
-// empty columns below it.
+// counts are. An uncharted player is the site's whole invitation, so the ask sits here too
+// rather than only in the empty columns below.
 //
-// No name and no flag: the scroll-locked match header above carries those, and this side of
-// the panel is the same player in the same position. The player colours (--a / --b) are
+// No name and no flag: the scroll-locked match header above carries those, and each side of
+// this band is the same player in the same position. The player colours (--a / --b) are
 // declared by the split rule under that header, its left half player A and its right half
-// player B; the rule across the top of each half here is the same colour, and it is the same
-// mark that caps each column further down.
-// --- the charted-history chart -------------------------------------------------------------
+// player B; the rule across the top of this band is the same one, and it is the same mark
+// that caps each column further down.
+//
 // "2015–2024: 61 matches" is a span and a total, and a span and a total cannot tell those two
 // apart: sixty matches in one breakout season, or six a year for ten. They read the same on the
 // line and they are not the same denominator — the first is a snapshot of one year's form
 // wearing a decade's date range, and every pattern, trigger and rate in the panel below is
-// drawn from it. So the counts get a shape as well as a sum: one bar per season, its height the
-// points charted in it.
+// drawn from it. So the counts get a shape as well as a sum: one row per season, each player's
+// bar the points charted in it, running out from a shared centre.
+//
+// One time axis down the middle, both players hung off it, rather than a strip per player side
+// by side. Two strips put the same year at two places on the screen ~400px apart, so comparing
+// a season meant carrying a bar's height across the gap; they also spent four labels printing
+// the same two end years twice, and had room for no label in between — the exact year behind a
+// bar was reachable only by hovering it, which on a phone means not at all. Turned on its side
+// the axis is a column of its own, every season named in it, and the two players' bars for a
+// season are adjacent and share a baseline. Length off a common edge is the comparison the eye
+// is best at, and it is the one the reader actually wants here.
+//
+// It also trades the scarce dimension for the cheap one. Width is what a phone has least of and
+// the strips needed two columns of it; height is what a panel five screens tall has plenty of.
 //
 // Points rather than matches, because points are what the rest of the panel is actually built
 // out of — a trigger needs strokes, not fixtures — and a three-setter and a five-setter are one
 // match each. The match count is the number people say out loud, so it rides in each bar's
-// tooltip rather than being lost.
+// readout rather than being lost.
 //
-// Both players are drawn on one domain and one height scale, set across the pair. Two charts
+// Both players are drawn on one domain and one length scale, set across the pair. Two charts
 // each fitted to their own data would put a lightly-charted player's best season at the same
-// height as a heavily-charted one's, in a band whose whole subject is that the two are not
-// equally known — and the bars sit at equal x positions in two equal-width columns, so a season
-// lines up with the same season across the gap.
+// length as a heavily-charted one's, in a band whose whole subject is that the two are not
+// equally known.
 function yearScale(...rowsets) {
   let lo = Infinity, hi = -Infinity, max = 0;
   for (const rows of rowsets) {
@@ -892,82 +916,157 @@ function yearScale(...rowsets) {
   return lo <= hi && max > 0 ? { lo, hi, max } : null;
 }
 
-// One player's bars across the shared domain. A season with no charted match is an empty slot
-// rather than a missing one: the columns only line up if every year holds a place, and the gap
-// itself is the finding on a player the charting picked up late or dropped.
+// Where the ruler goes. Without one, a bar is only ever as long as its neighbour and the band
+// can say "more" but never "how much" — and the readout, which can, is a hover away. A single
+// hairline down each half at a round number of points gives every bar a length to be read
+// against, at the cost of two rules and one line of type.
 //
-// Height is a percentage of the row, floored in CSS rather than here (see .cy) so the floor is
-// a pixel count and not a share of whatever height the row happens to be. Without it a season
-// of one charted match against a peak of nine thousand points draws two thirds of a pixel, and
-// "barely charted" and "not charted at all" become the same mark — which is the one distinction
-// this chart exists to make.
-function coverageChart(rows, sc) {
-  if (!sc || !rows || !rows.length) return "";
-  const by = new Map(rows.map((r) => [Number(r.year), r]));
-  const bars = [];
-  let peak = null;
-  for (let y = sc.lo; y <= sc.hi; y++) {
-    const r = by.get(y);
-    if (!r) { bars.push(`<i class="cy none"></i>`); continue; }
-    const pts = Number(r.points) || 0, mt = Number(r.matches) || 0;
-    if (!peak || pts > peak.pts) peak = { y, pts, mt };
-    const label = `${y} — ${mt} ${mt === 1 ? "match" : "matches"} · ${pts.toLocaleString()} points`;
-    // `title` is a mouse affordance and this layout is read on a phone, where hover does not
-    // exist and the season labels were simply unreachable. `data-lbl` carries the same string
-    // to a CSS readout that opens on press as well as on hover (see .cy[data-lbl]), so a
-    // thumb can get at it. The bars stay out of the tab order deliberately — a thirty-season
-    // career would otherwise put thirty stops inside a modal, twice over.
-    bars.push(`<i class="cy" style="height:${(pts / sc.max * 100).toFixed(1)}%"
-      title="${esc(label)}" data-lbl="${esc(label)}"></i>`);
+// Round in the 1/2/2.5/5 sense, and picked nearest half the peak so it lands mid-column. The
+// window is a guard rather than a preference: under 0.3 of the peak the rule stands in the
+// stubs, close enough to the year column that its label crowds it on a phone, and over 0.7 it
+// stands in the one or two seasons long enough to reach it, which is not where a ruler is any
+// use. The window is wider than the largest gap in the 1/2/2.5/5 ladder, so a step always
+// falls inside it.
+const NICE_STEPS = [1, 2, 2.5, 5];
+function rulerAt(max) {
+  let best = null;
+  for (let k = -1; k <= 6; k++) {
+    for (const m of NICE_STEPS) {
+      const v = m * Math.pow(10, k);
+      if (v < max * 0.3 || v > max * 0.7) continue;
+      const d = Math.abs(Math.log(v / (max / 2)));
+      if (!best || d < best.d) best = { v, d };
+    }
   }
-  // One label per end of the axis, and only those two. A tick per season is unreadable at this
-  // size, and the years in between are recoverable by counting along from either end — which is
-  // what the per-bar tooltip is for when a reader wants an exact one.
-  const say = `charted points by season, ${sc.lo} to ${sc.hi}` +
-    (peak ? `; busiest ${peak.y}, ${peak.mt} ${peak.mt === 1 ? "match" : "matches"}` : "");
-  return `<div class="cchart">
-    <div class="cbars" role="img" aria-label="${esc(say)}">${bars.join("")}</div>
-    <p class="cyears"><span>${sc.lo}</span><span>${sc.hi}</span></p>
-  </div>`;
+  return best && best.v;
 }
 
-function coverageSide(d, tag, sc) {
-  if (!d) {
-    return `<div class="pbside ${tag}" data-side="${tag}">
-      <p class="pbnone">not charted yet —
-        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">chart a match →</a></p></div>`;
-  }
-  const s = d.s;
-  const chart = coverageChart(d.years, sc);
-  // The span goes wherever it is actually being carried, and never in both places at once.
-  // With the chart drawn, the years belong to it — it has an axis, and the axis is labelled at
-  // both ends. Printed here as well, they were a second date range forty pixels above a
-  // different one (the axis spans *both* players, so a player charted from 2014 sits under a
-  // "2013"), and two ranges that near each other read as a contradiction rather than as two
-  // facts. Without a chart — a stale database with no player_years table — this line is the
-  // only thing that can say when, so it says it.
-  const span = s.year_min == null || chart ? "" : (s.year_min === s.year_max
-    ? `${s.year_min}: ` : `${s.year_min}–${s.year_max}: `);
-  // These counts are how much of the player exists in the data, not how much tennis they have
-  // played — which is what the title above them and the note at the foot of the panel are for.
+// One season's bar for one player. A season with no charted match draws nothing at all — the
+// year beside it still prints, so an empty row reads as a named gap rather than as a missing
+// row, and the gap is the finding on a player the charting picked up late or dropped.
+//
+// Length is a percentage of the row's half, floored in CSS rather than here (see .covbar i) so
+// the floor is a pixel count and not a share of whatever width the half happens to be. Without
+// it a season of one charted match against a peak of nine thousand points draws two thirds of a
+// pixel, and "barely charted" and "not charted at all" become the same mark — which is the one
+// distinction this chart exists to make.
+function coverBar(r, sc, tag) {
+  if (!r) return `<span class="covbar ${tag}"></span>`;
+  const pts = Number(r.points) || 0, mt = Number(r.matches) || 0;
+  // `title` is a mouse affordance and this band is read on a phone, where hover does not
+  // exist. `data-lbl` carries the same string to a CSS readout that opens on press as well as
+  // on hover (see .covbar i[data-lbl]), so a thumb can get at it. The bars stay out of the tab
+  // order deliberately — a thirty-season career would otherwise put sixty stops inside a modal.
   //
-  // Singular where it is one. This line is at its most conspicuous on exactly the players it
-  // reads worst for: a qualifier with a single charted match got "1 matches" at the top of a
-  // panel whose entire subject is how little is known about them.
-  const mt = Number(s.matches_charted) || 0;
-  return `<div class="pbside ${tag}" data-side="${tag}">
-    <p class="pbchart">${span}${mt} ${mt === 1 ? "match" : "matches"} ·
-      ${Number(s.points_charted).toLocaleString()} points</p>
-    ${chart}</div>`;
+  // The readout hangs on the half rather than on the bar it names: a bar is eight pixels of
+  // height and some seasons are three of length, which is not a thing a thumb can be asked to
+  // land on. The half is the row's full height and the width of a column, it belongs to one
+  // player throughout, and pressing anywhere along a season's left side asks about A's season.
+  const lbl = `${mt} ${mt === 1 ? "match" : "matches"} · ${pts.toLocaleString()} points`;
+  return `<span class="covbar ${tag}" title="${esc(lbl)}" data-lbl="${esc(lbl)}"
+    ><i style="width:${(pts / sc.max * 100).toFixed(1)}%"></i></span>`;
+}
+
+// The busiest season, for the description a screen reader gets — where the drawing says nothing.
+function peakOf(d) {
+  let best = null;
+  for (const r of (d && d.years) || []) {
+    const pts = Number(r.points) || 0;
+    if (!best || pts > best.pts) best = { y: Number(r.year), pts, mt: Number(r.matches) || 0 };
+  }
+  return best;
+}
+
+// Each side's totals, hung on its own outer edge — how much of the player exists in the data,
+// not how much tennis they have played, which is what the title above and the note at the foot
+// of the panel are for.
+//
+// Singular where it is one. This line is at its most conspicuous on exactly the player it reads
+// worst for: a qualifier with a single charted match got "1 matches" at the top of a panel
+// whose entire subject is how little is known about them.
+//
+// No date range on this line. The axis is the date range, and it labels every year of its
+// length. Printed here as well it would be a second span a few pixels above a different one —
+// the axis spans *both* players, so a player charted from 2014 sits under a "2013" — and two
+// ranges that near each other read as a contradiction rather than as two facts. The one case
+// that needs it is a build with no player_years table at all, which never reaches here.
+function coverSum(d, tag) {
+  if (!d) {
+    return `<span class="covsum ${tag}">not charted yet —
+      <a href="${CHART_GUIDE}" target="_blank" rel="noopener">chart a match →</a></span>`;
+  }
+  const mt = Number(d.s.matches_charted) || 0;
+  return `<span class="covsum ${tag}">${mt} ${mt === 1 ? "match" : "matches"} ·
+    ${Number(d.s.points_charted).toLocaleString()} points</span>`;
+}
+
+// Newest season at the top. A career's early seasons are the thin ones and the shared axis
+// stretches to whichever player started first, so the rows that are empty on one side or both
+// collect at the far end of the axis from "now" — at the bottom they trail off, and at the top
+// they would stand between the reader and the seasons every rate below is actually drawn from.
+// On a phone that is the difference between the current season being the first row and it being
+// a scroll away. The direction is safe to choose because the axis names every one of its rows;
+// it is a labelled column, not a bare edge to be inferred from.
+function coverPyramid(da, db, sc) {
+  const by = (d) => new Map(((d && d.years) || []).map((r) => [Number(r.year), r]));
+  const A = by(da), B = by(db);
+  const rows = [];
+  for (let y = sc.hi; y >= sc.lo; y--) {
+    rows.push(`<div class="covrow">${coverBar(A.get(y), sc, "a")}<b class="covyr">${y}</b>${coverBar(B.get(y), sc, "b")}</div>`);
+  }
+  // One fraction of a half, handed to the stylesheet, and both hairlines and both labels are
+  // placed off it — so the type under a rule cannot drift off the rule it names.
+  const rule = rulerAt(sc.max);
+  const f = rule ? (rule / sc.max).toFixed(4) : null;
+  // Only over a half that has something in it. A player the charting has never reached gets an
+  // empty half, and a tick mark down the middle of it with a figure under it is a measurement
+  // offered for nothing — the emptiness is the finding and it does not need a scale.
+  const on = (d) => !!(rule && d && d.years && d.years.length);
+  const ruler = (on(da) ? `<i class="covrule a"></i>` : "") +
+    (on(db) ? `<i class="covrule b"></i>` : "");
+  // The tick's value once per side, and the unit once between them, under the year column: it
+  // is the one thing both halves share and that column is the one stretch of the row belonging
+  // to neither player. Repeating "points" beside each value puts a fifty-pixel label either
+  // side of a forty-pixel column, which on a phone is a collision.
+  const foot = ruler
+    ? `<p class="covfoot">${on(da) ? `<span class="a">${rule.toLocaleString()}</span>` : ""}
+       <span class="u">points</span>
+       ${on(db) ? `<span class="b">${rule.toLocaleString()}</span>` : ""}</p>` : "";
+  const say = [`charted points by season, ${sc.lo} to ${sc.hi}`]
+    .concat([[da, "left"], [db, "right"]].map(([d, side]) => {
+      const p = peakOf(d);
+      return p ? `${last(d.s.player)}, ${side}: busiest ${p.y}, ${p.mt} ${p.mt === 1 ? "match" : "matches"}` : "";
+    }).filter(Boolean)).join("; ");
+  // A season is a row of ~13px and thirty of them is a chart taller than the phone it is on.
+  // Past eighteen the rows and their years step down together rather than the chart being cut
+  // short or scrolled inside itself — every season the axis claims still holds a labelled row.
+  const dense = sc.hi - sc.lo + 1 > 18 ? " dense" : "";
+  return `<div class="cov${dense}" style="${f ? `--covf:${f}` : ""}">
+    <div class="covgrid" role="img" aria-label="${esc(say)}">${ruler}${rows.join("")}</div>
+    ${foot}</div>`;
+}
+
+// Without a player_years table — a build too old to have one — there is no axis to carry the
+// span, so the summary line says it itself. This is the only place that range still prints.
+function coverPlain(d, tag) {
+  if (!d) return coverSum(null, tag);
+  const s = d.s, mt = Number(s.matches_charted) || 0;
+  const span = s.year_min == null ? ""
+    : (s.year_min === s.year_max ? `${s.year_min}: ` : `${s.year_min}–${s.year_max}: `);
+  return `<span class="covsum ${tag}">${span}${mt} ${mt === 1 ? "match" : "matches"} ·
+    ${Number(s.points_charted).toLocaleString()} points</span>`;
 }
 
 function profileBand(da, db) {
   if (!da && !db) return "";
-  // The scale is computed once, over both players, and handed down — so neither column can
-  // quietly draw itself against a different axis than its neighbour.
+  // The scale is computed once, over both players, and handed down — so neither side can
+  // quietly draw itself against a different axis than the other.
   const sc = yearScale(da && da.years, db && db.years);
+  const head = sc ? coverSum(da, "a") + coverSum(db, "b")
+    : coverPlain(da, "a") + coverPlain(db, "b");
   return `<div class="pband">
-    ${coverageSide(da, "a", sc)}${coverageSide(db, "b", sc)}</div>`;
+    <p class="covtop">${head}</p>
+    ${sc ? coverPyramid(da, db, sc) : ""}</div>`;
 }
 
 // Variety, as the figure it is. It had a section and a scatter of its own; it now prints here,
@@ -1635,8 +1734,9 @@ function bodyHtml(m, pa, pb, gates, spread) {
       spot${COURT_LEGEND}${PAYOFF_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("shot-making triggers", `a lead-up that shifts their aggressive shot
-      frequency — and whether it converts as well as their other cues
-      do${meterLegend("their rate with no cue")}`,
+      frequency — the share of their rally strokes that count
+      as a winner, their own unforced error, or a ball that forces the
+      error${meterLegend("their rate with no cue")}`,
       a, b, ta, tb, "text") +
     section("opening cues by court", `the same question as above, asked separately of
       each service court — a wide serve opens opposite wings on the two sides, so a
@@ -1692,7 +1792,7 @@ export function closeMatchup() {
   const back = opener && document.contains(opener)
     ? opener
     : openerId && [...document.querySelectorAll(".match[data-mid]")]
-        .find((el) => el.dataset.mid === openerId);
+      .find((el) => el.dataset.mid === openerId);
   if (back) back.focus();
   opener = null;
   openerId = null;
