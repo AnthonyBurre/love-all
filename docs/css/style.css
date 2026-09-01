@@ -1121,6 +1121,14 @@ a { color: var(--acc-d); }
 .covbar > i { min-width: 3px; }
 .covbar.a > i { background: var(--a); }
 .covbar.b > i { background: var(--b); }
+/* A season of more than one charted match is drawn as a block per match, in play order (see
+   coverBar). The floor above still holds the first block to 3px, so a season is never thinner
+   than a single charted match; the rest carry no floor, so the split never lengthens the bar
+   past its points and the pyramid's outline is the same drawing it was before. The cut
+   between blocks is a 1px inset shadow of the panel colour, not a border or a gap — it takes
+   up no width, so a season with a dozen sub-pixel matches still ends exactly where its single
+   bar did; the cuts there just wash together, and the readout still carries the match count. */
+.covbar > i + i { min-width: 0; box-shadow: inset 1px 0 0 var(--card); }
 /* The axis, as its two ends: newest season over the midline, oldest under it. Centred on the
    band, which is centred on the midline the bars meet at. Small, muted, tabular — a scale the
    bars hang between, not a third thing being said. */

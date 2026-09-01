@@ -17,6 +17,7 @@ import pandas as pd
 
 from match_charting_project.live.players import (
     coverage,
+    coverage_by_match,
     coverage_by_year,
     normalize,
     tourn_key,
@@ -357,6 +358,8 @@ def build() -> int:
     cov = coverage(con)
     cov_years = pd.DataFrame(coverage_by_year(con),
                              columns=["gender", "player", "year", "matches", "points"])
+    cov_matches = pd.DataFrame(coverage_by_match(con),
+                               columns=["gender", "player", "year", "points", "seq"])
     charted = _charted_matches(con)
     facts = _player_facts(con)
     games = _game_rates(con)
@@ -385,6 +388,15 @@ def build() -> int:
     # who never appear in a draw, and their year rows would be most of the file.
     years = cov_years.merge(summary[["gender", "player"]], on=["gender", "player"])
     years = years.astype({"year": "int32", "matches": "int32", "points": "int32"})
+
+    # The same coverage at match resolution: one row per charted match, for the segments the
+    # history chart splits each season bar into. Same inner join as ``years`` — panel-openable
+    # players only — and the two agree by construction, since both come out of the one shared
+    # row set in ``coverage_by_*``. ``seq`` is the play order within the season, for laying the
+    # segments out left to right.
+    matches_by_year = cov_matches.merge(summary[["gender", "player"]], on=["gender", "player"])
+    matches_by_year = matches_by_year.astype(
+        {"year": "int32", "points": "int32", "seq": "int32"})
 
     # style_confident travels with the archetype, and the panel is required to respect
     # it: style is a continuum, the clustering's silhouette sits near 0.12, and for a
@@ -516,7 +528,7 @@ def build() -> int:
     out = duckdb.connect(str(OUT))
     tables = [("player_summary", summary), ("player_triggers", triggers),
               ("player_patterns", patterns), ("player_openings", openings),
-              ("player_years", years), ("meta", meta),
+              ("player_years", years), ("player_matches", matches_by_year), ("meta", meta),
               ("charted_matches", charted)]
     if serve is not None:
         tables.append(("player_serve", serve))

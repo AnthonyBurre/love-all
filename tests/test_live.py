@@ -425,14 +425,17 @@ def test_an_unreadable_window_polls_rather_than_going_dark():
 def _cov_db():
     con = duckdb.connect()
     con.execute("CREATE TABLE matches (match_id VARCHAR, gender VARCHAR, "
-                "player1 VARCHAR, player2 VARCHAR, year INTEGER)")
+                "player1 VARCHAR, player2 VARCHAR, year INTEGER, date TIMESTAMP)")
     con.execute("CREATE TABLE points (match_id VARCHAR, svr INTEGER)")
-    rows = [("m1", "M", "Ann", "Bo", 2023, 4), ("m2", "M", "Ann", "Cy", 2023, 3),
-            ("m3", "M", "Ann", "Bo", 2025, 5),
+    # Ann's two 2023 matches are entered big-then-small but dated small-then-big, so a test
+    # can tell "chronological" (m2 before m1) from "by size".
+    rows = [("m1", "M", "Ann", "Bo", 2023, "2023-06-01", 4),
+            ("m2", "M", "Ann", "Cy", 2023, "2023-01-15", 3),
+            ("m3", "M", "Ann", "Bo", 2025, "2025-03-01", 5),
             # A column-shifted row: charted, counted in the total, unplaceable on an axis.
-            ("m4", "M", "Ann", "Bo", None, 2)]
-    for mid, g, p1, p2, yr, n in rows:
-        con.execute("INSERT INTO matches VALUES (?, ?, ?, ?, ?)", [mid, g, p1, p2, yr])
+            ("m4", "M", "Ann", "Bo", None, None, 2)]
+    for mid, g, p1, p2, yr, dt, n in rows:
+        con.execute("INSERT INTO matches VALUES (?, ?, ?, ?, ?, ?)", [mid, g, p1, p2, yr, dt])
         for _ in range(n):
             con.execute("INSERT INTO points VALUES (?, 1)", [mid])
         con.execute("INSERT INTO points VALUES (?, 0)", [mid])   # not a served point
@@ -455,3 +458,25 @@ def test_coverage_by_year_adds_up_to_the_totals_it_is_drawn_under():
 def test_coverage_by_year_drops_matches_with_no_year():
     con = _cov_db()
     assert all(y is not None for _g, _p, y, _m, _pt in players.coverage_by_year(con))
+
+
+def test_coverage_by_match_is_one_row_per_match_summing_to_the_season_bars():
+    con = _cov_db()
+    rows = [(y, p, s) for g, pl, y, p, s in players.coverage_by_match(con)
+            if (g, pl) == ("M", "Ann")]
+    # One row per dated charted match — the undated one is dropped, as in coverage_by_year.
+    assert sorted((y, p) for y, p, _s in rows) == [(2023, 3), (2023, 4), (2025, 5)]
+    by_year = {y: (m, p) for g, pl, y, m, p in players.coverage_by_year(con)
+               if (g, pl) == ("M", "Ann")}
+    for yr, (mt, pts) in by_year.items():
+        segs = [p for y, p, _s in rows if y == yr]
+        assert len(segs) == mt and sum(segs) == pts
+
+
+def test_coverage_by_match_seq_follows_play_order_not_size():
+    con = _cov_db()
+    by_seq = sorted((s, p) for g, pl, y, p, s in players.coverage_by_match(con)
+                    if (g, pl, y) == ("M", "Ann", 2023))
+    # m2 (Jan, 3 points) is played before m1 (Jun, 4 points): seq is 1, 2 in date order,
+    # so the points come back 3 then 4 — not the 4, 3 a size sort would give.
+    assert by_seq == [(1, 3), (2, 4)]

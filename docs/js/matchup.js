@@ -99,7 +99,13 @@ async function playerData(name, gender) {
       "SELECT year, matches, points FROM player_years WHERE player = ? AND gender = ? " +
       "ORDER BY year", [name, gender]);
   } catch (e) { /* stale insights db: the coverage band prints its counts without the chart */ }
-  return { s: s[0], triggers, openings, patterns, serve, years };
+  let ymatches = [];
+  try {
+    ymatches = await query(
+      "SELECT year, points FROM player_matches WHERE player = ? AND gender = ? " +
+      "ORDER BY year, seq", [name, gender]);
+  } catch (e) { /* insights db predates player_matches: each season bar stays one solid block */ }
+  return { s: s[0], triggers, openings, patterns, serve, years, ymatches };
 }
 
 // --- charted-match mode ---------------------------------------------------------------
@@ -1265,7 +1271,18 @@ function kfmt(n) {
 // it a season of one charted match against a peak of nine thousand points draws two thirds of a
 // pixel, and "barely charted" and "not charted at all" become the same mark — which is the one
 // distinction this chart exists to make.
-function coverBar(r, sc, tag) {
+//
+// `segs` is that season's matches as point counts, in the order they were played (see
+// coverPyramid). A season of more than one is drawn as that many blocks end to end, the
+// first match against the centre axis and the season running out toward the tip, each block
+// a hairline of the panel colour apart — so the same bar now also shows whether a year was
+// one long match or six short ones, and roughly when in the year the charting was busy. The
+// blocks only divide the length the solid bar already had: only the first is floored (see
+// `.covbar > i`), so splitting a season never stretches it past its points and the pyramid
+// keeps its outline. Below SEG_MIN_PCT of the peak the cuts would be sub-pixel, so it stays
+// one block and the count rides in the readout as before.
+const SEG_MIN_PCT = 2;
+function coverBar(r, sc, tag, segs) {
   if (!r) return `<span class="covbar ${tag}"></span>`;
   const pts = Number(r.points) || 0, mt = Number(r.matches) || 0;
   // `title` is a mouse affordance; `data-lbl` carries the same string to a readout that opens
@@ -1283,8 +1300,17 @@ function coverBar(r, sc, tag) {
   // land on. The half is the row's full height and the width of a column, it belongs to one
   // player throughout, and pressing anywhere along a season's left side asks about A's season.
   const lbl = `${r.year} · ${mt} ${mt === 1 ? "match" : "matches"} · ${pts.toLocaleString()} points`;
-  return `<span class="covbar ${tag}" title="${esc(lbl)}" data-lbl="${esc(lbl)}"
-    ><i style="width:${(pts / sc.max * 100).toFixed(1)}%"></i></span>`;
+  // Blocks run left to right in the DOM; flex packs them against the centre axis (A to its
+  // right edge, B to its left). `segs` arrives oldest match first, so B is drawn as-is and A
+  // is reversed — either way the first match of the season sits on the axis and the year runs
+  // out toward the tip, the same direction on both sides. One block below the threshold, or
+  // when the per-match list is missing (an older insights db), and it is the single floored
+  // bar it always was.
+  const wide = segs && segs.length > 1 && (pts / sc.max) * 100 >= SEG_MIN_PCT;
+  const parts = wide ? (tag === "a" ? segs.slice().reverse() : segs) : [pts];
+  const bars = parts
+    .map((p) => `<i style="width:${(p / sc.max * 100).toFixed(2)}%"></i>`).join("");
+  return `<span class="covbar ${tag}" title="${esc(lbl)}" data-lbl="${esc(lbl)}">${bars}</span>`;
 }
 
 // The busiest season, for the description a screen reader gets — where the drawing says nothing.
@@ -1333,10 +1359,22 @@ function coverSum(d, tag) {
 // season by where it sits on the run from top to bottom, and the exact year is in the readout.
 function coverPyramid(da, db, sc) {
   const by = (d) => new Map(((d && d.years) || []).map((r) => [Number(r.year), r]));
-  const A = by(da), B = by(db);
+  // Each season's matches as a list of point counts, so coverBar can split that year's bar
+  // into a block apiece. In play order (the query sorts by seq) and absent on an older
+  // insights db, where every season falls back to one solid block.
+  const bySeg = (d) => {
+    const m = new Map();
+    for (const r of (d && d.ymatches) || []) {
+      const y = Number(r.year);
+      if (!m.has(y)) m.set(y, []);
+      m.get(y).push(Number(r.points) || 0);
+    }
+    return m;
+  };
+  const A = by(da), B = by(db), Aseg = bySeg(da), Bseg = bySeg(db);
   const rows = [];
   for (let y = sc.hi; y >= sc.lo; y--) {
-    rows.push(`<div class="covrow">${coverBar(A.get(y), sc, "a")}${coverBar(B.get(y), sc, "b")}</div>`);
+    rows.push(`<div class="covrow">${coverBar(A.get(y), sc, "a", Aseg.get(y))}${coverBar(B.get(y), sc, "b", Bseg.get(y))}</div>`);
   }
   // Three gridlines per half, at a quarter, half and three-quarters of the peak (see
   // rulersAt). Each line and the figure under it are placed by the same inline offset — a

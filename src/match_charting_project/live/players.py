@@ -73,14 +73,15 @@ def match_player(name: str, gender: str, universe: dict, cutoff: float = 0.88) -
     return table[close[0]] if close else None
 
 
-# One player's charted matches, as rows to aggregate. Written once because ``coverage`` and
-# ``coverage_by_year`` are the same count at two resolutions, and two copies of the
-# player1/player2 union is how the totals and the per-year breakdown come to disagree.
+# One player's charted matches, as rows to aggregate. Written once because ``coverage``,
+# ``coverage_by_year`` and ``coverage_by_match`` are the same count at three resolutions, and
+# two copies of the player1/player2 union is how the totals and the breakdowns come to
+# disagree. ``date`` rides along for the by-match ordering and is ignored by the other two.
 _COVERAGE_ROWS = (
     "WITH mp AS (SELECT match_id, count(*) n FROM points WHERE svr IN (1,2) GROUP BY match_id), "
     "     played AS ("
-    "  SELECT gender, player1 AS player, match_id, year FROM matches "
-    "  UNION ALL SELECT gender, player2, match_id, year FROM matches) "
+    "  SELECT gender, player1 AS player, match_id, year, date FROM matches "
+    "  UNION ALL SELECT gender, player2, match_id, year, date FROM matches) "
     "SELECT {cols} FROM played JOIN mp USING (match_id) GROUP BY {keys}"
 )
 
@@ -120,3 +121,30 @@ def coverage_by_year(con):
     return con.execute(_COVERAGE_ROWS.format(
         cols="gender, player, year, count(*) AS matches, sum(n) AS points",
         keys="gender, player, year") + " HAVING year IS NOT NULL").fetchall()
+
+
+def coverage_by_match(con):
+    """The same counts at match resolution: one row per ``(gender, player, year, match)``.
+
+    ``coverage_by_year`` gives the panel's history chart the length of each season's bar;
+    this gives that bar its segments — one per charted match, sized by the points in it —
+    so a season that is one long match reads differently from one that is six short ones.
+    Adding ``match_id`` to the grouping keys leaves one row per player-match while still
+    going through the shared row set, so the segments always sum to the season bar they
+    divide.
+
+    ``seq`` numbers a player's matches within a season in the order they were played, so the
+    renderer can lay the segments out chronologically without shipping a date per row. It is
+    ordered by ``date`` with ``match_id`` (which carries a ``YYYYMMDD`` prefix) as the
+    tiebreaker for the rare match whose date came through null.
+
+    Years with no charted match are absent and matches with no year are dropped, both as in
+    ``coverage_by_year``: a match that cannot be placed on the calendar has no season bar to
+    belong to.
+    """
+    return con.execute(_COVERAGE_ROWS.format(
+        cols="gender, player, year, n AS points, "
+             "row_number() OVER (PARTITION BY gender, player, year "
+             "ORDER BY date, match_id) AS seq",
+        keys="gender, player, year, match_id, n, date")
+        + " HAVING year IS NOT NULL").fetchall()
