@@ -35,9 +35,7 @@ answers it, and what it found. They write their output to `reports/`.
 
 ### Win probability
 
-None of these ship to the site — see [The site](#the-site) for why. The in-match tree is still
-the right tool for the question it was built for; what it could not survive was being fed
-career charted rates and asked to pick a winner.
+None of these ship to the site — see [The site](#the-site) for why.
 
 | experiment | the question | what it found |
 | --- | --- | --- |

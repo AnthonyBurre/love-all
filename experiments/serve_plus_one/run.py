@@ -48,10 +48,6 @@ from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-import matplotlib  # noqa: E402
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
@@ -415,6 +411,13 @@ def side_flips(res, name) -> list:
 # --- figure --------------------------------------------------------------------------
 
 def fig_tiers(results, surfaced, path):
+    # Imported here, not at module scope: matplotlib is in the optional `analysis`
+    # extra, and everything above this function runs without it.
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.6))
 
     # Players who surfaced a pattern, not players assigned a tier. Every entity with a

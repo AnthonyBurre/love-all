@@ -52,10 +52,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-import matplotlib  # noqa: E402
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
@@ -530,6 +526,13 @@ def old_signature_sharing():
 
 
 def fig_stability(results, path):
+    # Imported here, not at module scope: matplotlib is in the optional `analysis`
+    # extra, and everything above this function runs without it.
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
     for ax, g in zip(axes, ("M", "W")):
         xs, ys = results[g]["stab"]
