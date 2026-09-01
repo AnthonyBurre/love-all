@@ -9,10 +9,10 @@ It pools the two service courts, and that pooling is not free. A wide serve open
 the forehand in the deuce court and the backhand in the ad court, so the same
 return description arrives from a different serve, at a different angle, with the
 server recovering from a different corner. Nadal's pooled reading is "mid-depth
-drive return into the middle -> crosscourt forehand, 1.7x". Split, it is a
-crosscourt forehand off the deuce-court T serve and a forehand *down the line*
-off the ad-court wide serve. The pooled number is the average of two different
-shots, and it names neither.
+drive return into the middle -> crosscourt forehand, 1.6x". Split, it is a
+crosscourt forehand on the deuce side and an *inside-out* forehand on the ad
+side. The pooled number is the average of two different shots, and it names
+neither.
 
 The obvious fix — add serve side and serve direction to the state — costs
 coverage: the state space goes six times finer and the tail of the tour can no
@@ -29,9 +29,10 @@ Choosing the tier by which one surfaced the most patterns would be choosing the
 resolution that flattered the player, and no replication gate fully undoes that.
 
 Everything else is court_response's method, imported from it rather than copied:
-hand-relative zones, the crosscourt/down-the-line reference lane, shrunk lift
-against the field in the same state, the payoff, and the both-halves replication
-gate. This experiment does not modify or re-run that one.
+hand-relative zones, the reference lane a response's line is read against, the
+namer that turns a (zone, line) pair into plain English, shrunk lift against the
+field in the same state, the payoff, and the both-halves replication gate. This
+experiment does not modify or re-run that one.
 
 Writes reports/serve_plus_one.md, reports/serve_plus_one_players.csv, and
 reports/figures/serve_plus_one_tiers.png.
@@ -119,9 +120,10 @@ def _court_response():
     """Load the sibling experiment as a module without running it (it guards main()).
 
     Its geometry is the vocabulary this experiment extends — hand-relative zones,
-    the reference lane that decides crosscourt from down-the-line, the plain-language
-    words, and the physical codes the site's court renderer draws from. A second copy
-    here would drift the moment either side was corrected.
+    the reference lane a response's line is read against, the namer that turns a
+    (zone, line) pair into plain English, and the physical codes the site's court
+    renderer draws from. A second copy here would drift the moment either side was
+    corrected, which is what happened while ``resp_name`` was copied instead.
     """
     path = Path(__file__).resolve().parents[1] / "court_response" / "run.py"
     spec = importlib.util.spec_from_file_location("court_response_run", path)
@@ -134,6 +136,9 @@ CR = _court_response()
 ZONE_REL, WING_LANE, MIRROR = CR.ZONE_REL, CR.WING_LANE, CR.MIRROR
 INC_WORD, RESP_WORD, ZONE_WORD, DEPTH_WORD = (
     CR.INC_WORD, CR.RESP_WORD, CR.ZONE_WORD, CR.DEPTH_WORD)
+# The response namer too, keyed on the zone alone so it spans both state shapes. It was
+# a second copy here until the two drifted apart in the same wrong direction at once.
+resp_name = CR.resp_name
 
 
 class State(NamedTuple):
@@ -363,18 +368,6 @@ def state_name(st: State) -> str:
     return ball
 
 
-def resp_name(st: State, resp) -> str:
-    wing, kind, line = resp
-    word = RESP_WORD[kind]
-    if line == "mid":
-        return f"{wing} {word} through the middle"
-    run_around = (st.zone in ("fh", "bh") and st.zone != wing.lower()
-                  and kind in ("drive", "slice"))
-    if run_around:
-        return f"{'inside-out' if line == 'cc' else 'inside-in'} {wing} {word}"
-    return f"crosscourt {wing} {word}" if line == "cc" else f"{wing} {word} down the line"
-
-
 def physical_codes(st: State, resp, hand):
     """Zone codes for the site's court renderer: where the return landed and where
     the +1 went, as thirds of the court in the fixed right-hander convention."""
@@ -504,8 +497,8 @@ def player_block(md, name, rows_by_player, tiers, flips):
                   f"overall, tour {r['tour_win_rate']:.0%})")
     for st, rd, nd, ra, na in flips.get(name, [])[:2]:
         md.append(f"  - *courts disagree*: {state_name(st)} → "
-                  f"{resp_name(st, rd)} on the deuce side (n={nd}), "
-                  f"{resp_name(st, ra)} on the ad side (n={na})")
+                  f"{resp_name(st.zone, rd)} on the deuce side (n={nd}), "
+                  f"{resp_name(st.zone, ra)} on the ad side (n={na})")
     md.append("")
 
 
@@ -535,7 +528,7 @@ def main():
                 inc, out = physical_codes(st, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family="ret", tier=tier,
-                    state=state_name(st), response=resp_name(st, resp),
+                    state=state_name(st), response=resp_name(st.zone, resp),
                     serve_side=st.side or "", serve_dir=st.sdir or "",
                     state_kind=st.kind, state_zone=st.zone,
                     state_depth=DEPTH_WORD[st.depth],

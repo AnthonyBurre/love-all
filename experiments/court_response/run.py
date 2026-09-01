@@ -10,16 +10,20 @@ a right-handed field. This experiment reframes the question the way a player
 experiences it: the state is the incoming ball only — the zone it lands in,
 named relative to the receiver's own hands, plus the ball's character — and the
 response is the player's decision: wing, shot type, and the line taken
-(crosscourt / down the line / middle). Everything upstream of the incoming ball
-is deliberately ignored.
+(the diagonal, against it, or through the middle). Everything upstream of the
+incoming ball is deliberately ignored.
 
 Zone geometry: direction codes name fixed thirds ("1" = a right-hander's
 forehand corner), and the two ends face each other, so a reply to the *same*
-code travels the diagonal (crosscourt) and a reply to the mirrored code goes
-down the line. For balls arriving through the middle, the hitter's wing fixes
-the reference lane. Run-around shots (e.g. a forehand played from the backhand
-corner) get their tennis names: inside-out on the diagonal, inside-in down the
-line.
+code travels the diagonal and a reply to the mirrored code goes against it. For
+balls arriving through the middle, the hitter's wing fixes the reference lane.
+
+Naming those two lines needs the zone as well, because the same line has
+different names depending on the corner it started from. A ball met in a corner
+goes crosscourt on the diagonal and down the line against it. A ball met in the
+middle has no down the line available — there is no corner behind it to line up
+with — so it goes crosscourt or inside-out. Run-arounds (a forehand played from
+the backhand corner) get inside-out and inside-in.
 
 Two state families come out of one pass. Rally states are (ball character,
 zone), depth-agnostic, for every rally pair. Return states add the charted
@@ -428,14 +432,34 @@ def state_name(state):
     return f"{INC_WORD[kind]} into {ZONE_WORD[zone]}"
 
 
-def resp_name(state, resp):
+def resp_name(zone, resp):
+    """Plain-language name for a response, given the zone the incoming ball landed in.
+
+    The line a shot takes is only half of its name; the other half is where it was
+    struck from, which is why this needs the zone. Following the charting project's
+    own definitions: crosscourt runs from the middle or a far corner to the opposite
+    far corner, down the line starts in a corner and finishes in that same one, and
+    inside-out is any ball hit against the crosscourt lane its wing opens onto. A ball
+    met in the middle third therefore has no down the line available to it at all —
+    there is no corner behind it to line up with — so the two ways out of the middle
+    are crosscourt and, against it, inside-out.
+
+    Run-arounds keep their own pair: inside-out on the diagonal, inside-in down the
+    line. Only drives and slices get them, because the words describe a player stepping
+    round the ball to hit a groundstroke, not a volley taken wherever it was reachable.
+
+    Shared with the serve+1 experiment, which names the same responses from the same
+    zones. It takes the zone rather than a state because the two experiments carry
+    different state shapes over the identical geometry.
+    """
     wing, kind, line = resp
     word = RESP_WORD[kind]
     if line == "mid":
         return f"{wing} {word} through the middle"
-    run_around = (state[2] in ("fh", "bh") and state[2] != wing.lower()
-                  and kind in ("drive", "slice"))
-    if run_around:
+    if zone == "mid":
+        return (f"crosscourt {wing} {word}" if line == "cc"
+                else f"inside-out {wing} {word}")
+    if zone != wing.lower() and kind in ("drive", "slice"):
         return f"{'inside-out' if line == 'cc' else 'inside-in'} {wing} {word}"
     return f"crosscourt {wing} {word}" if line == "cc" else f"{wing} {word} down the line"
 
@@ -514,7 +538,7 @@ def main():
                 inc, out = physical_codes(state, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family=state[0],
-                    state=state_name(state), response=resp_name(state, resp),
+                    state=state_name(state), response=resp_name(state[2], resp),
                     state_kind=state[1], state_zone=state[2],
                     state_depth=DEPTH_WORD.get(state[3], ""),
                     resp_wing=resp[0], resp_kind=resp[1], resp_line=resp[2],
@@ -629,7 +653,7 @@ def main():
         if share:
             (ts, tr), tc = share.most_common(1)[0]
             md.append(f"- **Distinctiveness**: the most-shared headline pattern "
-                      f"({state_name(ts)} → {resp_name(ts, tr)}) tops "
+                      f"({state_name(ts)} → {resp_name(ts[2], tr)}) tops "
                       f"{tc} of {len(prof)} profiles ({tc / len(prof):.0%}).")
         md.append("")
 
@@ -638,7 +662,7 @@ def main():
                   "the discovery-fold lift in parentheses):")
         md.append("")
         for name in vol[:8]:
-            parts = [f"{state_name(st)} → **{resp_name(st, rp)}** "
+            parts = [f"{state_name(st)} → **{resp_name(st[2], rp)}** "
                      f"({lift:.1f}x vs {pf:.0%} of the era-matched field, "
                      f"n={c}/{n} held out, found at {dl:.1f}x, "
                      f"wins {cv:.0%} vs {sc:.0%} on this ball overall, "
@@ -658,7 +682,7 @@ def main():
             if name in seen:
                 continue
             seen.add(name)
-            md.append(f"- **{name}**: {state_name(st)} → **{resp_name(st, rp)}** "
+            md.append(f"- **{name}**: {state_name(st)} → **{resp_name(st[2], rp)}** "
                       f"({lift:.1f}x vs {pf:.0%} of the era-matched field, "
                       f"n={c}/{n} held out, found at {dl:.1f}x, "
                       f"wins {cv:.0%} vs {sc:.0%} on this ball overall, tour {fc:.0%})")
