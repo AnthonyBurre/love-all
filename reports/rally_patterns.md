@@ -19,8 +19,8 @@ Everything here pools a player's serving and returning points, and the deuce and
 
 | | test | cells | rejected at q=0.10 |
 |---|---|--:|--:|
-| Men | server vs returner | 1,441 | 2 (0.1%) |
-| Men | deuce vs ad | 1,659 | 0 (0.0%) |
+| Men | server vs returner | 1,438 | 2 (0.1%) |
+| Men | deuce vs ad | 1,656 | 0 (0.0%) |
 | Women | server vs returner | 523 | 0 (0.0%) |
 | Women | deuce vs ad | 582 | 0 (0.0%) |
 
@@ -34,11 +34,11 @@ A screen this strict can come back empty, and an empty result only reads next to
 
 | rule | K | candidates | selected | held | shipped M / W | held-out lift | edge kept |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| window | 2 | 4,848 | 116 | 97 | 71 / 18 | 1.30× | 50% |
+| window | 2 | 4,839 | 113 | 94 | 69 / 18 | 1.26× | 46% |
 | window | 3 | 1,752 | 2 | 2 | 1 / 1 | — | — *(n=2)* |
 | window | 4 | 362 | 0 | 0 | 0 / 0 | — | — *(n=0)* |
-| target | 2 | 8,571 | 205 | 182 | 116 / 41 | 1.47× | 65% |
-| target | 3 | 5,825 | 20 | 15 | 13 / 2 | 1.24× | 33% |
+| target | 2 | 8,564 | 212 | 190 | 123 / 41 | 1.48× | 66% |
+| target | 3 | 5,822 | 20 | 15 | 13 / 2 | 1.24× | 33% |
 | target | 4 | 1,437 | 3 | 2 | 2 / 0 | — | — *(n=3)* |
 
 *Calibration is quoted only where at least 10 patterns reached the held-out measurement; below that the number would be an anecdote with a percent sign on it.*
@@ -64,7 +64,7 @@ Under `target`, **44% of the surviving patterns' evidence sits in occurrences wh
 
 ## Where the drift is
 
-Aggressive shot frequency drifts with how deep into the point a stroke sits, so a context arising early can read as aggressive for that reason alone. Two things hold it down here: blinding removes the steep part of the curve (past ply 7 the tour rate is flat to within about a point), and the parent is summed over exactly the strokes the child was eligible on, so both sides of every ratio share a population. What is left is where inside that population the two sit, measured rather than corrected: the median surviving pattern sits -0.30 plies from its parent, and 14% are more than a ply away.
+Aggressive shot frequency drifts with how deep into the point a stroke sits, so a context arising early can read as aggressive for that reason alone. Two things hold it down here: blinding removes the steep part of the curve (past ply 7 the tour rate is flat to within about a point), and the parent is summed over exactly the strokes the child was eligible on, so both sides of every ratio share a population. What is left is where inside that population the two sit, measured rather than corrected: the median surviving pattern sits -0.32 plies from its parent, and 17% are more than a ply away.
 
 ## Limitations
 

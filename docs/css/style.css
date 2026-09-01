@@ -910,13 +910,16 @@ a { color: var(--acc-d); }
 .ct-head.faint { opacity: 0.35; }
 /* Every ball-path drawing says whose is whose three ways, so none of them has to survive
    alone at thumbnail size: the player's half washed in their colour, their own balls solid
-   and in that colour, the opponent's dashed and neutral. A hollow ring marks the bounce
+   and in that colour, the opponent's dashed and neutral. A fourth mark carries the pivot
    the drawing turns on — the ball they answered on a court pattern, the ball they attacked
-   at the end of a trigger. */
+   at the end of a trigger. A hollow ring is a bounce; a filled ct-player dot in their own
+   colour is a ball met in the air, sitting up near the net where they volleyed it. */
 .ct-mine { fill: color-mix(in srgb, var(--shot, var(--acc)) 13%, transparent); }
 .ct-shot.incoming { stroke: var(--muted); stroke-width: 1.1; stroke-dasharray: 3 2.5; opacity: .8; }
 .ct-them { fill: none; stroke: var(--muted); stroke-width: 1.1; }
 .ct-bounce { fill: var(--card); stroke: var(--muted); stroke-width: 1.1; }
+/* the serve's landing spot, matching the weight of the faint serve line it sits on */
+.ct-bounce.faint { opacity: 0.55; }
 
 /* --- the comparison strip, headed "side by side" ---------------------------------
    Both players' headline numbers on one axis, bent into a ring: each sweeps out of a shared

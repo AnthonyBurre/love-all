@@ -51,7 +51,9 @@ def test_stroke_kind():
     assert stroke_kind("r", False) == "slice"
     assert stroke_kind("s", False) == "slice"
     assert stroke_kind("v", False) == "net"
-    assert stroke_kind("l", False) == "other"
+    assert stroke_kind("l", False) == "lob"
+    assert stroke_kind("u", False) == "drop"
+    assert stroke_kind("t", False) == "other"
     assert stroke_kind("", True) == "serve"
 
 
@@ -146,3 +148,52 @@ def test_aggregates_match_stats_overview():
     assert err["aces"] / max(tot["aces"], 1) < 0.05
     assert err["dfs"] / max(tot["dfs"], 1) < 0.05
     assert err["unforced"] / max(tot["unforced"], 1) < 0.08
+
+
+# --- shot-type letters ------------------------------------------------------------------
+# Three pairs are easy to read for each other and share their wings with each other, so the
+# forehand/backhand checks above pass whichever of the three a letter is taken for. These
+# pin the letters themselves, against the charting project's Instructions tab.
+
+
+def test_the_three_easily_confused_letter_pairs():
+    """Quoting the contributor spreadsheet (MatchChart 0.3.2.xlsm, Instructions):
+
+        u = forehand drop shot        y = backhand drop shot
+        h = forehand half-volley      i = backhand half-volley
+        j = forehand swinging volley  k = backhand swinging volley
+    """
+    from match_charting_project.shots.notation import BH_LETTERS, FH_LETTERS
+    assert FH_LETTERS["u"] == "forehand_dropshot"
+    assert BH_LETTERS["y"] == "backhand_dropshot"
+    assert FH_LETTERS["h"] == "forehand_halfvolley"
+    assert BH_LETTERS["i"] == "backhand_halfvolley"
+    assert FH_LETTERS["j"] == "forehand_swinging_volley"
+    assert BH_LETTERS["k"] == "backhand_swinging_volley"
+
+
+def test_every_letter_is_on_one_wing_only():
+    """Each letter belongs to exactly one wing, which is what the winner and error splits
+    are credited from."""
+    from match_charting_project.shots.notation import (
+        BH_LETTERS,
+        FH_LETTERS,
+        OTHER_LETTERS,
+        SHOT_LETTERS,
+    )
+    assert not set(FH_LETTERS) & set(BH_LETTERS)
+    assert len(SHOT_LETTERS) == len(FH_LETTERS) + len(BH_LETTERS) + len(OTHER_LETTERS)
+
+
+def test_every_letter_lands_in_the_group_its_stroke_belongs_to():
+    """"net" is the strokes played at the net; the drop shot and the lob get one each,
+    being opposites; "other" is trick shots and strokes the charter did not type."""
+    assert {stroke_kind(c, False) for c in "vzop"} == {"net"}      # volleys, overheads
+    assert {stroke_kind(c, False) for c in "hi"} == {"net"}        # half-volleys
+    assert {stroke_kind(c, False) for c in "jk"} == {"net"}        # swinging volleys
+    assert {stroke_kind(c, False) for c in "uy"} == {"drop"}
+    assert {stroke_kind(c, False) for c in "lm"} == {"lob"}
+    assert {stroke_kind(c, False) for c in "fb"} == {"drive"}
+    assert {stroke_kind(c, False) for c in "rs"} == {"slice"}
+    assert {stroke_kind(c, False) for c in "tq"} == {"other"}
+    assert stroke_kind("", True) == "serve"

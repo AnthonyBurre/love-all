@@ -18,7 +18,7 @@ answers it, and what it found. They write their output to `reports/`.
 
 | experiment | the question | what it found |
 | --- | --- | --- |
-| [`chess_point_analysis`](experiments/chess_point_analysis/) | Can chess-analysis techniques be ported to a tennis point? | Yes. A point string is a move list, so it gets an engine eval, WPA per shot, and an opening explorer. The decoder validates to within 1–5% of the project's own stat lines. |
+| [`chess_point_analysis`](experiments/chess_point_analysis/) | Can chess-analysis techniques be ported to a tennis point? | Yes. A point string is a move list, so it gets an engine eval, WPA per shot, and an opening explorer. |
 | [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Rusedski, Moutet, Santoro, Rafter; Navratilova, Maria, Niculescu. Most predictable: Basilashvili, Cilic; Samsonova, Giorgi, Ostapenko. Junkballers and serve-volleyers score high, flat first-strike baseliners low. Zones are mirrored for left-handers, without which handedness alone explained over half the spread. |
 | [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive and face-valid. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, the textbook pressure point. |
 | [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, their conversion rates, and **traps** — cues that raise the frequency but convert worse than the player's other cues. Every figure is held out. Ships to the site. |
@@ -35,9 +35,7 @@ answers it, and what it found. They write their output to `reports/`.
 
 ### Win probability
 
-None of these ship to the site — see [The site](#the-site) for why. The in-match tree is still
-the right tool for the question it was built for; what it could not survive was being fed
-career charted rates and asked to pick a winner.
+None of these ship to the site — see [The site](#the-site) for why.
 
 | experiment | the question | what it found |
 | --- | --- | --- |
@@ -50,8 +48,7 @@ career charted rates and asked to pick a winner.
 ## The site
 
 `docs/` is a GitHub Pages site showing **Grand Slam, Masters/WTA-1000 and ATP/WTA-500
-brackets**, drawn as a linked tree with each winner wired to the next-round match it feeds.
-The page themes and titles itself to whichever tournament you're looking at.
+brackets**.
 
 | feed | source | what it gives | refresh |
 | --- | --- | --- | --- |
@@ -65,47 +62,22 @@ structure**, so everything structural comes from Wikipedia. Both Wikipedia feeds
 under `data/` (gitignored, carried by CI as Release assets), so **no draw sheet is committed
 to the repo**, and the hourly build normally makes zero Wikipedia requests.
 
-ESPN is polled only while a draw is being played. Between events the cached scoreboard is
-served as-is and the build probes once a day, which is enough to notice the next event
+ESPN is polled only while a draw is being played. Between events the build probes once a day, which is enough to notice the next event
 starting. Requests identify themselves as `love-all/0.1` and link back to this repo.
 
 Live draws show while play is on. Once an event finishes its draw is frozen into an archive
 so it stays in the dropdown, keeping the last two years of slams plus the two most recent
-finished events of every other tier. On a live match each box is shaded by how charted its
-pairing is; on a finished draw the shading turns per-match, and the drawer links straight to
-that match's full chart on Tennis Abstract or invites you to be the one who charts it. Click
-any match and a drawer opens with, for each player: a style archetype, serve and return rates
-with the games they turn into held and broken, the points won outright at either end (aces,
-winners off the return), how often each serve lands and how often neither does, average point
-length, shot variety, serve direction, court patterns, shot-making triggers, and those triggers
-again split by service court. All of it is queried in the browser with **DuckDB-WASM**, no backend.
+finished events of every other tier. Drill into
+any matchup to view average point
+length, shot variety, serve direction, court patterns, shot-making triggers, and more! All of it is queried in the browser with **DuckDB-WASM**, no backend.
 
-When the match itself is charted, the drawer answers a different question. Instead of the two
-players' careers it shows the match: a win-probability curve after every point, the serve and
-return rings filled from this match alone, each serve figure set against the player's career
-number, the average length of the points each of them won, and where every first delivery went
-on both courts. Style, handedness and shot variety stay career figures, because one match is
-about 350 strokes and too few to measure them from. The rates carry no minimum-sample gate
-either, which the career rates do: a career rate estimates a skill and needs enough points
-behind it to mean anything, while a match rate counts what happened over the match's own
-points. Those numbers come from a small static file per match, fetched only when such a match
+The panel deliberately does not predict match outcomes, since that is not the strength of this dataset and every other tennis site already does so.
+
+When the match itself is charted we do show a win-probability curve over every point, plus some match summary stats for each player. Those numbers come from a small static file per match, fetched only when such a match
 is opened.
 
-The panel deliberately does **not** predict the match. The score tree in `winprob_match.py` is
-exact, but the only inputs available to it are career charted rates over a volunteer-selected
-sample with no opponent adjustment, and a plain Elo built on the same results beats it on both
-tours. Predicting the winner is the one thing this data is worst at, and the thing every other
-tennis site already does. What the charting is uniquely good for is what a player *does*.
-
-The same score tree does run over a match that has already been played, where it describes
-rather than forecasts. On a charted match the panel draws the win probability after every
-point, anchored on what the two players' charted records were worth going in, so the curve
-says how surprising the scoreline was against those records. It is not a price, it knows
-nothing about the day, and it is never drawn for a match still to come.
-
-Two things keep that curve honest. The anchor comes from `walk_forward_strength`, which scores
-a match only off matches charted **before its day** — the whole-career rate would put the match
-inside its own prior. And the tree is evaluated across the spread of strengths the match could
+Two important things about the win-probability curve: The anchor comes from `walk_forward_strength`, which scores
+a match only off **older** matches than itself, and the tree is evaluated across the spread of strengths the match could
 have been played at rather than once at the best guess, because it is exact given a point-win
 probability and sharply non-linear in it, while that probability is not a constant a player
 carries between matches. Scored against its own predictions over 23,111 player-match serve
@@ -172,112 +144,14 @@ under `src/match_charting_project/{winprob_match,live,site}`.
 
 </details>
 
-## Reading the site's patterns and diagrams
-
-Everything in the drawer sits under one heading, **charted history**: these players as the
-Match Charting Project has them, not as this match went. Charting is volunteer work, so which
-matches exist depends on what someone chose to chart, which weights the numbers toward big
-occasions rather than sampling a career evenly. That applies to every figure below.
-
-The section opens on how much of each player the charting actually has, as a total and as a bar
-per season. The total alone cannot tell a breakout year from a decade of steady work — "195
-matches, 2014–2026" reads the same either way — and those counts are the denominator of
-everything else. The seasons run down a shared axis with the newest at the top, each player's
-bars reaching out from it to their own side. The bars are charted points, both players on one
-length scale, so a season is one row and the two are read across it. A hairline down each half
-marks a round number of points to read a bar against; an empty row is a season neither the
-charting nor the player reached. Hover or press either half of a row for its match count.
-
-Under it, a **profile band**: what kind of player each of them is, which hand they hold the
-racket in, and how long their average point runs. All of it is read through by everything
-below — the court drawings further down name their zones by the player's own hand, so a lefty's
-forehand corner is a righty's backhand corner. Style is a continuum, so a third of players sit
-too near a boundary to name and the band says "between styles" rather than picking one.
-
-The band carries no verdict on how well anyone plays. Two attempts at one — a 0–100 shot-quality
-rating, then a style-corrected version of it — both turned out to be rally length wearing a
-quality label, and [`class_relative_wpa`](experiments/class_relative_wpa/) has the arithmetic. So
-the band prints the rally length itself and no judgement: **shots per point**, the strokes in an
-average point, both players and the serve included, averaged over every charted point that
-player appeared in. It is as much a fact about the tennis they get drawn into as about them,
-which the panel's own key says.
-
-Then **serve direction**: where their first serve goes on each court side,
-laid out the way the server sees the two boxes. Only wide and T are shown, so
-the two do not add to 100 — the remainder is the body serve, which `serve_tendencies`
-found to be partly a charter's opinion rather than a player's choice. The numbers cover
-recent matches, weighted so the newest count most, and a side appears only when the player
-has enough charted serves there for the share to be mostly signal rather than sampling
-noise. Under it, **side by side** gives serve points won and return points won a ring each:
-both players start at the foot and climb, one up the left and one up the right, so the
-comparison is which sweep goes further. Each ring runs between the two figures printed at its
-ends — zero under the foot, its ceiling over the top — so twice the arc is twice the number
-within that ring. The ceilings differ: returning is the half of tennis nobody wins outright, so
-that ring ends at 67% rather than spending two thirds of its climb on ground no player has stood
-on. Read those ends before comparing one ring to another. The arcs cost resolution where two
-tour pros differ by a point or two, so each player's figure also prints on their own side.
-
-Only those two get rings, because a ring only works for a number with a real zero and a
-reachable ceiling. Both are withheld below a coverage floor: they are career charted rates with
-no opponent adjustment, and off a single charted match a qualifier was printing a serve figure
-near the best in the draw.
-
-One more figure prints beside them, under each player's shots per point: **variety**, how far
-their shot choices stray from tour norms, in bits.
-
-Bits are not a unit anyone arrives knowing, so the section opens a note that defines the figure
-and says where the charted tour sits on it: half the tour falls inside a band about a third of a
-bit wide, which is what makes "3.2 bits" mean something. Bits compound — every extra bit is a
-shot half as likely again — so a gap that looks small is not. Those bands are read off the built
-table when the panel opens, so they cannot go stale against a rebuild. Nothing is converted to a
-rank or a percentile: the figures print in the units they are measured in, so the distance
-between two players is the distance you read.
-
-Below the rings the sections run in the order a point does. **Off the return** comes first —
-what the server does with the ball their serve comes back as, split by service court and return
-depth — since it is built out of the serve the section above it just described. Then **court
-patterns**, the mid-rally exchange, written in plain English:
-`drive into the BH corner → crosscourt BH slice (1.6× the tour)`. Below them,
-**shot-making triggers** are written in shot tokens: `serve wide · BH slice→3`, with a bar
-under each cue: its length is how often that cue makes them go for a finishing shot, the colour
-change is how much of that landed, and the tick marks the player's rate with no cue at all. A
-cue is shown only if it clears a false-discovery correction and then holds up on the half of the
-player's matches that had no part in choosing it. The first bar in each column is that player
-with no cue at all — their rate over every rally stroke they hit, on the same scale and from the
-same left edge — so the section's claim is one glance: this is the rate, and these are the
-lead-ups that move it. Click the **ball path** toggle under either to see it drawn on a small
-court. The drawer carries its own short "How to read the shot notation" key; the reference below
-is for the exact semantics.
-
 <details>
-<summary><b>The full reference</b> — patterns, trigger tokens, the court diagram, zone resolution, handedness</summary>
-
-### Court patterns
-
-A pattern is the player's answer to one incoming ball: the state (the ball's character and
-the zone it lands in) and the response (wing, shot type, and line). The multiplier compares
-how often the player picks that response to how often the tour picks it **from the same
-spot**, so `1.6×` on a crosscourt slice means a genuine preference rather than just that
-slices happen — and the tour it compares against is weighted to the player's own era, because
-the game changes enough across the charted decades that a pre-2000 slicer measured against a
-pooled field is mostly being told what decade they played in. The share the multiplier is taken
-against prints beside it, since `1.6×` off a quarter of the field and `1.6×` off one percent are
-different claims. The count prints as `n=277/970`: how often they play it, out of how often they
-face the ball.
-
-The payoff (`wins 52% ▲5 vs 47%`) is a separate claim: how often the point ends up theirs after
-that response, against their own rate answering that same ball however else they answer it. The
-comparison is deliberately to the player's other choices and not to the tour's rate, which would
-mostly rank players rather than choices. The multiplier is the choice, the payoff is what it
-earns. Two families appear: **off the return**, what the server does with their first ball after
-the serve, split by the charted depth of the return (short / mid / deep), and the rally patterns
-that follow it.
+<summary><b>Reading the site's patterns and diagrams</b></summary>
 
 Zones in a pattern are named by the **player's own hands**: "the BH corner" is that
 player's backhand corner whether they are left- or right-handed. Run-around shots get their
 tennis names, so a forehand played from the backhand corner is `inside-out` on the diagonal
 and `inside-in` down the line. Every pattern shown repeated in both halves of the player's
-charted matches; one-off quirks are filtered out.
+charted matches.
 
 ### The trigger tokens
 
@@ -285,8 +159,9 @@ Each stroke is one token:
 
 - **Wing and type.** `FH` / `BH` is the forehand or backhand wing the player actually hit
   with. The type is `drive` (flat or topspin), `slice` (slice or chip), `net` (volley,
-  overhead, or half-volley), or `shot` when the type was not charted. These group a finer
-  set in the raw notation, which also records drop shots, lobs, overheads, and so on.
+  overhead, half-volley, or swinging volley), `drop` or `lob` — the shortest and deepest
+  balls in tennis, which is why they get a group each rather than sharing one — or `shot`
+  when the type was not charted.
 - **Direction.** `→1` / `→2` / `→3` is the third of the court the ball was sent to, named
   relative to the **player's own hands** — mirrored for a left-hander, so one token string
   means one piece of tennis whoever played it. The raw notation names fixed thirds by the
@@ -299,7 +174,7 @@ A trigger reads as a lead-up, the player's shot then the opponent's reply, and a
 cue provokes. The framework groups a player's point-ending shots as one behavioral unit, the
 **aggressive shot**: a winner, their own unforced error, or a shot that forced the reply into an
 error. All three mean they went for the finish and only the execution differed. "Aggressive" is
-the **aggressive shot frequency** the cue provokes — how often a stroke there is one — and
+the **aggressive shot frequency** the cue provokes, and
 "converts" is the share that paid, winners and forced errors together. A cue that raises the
 frequency but sinks conversion is a **trap**.
 

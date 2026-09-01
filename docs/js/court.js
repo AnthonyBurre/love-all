@@ -11,23 +11,48 @@
 // with court.py; that module stays the canonical renderer for reports.
 //
 // Presentation has deliberately diverged, though: these draw at ~96px in a panel, where
-// court.py's reports draw at full size. So this file adds arrowheads, bounce rings, a
-// dashed neutral treatment for a ball the opponent hit, and a tinted half marking whose
-// side is whose — cues that earn their place only at thumbnail scale. Geometry is shared;
-// styling is not, and nothing here needs porting back.
+// court.py's reports draw at full size. So this file adds arrowheads, a dashed neutral
+// treatment for a ball the opponent hit, and a tinted half marking whose side is whose —
+// cues that earn their place only at thumbnail scale. It also rings one bounce where
+// court.py rings every one it draws past: at 88px a second ring is a smudge. Geometry is
+// shared; styling is not, and nothing here needs porting back.
 //
 // Both renderers use that one vocabulary, so a drawing means the same thing wherever it
 // appears: tint = the profiled player's half, solid and coloured = a ball they hit, dashed
-// and neutral = one the opponent hit, ring = the bounce the drawing turns on. pairSvg
-// knows those roles from its shape; rallySvg has to work them out — see the note there.
+// and neutral = one the opponent hit. Lines run contact to contact, so every kink is a
+// player meeting the ball, and a ring on a line is where that ball bounced along the way —
+// which leaves a line carrying no ring meaning something definite, that the ball never
+// bounced and was taken out of the air. pairSvg knows the hitters' roles from its shape;
+// rallySvg has to work them out — see the note there.
 
 // --- court geometry (a 150 x 190 field; matches court.py and the notation-key courts) ---
 const LEFT = 20, RIGHT = 130, TOP = 10, BOTTOM = 180, NET = 95, HALF = NET - TOP;
 const SERVICE_F = 0.5;                       // service line, as a fraction of a half
 const LANE_L = 40, LANE_MID = 75, LANE_R = 110;
 const DEPTH_DEFAULT = 0.62;                  // rally bounce depth (tokens carry no depth)
+// Two strokes whose whole point is their depth, and which a stored pattern never carries a
+// charted depth for: a drop shot dies just over the net, a lob lands on the baseline. Same
+// numbers as court.py.
+const KIND_DEPTH = { drop: 0.20, lob: 0.92 };
 const SERVE_DEPTH_F = 0.42;                  // serve lands a touch inside the service line
 const SERVE_TOKEN_DIR = { W: "4", B: "5", T: "6" };
+
+// Where a player meets the ball, which is never where it bounced. A groundstroke is
+// struck a step past the bounce, as the ball rises off it; a return is struck from around
+// the baseline however short the serve landed, because the returner's stance sets that,
+// not the serve; a volley is struck before the ball reaches the ground at all. Fractions
+// of one half's net-to-baseline depth, and the same numbers as court.py.
+const STEP_F = 0.12;                         // a rally ball is met this far past its bounce
+const RETURN_DEPTH_F = 0.92;                 // a serve is returned from about the baseline
+const NET_CONTACT_F = 0.25;                  // a volley is taken this far in front of the net
+const CONTACT_PAD = 3;                       // how far outside a sideline a contact may sit
+const SERVE_STANCE = 4;                      // the server stands this far behind the baseline
+const RALLY_STANCE = 4;                      // a mid-rally opening is anchored just inside it
+
+// The token alphabet's kind letter. Only "net" changes the drawing, but the full map
+// keeps the vocabulary the same as court.py's _TOKEN_KIND.
+const TOKEN_KIND = { d: "drive", s: "slice", v: "net", p: "drop", l: "lob", o: "other" };
+const tokenKind = (tok) => (tok.startsWith("sv") ? "serve" : (TOKEN_KIND[tok[1]] ?? "other"));
 
 // The court occupies x 20–130, y 10–180 of the 150×190 field the geometry is written in, so
 // a full-field viewBox spends a quarter of a thumbnail's width on blank margin. These draw
@@ -37,8 +62,9 @@ const SERVE_TOKEN_DIR = { W: "4", B: "5", T: "6" };
 // arrowheads and the tinted half: every coordinate below is still court.py's, so the two
 // renderers stay in sync and nothing here needs porting back.
 const FRAME_PAD = 6;
+const FRAME_FOOT = 3;                        // extra, for a server standing off the court
 const FRAME = [LEFT - FRAME_PAD, TOP - FRAME_PAD,
-  RIGHT - LEFT + 2 * FRAME_PAD, BOTTOM - TOP + 2 * FRAME_PAD].join(" ");
+  RIGHT - LEFT + 2 * FRAME_PAD, BOTTOM - TOP + 2 * FRAME_PAD + FRAME_FOOT].join(" ");
 
 // Direction wingtips: two small chevrons per segment, at these fractions along it.
 const TIP_AT = [0.38, 0.72];
@@ -145,12 +171,67 @@ function bounces(tokens, court) {
   return tokens.map((tok, i) => {
     if (tok.startsWith("sv")) {
       const dir = SERVE_TOKEN_DIR[tok.slice(2)] ?? null;
-      return { x: serveX(dir, court), y: depthY(SERVE_DEPTH_F, true) };
+      return { x: serveX(dir, court), y: depthY(SERVE_DEPTH_F, true), isServe: true };
     }
     const top = i % 2 === 0;
     const dir = tok.length > 2 && "123".includes(tok[2]) ? tok[2] : null;
-    return { x: laneX(dir, top), y: depthY(DEPTH_DEFAULT, top) };
+    const frac = KIND_DEPTH[TOKEN_KIND[tok[1]]] ?? DEPTH_DEFAULT;
+    return { x: laneX(dir, top), y: depthY(frac, top), isServe: false };
   });
+}
+
+// Where the line through a and b sits at height y, extended past b when y is beyond it.
+//
+// A wide serve really does pull a returner off the court and the extension says so, but the
+// drawing has no room to follow one indefinitely — and depth and width are drawn on
+// different scales here, which exaggerates how far it runs. So an extension that would leave
+// the court is stopped where it crosses the sideline rather than slid back inside at the
+// depth asked for: the contact comes out shallower, which is what being yanked that wide
+// actually does, and it stays *on the ball's line*. Keeping it there is what lets a bounce
+// sit on the drawn segment instead of beside it.
+function pointAtDepth(a, b, y) {
+  const lo = LEFT - CONTACT_PAD, hi = RIGHT + CONTACT_PAD;
+  if (Math.abs(b[1] - a[1]) < 1e-9) return [Math.min(Math.max(b[0], lo), hi), y];
+  const x = a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0]);
+  if ((x >= lo && x <= hi) || Math.abs(b[0] - a[0]) < 1e-9) {
+    return [Math.min(Math.max(x, lo), hi), y];
+  }
+  const edge = x < lo ? lo : hi;
+  return [edge, a[1] + (edge - a[0]) / (b[0] - a[0]) * (b[1] - a[1])];
+}
+
+// Where each stroke was struck from, and which balls reached the ground.
+//
+// A ball runs straight in plan view, so a player standing to it meets it on that line,
+// past the bounce — which is why a contact is found by extending the incoming ball's own
+// line rather than by stepping straight back from where it landed. How far along depends
+// on the stroke: a groundstroke a step, a return a stride to wherever the returner was
+// standing, and a volley not past the bounce at all but short of it, out of the air.
+//
+// `bounced` is per *incoming* ball, false where a volley answered it — the one fact a
+// stroke can only learn from the stroke after it, and the reason nothing is drawn saying
+// a volleyed ball landed.
+function contactPoints(bs, kinds, start) {
+  const contacts = [start];
+  const bounced = bs.map(() => true);
+  for (let i = 1; i < bs.length; i++) {
+    const prev = bs[i - 1];
+    const a = contacts[i - 1], b = [prev.x, prev.y];
+    const top = prev.y < NET;
+    const away = top ? -1 : 1;                 // away from the net, in screen y
+    let y;
+    if (kinds[i] === "net") {
+      bounced[i - 1] = false;
+      y = depthY(NET_CONTACT_F, top);
+      if ((y - prev.y) * away >= 0) y = prev.y; // aimed shorter than a volley is taken
+    } else if (prev.isServe) {
+      y = depthY(RETURN_DEPTH_F, top);
+    } else {
+      y = prev.y + away * STEP_F * HALF;
+    }
+    contacts.push(pointAtDepth(a, b, Math.min(Math.max(y, TOP - 4), BOTTOM + 4)));
+  }
+  return { contacts, bounced };
 }
 
 // Render a token list ("svW", "Bs3", ...) as a court SVG string, css-classed for the site.
@@ -174,14 +255,32 @@ export function rallySvg(tokens, court = "deuce") {
   if (!bs.length) return "";
   const mineTop = bs.length % 2 === 1;
   const isMine = (i) => i % 2 === bs.length % 2;
-  let px = serveOriginX(court), py = BOTTOM - 4;         // opening contact, anchors stroke 1
+  const opens = bs[0].isServe;
+  // Opening contact, anchoring stroke 1: a server stands behind their baseline, and a
+  // sequence that starts mid-rally has no real origin, so it is anchored just inside one.
+  const start = [serveOriginX(court), BOTTOM + (opens ? SERVE_STANCE : -RALLY_STANCE)];
+  const { contacts } = contactPoints(bs, tokens.map(tokenKind), start);
+  const [sx, sy] = contacts[0];
   const els = [isMine(0)
-    ? `<circle cx="${f(px)}" cy="${f(py)}" r="2.3" class="ct-player"/>`
-    : `<circle cx="${f(px)}" cy="${f(py)}" r="2.6" class="ct-them"/>`];
+    ? `<circle cx="${f(sx)}" cy="${f(sy)}" r="2.3" class="ct-player"/>`
+    : `<circle cx="${f(sx)}" cy="${f(sy)}" r="2.6" class="ct-them"/>`];
+  // Each ball runs from the contact that struck it to the contact that answered it, so
+  // every kink is a player meeting the ball. The intermediate bounces along the way are
+  // left unmarked: at 88px a second ring is a smudge, and the line passes through the
+  // bounce by construction, so a serve's placement still reads off where it crosses the
+  // box. court.py rings every one of them, because it draws at full size.
   bs.forEach((b, i) => {
-    els.push(shotLine(px, py, b.x, b.y, { incoming: !isMine(i), shot: i + 1 }));
-    px = b.x; py = b.y;
+    const [x1, y1] = contacts[i];
+    const [x2, y2] = i === bs.length - 1 ? [b.x, b.y] : contacts[i + 1];
+    els.push(shotLine(x1, y1, x2, y2, { incoming: !isMine(i), shot: i + 1 }));
   });
+  // The serve's landing is the one intermediate bounce that gets a mark. Every other
+  // one is left to the line passing through it, but a serve read only off the angle of
+  // a line running on to the returner does not read as a serve at all: the drawing needs
+  // the spot in the box.
+  if (opens && bs.length > 1) {
+    els.push(`<circle cx="${f(bs[0].x)}" cy="${f(bs[0].y)}" r="2.4" class="ct-bounce faint"/>`);
+  }
   const end = bs[bs.length - 1];
   els.push(`<circle cx="${f(end.x)}" cy="${f(end.y)}" r="3" class="ct-bounce"/>`);
   return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${tintHalf(mineTop)}${COURT}${els.join("")}</svg>`;
@@ -190,10 +289,10 @@ export function rallySvg(tokens, court = "deuce") {
 // --- pattern string -> tokens (the inverse of shot_language.tokens.pretty) --------------
 // Stored trigger contexts are the human-readable form: "serve wide · BH slice→3"
 // (dot separated lead-up shots).
-const SHOT_RE = /serve (?:wide|body|T)|(?:FH|BH|\?) (?:drive|slice|net|shot)→[123·]/g;
+const SHOT_RE = /serve (?:wide|body|T)|(?:FH|BH|\?) (?:drive|slice|net|drop|lob|shot)→[123·]/g;
 const SERVE_TOK = { "serve wide": "svW", "serve body": "svB", "serve T": "svT" };
 const SIDE_TOK = { FH: "F", BH: "B", "?": "?" };
-const KIND_TOK = { drive: "d", slice: "s", net: "v", shot: "o" };
+const KIND_TOK = { drive: "d", slice: "s", net: "v", drop: "p", lob: "l", shot: "o" };
 
 // Court thirds mirrored, for a sequence stored in a left-hander's own frame.
 const MIRROR_DIR = { 1: "3", 2: "2", 3: "1" };
@@ -238,26 +337,51 @@ export function patternSvg(pattern, mirror = false, court = "deuce") {
 // and which of the two balls came first. Three cues carry that, so no one of them has to
 // survive alone: the profiled player's half is tinted, the ball they *receive* is dashed
 // and neutral while the one they *hit* is solid and in their colour, and only the response
-// gets an arrowhead. A hollow ring sits where the incoming ball bounced — the pivot the
-// answer is played from.
+// gets an arrowhead. A fourth marks the pivot the answer is played off — see `pivot`.
+//
+// The response leaves from where the player met the ball, a step past where it landed,
+// rather than from the bounce itself. Small shift, and it earns its keep: an answer
+// springing from the exact point the ball hit the ground reads as a shot struck from
+// there, which for a ball down the middle is a shot nobody plays.
 const PAIR_DEPTH = { short: 0.33, "mid-depth": DEPTH_DEFAULT, deep: 0.86 };
 
-export function pairSvg(incCode, respCode, depth = "") {
+// How deep each of the two balls landed. A charted return depth is what the ball actually
+// did and wins; otherwise a drop shot and a lob are placed by what they are, and every
+// other stroke sits at the ordinary rally depth. The response has no charted depth at all —
+// only the return in a "ret" state does — so its kind is all there is to go on.
+const incDepth = (depth, kind) => PAIR_DEPTH[depth] ?? KIND_DEPTH[kind] ?? DEPTH_DEFAULT;
+const outDepth = (kind) => KIND_DEPTH[kind] ?? DEPTH_DEFAULT;
+
+// The pivot marker, which says what happened at the ball the answer was played off.
+// A hollow ring is a bounce. A filled dot in the player's colour is a contact with no
+// bounce under it — they took it out of the air — and it sits where they met it, up near
+// the net, which is the other half of the same fact.
+const pivot = (bounced, land, contact) => (bounced
+  ? `<circle cx="${f(land.x)}" cy="${f(land.y)}" r="3" class="ct-bounce"/>`
+  : `<circle cx="${f(contact[0])}" cy="${f(contact[1])}" r="2.6" class="ct-player"/>`);
+
+export function pairSvg(incCode, respCode, depth = "", incKind = "", respKind = "") {
   const inc = {
     x: laneX(String(incCode), false),
-    y: depthY(PAIR_DEPTH[depth] ?? DEPTH_DEFAULT, false),
+    y: depthY(incDepth(depth, incKind), false),
+    isServe: false,
   };
-  const out = { x: laneX(String(respCode), true), y: depthY(DEPTH_DEFAULT, true) };
-  const ox = LANE_MID, oy = TOP + 4;      // opponent's contact, anchors the incoming ball
+  const out = { x: laneX(String(respCode), true), y: depthY(outDepth(respKind), true) };
+  // An opponent who volleyed was standing at the net, not behind their baseline.
+  const oy = incKind === "net" ? depthY(NET_CONTACT_F, true) : TOP + 4;
+  const { contacts, bounced } = contactPoints([inc, out], ["", respKind], [LANE_MID, oy]);
+  const [ox, oyy] = contacts[0];
+  const mine = contacts[1];
+  if (!String(respCode)) out.x = mine[0];   // a lob: no third to draw, so claim no lane
   // Two balls with fixed roles: the player always receives and always answers, so their
   // half is always the near one — no parity to work out, unlike rallySvg.
   const els = [
-    `<circle cx="${f(ox)}" cy="${f(oy)}" r="2.6" class="ct-them"/>`,
-    // This one ball runs marker-to-ring, so its endpoints already say which way it went;
-    // rallySvg's opponent balls sit mid-chain and keep their chevrons.
-    shotLine(ox, oy, inc.x, inc.y, { incoming: true, bare: true, shot: 1 }),
-    `<circle cx="${f(inc.x)}" cy="${f(inc.y)}" r="3" class="ct-bounce"/>`,
-    shotLine(inc.x, inc.y, out.x, out.y, { arrow: true, shot: 2 }),
+    `<circle cx="${f(ox)}" cy="${f(oyy)}" r="2.6" class="ct-them"/>`,
+    // This one ball runs marker-to-contact, so its endpoints already say which way it
+    // went; rallySvg's opponent balls sit mid-chain and keep their chevrons.
+    shotLine(ox, oyy, mine[0], mine[1], { incoming: true, bare: true, shot: 1 }),
+    pivot(bounced[0], inc, mine),
+    shotLine(mine[0], mine[1], out.x, out.y, { arrow: true, shot: 2 }),
   ];
   return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ball path">${tintHalf(false)}${COURT}${els.join("")}</svg>`;
 }
@@ -273,34 +397,51 @@ export function pairSvg(incCode, respCode, depth = "") {
 // while the ball the numbers beside the drawing actually measure is the third one, which
 // keeps the arrowhead. Without the fade all three balls read as equally the point.
 //
+// The serve line runs past its own bounce to wherever the returner met it, which is what
+// puts them at their baseline rather than standing in the service box: a returner's
+// position is set by their stance, not by how short the serve landed. The bounce itself
+// goes unmarked, but the line passes through it, so wide / body / T still reads off where
+// the serve crosses the box.
+//
 // Three levels, matching the three tiers a pattern can be surfaced at, so the drawing never
 // claims more than the row behind it knows:
 //   both court and direction  a serve, struck from the right side, landing where it landed
 //   court only                no serve line; the two players just stand on the correct sides
 //   neither                   pairSvg, unchanged — there is nothing to add
-export function retSvg(court, serveDir, incCode, respCode, depth = "") {
+export function retSvg(court, serveDir, incCode, respCode, depth = "",
+  incKind = "", respKind = "") {
   const side = String(court || "").toLowerCase();
-  if (side !== "deuce" && side !== "ad") return pairSvg(incCode, respCode, depth);
+  if (side !== "deuce" && side !== "ad") return pairSvg(incCode, respCode, depth, incKind, respKind);
   const dir = String(serveDir || "");
   const known = dir === "4" || dir === "5" || dir === "6";
 
   const inc = {
     x: laneX(String(incCode), false),
-    y: depthY(PAIR_DEPTH[depth] ?? DEPTH_DEFAULT, false),
+    y: depthY(incDepth(depth, incKind), false),
+    isServe: false,
   };
-  const out = { x: laneX(String(respCode), true), y: depthY(DEPTH_DEFAULT, true) };
+  const out = { x: laneX(String(respCode), true), y: depthY(outDepth(respKind), true) };
   // With no charted direction this is the middle of the correct service box, which says
   // which side the point was played from without asserting a placement inside it.
-  const land = { x: serveX(known ? dir : null, side), y: depthY(SERVE_DEPTH_F, true) };
-  const sx = serveOriginX(side), sy = BOTTOM - 4;
+  const land = { x: serveX(known ? dir : null, side), y: depthY(SERVE_DEPTH_F, true),
+    isServe: true };
+  const start = [serveOriginX(side), BOTTOM + SERVE_STANCE];
+  const { contacts, bounced } = contactPoints([land, inc, out], ["serve", incKind, respKind],
+    start);
+  const them = contacts[1];        // the returner, out where the serve pushed them
+  const mine = contacts[2];        // the server, stepping in behind their own delivery
+  if (!String(respCode)) out.x = mine[0];   // a lob: no third to draw, so claim no lane
 
   const els = [
-    `<circle cx="${f(sx)}" cy="${f(sy)}" r="2.3" class="ct-player"/>`,
-    known ? shotLine(sx, sy, land.x, land.y, { faint: true, bare: true, shot: 1 }) : "",
-    `<circle cx="${f(land.x)}" cy="${f(land.y)}" r="2.6" class="ct-them"/>`,
-    shotLine(land.x, land.y, inc.x, inc.y, { incoming: true, bare: true, shot: 2 }),
-    `<circle cx="${f(inc.x)}" cy="${f(inc.y)}" r="3" class="ct-bounce"/>`,
-    shotLine(inc.x, inc.y, out.x, out.y, { arrow: true, shot: 3 }),
+    `<circle cx="${f(start[0])}" cy="${f(start[1])}" r="2.3" class="ct-player"/>`,
+    known ? shotLine(start[0], start[1], them[0], them[1], { faint: true, bare: true, shot: 1 }) : "",
+    // The serve's landing. The line runs on past it to the returner, so without the spot
+    // in the box the first ball reads as a long diagonal rather than as a serve.
+    known ? `<circle cx="${f(land.x)}" cy="${f(land.y)}" r="2.4" class="ct-bounce faint"/>` : "",
+    `<circle cx="${f(them[0])}" cy="${f(them[1])}" r="2.6" class="ct-them"/>`,
+    shotLine(them[0], them[1], mine[0], mine[1], { incoming: true, bare: true, shot: 2 }),
+    pivot(bounced[1], inc, mine),
+    shotLine(mine[0], mine[1], out.x, out.y, { arrow: true, shot: 3 }),
   ];
   return `<svg viewBox="${FRAME}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="serve and third ball">${tintHalf(false)}${COURT}${els.join("")}</svg>`;
 }

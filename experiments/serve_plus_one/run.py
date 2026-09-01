@@ -9,10 +9,10 @@ It pools the two service courts, and that pooling is not free. A wide serve open
 the forehand in the deuce court and the backhand in the ad court, so the same
 return description arrives from a different serve, at a different angle, with the
 server recovering from a different corner. Nadal's pooled reading is "mid-depth
-drive return into the middle -> crosscourt forehand, 1.7x". Split, it is a
-crosscourt forehand off the deuce-court T serve and a forehand *down the line*
-off the ad-court wide serve. The pooled number is the average of two different
-shots, and it names neither.
+drive return into the middle -> crosscourt forehand, 1.6x". Split, it is a
+crosscourt forehand on the deuce side and an *inside-out* forehand on the ad
+side. The pooled number is the average of two different shots, and it names
+neither.
 
 The obvious fix — add serve side and serve direction to the state — costs
 coverage: the state space goes six times finer and the tail of the tour can no
@@ -29,9 +29,10 @@ Choosing the tier by which one surfaced the most patterns would be choosing the
 resolution that flattered the player, and no replication gate fully undoes that.
 
 Everything else is court_response's method, imported from it rather than copied:
-hand-relative zones, the crosscourt/down-the-line reference lane, shrunk lift
-against the field in the same state, the payoff, and the both-halves replication
-gate. This experiment does not modify or re-run that one.
+hand-relative zones, the reference lane a response's line is read against, the
+namer that turns a (zone, line) pair into plain English, shrunk lift against the
+field in the same state, the payoff, and the both-halves replication gate. This
+experiment does not modify or re-run that one.
 
 Writes reports/serve_plus_one.md, reports/serve_plus_one_players.csv, and
 reports/figures/serve_plus_one_tiers.png.
@@ -47,10 +48,6 @@ from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-import matplotlib  # noqa: E402
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 from match_charting_project.analysis.coverage import connect  # noqa: E402
@@ -119,9 +116,9 @@ def _court_response():
     """Load the sibling experiment as a module without running it (it guards main()).
 
     Its geometry is the vocabulary this experiment extends — hand-relative zones,
-    the reference lane that decides crosscourt from down-the-line, the plain-language
-    words, and the physical codes the site's court renderer draws from. A second copy
-    here would drift the moment either side was corrected.
+    the reference lane a response's line is read against, the namer that turns a
+    (zone, line) pair into plain English, and the physical codes the site's court
+    renderer draws from. A second copy here would drift the moment either side changed.
     """
     path = Path(__file__).resolve().parents[1] / "court_response" / "run.py"
     spec = importlib.util.spec_from_file_location("court_response_run", path)
@@ -134,6 +131,8 @@ CR = _court_response()
 ZONE_REL, WING_LANE, MIRROR = CR.ZONE_REL, CR.WING_LANE, CR.MIRROR
 INC_WORD, RESP_WORD, ZONE_WORD, DEPTH_WORD = (
     CR.INC_WORD, CR.RESP_WORD, CR.ZONE_WORD, CR.DEPTH_WORD)
+# The response namer too, keyed on the zone alone so it spans both state shapes.
+resp_name, resp_line = CR.resp_name, CR.resp_line
 
 
 class State(NamedTuple):
@@ -248,9 +247,9 @@ def collect(con, gender: str, hands: dict) -> dict:
                 funnel["no_serve_dir"] += 1
 
             kind, zone = stroke_kind(ret.letter, False), ZONE_REL[hand][d_in]
-            ref = d_in if d_in != "2" else WING_LANE[hand][plus1.side]
-            line = "cc" if d_out == ref else ("dtl" if d_out == MIRROR[ref] else "mid")
-            resp = (plus1.side, stroke_kind(plus1.letter, False), line)
+            rkind = stroke_kind(plus1.letter, False)
+            resp = (plus1.side, rkind,
+                    resp_line(d_in, d_out, hand, plus1.side, rkind))
             # The server hit shot 3, so "won" is whether the point ended with them —
             # the payoff of the decision, terminal shot or not.
             won = int(plus1.hitter == (pt.server if pt.server_won else pt.returner))
@@ -363,24 +362,14 @@ def state_name(st: State) -> str:
     return ball
 
 
-def resp_name(st: State, resp) -> str:
-    wing, kind, line = resp
-    word = RESP_WORD[kind]
-    if line == "mid":
-        return f"{wing} {word} through the middle"
-    run_around = (st.zone in ("fh", "bh") and st.zone != wing.lower()
-                  and kind in ("drive", "slice"))
-    if run_around:
-        return f"{'inside-out' if line == 'cc' else 'inside-in'} {wing} {word}"
-    return f"crosscourt {wing} {word}" if line == "cc" else f"{wing} {word} down the line"
-
-
 def physical_codes(st: State, resp, hand):
     """Zone codes for the site's court renderer: where the return landed and where
     the +1 went, as thirds of the court in the fixed right-hander convention."""
     zone, (wing, _kind, line) = st.zone, resp
     inc = "2" if zone == "mid" else {"R": {"fh": "1", "bh": "3"},
                                      "L": {"fh": "3", "bh": "1"}}[hand][zone]
+    if not line:                       # a lob, whose third is not conditioned on
+        return inc, ""
     ref = inc if inc != "2" else WING_LANE[hand][wing]
     out = ref if line == "cc" else (MIRROR[ref] if line == "dtl" else "2")
     return inc, out
@@ -422,6 +411,13 @@ def side_flips(res, name) -> list:
 # --- figure --------------------------------------------------------------------------
 
 def fig_tiers(results, surfaced, path):
+    # Imported here, not at module scope: matplotlib is in the optional `analysis`
+    # extra, and everything above this function runs without it.
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.6))
 
     # Players who surfaced a pattern, not players assigned a tier. Every entity with a
@@ -504,8 +500,8 @@ def player_block(md, name, rows_by_player, tiers, flips):
                   f"overall, tour {r['tour_win_rate']:.0%})")
     for st, rd, nd, ra, na in flips.get(name, [])[:2]:
         md.append(f"  - *courts disagree*: {state_name(st)} → "
-                  f"{resp_name(st, rd)} on the deuce side (n={nd}), "
-                  f"{resp_name(st, ra)} on the ad side (n={na})")
+                  f"{resp_name(st.zone, rd)} on the deuce side (n={nd}), "
+                  f"{resp_name(st.zone, ra)} on the ad side (n={na})")
     md.append("")
 
 
@@ -535,7 +531,7 @@ def main():
                 inc, out = physical_codes(st, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family="ret", tier=tier,
-                    state=state_name(st), response=resp_name(st, resp),
+                    state=state_name(st), response=resp_name(st.zone, resp),
                     serve_side=st.side or "", serve_dir=st.sdir or "",
                     state_kind=st.kind, state_zone=st.zone,
                     state_depth=DEPTH_WORD[st.depth],

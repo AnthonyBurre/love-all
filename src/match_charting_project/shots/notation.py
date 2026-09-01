@@ -28,15 +28,25 @@ from dataclasses import dataclass, field
 
 # Shot-type letters, split by the wing that produces them (forehand vs backhand).
 # Used both to name the stroke and to credit forehand/backhand winners & errors.
+# The letters are the charting project's own, from the Instructions tab of the contributor
+# spreadsheet (MatchChart 0.3.2.xlsm). Six of them name three pairs that are easy to read
+# for each other, so they are quoted here verbatim:
+#
+#     u = forehand drop shot        y = backhand drop shot
+#     h = forehand half-volley      i = backhand half-volley
+#     j = forehand swinging volley  k = backhand swinging volley
+#
+# Note that each pair shares a wing with the other two, so the forehand/backhand split is
+# blind to which of the three a letter is. The tests check the letters themselves.
 FH_LETTERS = {
     "f": "forehand", "r": "forehand_slice", "v": "forehand_volley",
-    "o": "overhead", "u": "forehand_halfvolley", "l": "forehand_lob",
-    "h": "forehand_swinging_volley", "j": "forehand_dropshot",
+    "o": "overhead", "u": "forehand_dropshot", "l": "forehand_lob",
+    "h": "forehand_halfvolley", "j": "forehand_swinging_volley",
 }
 BH_LETTERS = {
     "b": "backhand", "s": "backhand_slice", "z": "backhand_volley",
-    "p": "backhand_overhead", "y": "backhand_halfvolley", "m": "backhand_lob",
-    "i": "backhand_swinging_volley", "k": "backhand_dropshot",
+    "p": "backhand_overhead", "y": "backhand_dropshot", "m": "backhand_lob",
+    "i": "backhand_halfvolley", "k": "backhand_swinging_volley",
 }
 OTHER_LETTERS = {"t": "trick", "q": "unknown_shot"}
 SHOT_LETTERS = set(FH_LETTERS) | set(BH_LETTERS) | set(OTHER_LETTERS)
@@ -54,12 +64,20 @@ DIRECTION_NAME = {"1": "fh_corner", "2": "middle", "3": "bh_corner"}
 DEPTH_NAME = {"7": "shallow", "8": "mid", "9": "deep"}
 ERROR_LOC_NAME = {"n": "net", "d": "deep", "w": "wide", "x": "wide_deep"}
 
-# Stroke "kind" groups, the canonical taxonomy shared by the materialized table and
-# any model: drive vs slice is well charted (~12% slices) and shapes the rally;
-# volleys, overheads and half-volleys are inherently net strokes.
+# Stroke "kind" groups, the canonical taxonomy shared by the materialized table and any
+# model. Drive vs slice is well charted (~12% slices) and shapes the rally. Volleys,
+# overheads, half-volleys and swinging volleys are all struck at or inside the net.
+#
+# The drop shot and the lob get a group each rather than sharing one. They are opposites —
+# the shortest ball in tennis and the deepest — so a bucket holding both has no depth, no
+# intent and no useful name, and any drawing of it has to pick one of the two to be wrong
+# about. That leaves "other" meaning what it says: trick shots, and strokes whose type the
+# charter did not record.
 _DRIVE = set("fb")
 _SLICE = set("rs")
-_NET = set("vzopuy")
+_NET = set("vzophijk")
+_DROP = set("uy")
+_LOB = set("lm")
 
 
 def stroke_kind(letter: str, is_serve: bool) -> str:
@@ -71,6 +89,10 @@ def stroke_kind(letter: str, is_serve: bool) -> str:
         return "slice"
     if letter in _NET:
         return "net"
+    if letter in _DROP:
+        return "drop"
+    if letter in _LOB:
+        return "lob"
     return "other"
 
 

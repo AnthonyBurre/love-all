@@ -10,16 +10,20 @@ a right-handed field. This experiment reframes the question the way a player
 experiences it: the state is the incoming ball only — the zone it lands in,
 named relative to the receiver's own hands, plus the ball's character — and the
 response is the player's decision: wing, shot type, and the line taken
-(crosscourt / down the line / middle). Everything upstream of the incoming ball
-is deliberately ignored.
+(the diagonal, against it, or through the middle). Everything upstream of the
+incoming ball is deliberately ignored.
 
 Zone geometry: direction codes name fixed thirds ("1" = a right-hander's
 forehand corner), and the two ends face each other, so a reply to the *same*
-code travels the diagonal (crosscourt) and a reply to the mirrored code goes
-down the line. For balls arriving through the middle, the hitter's wing fixes
-the reference lane. Run-around shots (e.g. a forehand played from the backhand
-corner) get their tennis names: inside-out on the diagonal, inside-in down the
-line.
+code travels the diagonal and a reply to the mirrored code goes against it. For
+balls arriving through the middle, the hitter's wing fixes the reference lane.
+
+Naming those two lines needs the zone as well, because the same line has
+different names depending on the corner it started from. A ball met in a corner
+goes crosscourt on the diagonal and down the line against it. A ball met in the
+middle has no down the line available — there is no corner behind it to line up
+with — so it goes crosscourt or inside-out. Run-arounds (a forehand played from
+the backhand corner) get inside-out and inside-in.
 
 Two state families come out of one pass. Rally states are (ball character,
 zone), depth-agnostic, for every rally pair. Return states add the charted
@@ -48,10 +52,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-import matplotlib  # noqa: E402
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
@@ -101,9 +101,12 @@ ZONE_REL = {"R": {"1": "fh", "2": "mid", "3": "bh"},
             "L": {"1": "bh", "2": "mid", "3": "fh"}}
 WING_LANE = {"R": {"FH": "1", "BH": "3"}, "L": {"FH": "3", "BH": "1"}}
 
-INC_WORD = {"drive": "drive", "slice": "slice", "net": "net ball", "other": "drop/lob"}
-RESP_WORD = {"drive": "drive", "slice": "slice", "net": "net shot", "other": "drop/lob"}
+INC_WORD = {"drive": "drive", "slice": "slice", "net": "net ball",
+            "drop": "drop shot", "lob": "lob", "other": "shot"}
+RESP_WORD = {"drive": "drive", "slice": "slice", "net": "net shot",
+             "drop": "drop shot", "lob": "lob", "other": "shot"}
 ZONE_WORD = {"fh": "the FH corner", "mid": "the middle", "bh": "the BH corner"}
+OTHER_SIDE = {"fh": "bh", "bh": "fh"}
 DEPTH_WORD = {"7": "short", "8": "mid-depth", "9": "deep"}
 
 
@@ -118,6 +121,20 @@ def hand_map(con):
         if h in ("R", "L"):
             votes[name][h] += 1
     return {n: v.most_common(1)[0][0] for n, v in votes.items()}
+
+
+def resp_line(d_in, d_out, hand, wing, rkind):
+    """Which line the response took: crosscourt, down the line, or through the middle.
+
+    Empty for a lob. A groundstroke's third is a choice a player makes and repeats, which
+    is what makes it worth conditioning on; a lob's is mostly where they were when they
+    had to throw one up. Pooling the three keeps one lob response per wing rather than
+    three thinly-supported ones that mean the same thing.
+    """
+    if rkind == "lob":
+        return ""
+    ref = d_in if d_in != "2" else WING_LANE[hand][wing]
+    return "cc" if d_out == ref else ("dtl" if d_out == MIRROR[ref] else "mid")
 
 
 def observations(pt, names, hands, funnel):
@@ -143,9 +160,8 @@ def observations(pt, names, hands, funnel):
         if hand is None:
             continue
         kind, zone = stroke_kind(prev.letter, False), ZONE_REL[hand][d_in]
-        ref = d_in if d_in != "2" else WING_LANE[hand][cur.side]
-        line = "cc" if d_out == ref else ("dtl" if d_out == MIRROR[ref] else "mid")
-        resp = (cur.side, stroke_kind(cur.letter, False), line)
+        rkind = stroke_kind(cur.letter, False)
+        resp = (cur.side, rkind, resp_line(d_in, d_out, hand, cur.side, rkind))
         won = int(cur.hitter == winner)
         funnel["obs"] += 1
         yield name, hand, ("rally", kind, zone, ""), resp, won
@@ -428,14 +444,51 @@ def state_name(state):
     return f"{INC_WORD[kind]} into {ZONE_WORD[zone]}"
 
 
-def resp_name(state, resp):
+def resp_name(zone, resp):
+    """Plain-language name for a response, given the zone the incoming ball landed in.
+
+    The line a shot takes is only half of its name; the other half is where it was
+    struck from, which is why this needs the zone. Following the charting project's
+    own definitions: crosscourt runs from the middle or a far corner to the opposite
+    far corner, down the line starts in a corner and finishes in that same one, and
+    inside-out is any ball hit against the crosscourt lane its wing opens onto. A ball
+    met in the middle third therefore has no down the line available to it at all —
+    there is no corner behind it to line up with — so the two ways out of the middle
+    are crosscourt and, against it, inside-out.
+
+    Run-arounds keep their own pair: inside-out on the diagonal, inside-in down the
+    line. Only drives and slices get them, because the words describe a player stepping
+    round the ball to hit a groundstroke, not a volley taken wherever it was reachable.
+
+    Net shots take none of it. The whole vocabulary is anchored on where the ball was
+    struck from, and a volley is cut off in the air wherever the player could reach it —
+    so the zone is where the ball *would have* landed, a corner they never stood in.
+    Naming the line from it describes a shot nobody played. They are named by their
+    destination instead: that is charted, and it makes no claim about the line.
+
+    A lob is named by neither. Its third is not conditioned on at all (see ``resp_line``),
+    so there is one lob per wing and nothing to distinguish with a line word.
+
+    Shared with the serve+1 experiment, which names the same responses from the same
+    zones. It takes the zone rather than a state because the two experiments carry
+    different state shapes over the identical geometry.
+    """
     wing, kind, line = resp
     word = RESP_WORD[kind]
+    if kind == "lob":
+        return f"{wing} {word}"
+    # The reference lane the line was measured against, as a zone: the corner the ball
+    # came into, or — for a ball through the middle — the one the hitting wing opens on.
+    ref = zone if zone in ("fh", "bh") else wing.lower()
+    if kind == "net":
+        dest = "mid" if line == "mid" else (ref if line == "cc" else OTHER_SIDE[ref])
+        return f"{wing} {word} to {ZONE_WORD[dest]}"
     if line == "mid":
         return f"{wing} {word} through the middle"
-    run_around = (state[2] in ("fh", "bh") and state[2] != wing.lower()
-                  and kind in ("drive", "slice"))
-    if run_around:
+    if zone == "mid":
+        return (f"crosscourt {wing} {word}" if line == "cc"
+                else f"inside-out {wing} {word}")
+    if zone != wing.lower() and kind in ("drive", "slice"):
         return f"{'inside-out' if line == 'cc' else 'inside-in'} {wing} {word}"
     return f"crosscourt {wing} {word}" if line == "cc" else f"{wing} {word} down the line"
 
@@ -446,6 +499,8 @@ def physical_codes(state, resp, hand):
     zone, (wing, _kind, line) = state[2], resp
     inc = "2" if zone == "mid" else {"R": {"fh": "1", "bh": "3"},
                                      "L": {"fh": "3", "bh": "1"}}[hand][zone]
+    if not line:                       # a lob, whose third is not conditioned on
+        return inc, ""
     ref = inc if inc != "2" else WING_LANE[hand][wing]
     out = ref if line == "cc" else (MIRROR[ref] if line == "dtl" else "2")
     return inc, out
@@ -471,6 +526,13 @@ def old_signature_sharing():
 
 
 def fig_stability(results, path):
+    # Imported here, not at module scope: matplotlib is in the optional `analysis`
+    # extra, and everything above this function runs without it.
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
     for ax, g in zip(axes, ("M", "W")):
         xs, ys = results[g]["stab"]
@@ -514,7 +576,7 @@ def main():
                 inc, out = physical_codes(state, resp, hand)
                 rows.append(dict(
                     player=name, gender=g, hand=hand, family=state[0],
-                    state=state_name(state), response=resp_name(state, resp),
+                    state=state_name(state), response=resp_name(state[2], resp),
                     state_kind=state[1], state_zone=state[2],
                     state_depth=DEPTH_WORD.get(state[3], ""),
                     resp_wing=resp[0], resp_kind=resp[1], resp_line=resp[2],
@@ -629,7 +691,7 @@ def main():
         if share:
             (ts, tr), tc = share.most_common(1)[0]
             md.append(f"- **Distinctiveness**: the most-shared headline pattern "
-                      f"({state_name(ts)} → {resp_name(ts, tr)}) tops "
+                      f"({state_name(ts)} → {resp_name(ts[2], tr)}) tops "
                       f"{tc} of {len(prof)} profiles ({tc / len(prof):.0%}).")
         md.append("")
 
@@ -638,7 +700,7 @@ def main():
                   "the discovery-fold lift in parentheses):")
         md.append("")
         for name in vol[:8]:
-            parts = [f"{state_name(st)} → **{resp_name(st, rp)}** "
+            parts = [f"{state_name(st)} → **{resp_name(st[2], rp)}** "
                      f"({lift:.1f}x vs {pf:.0%} of the era-matched field, "
                      f"n={c}/{n} held out, found at {dl:.1f}x, "
                      f"wins {cv:.0%} vs {sc:.0%} on this ball overall, "
@@ -658,7 +720,7 @@ def main():
             if name in seen:
                 continue
             seen.add(name)
-            md.append(f"- **{name}**: {state_name(st)} → **{resp_name(st, rp)}** "
+            md.append(f"- **{name}**: {state_name(st)} → **{resp_name(st[2], rp)}** "
                       f"({lift:.1f}x vs {pf:.0%} of the era-matched field, "
                       f"n={c}/{n} held out, found at {dl:.1f}x, "
                       f"wins {cv:.0%} vs {sc:.0%} on this ball overall, tour {fc:.0%})")
@@ -684,8 +746,6 @@ def main():
     md.append("- An outcome layer per pattern (how often the response wins the point "
               "vs the field's outcomes from the same state), mirroring the trigger "
               "experiment's frequency/conversion split.")
-    md.append("- Separate the drop shot and lob out of the drop/lob bucket once "
-              "counts allow.")
     md.append("- Depth beyond shot 3 if charting coverage ever improves (only ~19% "
               "of later rally balls carry a depth code).")
     md.append("")

@@ -7,9 +7,9 @@
 | max context | log-loss (M) | Δ | log-loss (W) | Δ |
 |---|---|---|---|---|
 | K=0 | 0.5084 | — | 0.5288 | — |
-| K=1 | 0.4920 | -0.0165 | 0.5148 | -0.0140 |
-| K=2 | 0.4882 | -0.0037 | 0.5137 | -0.0011 |
-| K=3 | 0.4901 | +0.0019 | 0.5164 | +0.0027 |
+| K=1 | 0.4922 | -0.0163 | 0.5149 | -0.0138 |
+| K=2 | 0.4884 | -0.0038 | 0.5138 | -0.0011 |
+| K=3 | 0.4903 | +0.0019 | 0.5166 | +0.0027 |
 
 ## Split-half stability
 
@@ -17,23 +17,23 @@
 |---|---|---|---|
 | Men trigger rate corr (players) | 0.82 (326) | 0.66 (206) | 0.50 (97) |
 | Women trigger rate corr (players) | 0.81 (249) | 0.56 (149) | 0.45 (50) |
-| Men signature top-5 Jaccard (players) | 0.23 (358) | 0.13 (218) | — |
-| Women signature top-5 Jaccard (players) | 0.22 (272) | 0.15 (156) | — |
+| Men signature top-5 Jaccard (players) | 0.22 (358) | 0.14 (218) | — |
+| Women signature top-5 Jaccard (players) | 0.21 (272) | 0.15 (156) | — |
 
 ## Display coverage at production thresholds
 
 | | length 1 | length 2 | length 3 |
 |---|---|---|---|
-| Men qualifying trigger rows (players covered) | 1,230 (196) | 1,782 (194) | 494 (77) |
-| Women qualifying trigger rows (players covered) | 679 (140) | 562 (127) | 199 (66) |
-| Men qualifying signatures (players with ≥3) | 24,110 (548) | 24,559 (308) | — |
-| Women qualifying signatures (players with ≥3) | 13,980 (416) | 12,411 (232) | — |
+| Men qualifying trigger rows (players covered) | 1,196 (196) | 1,774 (194) | 489 (77) |
+| Women qualifying trigger rows (players covered) | 626 (140) | 559 (127) | 199 (66) |
+| Men qualifying signatures (players with ≥3) | 23,947 (548) | 24,554 (308) | — |
+| Women qualifying signatures (players with ≥3) | 13,936 (416) | 12,406 (232) | — |
 
 ![context length](figures/context_length.png)
 
 ## Verdict
 
-**Two shots of context is where the data runs out — and the third actively hurts.** Held-out, the first prior shot does most of the work; the second adds a little for men (-0.0037) and almost nothing for women (-0.0011); the third *raises* log-loss for both (M +0.0019, W +0.0027) even through shrinkage — pure variance. Stability halves with each added token (0.80 → 0.53 → 0.39) and K=3 display coverage drops by two thirds. Triggers stay at K=2: the second shot is cheap, keeps the setup-and-reply tactical framing, and never hurts.
+**Two shots of context is where the data runs out — and the third actively hurts.** Held-out, the first prior shot does most of the work; the second adds a little for men (-0.0038) and almost nothing for women (-0.0011); the third *raises* log-loss for both (M +0.0019, W +0.0027) even through shrinkage — pure variance. Stability halves with each added token (0.80 → 0.53 → 0.39) and K=3 display coverage drops by two thirds. Triggers stay at K=2: the second shot is cheap, keeps the setup-and-reply tactical framing, and never hurts.
 
 **The sharper finding is about signatures as currently shipped:** even at bigram length, a player's top-5 highest-lift list only overlaps **J≈0.22** between halves of their own data (trigrams 0.14) — much of the *specific* list is sampling luck, because ranking by raw lift favors the thinnest qualifying patterns. Don't lengthen signatures; make them sturdier: raise the support floor and/or rank by a support-penalized lift (e.g. the lower confidence bound) so the displayed sequences replicate.
 
