@@ -684,8 +684,10 @@ a { color: var(--acc-d); }
   grid-template-rows: auto auto; align-items: center; row-gap: 2px;
   --mgap-max: 40px; --mgap-min: 12px; column-gap: var(--mgap, var(--mgap-max));
   /* the score divider's wings: how far each steps off centre, how far past the outermost
-     games it lands before it does, and how much the riser between the two leans outward — see .mrule */
-  --mrule-step: 10px; --mrule-pad: 3px; --mrule-splay: 18deg;
+     games it lands before it does, and the angle its riser leans at — atan(8px / chip
+     height), the same 8px diagonal every button and badge in the band is cut on, so the
+     midline's steps and the chrome around them lean alike. See .mrule. */
+  --mrule-step: 10px; --mrule-pad: 3px; --mrule-splay: atan(8px / var(--chip-h));
   margin-right: calc(var(--pad-l) - var(--pad-r)); }
 /* The names are the header. Everything else in the band — the event, the date, the button —
    is chrome describing the match, and sits a size or two below them so the ranking is read
@@ -843,14 +845,18 @@ a { color: var(--acc-d); }
 /* Chip geometry and type come from the shared rule up with the corner pills; what is left
    here is the layout, the pinned edges, and the two states. Standing alone — every match
    but an upcoming one — it carries the same pull to the panel's edges that .mfoot carries
-   for it when they share a row. */
+   for it when they share a row.
+   Only 6 of air above it, not the corner row's 14: for a played or live match the score is
+   the header and this button is chrome hung under it, so it sits close to the scoreline
+   rather than floating a full row's gap below it. .mfoot keeps the 14 — an upcoming match
+   has no score for the button to hug. */
 /* Flush right, same as the rest of the row, but the cut on its free edge leans the other
    way — inset at the top instead of the bottom. Every other chip in the band leans the
    same direction because they're read as one row; this one is the thing you leave the row
    to go and do, and the reversed lean is what marks it apart from them at a glance, before
    the colour or the words do. */
 .mchartbtn { display: flex; align-items: center; gap: 6px;
-  margin: 14px calc(-1 * var(--pad-r)) calc(var(--rule-h) - var(--band-b)) auto;
+  margin: 6px calc(-1 * var(--pad-r)) calc(var(--rule-h) - var(--band-b)) auto;
   border-right-width: 0; border-bottom-width: 0;
   clip-path: polygon(0 0, 100% 0, 100% 100%, 8px 100%);
   text-decoration: none; white-space: nowrap; max-height: 3em; overflow: hidden;
