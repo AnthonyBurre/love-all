@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.patheffects as pe  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -33,6 +34,9 @@ from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 
 FIG_DIR = PROJECT_ROOT / "reports" / "figures"
 GLABEL = {"M": "men", "W": "women"}
+
+# An era entity reads "Novak Djokovic (2005–2016)"; base name + year span.
+_SPLIT_RE = re.compile(r"^(?P<base>.+) \((?P<y0>\d{4})[–-](?P<y1>\d{4})\)$")
 
 
 def archetype_name(centroid, features) -> str:
@@ -64,22 +68,106 @@ def archetype_name(centroid, features) -> str:
     return "Baseline all-rounder"
 
 
+def _short(name: str) -> str:
+    """Compact an era entity for a chart label: 'Roger Federer (2010–2021)' -> "Federer '10–21".
+
+    Drops the given name only for plain "First Last" bases, so multi-token surnames
+    (Del Potro, Garcia-Lopez) stay intact; leaves non-era names untouched.
+    """
+    m = _SPLIT_RE.match(name)
+    if not m:
+        return name
+    parts = m["base"].split()
+    base = parts[-1] if len(parts) == 2 else m["base"]
+    return f"{base} '{m['y0'][2:]}–{m['y1'][2:]}"
+
+
+def _overlap(a, b) -> float:
+    """Area of the intersection of two window-space Bboxes (0 if disjoint)."""
+    w = max(0.0, min(a.x1, b.x1) - max(a.x0, b.x0))
+    h = max(0.0, min(a.y1, b.y1) - max(a.y0, b.y0))
+    return w * h
+
+
+def _label_scatter(ax, fig, xy, labels, avoid=()):
+    """Drop name labels next to points, nudged so they don't sit on top of each other.
+
+    For each point (extremes first — they own the sparse edges) try twelve compass
+    directions at rings of growing radius and take the first slot that sits inside
+    the axes and clears every label already placed, plus anything in ``avoid`` (the
+    legend). If nothing is clear, fall back to the slot with the least overlap. A
+    hairline leader is drawn whenever a label ends up more than one ring out.
+    """
+    fig.canvas.draw()
+    rend = fig.canvas.get_renderer()
+    axb = ax.get_window_extent()
+    dirs = [(0, 1), (0.6, 1), (1, 0.6), (1, 0), (1, -0.6), (0.6, -1),
+            (0, -1), (-0.6, -1), (-1, -0.6), (-1, 0), (-1, 0.6), (-0.6, 1)]
+    cand = [(dx * r, dy * r) for r in (13, 27, 43, 61) for dx, dy in dirs]
+    placed = list(avoid)
+    for i in sorted(range(len(labels)), key=lambda k: -np.hypot(*xy[k])):
+        x, y = xy[i]
+        best = None  # (penalty, step, text, bbox)
+        for step, (dx, dy) in enumerate(cand):
+            ha = "left" if dx > 3 else "right" if dx < -3 else "center"
+            va = "bottom" if dy > 3 else "top" if dy < -3 else "center"
+            t = ax.annotate(labels[i], (x, y), xytext=(dx, dy),
+                            textcoords="offset points", fontsize=7, color="0.12",
+                            ha=ha, va=va, zorder=6,
+                            path_effects=[pe.withStroke(linewidth=2.6, foreground="white")])
+            bb = t.get_window_extent(rend).expanded(1.04, 1.2)
+            spill = (max(0.0, axb.x0 - bb.x0) + max(0.0, bb.x1 - axb.x1)
+                     + max(0.0, axb.y0 - bb.y0) + max(0.0, bb.y1 - axb.y1))
+            penalty = sum(_overlap(bb, p) for p in placed) + 50.0 * spill
+            if best is None or penalty < best[0]:
+                if best is not None:
+                    best[2].remove()
+                best = (penalty, step, t, bb)
+            else:
+                t.remove()
+            if penalty == 0:
+                break
+        _, step, t, bb = best
+        placed.append(bb)
+        if step >= len(dirs):
+            lx, ly = ax.transData.inverted().transform(
+                ((bb.x0 + bb.x1) / 2, (bb.y0 + bb.y1) / 2))
+            ax.plot([x, lx], [y, ly], lw=0.4, color="0.55", zorder=4)
+
+
 def fig_pca(df, scores, lab, clusters, explained, path, title):
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(10, 7))
     cmap = plt.get_cmap("tab10")
     for j in sorted(clusters):
         m = lab == j
-        ax.scatter(scores[m, 0], scores[m, 1], s=22, color=cmap(j),
-                   alpha=0.7, label=f"{j}: {archetype_name(clusters[j]['centroid'], FEATURES)}")
-        for name in clusters[j]["exemplars"][:2]:
-            i = df.index.get_loc(name)
-            ax.annotate(name, (scores[i, 0], scores[i, 1]), fontsize=7,
-                        alpha=0.8, xytext=(3, 3), textcoords="offset points")
+        ax.scatter(scores[m, 0], scores[m, 1], s=24, color=cmap(j), alpha=0.75,
+                   edgecolors="white", linewidths=0.3,
+                   label=f"{j}: {archetype_name(clusters[j]['centroid'], FEATURES)}")
     ax.set_xlabel(f"PC1 ({explained[0]:.0%} var)")
     ax.set_ylabel(f"PC2 ({explained[1]:.0%} var)")
     ax.set_title(title)
-    ax.legend(fontsize=7, loc="best")
+    leg = ax.legend(fontsize=7, loc="best", framealpha=0.9)
     fig.tight_layout()
+
+    # Label the points a reader would look for: the extremes (largest PC1-PC2 radius,
+    # the shape of the cloud) plus the most-charted entities (the familiar names).
+    # df is sorted by n_points, so the familiar names come first; skip any that would
+    # land on top of a name already chosen, so the crowded core doesn't turn to mush.
+    radius = np.hypot(scores[:, 0], scores[:, 1])
+    pick = list(np.argsort(-radius)[:12])                 # outliers, always
+    for i in range(len(df)):
+        p = scores[i, :2]
+        if i not in pick and all(np.hypot(*(p - scores[k, :2])) > 0.55 for k in pick):
+            pick.append(i)
+        if len(pick) >= 26:
+            break
+    ax.scatter(scores[pick, 0], scores[pick, 1], s=30, facecolors="none",
+               edgecolors="0.15", linewidths=0.5, zorder=5)
+    fig.canvas.draw()
+    avoid = [leg.get_window_extent(fig.canvas.get_renderer())] if leg else []
+    _label_scatter(ax, fig, scores[pick, :2],
+                   [_short(df.index[i]) for i in pick], avoid=avoid)
+
     fig.savefig(path, dpi=110)
     plt.close(fig)
 
@@ -104,8 +192,6 @@ def fig_heatmap(clusters, path, title):
     fig.savefig(path, dpi=110)
     plt.close(fig)
 
-
-_SPLIT_RE = re.compile(r"^(?P<base>.+) \((?P<y0>\d{4})[–-](?P<y1>\d{4})\)$")
 
 # Above what per-entity silhouette an archetype is worth asserting.
 #
