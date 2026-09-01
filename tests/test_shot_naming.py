@@ -11,11 +11,14 @@ as the response. Against the charting project's own definitions:
     inside-in       a run-around hit down the line
     down the middle to the middle third
 
-The consequence that is easy to miss, and was: **a ball met in the middle third
-has no down the line.** There is no corner behind it to line up with, so its two
-options are crosscourt and inside-out. That case is pinned here because it was
-mislabelled "down the line" across 459 shipped patterns, in both the site copy and
-the reports, with nothing to catch it.
+Net shots opt out of all of it. Every one of those words is anchored on where the ball
+was struck from, and a volley is cut off in the air wherever the player could reach it,
+so its "zone" is where the ball would have landed — a corner they never stood in. They
+are named by destination instead.
+
+The consequence that is easy to miss: **a ball met in the middle third has no down
+the line.** There is no corner behind it to line up with, so its two options are
+crosscourt and inside-out.
 
 The rule lives in the court_response experiment and is imported by serve_plus_one.
 Loaded the way that experiment loads it — the file is a script, not a package.
@@ -61,6 +64,19 @@ NAMES = [
     # Down the middle, from anywhere, is just that.
     ("mid", "FH", "drive", "mid", "FH drive through the middle"),
     ("bh", "FH", "drive", "mid", "FH drive through the middle"),
+    # A drop shot keeps the line vocabulary: unlike a volley it is struck off a ball
+    # that bounced, so the zone really is where the player stood.
+    ("bh", "BH", "drop", "cc", "crosscourt BH drop shot"),
+    ("mid", "FH", "drop", "dtl", "inside-out FH drop shot"),
+    # A lob takes no line at all, and carries none to name.
+    ("bh", "BH", "lob", "", "BH lob"),
+    ("mid", "FH", "lob", "", "FH lob"),
+    # A net shot names where it went, and nothing about the line it took.
+    ("bh", "BH", "net", "cc", "BH net shot to the BH corner"),
+    ("bh", "BH", "net", "dtl", "BH net shot to the FH corner"),
+    ("bh", "BH", "net", "mid", "BH net shot to the middle"),
+    ("mid", "FH", "net", "cc", "FH net shot to the FH corner"),
+    ("mid", "FH", "net", "dtl", "FH net shot to the BH corner"),
 ]
 
 
@@ -91,14 +107,60 @@ def test_down_the_line_only_ever_starts_in_a_corner(cr):
 
 def test_run_around_names_need_a_groundstroke(cr):
     """Inside-out and inside-in describe stepping round a ball to hit a groundstroke.
-    A volley is taken wherever it was reachable, so it keeps the plain pair."""
-    assert cr.resp_name("bh", ("FH", "net", "cc")) == "crosscourt FH net shot"
-    assert cr.resp_name("bh", ("FH", "net", "dtl")) == "FH net shot down the line"
+    A volley was never standing in the corner to step round, so it is named by where
+    it went."""
+    assert cr.resp_name("bh", ("FH", "net", "cc")) == "FH net shot to the BH corner"
+    assert cr.resp_name("bh", ("FH", "net", "dtl")) == "FH net shot to the FH corner"
+
+
+def test_a_net_shot_never_claims_a_line(cr):
+    """The whole line vocabulary is a claim about where the player was standing, which
+    for a volley is the one thing the zone does not say."""
+    lines = ("crosscourt", "down the line", "inside-out", "inside-in", "through the middle")
+    for zone in ("fh", "mid", "bh"):
+        for wing in ("FH", "BH"):
+            for line in ("cc", "dtl", "mid"):
+                name = cr.resp_name(zone, (wing, "net", line))
+                assert not any(w in name for w in lines), name
+                assert " to the " in name
+
+
+def test_net_shot_destinations_stay_distinguishable(cr):
+    """Dropping the line vocabulary must not collapse two different responses onto one
+    name — the analysis still counts them apart, so the panel has to print them apart."""
+    for zone in ("fh", "mid", "bh"):
+        for wing in ("FH", "BH"):
+            names = {cr.resp_name(zone, (wing, "net", ln)) for ln in ("cc", "dtl", "mid")}
+            assert len(names) == 3, (zone, wing, names)
 
 
 def test_serve_plus_one_shares_the_namer():
-    """The two experiments named the same responses from two copies of this function,
-    and the copies drifted wrong together. serve_plus_one borrows it now, so a
-    correction to the rule cannot land on one report and miss the other."""
+    """Both experiments name the same responses from the same zones, so both read the
+    rule from one place and a change to it cannot reach one report and miss the other."""
     sp = _load("serve_plus_one")
     assert sp.resp_name is sp.CR.resp_name
+
+
+def test_a_lob_is_not_resolved_by_direction(cr):
+    """A groundstroke's third is a choice a player repeats, which is what makes it worth
+    conditioning on. A lob's is mostly where they happened to be, so it is not read at
+    all — one lob per wing, and a name with no line in it."""
+    for d_in in ("1", "2", "3"):
+        for d_out in ("1", "2", "3"):
+            for hand in ("R", "L"):
+                assert cr.resp_line(d_in, d_out, hand, "FH", "lob") == ""
+                # every other kind still resolves to one of the three
+                assert cr.resp_line(d_in, d_out, hand, "FH", "drive") in ("cc", "dtl", "mid")
+    assert cr.resp_name("bh", ("FH", "lob", "")) == "FH lob"
+    for word in ("crosscourt", "down the line", "inside-out", "inside-in", "the middle"):
+        assert word not in cr.resp_name("mid", ("BH", "lob", ""))
+
+
+def test_a_lob_has_no_third_to_draw():
+    """The drawing is handed the codes, not the prose, so it has to be told the lane is
+    unknown rather than be given the middle by default."""
+    cr = _load("court_response")
+    inc, out = cr.physical_codes(("rally", "drive", "bh", ""), ("FH", "lob", ""), "R")
+    assert inc == "3" and out == ""
+    # a drop shot from the same state still names a third
+    assert cr.physical_codes(("rally", "drive", "bh", ""), ("FH", "drop", "cc"), "R")[1] == "3"

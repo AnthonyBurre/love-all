@@ -15,16 +15,16 @@
 
 | most varied | bits | | most predictable | bits |
 |---|---|---|---|---|
-| Greg Rusedski | 3.86 | | Nikoloz Basilashvili | 2.74 |
-| Corentin Moutet | 3.79 | | Thomas Enqvist | 2.77 |
-| Fabrice Santoro | 3.77 | | Marin Cilic | 2.77 |
-| Patrick Rafter | 3.76 | | Cristian Garin | 2.80 |
-| John Mcenroe | 3.73 | | Juan Carlos Ferrero | 2.80 |
-| Stefan Edberg | 3.62 | | John Millman | 2.81 |
+| Corentin Moutet | 3.82 | | Nikoloz Basilashvili | 2.75 |
+| Greg Rusedski | 3.80 | | Thomas Enqvist | 2.76 |
+| Fabrice Santoro | 3.78 | | Marin Cilic | 2.77 |
+| Patrick Rafter | 3.71 | | Cristian Garin | 2.80 |
+| John Mcenroe | 3.68 | | Juan Carlos Ferrero | 2.81 |
+| Feliciano Lopez | 3.61 | | John Millman | 2.81 |
 
 **Signature patterns** of the most varied players (lift vs. field):
-- **Greg Rusedski**: serve wide → **BH slice→2** (5.7×); <s> → **serve wide** (1.1×); <s> → **serve T** (1.0×); <s> → **serve body** (0.9×)
 - **Corentin Moutet**: BH drive→3 → **FH drive→1** (3.6×); FH drive→1 → **BH drive→2** (2.8×); serve wide → **BH drive→2** (1.7×); <s> → **serve body** (1.6×)
+- **Greg Rusedski**: serve wide → **BH slice→2** (5.7×); <s> → **serve wide** (1.1×); <s> → **serve T** (1.0×); <s> → **serve body** (0.9×)
 - **Fabrice Santoro**: FH drive→1 → **FH slice→3** (18.3×); FH drive→3 → **BH drive→3** (2.1×); BH drive→3 → **BH drive→3** (2.0×); <s> → **serve body** (1.2×)
 
 ## Women — 122 players, per-shot perplexity 7.9
@@ -41,11 +41,11 @@
 | most varied | bits | | most predictable | bits |
 |---|---|---|---|---|
 | Martina Navratilova | 4.28 | | Liudmila Samsonova | 2.68 |
-| Tatjana Maria | 4.15 | | Camila Giorgi | 2.70 |
-| Monica Niculescu | 4.10 | | Jelena Ostapenko | 2.70 |
-| Marketa Vondrousova | 3.56 | | Maria Sharapova | 2.70 |
+| Tatjana Maria | 4.14 | | Jelena Ostapenko | 2.69 |
+| Monica Niculescu | 4.09 | | Maria Sharapova | 2.69 |
+| Marketa Vondrousova | 3.56 | | Camila Giorgi | 2.70 |
 | Steffi Graf | 3.55 | | Naomi Osaka | 2.70 |
-| Sara Sorribes Tormo | 3.38 | | Magda Linette | 2.72 |
+| Sara Sorribes Tormo | 3.38 | | Magda Linette | 2.71 |
 
 **Signature patterns** of the most varied players (lift vs. field):
 - **Martina Navratilova**: FH drive→1 → **BH slice→3** (34.8×); FH drive→1 → **BH slice→1** (33.2×); FH drive→1 → **BH slice→2** (20.2×); serve wide → **BH slice→2** (13.0×)
@@ -56,8 +56,8 @@
 
 ![surprise vs wpa](figures/shot_language_surprise_wpa.png)
 
-- **Men**: surprise↔WPA correlation = +0.035 (negligible). Mean WPA peaks at moderate surprise (~+0.057) and falls to -0.029 for the most unexpected shots.
-- **Women**: surprise↔WPA correlation = -0.044 (negligible). Mean WPA peaks at moderate surprise (~+0.073) and falls to -0.030 for the most unexpected shots.
+- **Men**: surprise↔WPA correlation = +0.040 (negligible). Mean WPA peaks at moderate surprise (~+0.057) and falls to -0.019 for the most unexpected shots.
+- **Women**: surprise↔WPA correlation = -0.042 (negligible). Mean WPA peaks at moderate surprise (~+0.073) and falls to -0.010 for the most unexpected shots.
 
 So there is **no payoff to surprise**: the relationship is non-monotone and ~0 overall. Sound, moderately-aggressive shots gain the most; the *most* unexpected shots slightly lose ground — they are typically defensive, forced gets, not creative winners (game-state drives the tail, not creativity). Unpredictability differentiates *who a player is*, not *how well they're playing*.
 

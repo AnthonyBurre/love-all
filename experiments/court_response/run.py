@@ -105,9 +105,12 @@ ZONE_REL = {"R": {"1": "fh", "2": "mid", "3": "bh"},
             "L": {"1": "bh", "2": "mid", "3": "fh"}}
 WING_LANE = {"R": {"FH": "1", "BH": "3"}, "L": {"FH": "3", "BH": "1"}}
 
-INC_WORD = {"drive": "drive", "slice": "slice", "net": "net ball", "other": "drop/lob"}
-RESP_WORD = {"drive": "drive", "slice": "slice", "net": "net shot", "other": "drop/lob"}
+INC_WORD = {"drive": "drive", "slice": "slice", "net": "net ball",
+            "drop": "drop shot", "lob": "lob", "other": "shot"}
+RESP_WORD = {"drive": "drive", "slice": "slice", "net": "net shot",
+             "drop": "drop shot", "lob": "lob", "other": "shot"}
 ZONE_WORD = {"fh": "the FH corner", "mid": "the middle", "bh": "the BH corner"}
+OTHER_SIDE = {"fh": "bh", "bh": "fh"}
 DEPTH_WORD = {"7": "short", "8": "mid-depth", "9": "deep"}
 
 
@@ -122,6 +125,20 @@ def hand_map(con):
         if h in ("R", "L"):
             votes[name][h] += 1
     return {n: v.most_common(1)[0][0] for n, v in votes.items()}
+
+
+def resp_line(d_in, d_out, hand, wing, rkind):
+    """Which line the response took: crosscourt, down the line, or through the middle.
+
+    Empty for a lob. A groundstroke's third is a choice a player makes and repeats, which
+    is what makes it worth conditioning on; a lob's is mostly where they were when they
+    had to throw one up. Pooling the three keeps one lob response per wing rather than
+    three thinly-supported ones that mean the same thing.
+    """
+    if rkind == "lob":
+        return ""
+    ref = d_in if d_in != "2" else WING_LANE[hand][wing]
+    return "cc" if d_out == ref else ("dtl" if d_out == MIRROR[ref] else "mid")
 
 
 def observations(pt, names, hands, funnel):
@@ -147,9 +164,8 @@ def observations(pt, names, hands, funnel):
         if hand is None:
             continue
         kind, zone = stroke_kind(prev.letter, False), ZONE_REL[hand][d_in]
-        ref = d_in if d_in != "2" else WING_LANE[hand][cur.side]
-        line = "cc" if d_out == ref else ("dtl" if d_out == MIRROR[ref] else "mid")
-        resp = (cur.side, stroke_kind(cur.letter, False), line)
+        rkind = stroke_kind(cur.letter, False)
+        resp = (cur.side, rkind, resp_line(d_in, d_out, hand, cur.side, rkind))
         won = int(cur.hitter == winner)
         funnel["obs"] += 1
         yield name, hand, ("rally", kind, zone, ""), resp, won
@@ -448,12 +464,29 @@ def resp_name(zone, resp):
     line. Only drives and slices get them, because the words describe a player stepping
     round the ball to hit a groundstroke, not a volley taken wherever it was reachable.
 
+    Net shots take none of it. The whole vocabulary is anchored on where the ball was
+    struck from, and a volley is cut off in the air wherever the player could reach it —
+    so the zone is where the ball *would have* landed, a corner they never stood in.
+    Naming the line from it describes a shot nobody played. They are named by their
+    destination instead: that is charted, and it makes no claim about the line.
+
+    A lob is named by neither. Its third is not conditioned on at all (see ``resp_line``),
+    so there is one lob per wing and nothing to distinguish with a line word.
+
     Shared with the serve+1 experiment, which names the same responses from the same
     zones. It takes the zone rather than a state because the two experiments carry
     different state shapes over the identical geometry.
     """
     wing, kind, line = resp
     word = RESP_WORD[kind]
+    if kind == "lob":
+        return f"{wing} {word}"
+    # The reference lane the line was measured against, as a zone: the corner the ball
+    # came into, or — for a ball through the middle — the one the hitting wing opens on.
+    ref = zone if zone in ("fh", "bh") else wing.lower()
+    if kind == "net":
+        dest = "mid" if line == "mid" else (ref if line == "cc" else OTHER_SIDE[ref])
+        return f"{wing} {word} to {ZONE_WORD[dest]}"
     if line == "mid":
         return f"{wing} {word} through the middle"
     if zone == "mid":
@@ -470,6 +503,8 @@ def physical_codes(state, resp, hand):
     zone, (wing, _kind, line) = state[2], resp
     inc = "2" if zone == "mid" else {"R": {"fh": "1", "bh": "3"},
                                      "L": {"fh": "3", "bh": "1"}}[hand][zone]
+    if not line:                       # a lob, whose third is not conditioned on
+        return inc, ""
     ref = inc if inc != "2" else WING_LANE[hand][wing]
     out = ref if line == "cc" else (MIRROR[ref] if line == "dtl" else "2")
     return inc, out
@@ -708,8 +743,6 @@ def main():
     md.append("- An outcome layer per pattern (how often the response wins the point "
               "vs the field's outcomes from the same state), mirroring the trigger "
               "experiment's frequency/conversion split.")
-    md.append("- Separate the drop shot and lob out of the drop/lob bucket once "
-              "counts allow.")
     md.append("- Depth beyond shot 3 if charting coverage ever improves (only ~19% "
               "of later rally balls carry a depth code).")
     md.append("")

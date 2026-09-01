@@ -29,69 +29,30 @@ Predicted win-probability tracks the actual server-win rate closely (held-in che
 ## An annotated point (the 'annotated game')
 
 ```
-serve 2nd | server=P2 | outcome=unforced_error | won by P1
+serve 1st | server=P2 | outcome=unforced_error | won by P2
 ----------------------------------------------------------
- 1. P2                   serve              P(srv win)=0.54  WPA=+0.031 
- 2. P1                   forehand           P(srv win)=0.48  WPA=+0.067 
- 3. P2                   backhand           P(srv win)=0.53  WPA=+0.055 
- 4. P1                   forehand           P(srv win)=0.53  WPA=+0.002 
- 5. P2                   forehand           P(srv win)=0.49  WPA=-0.039 
- 6. P1                   backhand           P(srv win)=0.52  WPA=-0.035 
- 7. P2                   forehand           P(srv win)=0.49  WPA=-0.039 
- 8. P1                   forehand           P(srv win)=0.51  WPA=-0.028 
- 9. P2                   forehand           P(srv win)=0.48  WPA=-0.038 
-10. P1                   forehand           P(srv win)=0.43  WPA=+0.044 
-11. P2                   backhand           P(srv win)=0.55  WPA=+0.114 
-12. P1                   backhand           P(srv win)=0.50  WPA=+0.048 
-13. P2                   forehand           P(srv win)=0.55  WPA=+0.050 
-14. P1                   backhand           P(srv win)=0.45  WPA=+0.101 
-15. P2                   forehand           P(srv win)=0.55  WPA=+0.101 
-16. P1                   backhand           P(srv win)=0.50  WPA=+0.050 
-17. P2                   backhand           P(srv win)=0.55  WPA=+0.048 
-18. P1                   backhand           P(srv win)=0.45  WPA=+0.099 
-19. P2                   forehand           P(srv win)=0.55  WPA=+0.101 
-20. P1                   forehand           P(srv win)=0.43  WPA=+0.116 
-21. P2                   backhand           P(srv win)=0.52  WPA=+0.088 
-22. P1                   forehand           P(srv win)=0.43  WPA=+0.088 
-23. P2                   backhand           P(srv win)=0.55  WPA=+0.114 
-24. P1                   backhand           P(srv win)=0.50  WPA=+0.048 
-25. P2                   forehand           P(srv win)=0.56  WPA=+0.060 
-26. P1                   forehand           P(srv win)=0.43  WPA=+0.126 
-27. P2                   backhand           P(srv win)=0.55  WPA=+0.114 
-28. P1                   backhand           P(srv win)=0.45  WPA=+0.099 
-29. P2                   forehand           P(srv win)=0.55  WPA=+0.101 
-30. P1                   backhand           P(srv win)=0.50  WPA=+0.050 
-31. P2                   backhand           P(srv win)=0.55  WPA=+0.048 
-32. P1                   backhand           P(srv win)=0.46  WPA=+0.086 
-33. P2                   backhand           P(srv win)=0.48  WPA=+0.017 
-34. P1                   forehand           P(srv win)=0.51  WPA=-0.038 
-35. P2                   forehand           P(srv win)=0.55  WPA=+0.034 
-36. P1                   backhand           P(srv win)=0.50  WPA=+0.050 
-37. P2                   backhand           P(srv win)=0.52  WPA=+0.021 
-38. P1                   forehand           P(srv win)=0.51  WPA=+0.005 
-39. P2                   backhand           P(srv win)=0.55  WPA=+0.032 
-40. P1                   backhand           P(srv win)=0.50  WPA=+0.048 
-41. P2                   backhand           P(srv win)=0.52  WPA=+0.021 
-42. P1                   forehand           P(srv win)=0.43  WPA=+0.088 
-43. P2                   backhand           P(srv win)=0.52  WPA=+0.088 
-44. P1                   forehand           P(srv win)=0.51  WPA=+0.005 
-45. P2                   forehand           P(srv win)=0.55  WPA=+0.034 
-46. P1                   backhand           P(srv win)=0.45  WPA=+0.101 
-47. P2                   forehand           P(srv win)=0.55  WPA=+0.101 
-48. P1                   backhand           P(srv win)=0.45  WPA=+0.101 
-49. P2                   forehand           P(srv win)=0.55  WPA=+0.101 
-50. P1                   backhand           P(srv win)=0.50  WPA=+0.050 
-51. P2                   backhand           P(srv win)=0.52  WPA=+0.021 
-52. P1                   forehand           P(srv win)=0.43  WPA=+0.088 
-53. P2                   backhand           P(srv win)=0.55  WPA=+0.114 
-54. P1                   backhand           P(srv win)=0.45  WPA=+0.099 
-55. P2                   forehand           P(srv win)=0.55  WPA=+0.101 
-56. P1                   backhand           P(srv win)=0.50  WPA=+0.050 
-57. P2                   backhand           P(srv win)=0.52  WPA=+0.021 
-58. P1                   forehand           P(srv win)=0.43  WPA=+0.088 
-59. P2                   backhand           P(srv win)=0.64  WPA=+0.206 !
-60. P1                   backhand_lob       P(srv win)=0.81  WPA=-0.176 ?
-61. P2                   overhead           P(srv win)=0.00  WPA=-0.813 ??
+ 1. P2                   serve              P(srv win)=0.67  WPA=-0.052 
+ 2. P1                   forehand           P(srv win)=0.55  WPA=+0.112 
+ 3. P2                   forehand           P(srv win)=0.58  WPA=+0.029 
+ 4. P1                   backhand           P(srv win)=0.53  WPA=+0.052 
+ 5. P2                   backhand_slice     P(srv win)=0.45  WPA=-0.083 ?!
+ 6. P1                   forehand           P(srv win)=0.52  WPA=-0.067 ?!
+ 7. P2                   backhand_slice     P(srv win)=0.47  WPA=-0.049 
+ 8. P1                   backhand           P(srv win)=0.47  WPA=-0.004 
+ 9. P2                   backhand_slice     P(srv win)=0.46  WPA=-0.013 
+10. P1                   backhand           P(srv win)=0.47  WPA=-0.013 
+11. P2                   backhand_slice     P(srv win)=0.49  WPA=+0.014 
+12. P1                   forehand           P(srv win)=0.44  WPA=+0.049 
+13. P2                   backhand_slice     P(srv win)=0.41  WPA=-0.030 
+14. P1                   backhand           P(srv win)=0.47  WPA=-0.066 ?!
+15. P2                   backhand_slice     P(srv win)=0.49  WPA=+0.014 
+16. P1                   forehand           P(srv win)=0.44  WPA=+0.043 
+17. P2                   forehand           P(srv win)=0.56  WPA=+0.115 
+18. P1                   backhand           P(srv win)=0.51  WPA=+0.048 
+19. P2                   backhand_slice     P(srv win)=0.49  WPA=-0.025 
+20. P1                   forehand           P(srv win)=0.29  WPA=+0.196 
+21. P2                   backhand_lob       P(srv win)=0.15  WPA=-0.139 ?
+22. P1                   overhead           P(srv win)=1.00  WPA=-0.850 ??
 ```
 
 ## Decision quality: win-probability conceded per stroke
@@ -104,36 +65,36 @@ Lower `avg_wpa_lost` = gives away less per stroke (the centipawn-loss analogue);
 
 | rank | player | shots | unforced | avg_wpa_lost | unforced_lost_share | accuracy |
 |---|---|---|---|---|---|---|
-| 1 | Roberto Bautista Agut | 6857 | 343 | 0.0557 | 44% | 71.6 |
-| 2 | Tomas Martin Etcheverry | 4741 | 231 | 0.0579 | 41% | 70.7 |
-| 3 | Andy Roddick | 2338 | 124 | 0.0580 | 44% | 70.6 |
-| 4 | Gilles Simon | 6320 | 267 | 0.0585 | 35% | 70.4 |
-| 5 | Luca Van Assche | 860 | 47 | 0.0588 | 46% | 70.3 |
-| 6 | Marc Polmans | 882 | 38 | 0.0589 | 35% | 70.2 |
-| 7 | David Ferrer | 8270 | 503 | 0.0609 | 48% | 69.4 |
-| 8 | Brandon Holt | 886 | 52 | 0.0610 | 47% | 69.3 |
-| 9 | Juan Pablo Varillas | 2010 | 122 | 0.0620 | 48% | 68.9 |
-| 10 | Sebastian Baez | 2900 | 173 | 0.0625 | 46% | 68.7 |
+| 1 | Roberto Bautista Agut | 6857 | 343 | 0.0559 | 44% | 71.5 |
+| 2 | Tomas Martin Etcheverry | 4741 | 231 | 0.0574 | 41% | 70.9 |
+| 3 | Andy Roddick | 2338 | 124 | 0.0579 | 45% | 70.7 |
+| 4 | Gilles Simon | 6320 | 267 | 0.0586 | 35% | 70.4 |
+| 5 | Luca Van Assche | 860 | 47 | 0.0590 | 46% | 70.2 |
+| 6 | Marc Polmans | 882 | 38 | 0.0598 | 35% | 69.8 |
+| 7 | David Ferrer | 8270 | 503 | 0.0608 | 48% | 69.4 |
+| 8 | Brandon Holt | 886 | 52 | 0.0609 | 47% | 69.4 |
+| 9 | Juan Pablo Varillas | 2010 | 122 | 0.0621 | 48% | 68.9 |
+| 10 | Sebastian Baez | 2900 | 173 | 0.0626 | 46% | 68.7 |
 | ... | | | | | | |
-|  | Maxime Cressy | 1788 | 125 | 0.1008 | 33% | 54.6 |
+|  | Maxime Cressy | 1788 | 125 | 0.1001 | 34% | 54.8 |
 |  | Christopher Eubanks | 2464 | 252 | 0.1067 | 48% | 52.7 |
-|  | Reilly Opelka | 3971 | 458 | 0.1115 | 51% | 51.2 |
+|  | Reilly Opelka | 3971 | 458 | 0.1116 | 51% | 51.2 |
 
 ### Women — Slams & Masters, 2010+
 
 | rank | player | shots | unforced | avg_wpa_lost | unforced_lost_share | accuracy |
 |---|---|---|---|---|---|---|
-| 1 | Caroline Wozniacki | 20027 | 734 | 0.0504 | 35% | 73.9 |
-| 2 | Kayla Day | 1410 | 51 | 0.0512 | 33% | 73.5 |
-| 3 | Sara Sorribes Tormo | 4752 | 135 | 0.0515 | 27% | 73.4 |
-| 4 | Agnieszka Radwanska | 4857 | 160 | 0.0533 | 30% | 72.6 |
-| 5 | Magdalena Frech | 2190 | 118 | 0.0547 | 47% | 72.0 |
-| 6 | Angelique Kerber | 10234 | 499 | 0.0565 | 42% | 71.3 |
-| 7 | Evgeniya Rodina | 816 | 43 | 0.0565 | 45% | 71.2 |
-| 8 | Sara Errani | 3750 | 166 | 0.0566 | 38% | 71.2 |
-| 9 | Katie Volynets | 1989 | 102 | 0.0598 | 42% | 69.9 |
-| 10 | Renata Zarazua | 993 | 60 | 0.0603 | 48% | 69.7 |
+| 1 | Caroline Wozniacki | 20027 | 734 | 0.0502 | 35% | 74.0 |
+| 2 | Sara Sorribes Tormo | 4752 | 135 | 0.0518 | 27% | 73.3 |
+| 3 | Kayla Day | 1410 | 51 | 0.0523 | 33% | 73.1 |
+| 4 | Agnieszka Radwanska | 4857 | 160 | 0.0532 | 30% | 72.7 |
+| 5 | Magdalena Frech | 2190 | 118 | 0.0551 | 47% | 71.9 |
+| 6 | Evgeniya Rodina | 816 | 43 | 0.0566 | 45% | 71.2 |
+| 7 | Angelique Kerber | 10234 | 499 | 0.0567 | 42% | 71.2 |
+| 8 | Sara Errani | 3750 | 166 | 0.0567 | 38% | 71.2 |
+| 9 | Katie Volynets | 1989 | 102 | 0.0598 | 42% | 69.8 |
+| 10 | Renata Zarazua | 993 | 60 | 0.0604 | 48% | 69.6 |
 | ... | | | | | | |
-|  | Indy De Vroome | 989 | 107 | 0.1028 | 52% | 54.0 |
-|  | Jelena Ostapenko | 4525 | 448 | 0.1043 | 47% | 53.5 |
-|  | Solana Sierra | 1115 | 83 | 0.1055 | 37% | 53.1 |
+|  | Indy De Vroome | 989 | 107 | 0.1029 | 52% | 53.9 |
+|  | Jelena Ostapenko | 4525 | 448 | 0.1039 | 48% | 53.6 |
+|  | Solana Sierra | 1115 | 83 | 0.1058 | 37% | 53.0 |

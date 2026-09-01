@@ -8,40 +8,40 @@
 *baseline: winner 10.2% · unforced 10.3% of strokes; 162,770 strokes analyzed*
 
 **Green light** (lead-ups → most likely to hit a winner):
-- `BH net→3 · BH shot→2` → **69%** winner (6.8×, n=78)
-- `FH net→3 · BH shot→2` → **69%** winner (6.7×, n=127)
-- `FH drive→3 · BH shot→2` → **66%** winner (6.5×, n=383)
-- `FH drive→3 · BH shot→1` → **61%** winner (6.0×, n=126)
+- `FH drive→3 · BH lob→2` → **69%** winner (6.7×, n=356)
+- `BH net→3 · BH lob→2` → **66%** winner (6.5×, n=74)
+- `FH net→3 · BH lob→2` → **66%** winner (6.4×, n=145)
+- `FH drive→1 · FH lob→2` → **64%** winner (6.2×, n=154)
 
 **Trouble** (lead-ups → most likely to miss / unforced error):
+- `BH drive→2 · FH net→2` → **19%** error (1.8×, n=107)
 - `BH drive→1 · BH drive→2` → **18%** error (1.7×, n=311)
+- `BH drive→2 · FH net→3` → **17%** error (1.7×, n=145)
 - `BH drive→· · FH drive→·` → **17%** error (1.7×, n=64)
-- `BH drive→2 · FH net→2` → **17%** error (1.6×, n=83)
-- `FH drive→1 · BH slice→1` → **17%** error (1.6×, n=89)
 
 ### Novak Djokovic
 *baseline: winner 6.4% · unforced 7.6% of strokes; 160,351 strokes analyzed*
 
 **Green light** (lead-ups → most likely to hit a winner):
-- `FH drive→3 · BH shot→1` → **61%** winner (9.6×, n=80)
-- `FH drive→3 · BH shot→2` → **53%** winner (8.3×, n=286)
-- `FH drive→1 · FH shot→2` → **46%** winner (7.2×, n=133)
-- `BH net→1 · FH drive→1` → **41%** winner (6.3×, n=128)
+- `FH drive→3 · BH lob→1` → **62%** winner (9.6×, n=78)
+- `FH drive→3 · BH lob→2` → **54%** winner (8.5×, n=273)
+- `FH drive→1 · FH lob→2` → **50%** winner (7.8×, n=118)
+- `BH net→1 · FH drive→3` → **50%** winner (7.8×, n=64)
 
 **Trouble** (lead-ups → most likely to miss / unforced error):
+- `BH drive→2 · BH net→3` → **12%** error (1.6×, n=98)
 - `BH slice→3 · BH drive→2` → **12%** error (1.6×, n=235)
 - `FH drive→1 · BH slice→1` → **12%** error (1.6×, n=126)
 - `FH drive→1 · BH slice→3` → **12%** error (1.5×, n=311)
-- `FH drive→1 · FH slice→1` → **11%** error (1.5×, n=274)
 
 ### Rafael Nadal
 *baseline: winner 7.1% · unforced 6.6% of strokes; 120,009 strokes analyzed*
 
 **Green light** (lead-ups → most likely to hit a winner):
-- `BH drive→3 · BH shot→2` → **58%** winner (8.2×, n=60)
-- `FH drive→1 · FH shot→2` → **53%** winner (7.5×, n=145)
-- `FH drive→3 · BH shot→2` → **53%** winner (7.4×, n=214)
-- `FH drive→3 · BH shot→1` → **50%** winner (7.1×, n=115)
+- `FH drive→3 · BH lob→2` → **56%** winner (7.9×, n=196)
+- `FH drive→1 · FH lob→2` → **55%** winner (7.7×, n=137)
+- `FH drive→3 · BH lob→1` → **51%** winner (7.2×, n=105)
+- `FH drive→1 · FH slice→3` → **48%** winner (6.7×, n=71)
 
 **Trouble** (lead-ups → most likely to miss / unforced error):
 - `serve wide · FH slice→1` → **14%** error (2.1×, n=92)
@@ -50,59 +50,59 @@
 - `FH drive→1 · BH slice→1` → **12%** error (1.9×, n=122)
 
 ### Pete Sampras
-*baseline: winner 13.8% · unforced 11.5% of strokes; 39,321 strokes analyzed*
+*baseline: winner 13.8% · unforced 11.5% of strokes; 39,028 strokes analyzed*
 
 **Green light** (lead-ups → most likely to hit a winner):
-- `FH net→3 · BH shot→2` → **71%** winner (5.1×, n=65)
-- `FH net→3 · BH drive→1` → **62%** winner (4.5×, n=85)
-- `BH net→3 · BH drive→1` → **59%** winner (4.3×, n=74)
-- `FH drive→3 · BH shot→2` → **57%** winner (4.1×, n=70)
+- `FH net→3 · BH lob→2` → **70%** winner (5.1×, n=70)
+- `FH drive→3 · BH lob→2` → **62%** winner (4.5×, n=65)
+- `FH net→3 · BH drive→1` → **60%** winner (4.4×, n=96)
+- `BH net→3 · BH drive→1` → **59%** winner (4.3×, n=93)
 
 **Trouble** (lead-ups → most likely to miss / unforced error):
 - `BH slice→2 · BH slice→3` → **27%** error (2.3×, n=60)
-- `BH slice→2 · BH net→3` → **24%** error (2.1×, n=82)
-- `BH drive→2 · BH net→2` → **22%** error (1.9×, n=68)
+- `BH slice→2 · BH net→3` → **22%** error (1.9×, n=91)
+- `BH drive→2 · FH net→2` → **21%** error (1.8×, n=72)
 - `FH drive→1 · BH drive→1` → **20%** error (1.7×, n=81)
 
 ### Andre Agassi
-*baseline: winner 8.2% · unforced 8.4% of strokes; 55,341 strokes analyzed*
+*baseline: winner 8.2% · unforced 8.4% of strokes; 54,404 strokes analyzed*
 
 **Green light** (lead-ups → most likely to hit a winner):
-- `BH drive→3 · BH shot→2` → **62%** winner (7.6×, n=74)
-- `FH drive→3 · BH shot→2` → **59%** winner (7.2×, n=144)
-- `FH drive→1 · FH shot→2` → **49%** winner (6.0×, n=78)
-- `BH drive→3 · BH net→2` → **35%** winner (4.3×, n=88)
+- `FH drive→3 · BH lob→2` → **61%** winner (7.5×, n=132)
+- `FH drive→1 · FH lob→2` → **60%** winner (7.3×, n=62)
+- `FH drive→2 · BH net→2` → **40%** winner (4.9×, n=73)
+- `BH drive→3 · BH net→2` → **39%** winner (4.8×, n=122)
 
 **Trouble** (lead-ups → most likely to miss / unforced error):
-- `FH drive→2 · FH net→2` → **21%** error (2.5×, n=62)
-- `serve T · BH drive→1` → **16%** error (1.9×, n=220)
+- `FH drive→2 · FH net→2` → **17%** error (2.0×, n=87)
+- `serve T · BH drive→1` → **16%** error (1.9×, n=217)
 - `BH slice→3 · BH slice→3` → **14%** error (1.7×, n=113)
-- `serve wide · BH drive→2` → **12%** error (1.5×, n=866)
+- `BH drive→2 · BH net→2` → **13%** error (1.5×, n=118)
 
 ## Women
 
 ### Serena Williams
-*baseline: winner 9.9% · unforced 12.4% of strokes; 23,242 strokes analyzed*
+*baseline: winner 9.9% · unforced 12.4% of strokes; 23,066 strokes analyzed*
 
 **Green light** (lead-ups → most likely to hit a winner):
 - `serve wide · BH slice→2` → **29%** winner (3.0×, n=106)
-- `FH drive→3 · BH slice→2` → **26%** winner (2.7×, n=163)
+- `FH drive→3 · BH slice→2` → **27%** winner (2.7×, n=161)
 - `serve T · BH slice→2` → **23%** winner (2.4×, n=98)
 - `BH drive→3 · BH slice→1` → **23%** winner (2.3×, n=74)
 
 **Trouble** (lead-ups → most likely to miss / unforced error):
 - `serve wide · FH slice→2` → **19%** error (1.5×, n=96)
 - `BH drive→3 · BH slice→2` → **19%** error (1.5×, n=274)
-- `BH drive→1 · FH drive→2` → **17%** error (1.4×, n=445)
-- `FH drive→2 · BH drive→2` → **17%** error (1.3×, n=360)
+- `BH drive→1 · FH drive→2` → **17%** error (1.4×, n=440)
+- `FH drive→2 · BH drive→2` → **17%** error (1.4×, n=357)
 
 ### Iga Swiatek
 *baseline: winner 10.3% · unforced 11.4% of strokes; 37,499 strokes analyzed*
 
 **Green light** (lead-ups → most likely to hit a winner):
-- `FH drive→3 · BH shot→2` → **54%** winner (5.2×, n=145)
-- `BH drive→3 · BH shot→2` → **53%** winner (5.1×, n=74)
-- `FH drive→1 · FH shot→2` → **42%** winner (4.1×, n=92)
+- `FH drive→3 · BH lob→2` → **54%** winner (5.2×, n=144)
+- `BH drive→3 · BH lob→2` → **54%** winner (5.2×, n=71)
+- `FH drive→1 · FH lob→2` → **42%** winner (4.1×, n=88)
 - `serve T · BH slice→2` → **36%** winner (3.5×, n=70)
 
 **Trouble** (lead-ups → most likely to miss / unforced error):
@@ -127,16 +127,16 @@
 - `FH drive→1 · FH drive→1` → **13%** error (1.6×, n=99)
 
 ### Steffi Graf
-*baseline: winner 7.2% · unforced 9.3% of strokes; 21,976 strokes analyzed*
+*baseline: winner 7.1% · unforced 9.3% of strokes; 21,766 strokes analyzed*
 
 **Green light** (lead-ups → most likely to hit a winner):
-- `FH drive→3 · BH slice→2` → **19%** winner (2.7×, n=246)
-- `FH drive→1 · FH slice→2` → **18%** winner (2.5×, n=117)
-- `serve wide · FH slice→2` → **18%** winner (2.5×, n=106)
-- `FH drive→3 · BH slice→1` → **16%** winner (2.3×, n=99)
+- `FH drive→3 · BH slice→2` → **19%** winner (2.7×, n=242)
+- `FH drive→1 · FH slice→2` → **18%** winner (2.5×, n=116)
+- `serve wide · FH slice→2` → **17%** winner (2.4×, n=99)
+- `FH drive→3 · BH slice→1` → **17%** winner (2.3×, n=96)
 
 **Trouble** (lead-ups → most likely to miss / unforced error):
 - `FH drive→1 · BH slice→2` → **16%** error (1.8×, n=91)
-- `serve body · BH slice→2` → **16%** error (1.7×, n=109)
 - `serve body · BH slice→3` → **15%** error (1.6×, n=99)
 - `FH drive→1 · BH slice→1` → **15%** error (1.6×, n=75)
+- `serve body · BH slice→2` → **14%** error (1.5×, n=105)

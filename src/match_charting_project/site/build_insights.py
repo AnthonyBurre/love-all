@@ -297,7 +297,12 @@ def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
     return serve, rows
 
 
+# state_kind / resp_kind are the two strokes' kinds (drive / slice / net / other). They
+# read as part of the prose, but the panel needs them as data: a volley is met in the air,
+# and a drawing that cannot tell one from a drive draws a bounce under a ball that never
+# landed. Both experiments have always emitted them.
 PATTERN_COLS = ["player", "gender", "family", "state", "response", "state_depth",
+                "state_kind", "resp_kind",
                 "inc_code", "resp_code", "lift", "count", "n_state", "evidence",
                 "win_rate", "tour_win_rate", "field_share", "state_win_rate"]
 # Extra columns the return family carries and the rally family has no meaning for.
@@ -339,7 +344,7 @@ def _patterns() -> pd.DataFrame:
         cr[col] = ""
     patterns = pd.concat([cr[PATTERN_COLS + PATTERN_SIDE_COLS],
                           ret[PATTERN_COLS + PATTERN_SIDE_COLS]], ignore_index=True)
-    for col in ("inc_code", "resp_code", *PATTERN_SIDE_COLS):
+    for col in ("inc_code", "resp_code", "state_kind", "resp_kind", *PATTERN_SIDE_COLS):
         patterns[col] = patterns[col].fillna("").astype(str)
     patterns["state_depth"] = patterns["state_depth"].fillna("")
     return patterns

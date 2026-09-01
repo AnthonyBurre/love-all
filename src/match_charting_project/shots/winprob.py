@@ -16,7 +16,8 @@ a rare line):
     shot_index     how many strokes have landed (capped), i.e. the "ply"
     to_hit         whose turn it is next -- server (S) or returner (R)
     wing           the wing of the last stroke (serve / FH / BH)
-    kind           drive / slice / net (volley,OH,half-volley) / other -- the
+    kind           drive / slice / net (volley, overhead, half-volley, swinging
+                   volley) / other (drop shot, lob) -- the
                    drive-vs-slice distinction is well charted (~12% slices) and
                    strongly shapes the rally
     direction      where the last stroke went (serve dir, or 1/2/3)

@@ -9,8 +9,8 @@
 
 | | points | log-loss | Brier |
 |---|---|---|---|
-| Men | 324,223 | 0.532 | 0.176 |
-| Women | 139,137 | 0.544 | 0.181 |
+| Men | 323,894 | 0.532 | 0.176 |
+| Women | 139,137 | 0.544 | 0.180 |
 
 ![calibration](figures/match_winprob_calibration.png)
 
@@ -42,13 +42,13 @@ The point eval scores every shot's WPA in *point*-win units; multiplying by the 
 
 | match-WPA | shot | situation |
 |---|---|---|
-| -0.241 | returner forehand | set 2-2, games 7-7, 30-40 (Djo serving) |
-| -0.160 | server forehand | set 2-2, games 8-7, 40-AD (Fed serving) |
-| -0.154 | server forehand_swinging_volley | set 2-2, games 12-12, 1-1 (Fed serving) |
-| -0.141 | server backhand_volley | set 2-2, games 2-3, 30-40 (Fed serving) |
-| -0.129 | server forehand | set 2-2, games 2-4, 40-AD (Djo serving) |
-| -0.106 | server forehand | set 2-2, games 7-7, 30-30 (Djo serving) |
+| -0.245 | returner forehand | set 2-2, games 7-7, 30-40 (Djo serving) |
+| -0.161 | server forehand | set 2-2, games 8-7, 40-AD (Fed serving) |
+| -0.158 | server forehand_halfvolley | set 2-2, games 12-12, 1-1 (Fed serving) |
+| -0.143 | server backhand_volley | set 2-2, games 2-3, 30-40 (Fed serving) |
+| -0.128 | server forehand | set 2-2, games 2-4, 40-AD (Djo serving) |
+| -0.105 | server forehand | set 2-2, games 7-7, 30-30 (Djo serving) |
 | -0.091 | server serve | set 2-2, games 2-4, 30-30 (Djo serving) |
-| -0.089 | server backhand | set 0-0, games 6-6, 5-6 (Fed serving) |
+| -0.090 | returner backhand | set 2-2, games 3-4, 15-15 (Fed serving) |
 
 This is the chess-analogue completion: a blunder is finally priced in the units that decide the match, not the point — the same error costs far more on a championship point than at 40-0. **Caveat:** like the point eval, this conflates shot selection, execution, and opponent pressure; strength is a serve+return rate with no surface or form adjustment, and players with thin prior charting fall back toward an even matchup.

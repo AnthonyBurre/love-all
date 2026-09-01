@@ -9,11 +9,23 @@ import re
 
 from match_charting_project.shots.notation import parse_point
 from match_charting_project.viz.court import (
+    _BOTTOM,
+    _CONTACT_PAD,
+    _HALF,
     _LANE_MID,
+    _LEFT,
+    _NET,
+    _SERVE_STANCE,
+    _SERVICE_F,
     _THEME,
+    _TOP,
     _bounces_from_shots,
+    _contact_points,
+    _depth_y,
     _lane_x,
+    _opening_contact,
     _serve_origin_x,
+    _shots_from_tokens,
     _tip_elems,
     point_rally_svg,
     rally_svg,
@@ -23,6 +35,28 @@ from match_charting_project.viz.court import (
 def _segments(svg: str) -> int:
     """Ball-path segments carry a data-shot index; court lines and the × don't."""
     return svg.count("data-shot=")
+
+
+def _rings(svg: str) -> "list[tuple[float, float]]":
+    """The small rings marking a ball that bounced, as (x, y)."""
+    return [(float(x), float(y)) for x, y in
+            re.findall(r'<circle cx="(-?[\d.]+)" cy="(-?[\d.]+)" r="1.9"', svg)]
+
+
+def _segment_ends(svg: str) -> "list[tuple[float, float, float, float]]":
+    """Each drawn stroke as (x1, y1, x2, y2), in stroke order."""
+    return [tuple(float(v) for v in m) for m in re.findall(
+        r'<line data-shot="\d+" x1="(-?[\d.]+)" y1="(-?[\d.]+)" '
+        r'x2="(-?[\d.]+)" y2="(-?[\d.]+)"', svg)]
+
+
+def _contacts(tokens):
+    """The bounces, contacts and bounced flags behind a token sequence, built the way
+    rally_svg builds them so a test can never be reading a different drawing."""
+    shots = _shots_from_tokens(tokens)
+    bounces = _bounces_from_shots(shots, True, "deuce")
+    start = _opening_contact(shots, "deuce")
+    return bounces, *_contact_points(bounces, shots, start)
 
 
 def _tip_points(el: str) -> "list[tuple[float, float]]":
@@ -138,3 +172,122 @@ def test_css_class_mode_uses_site_classes_not_inline_colours():
 def test_empty_point_still_draws_a_court():
     svg = rally_svg([])
     assert "<svg" in svg and _segments(svg) == 0
+
+
+# --- contact points: where the stroke was played from, not where the ball landed -------
+# A charted point says where each ball went; it never says where the player stood to hit
+# the next one. The drawing infers that, and these pin the three rules it infers by.
+
+
+def test_a_groundstroke_is_struck_past_where_the_ball_bounced():
+    """The bounce is where the ball landed; the player meets it a step later, still on
+    the ball's line. Drawing the answer as leaving the bounce itself is what made a ball
+    down the middle look like a shot struck from the middle of the court."""
+    bounces, contacts, _ = _contacts(["svT", "Bd2", "Fd1", "Bd3"])
+    for i in (1, 2, 3):
+        prev, contact = bounces[i - 1], contacts[i]
+        # Same half as the ball it answers, and further from the net than the bounce.
+        assert (prev.y < _NET) == (contact[1] < _NET)
+        assert abs(contact[1] - _NET) > abs(prev.y - _NET)
+
+
+def test_a_serve_is_returned_from_the_baseline_not_the_service_box():
+    """A serve bounces inside the service box, but nobody returns from there — the
+    returner's stance sets where they meet it, not how short the serve landed."""
+    bounces, contacts, _ = _contacts(["svT", "Bd2"])
+    serve, returner = bounces[0], contacts[1]
+    assert serve.y > _depth_y(_SERVICE_F, True)          # the serve landed in the box
+    assert returner[1] < _depth_y(_SERVICE_F, True)      # the return was struck behind it
+    assert abs(returner[1] - _TOP) < 0.2 * _HALF         # and near their own baseline
+
+
+def test_a_wide_serve_is_returned_from_the_sideline_not_from_off_the_page():
+    """Following a wide serve out to the baseline puts the returner past the edge of the
+    drawing. The extension stops at the sideline instead — which costs depth, not the
+    ball's line, so the serve still reads as one line with its bounce sitting on it."""
+    _, contacts, _ = _contacts(["svW", "Bd2"])
+    wide = contacts[1]
+    assert wide[0] == _LEFT - _CONTACT_PAD               # stopped at the sideline
+    _, straight, _ = _contacts(["svT", "Bd2"])
+    assert wide[1] > straight[1][1]                      # and taken earlier for it
+
+
+def test_a_volleyed_ball_is_never_drawn_bouncing():
+    """The ball a volley answers did not reach the ground, so nothing may say it did.
+    The incoming line stops where it was intercepted, short of where it was aimed."""
+    bounces, contacts, bounced = _contacts(["svT", "Bd2", "Fv1", "Bd3"])
+    assert bounced == [True, False, True, True]          # only the volleyed ball
+    volley_contact = contacts[2]
+    aimed_at = bounces[1]
+    # Met in its own half, nearer the net than the bounce it never reached.
+    assert (volley_contact[1] < _NET) == (aimed_at.y < _NET)
+    assert abs(volley_contact[1] - _NET) < abs(aimed_at.y - _NET)
+
+
+def test_only_the_balls_that_bounced_get_a_ring():
+    """The ring is the charted datum — where the ball actually landed. The last stroke
+    ends at its own bounce, so it needs none."""
+    assert len(_rings(rally_svg(["svT", "Bd2", "Fd1", "Bd3"]))) == 3    # all but the last
+    assert len(_rings(rally_svg(["svT", "Bd2", "Fv1", "Bd3"]))) == 2    # minus the volleyed
+    assert len(_rings(rally_svg(["svT", "Bd2"]))) == 1                  # the serve's own
+
+
+def test_each_ring_sits_on_the_line_that_ran_past_it():
+    """A ball travels straight in plan view, so the bounce it made is a point on the
+    segment, not a kink beside it. If the two ever part company the ring is a lie."""
+    svg = rally_svg(["svW", "Bd2", "Fd1", "Bd3"])
+    segments, rings = _segment_ends(svg), _rings(svg)
+    for (x1, y1, x2, y2), (rx, ry) in zip(segments, rings):
+        t = (ry - y1) / (y2 - y1)
+        assert 0 < t < 1                                  # between the two contacts
+        assert abs((x1 + t * (x2 - x1)) - rx) < 0.2       # and on the line between them
+
+
+def test_a_drop_shot_lands_short_and_a_lob_lands_deep():
+    """The two shortest and deepest balls in tennis, each drawn where it lands."""
+    def landing(tok):
+        return _contacts(["svT", tok])[0][1]
+
+    drop, lob, drive = landing("Fp2"), landing("Fl2"), landing("Fd2")
+    # All three are the second stroke, so all three land in the same half.
+    for b in (drop, lob, drive):
+        assert b.y > _NET
+    assert drop.y < drive.y < lob.y                    # shortest, ordinary, deepest
+    assert drop.y - _NET < 0.25 * _HALF                # a drop shot dies near the net
+    assert lob.y - _NET > 0.85 * _HALF                 # a lob lands on the baseline
+
+
+def test_a_charted_depth_still_beats_the_stroke_kind():
+    """The kind is a fallback for the depth the notation usually omits, not an override
+    of the depth it recorded."""
+    from match_charting_project.shots.notation import parse_point
+    from match_charting_project.viz.court import _bounces_from_shots
+    # "u" is a forehand drop shot; "9" charts it deep, which is what the ball did.
+    shots = parse_point("4b2u29*", None, 1, 1).shots
+    charted = _bounces_from_shots(shots, True, "deuce")[2]
+    assert abs(charted.y - _NET) > 0.8 * _HALF
+
+
+def test_the_server_stands_behind_their_own_baseline():
+    """A serve struck from inside the court is the one thing in the drawing every viewer
+    can check against tennis, so it has to be right. A sequence that opens mid-rally has
+    no real origin and is anchored just inside instead, which is what tells them apart."""
+    served = _contacts(["svT", "Bd2"])[1][0]
+    mid_rally = _contacts(["Fd1", "Bs3"])[1][0]
+    assert served[1] == _BOTTOM + _SERVE_STANCE          # behind the baseline
+    assert mid_rally[1] < _BOTTOM                        # inside it
+    # And behind it by enough to read as behind it, not as a rounding wobble.
+    assert served[1] - _BOTTOM > 0.03 * _HALF
+
+
+def test_a_serve_leaves_a_bounce_in_its_own_service_box():
+    """The serve's line runs on to wherever the returner met it, so the spot in the box is
+    what makes the first ball read as a serve rather than as one long diagonal."""
+    bounces, _, bounced = _contacts(["svW", "Bd2"])
+    serve = bounces[0]
+    assert bounced[0]                                    # a landed serve bounced
+    assert _depth_y(_SERVICE_F, True) < serve.y < _NET   # between service line and net
+    assert _LEFT < serve.x < _LANE_MID                   # in the deuce court's own box
+    # and it is drawn, because the line runs on past it
+    assert any(abs(x - serve.x) < 0.1 and abs(y - serve.y) < 0.1
+               for x, y in _rings(rally_svg(["svW", "Bd2"])))

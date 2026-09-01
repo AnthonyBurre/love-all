@@ -122,8 +122,7 @@ def _court_response():
     Its geometry is the vocabulary this experiment extends — hand-relative zones,
     the reference lane a response's line is read against, the namer that turns a
     (zone, line) pair into plain English, and the physical codes the site's court
-    renderer draws from. A second copy here would drift the moment either side was
-    corrected, which is what happened while ``resp_name`` was copied instead.
+    renderer draws from. A second copy here would drift the moment either side changed.
     """
     path = Path(__file__).resolve().parents[1] / "court_response" / "run.py"
     spec = importlib.util.spec_from_file_location("court_response_run", path)
@@ -136,9 +135,8 @@ CR = _court_response()
 ZONE_REL, WING_LANE, MIRROR = CR.ZONE_REL, CR.WING_LANE, CR.MIRROR
 INC_WORD, RESP_WORD, ZONE_WORD, DEPTH_WORD = (
     CR.INC_WORD, CR.RESP_WORD, CR.ZONE_WORD, CR.DEPTH_WORD)
-# The response namer too, keyed on the zone alone so it spans both state shapes. It was
-# a second copy here until the two drifted apart in the same wrong direction at once.
-resp_name = CR.resp_name
+# The response namer too, keyed on the zone alone so it spans both state shapes.
+resp_name, resp_line = CR.resp_name, CR.resp_line
 
 
 class State(NamedTuple):
@@ -253,9 +251,9 @@ def collect(con, gender: str, hands: dict) -> dict:
                 funnel["no_serve_dir"] += 1
 
             kind, zone = stroke_kind(ret.letter, False), ZONE_REL[hand][d_in]
-            ref = d_in if d_in != "2" else WING_LANE[hand][plus1.side]
-            line = "cc" if d_out == ref else ("dtl" if d_out == MIRROR[ref] else "mid")
-            resp = (plus1.side, stroke_kind(plus1.letter, False), line)
+            rkind = stroke_kind(plus1.letter, False)
+            resp = (plus1.side, rkind,
+                    resp_line(d_in, d_out, hand, plus1.side, rkind))
             # The server hit shot 3, so "won" is whether the point ended with them —
             # the payoff of the decision, terminal shot or not.
             won = int(plus1.hitter == (pt.server if pt.server_won else pt.returner))
@@ -374,6 +372,8 @@ def physical_codes(st: State, resp, hand):
     zone, (wing, _kind, line) = st.zone, resp
     inc = "2" if zone == "mid" else {"R": {"fh": "1", "bh": "3"},
                                      "L": {"fh": "3", "bh": "1"}}[hand][zone]
+    if not line:                       # a lob, whose third is not conditioned on
+        return inc, ""
     ref = inc if inc != "2" else WING_LANE[hand][wing]
     out = ref if line == "cc" else (MIRROR[ref] if line == "dtl" else "2")
     return inc, out

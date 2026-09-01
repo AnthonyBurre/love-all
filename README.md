@@ -285,8 +285,9 @@ Each stroke is one token:
 
 - **Wing and type.** `FH` / `BH` is the forehand or backhand wing the player actually hit
   with. The type is `drive` (flat or topspin), `slice` (slice or chip), `net` (volley,
-  overhead, or half-volley), or `shot` when the type was not charted. These group a finer
-  set in the raw notation, which also records drop shots, lobs, overheads, and so on.
+  overhead, half-volley, or swinging volley), `drop` or `lob` — the shortest and deepest
+  balls in tennis, which is why they get a group each rather than sharing one — or `shot`
+  when the type was not charted.
 - **Direction.** `→1` / `→2` / `→3` is the third of the court the ball was sent to, named
   relative to the **player's own hands** — mirrored for a left-hander, so one token string
   means one piece of tennis whoever played it. The raw notation names fixed thirds by the

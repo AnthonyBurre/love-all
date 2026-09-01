@@ -81,7 +81,8 @@ async function playerData(name, gender) {
   try {
     patterns = await query(
       "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
-      "win_rate, tour_win_rate, field_share, state_win_rate, serve_side, serve_dir " +
+      "win_rate, tour_win_rate, field_share, state_win_rate, serve_side, serve_dir, " +
+      "state_kind, resp_kind " +
       "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
       [name, gender]);
   } catch (e) { /* stale insights db: show the card without patterns */ }
@@ -459,9 +460,12 @@ function patternCard(p) {
   // The return family is the serve+1: its state names the court and often the serve, so
   // the drawing starts at the serve rather than at the return. retSvg falls back to the
   // pair drawing for a pattern surfaced with the sides pooled.
+  // The two stroke kinds go with the codes: a volley is met in the air, so a drawing that
+  // does not know which balls were volleys puts a bounce under one that never landed.
   const court = p.family === "ret"
-    ? retSvg(p.serve_side, p.serve_dir, p.inc_code, p.resp_code, p.state_depth)
-    : pairSvg(p.inc_code, p.resp_code, p.state_depth);
+    ? retSvg(p.serve_side, p.serve_dir, p.inc_code, p.resp_code, p.state_depth,
+             p.state_kind, p.resp_kind)
+    : pairSvg(p.inc_code, p.resp_code, p.state_depth, p.state_kind, p.resp_kind);
   // Both denominators. The count alone cannot say whether this is what they do with the
   // ball or a corner of it: 277 answers looks the same printed on its own whether the
   // ball came 970 times or 300. n_state is what the frequency claim is actually over.
@@ -1908,18 +1912,27 @@ function notationHelp() {
     <div class="keytext">
       <div><code>FH</code>/<code>BH</code> forehand / backhand ·
         <code>drive</code> flat or topspin · <code>slice</code> slice or chip ·
-        <code>net</code> volley, overhead, or other net shot ·
-        <code>shot</code> stroke type not charted</div>
+        <code>net shot</code> volley, overhead, half-volley or swinging volley ·
+        <code>drop shot</code> and <code>lob</code>, the shortest and deepest balls in
+        tennis, each its own · <code>shot</code> stroke type not charted</div>
       <div><code>→1/2/3</code> where it was hit, seen from the hitter: zone 1 is a
         right-hander's forehand side, 3 their backhand side (<code>→·</code> =
         direction not charted).</div>
+      <div>A response is named for the line it took — crosscourt, down the line,
+        inside-out — except a net shot, which is named for where it went. Those words
+        all describe where a player was standing, and a volley is cut off in the air
+        wherever they could reach it, so the corner the ball was headed for is not one
+        they ever stood in.</div>
       <div>Every court drawing reads the same way: the tinted half is the profiled
-        player's side, a solid line in their colour is a ball they hit, a dashed grey one
-        is the opponent's, and the ring is the bounce the drawing turns on. On a court
-        pattern that ring is the ball they answered, and the arrow is the answer. On a
-        trigger it is the ball they attacked — the shot they went for is what the numbers
-        beside it measure, and it isn't drawn, because the notation never says where it
-        went.</div>
+        player's side, a solid line in their colour is a ball they hit, and a dashed grey
+        one is the opponent's. Lines run contact to contact, so every kink is a player
+        meeting the ball, and the mark on the one the drawing turns on says what happened
+        there: a hollow ring is a bounce, with the answer leaving from a step behind it,
+        and a filled dot up near the net is a ball taken out of the air, no bounce under
+        it at all. On a court pattern that is the ball they answered, and the arrow is the
+        answer. On a trigger it is the ball they attacked — the shot they went for is what
+        the numbers beside it measure, and it isn't drawn, because the notation never says
+        where it went.</div>
       <div>Court patterns name zones by the player's own hands (a lefty's FH corner
         is a righty's BH corner), so "drive into the BH corner → crosscourt BH slice"
         at <b>1.6×</b> means they answer that ball with the crosscourt slice 1.6× as
