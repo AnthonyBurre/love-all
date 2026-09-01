@@ -33,7 +33,7 @@ const gkey = (t) => (t.completed ? `${t.name}${SEP}${t.season}` : t.name);
 // title. Keyed identity stays on the feed name: it's the stable one, it's what pairs the
 // two draws of an event, and a calendar that can't place an event doesn't change it.
 const ename = (t) => (t.event || {}).common_name || t.name;
-const glabel = (t) => (t.completed ? `${ename(t)} ${t.season}` : ename(t));
+const glabel = (t) => (t.completed ? `${t.season} ${ename(t)}` : ename(t));
 
 // Season/tournament theme: slams get their own palette, everything below them follows its
 // surface. Keyed off the venue city, since the feed's event name is a sponsor's ("HSBC
@@ -91,12 +91,14 @@ async function main() {
   });
 }
 
-// Where an event falls in the tennis calendar. The feed carries no start date, so this is what
-// orders two events of the same season by age: the four majors have fixed slots, everything
-// else sorts after them and falls back to the name. Roland Garros and its "French Open" alias
-// share slot 1.
+// Where an event falls in the tennis calendar. The feed carries no start date, so this ordinal
+// is what orders two events of the same season by age: the majors and the North American
+// hard-court swing that follows Wimbledon have fixed slots, in calendar order; every other
+// event shares slot 99 and falls to the bottom of its season, ties broken by name. Roland
+// Garros and its "French Open" alias share a slot.
 const CAL = [["australian open", 0], ["roland garros", 1], ["french open", 1],
-  ["wimbledon", 2], ["us open", 3]];
+  ["wimbledon", 2], ["washington", 3], ["canadian open", 4], ["national bank open", 4],
+  ["cincinnati", 5], ["us open", 6]];
 const calSlot = (t) => {
   const n = `${ename(t)} ${t.name || ""}`.toLowerCase();
   const hit = CAL.find(([s]) => n.includes(s));

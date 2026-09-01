@@ -2044,7 +2044,7 @@ const ename = (t) => (t.event || {}).common_name || t.name;
 // the tabs behind the panel are already set to one, and a men's and a women's match never
 // share a screen.
 function eyebrow(t, round) {
-  const event = t.completed ? `${ename(t)} ${t.season}` : ename(t);
+  const event = t.completed ? `${t.season} ${ename(t)}` : ename(t);
   return [esc(event), round ? esc(round.label) : ""].filter(Boolean).join(" · ");
 }
 
