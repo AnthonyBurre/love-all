@@ -2196,17 +2196,97 @@ function headHtml(m, t, round) {
 // lift off four balls; left career-wide under a match header they would read as findings
 // about a match they were not measured on. Neither is worth the four screens, and the panel
 // says what it can say about this match and stops.
+// The charted match's first slot holds one of two full-width charts: this match's
+// win-probability curve, or the two players' charted-history pyramid — the same one the
+// career panel heads with. The curve is the default, being the thing a charted match has
+// that an uncharted one does not; the pyramid is the other reading worth that width. The
+// switch is a pair of wordless glyphs, and the choice carries across panel opens so a
+// reader who wants coverage keeps getting it.
+let lastMatchView = "wp";
+
+// A curve and a centred tapering stack — the outline of each chart the glyph switches to,
+// at the 14px the site's other view toggles use. Square ends, no rounded caps, the same
+// as every other glyph here.
+function matchViewIcon(view) {
+  return view === "wp"
+    ? `<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path
+        d="M1 10 L4.5 4.5 L7 8 L10 3 L13 6.5" fill="none" stroke="currentColor"
+        stroke-width="1.6" stroke-linejoin="round"/></svg>`
+    : `<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><rect x="3.5"
+        y="1.4" width="7" height="2.6"/><rect x="1" y="5.7" width="12" height="2.6"/><rect
+        x="4.5" y="10" width="5" height="2.6"/></svg>`;
+}
+
 function matchBodyHtml(m, pa, pb, spread, det) {
   const a = m.a, b = m.b;
   const ma = matchSide(det, 0), mb = matchSide(det, 1);
   const by = det.charted_by
     ? `<p class="covnote">Charted by ${esc(det.charted_by)} for the Match Charting Project.</p>` : "";
-  return `<p class="tapetitle">This match</p>` +
-    wpChart(det, a, b) +
+  const wp = wpChart(det, a, b);
+  const cov = profileBand(pa, pb);
+  let head;
+  if (wp && cov) {
+    // "cov" only when that is the remembered choice; a first open, or anything else,
+    // lands on the curve. A match missing one of the two never reaches here.
+    const v = lastMatchView === "cov" ? "cov" : "wp";
+    // No visible caption on either pane: the active glyph and its tooltip name the view,
+    // and both charts already carry their own labels — the curve its player names and
+    // set rules, the pyramid its per-player totals line.
+    const tab = (k, title, label) => `<button type="button" class="mcvtab${v === k ? " on" : ""}"
+      data-view="${k}" role="tab" aria-selected="${v === k}" tabindex="${v === k ? 0 : -1}"
+      title="${title}" aria-label="${label}">${matchViewIcon(k)}</button>`;
+    const pane = (k, art) => `<div class="mcvpane" data-view="${k}"${v === k ? "" : " hidden"}>${art}</div>`;
+    head = `<div class="mcv">
+      <div class="mcvtabs" role="tablist" aria-label="Top chart">
+        ${tab("wp", "This match", "This match — win probability by point")}
+        ${tab("cov", "Charted history", "Charted history — charted points by season")}
+      </div>
+      ${pane("wp", wp)}
+      ${pane("cov", cov)}
+    </div>`;
+  } else {
+    // One chart and no switch — a degenerate curve, or a match with no player data on
+    // either side. Whichever survived stands on its own labels.
+    head = wp || cov;
+  }
+  return head +
     tape(pa, pb, spread, det) +
     section("serve placement", `where the first delivery went, by court side`, a, b,
       serveMatchHtml(pa, ma), serveMatchHtml(pb, mb), "text") +
     by;
+}
+
+// The top-chart switch on a charted match: it flips which pane is shown and remembers the
+// choice for the next open. The curve's own scrubber is wired once at render and keeps
+// working when its pane returns — it only needs a laid-out box, which it has as soon as
+// the pane is unhidden.
+function wireMatchView(root) {
+  const mcv = root.querySelector(".mcv");
+  if (!mcv) return;
+  const tabs = [...mcv.querySelectorAll(".mcvtab")];
+  const panes = [...mcv.querySelectorAll(".mcvpane")];
+  const show = (view) => {
+    lastMatchView = view;
+    for (const t of tabs) {
+      const on = t.dataset.view === view;
+      t.classList.toggle("on", on);
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+    }
+    for (const p of panes) p.hidden = p.dataset.view !== view;
+  };
+  for (const t of tabs) t.addEventListener("click", () => show(t.dataset.view));
+  // Left/right arrows walk the pair, the tablist convention — the focused tab is also the
+  // shown one, so moving focus moves the view.
+  mcv.querySelector(".mcvtabs").addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const i = tabs.findIndex((t) => t.dataset.view === lastMatchView);
+    const step = e.key === "ArrowRight" ? 1 : tabs.length - 1;
+    const next = tabs[(Math.max(0, i) + step) % tabs.length];
+    next.focus();
+    show(next.dataset.view);
+  });
 }
 
 function bodyHtml(m, pa, pb, gates, spread, det) {
@@ -2540,5 +2620,6 @@ export async function openMatchup(m, t) {
       slot._wp = det.wp;
       wireWpChart(slot);
     }
+    wireMatchView(slot);
   }
 }

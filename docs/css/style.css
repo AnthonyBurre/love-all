@@ -1039,6 +1039,28 @@ a { color: var(--acc-d); }
   white-space: nowrap; }
 .wprn { font-weight: 700; color: var(--b); }
 
+/* --- top-chart view switch (matchBodyHtml) --------------------------------------------
+   A charted match's first slot is either the win-probability curve or the two players'
+   charted-history pyramid, and this picks which. Two wordless glyphs — a curve, a centred
+   stack — with the words in each button's tooltip. Centred, since it heads a full-width
+   chart and not a column, and greyscale rather than the header toggle's accent: it is a
+   quiet control on the panel's own chrome, not a primary tab, and it stays the one mark
+   in the panel that doesn't take the tournament theme's colour. The 16px the curve and
+   the pyramid each carry below themselves moves to the wrapper, so the gap to the rings
+   is the same whichever pane is up; the negative top pulls the row up under the split
+   rule that the body's own top padding would otherwise sit it well below. */
+.mcv { margin: -6px 0 16px; }
+.mcv .wp, .mcv .pband { margin: 0; }
+.mcvtabs { display: flex; justify-content: center; gap: 3px; margin: 0 0 4px; }
+.mcvtab { display: inline-flex; align-items: center; justify-content: center;
+  min-width: 46px; height: 22px; padding: 0 14px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted); cursor: pointer; line-height: 0; }
+.mcvtab svg { display: block; fill: currentColor; }
+.mcvtab:hover { color: var(--ink); border-color: var(--muted); }
+.mcvtab.on { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.mcvtab:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+.mcvpane[hidden] { display: none; }
+
 /* The career value under a match figure — what gives "67%" its scale. Block, so the label
    above it keeps its own line in a ~150px column. */
 .pbanch { display: block; margin-top: 1px; font-style: normal; font-size: 9px;
