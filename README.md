@@ -69,7 +69,7 @@ Live draws show while play is on. Once an event finishes its draw is frozen into
 so it stays in the dropdown, keeping the last two years of slams plus the two most recent
 finished events of every other tier. Drill into
 any matchup to view average point
-length, shot variety, serve direction, court patterns, shot-making triggers, and more! All of it is queried in the browser with **DuckDB-WASM**, no backend.
+length, shot variety, shot mix, serve direction, court patterns, shot-making triggers, and more! All of it is queried in the browser with **DuckDB-WASM**, no backend.
 
 The panel deliberately does not predict match outcomes, since that is not the strength of this dataset and every other tennis site already does so.
 

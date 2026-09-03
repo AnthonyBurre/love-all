@@ -928,29 +928,17 @@ a { color: var(--acc-d); }
 .ct-bounce.faint { opacity: 0.55; }
 
 /* --- the comparison strip, headed "side by side" ---------------------------------
-   Both players' headline numbers on one axis, bent into a ring: each sweeps out of a shared
-   origin at the foot, so a gap reads as a shape rather than as arithmetic between two distant
-   columns. A spoke across the band carries a second figure of that player's own, the games
-   the sweep turns into. See the note over donut() in matchup.js for what a ring encodes and
-   why only two metrics are drawn on one. */
-/* --dn-size is the drawn diameter of one ring, set here because the box it sits in is what
-   there is to divide up. The narrow value came down from 156 when the flanks took on a second
-   qualifier: a phone gives the ring's row 321px and the ring is the part of it that can give
-   width back, so 144 plus an 8px gap leaves ~80px a side. That is what the headline figure and
-   its unit need on one line at the highest serve rate on tour ("72.4% points", 77px); the
-   double-fault line is longer than that and wraps, which is the right one of the two to break. The rings stack one per row at every width (see .tapemain), so a
-   ring never shares its row with a second one — it spends the whole width on one larger ring
-   instead of two side by side.
-   Sized against measured slack rather than guessed at. A ring's row is shrink-to-fit inside a
-   centred track (.dn has min-width:0 in a centre-aligned column), so the flanking figures are
-   not squeezed as the ring grows — the row simply widens until it fills its track, and the
-   ring keeps these sizes while the track is widened to whatever the qualifiers beside it
-   need. The longest line a flank can carry is 88px — "10.5% double faults" and "5.5% return
-   winners" come out the same width, both measured off the worst rate on the charted tour
-   rather than off whichever players happened to be on screen. The track that gets a flank to
-   88 is 380, not the 368 the parts add up to: the ring's row is shrink-to-fit inside it and
-   the fr tracks either side of the ring do not hand over their last few pixels until the
-   track has them to give. Measured rather than derived, and set a little over. */
+   Both players' game-winning on one axis, bent into a ring: each sweeps out of a shared origin
+   at the foot, so a gap reads as a shape rather than as arithmetic between two distant
+   columns. A spoke across the band carries the other half of the same question, the return
+   games that player broke. See the note over donut() in matchup.js for what the ring encodes
+   and why games rather than points are on it. */
+/* --dn-size is the drawn diameter of the ring, set here because the box it sits in is what
+   there is to divide up, and --dn-pad is the room the figures need outside the drawing.
+   A ring's row is shrink-to-fit inside a centred track (.dn has min-width:0 in a
+   centre-aligned column), so the flanking figures are not squeezed as the ring grows — the row
+   simply widens until it fills its track, and the ring keeps these sizes while the track is
+   widened to whatever the figures beside it need. */
 .tape { border: 1px solid var(--line); padding: 12px 16px 14px; margin-top: 0;
   --dn-size: 160px; --dn-pad: 76px; }
 /* The first thing in the scroll, right under a header that just named this match — so
@@ -1052,7 +1040,7 @@ a { color: var(--acc-d); }
    chart and not a column, and greyscale rather than the header toggle's accent: it is a
    quiet control on the panel's own chrome, not a primary tab, and it stays the one mark
    in the panel that doesn't take the tournament theme's colour. The 16px the curve and
-   the pyramid each carry below themselves moves to the wrapper, so the gap to the rings
+   the pyramid each carry below themselves moves to the wrapper, so the gap to the ring
    is the same whichever pane is up; the negative top pulls the row up under the split
    rule that the body's own top padding would otherwise sit it well below. */
 .mcv { margin: -6px 0 16px; }
@@ -1067,9 +1055,12 @@ a { color: var(--acc-d); }
 .mcvtab:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
 .mcvpane[hidden] { display: none; }
 
-/* The career value under a match figure — what gives "67%" its scale. Block, so the label
-   above it keeps its own line in a ~150px column. */
-.pbanch { display: block; margin-top: 1px; font-style: normal; font-size: 9px;
+/* The career value under a match figure, and the denominator a match rate was divided by —
+   what gives "67%" its scale and "7.1%" its weight. One per line: the figure rows are wrapping
+   flex containers, so these are flex items and `display: block` alone does not stop two of
+   them sharing a line the moment a figure carries both. A full basis gives each its own row,
+   which is also what keeps the label above them on a line of its own in a ~150px column. */
+.pbanch { display: block; flex: 0 0 100%; margin-top: 1px; font-style: normal; font-size: 9px;
   font-weight: 500; color: var(--muted); letter-spacing: 0; text-transform: none; }
 .pbcmp-row .pbanch { font-size: 8.5px; }
 .pbside[data-side="b"] .pbanch { text-align: right; }
@@ -1264,7 +1255,7 @@ a { color: var(--acc-d); }
   flex-wrap: wrap; }
 .pbfig b { font-size: 14px; font-weight: 700; color: var(--ink); }
 /* The losing side of a figure with a better end — winner stays in ink, this drops to regular
-   weight and the muted grey. Matches .pbcmp-row b.trail on the phone and the rings' lead/trail. */
+   weight and the muted grey. Matches .pbcmp-row b.trail on the phone and the ring's lead/trail. */
 .pbfig b.trail { font-weight: 400; color: var(--muted); }
 .pbfig span { font-size: 10px; color: var(--muted); }
 .pbfig em { font-style: normal; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
@@ -1299,16 +1290,16 @@ a { color: var(--acc-d); }
 .tdot.a { background: var(--a); }
 .tdot.b { background: var(--b); }
 
-/* --- the style band and the rings, sharing one grid (tape()) ---------------------------
-   Narrow: the two style columns sit in a row of their own, the ring stack in a full-width
-   row under them — the same shape "Charted history" above already uses for its own two-up
-   band, so the panel doesn't grow a second convention for a pair of player columns.
-   Wide: a third, narrow track opens between the style columns and the rings move into it.
-   Centred on the row (see the media query below), the stack lands level with the gap a style
-   column already has between its archetype line and its shot-quality figure — so on a wide
-   panel the rings read as rising to fill that gap rather than as a block dropped in beneath
-   it. Named areas rather than source order, because which markup element is "left" changes
-   between the two shapes and an area name says so without a second layout for the JS side. */
+/* --- the style band and the ring, sharing one grid (tape()) ---------------------------
+   Narrow: the two style columns sit in a row of their own, the ring in a full-width row under
+   them — the same shape "Charted history" above already uses for its own two-up band, so the
+   panel doesn't grow a second convention for a pair of player columns.
+   Wide: a third, narrow track opens between the style columns and the ring moves into it.
+   Centred on the row (see the media query below), it lands level with the gap a style column
+   already has between its archetype line and its first figure — so on a wide panel the ring
+   reads as rising to fill that gap rather than as a block dropped in beneath it. Named areas
+   rather than source order, because which markup element is "left" changes between the two
+   shapes and an area name says so without a second layout for the JS side. */
 /* One row per figure, shared by both columns, so each player's figure sits level with the
    other's. Two independent stacks drift apart the moment one column's style label wraps to a
    second line — every number below it drops by a line while its opposite number does not, and
@@ -1316,10 +1307,10 @@ a { color: var(--acc-d); }
    makes for the same reason further down; browsers without subgrid fall back to two
    independent stacks, which is where this started.
    --pbrows is the shared row count, written by tape() off the plan both columns render from
-   (profilePlan), plus one row at the end for the rings.
+   (profilePlan), plus one row at the end for the ring.
    row-gap is 0 because the rows are now figure rows: the spacing between figures is the
    margin each one carries, and an 18px gutter repeated down the column would be four times
-   the space they ask for. The rings take that gutter back as a margin of their own. */
+   the space they ask for. The ring takes that gutter back as a margin of its own. */
 .tapemain { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 0;
   grid-template-rows: repeat(var(--pbrows, 1), auto) auto; align-items: start; }
 .tapemain > .pbside { display: grid; grid-template-rows: subgrid; grid-row: 1 / -2;
@@ -1332,9 +1323,105 @@ a { color: var(--acc-d); }
 .pbnone > b { font-weight: 400; color: var(--muted); opacity: .55; }
 .pbnone.pbstyle, .pbnone.pbhand { color: var(--muted); opacity: .55; }
 
+/* --- the groundstrokes, as a square (groundAnatomy) ---------------------------------------
+   The serve plot's shape asked of the other half of the game: width is how often the stroke is
+   played, height is what it did. Two plots either side of a midline, on the same grid the serve
+   pair uses, so the two blocks read as one family rather than two ideas.
+
+   The wings are laid out in the player's own hands — a right-hander's forehand on the right of
+   their plot — which is why there is no row-reverse here as there is on .svcol.a. The serve
+   plot mirrors because its columns are an order (first, second, double fault) and both players
+   read it outward from the midline; these are two named sides of one body, and reflecting them
+   would put a lefty's forehand where their backhand is. */
+.gsblock { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.gspair { --plot-w: 240px; --gutter: 22px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: calc(var(--plot-w) * 2 + var(--gutter)); margin-inline: auto;
+  column-gap: var(--gutter); }
+.gscol.a { --shot: var(--a); }
+.gscol.b { --shot: var(--b); }
+/* The empty half, where one player is under the charting floor: its track stays so the plot
+   opposite still reads as being on that player's own side. */
+.gscol.empty { visibility: hidden; }
+/* A fixed height, not a square. The serve plot is square because its vertical axis runs the
+   whole 0-100% and its fills use most of it; this one is capped at 20%, so a height tied to the
+   width just bought empty margin above and below the bands — and bought more of it on the wide
+   panel, where there was already the most room to spare.
+   Fixed in pixels rather than as a ratio, so the vertical scale is the same object at every
+   panel width: a band of a given height is the same rate on a phone and on a desktop, which is
+   the property the whole block is read on. Only the width flexes, and width is a share, which
+   is a quantity that survives being any size. */
+.gsplot { position: relative; display: flex; gap: 2px; width: 100%; height: 150px; }
+/* A wing spans the full height in the drained tone, so its own extent is the axis the two
+   bands are read against — the same relation .svseg has to .svfill. */
+.gswing { flex: 0 0 var(--w); min-width: 0; position: relative;
+  background: color-mix(in srgb, var(--shot) 14%, var(--card)); }
+/* Both bands leave the midline, so the two are on one baseline and a winner band taller than
+   the error band under it means the wing paid for itself. Hung from the edges instead they
+   would share no zero and the comparison would be an eye measuring two gaps.
+   Winners upward: it is the direction the ring climbs and the serve plot fills, so the good
+   half of this drawing runs the way the good half of every other one on the panel does. */
+.gsb { position: absolute; left: 0; right: 0; height: var(--h); }
+.gsb.w { bottom: 50%; background: var(--shot); }
+/* The errors carry the 45-degree hatch the double-fault column wears, the one direction this
+   page cuts anything on: it is the half of the drawing that went the other way, and a second
+   solid tone would read as a second kind of good. */
+.gsb.e { top: 50%; background:
+  repeating-linear-gradient(45deg, transparent 0 3px,
+    color-mix(in srgb, var(--shot) 60%, var(--card)) 3px 6px),
+  color-mix(in srgb, var(--shot) 20%, var(--card)); }
+/* The zero. Drawn over the bands rather than under them, because both start here and the line
+   is what says so. */
+.gsmid { position: absolute; left: 0; right: 0; top: 50%; height: 1px; margin-top: -.5px;
+  background: color-mix(in srgb, var(--muted) 45%, var(--card)); pointer-events: none; }
+/* The rate, standing at the height it names, centred on its own wing: past the band's outer
+   edge where the band leaves room, on the band itself in the card colour where it does not —
+   the same swap .svwin makes, and the halo is what carries the figure across either ground. */
+.gsfig { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; z-index: 2;
+  font-size: 11.5px; font-weight: 500; color: var(--ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums; pointer-events: none; }
+.gsfig.w { bottom: calc(50% + var(--h) + 2px); }
+.gsfig.e { top: calc(50% + var(--h) + 2px); }
+.gsfig.on { color: var(--card); text-shadow: 0 0 2px var(--shot), 0 0 2px var(--shot); }
+.gsfig.w.on { bottom: calc(50% + var(--h) - 15px); }
+.gsfig.e.on { top: calc(50% + var(--h) - 15px); }
+/* The better of a drawn pair, in bold — the rule the ring, the serve plot and the style
+   columns all carry, so who is ahead reads off the drawing before the figures do. */
+.gsfig.sup { font-weight: 700; }
+/* The share, under the wing it is the width of. The row repeats the plot's own widths, so each
+   figure is centred on its column without a leader saying which. */
+.gslabs { display: flex; gap: 2px; margin: 7px 0 0; }
+.gslabs span { flex: 0 0 var(--w); min-width: 0; display: flex; flex-direction: column;
+  align-items: center; line-height: 1.2; }
+.gslabs b { font-size: 12.5px; font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums; }
+.gslabs em { font-style: normal; font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); }
+.gslabs i { font-style: normal; font-size: 8.5px; font-weight: 500; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+/* The legend. Each swatch is the band it names, drawn the way the plot draws it and the way up
+   the plot draws it — a block above a midline for winners, a hatch below for errors — so the
+   key is a small picture of the thing rather than a sentence about it. Grey, because it names
+   a part of both plots and either player's colour would claim it for that player. */
+.gslegend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px;
+  margin: -6px 0 14px; font-size: 9.5px; line-height: 1.5; color: var(--muted); }
+.gskey { position: relative; flex: none; width: 13px; height: 13px; margin-right: -2px;
+  background: color-mix(in srgb, var(--muted) 12%, var(--card)); }
+.gskey::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+  margin-top: -.5px; background: color-mix(in srgb, var(--muted) 45%, var(--card)); }
+.gskey i { position: absolute; left: 0; right: 0; height: 36%; }
+.gskey.w i { bottom: 50%; background: var(--muted); }
+.gskey.e i { top: 50%; background:
+  repeating-linear-gradient(45deg, transparent 0 3px,
+    color-mix(in srgb, var(--muted) 75%, var(--card)) 3px 6px),
+  color-mix(in srgb, var(--muted) 22%, var(--card)); }
+/* The two facts a swatch cannot carry: what the height is measured to, and what the width is.
+   After the legend and set apart, so the block's key reads as marks first and scale second. */
+.gsscale { flex: 1 1 auto; min-width: 0; }
+
 /* --- the serve, on two axes (serveAnatomy) -----------------------------------------------
    Two plots flanking a midline, A left and B right — the same split the scoreboard, the style
-   columns and the rings all carry, so which side a plot is on is already the key to whose it
+   columns and the ring all carry, so which side a plot is on is already the key to whose it
    is and no name is written over either.
 
    Across is how often a delivery happens and up is what it won, so every column carries two
@@ -1405,6 +1492,12 @@ a { color: var(--acc-d); }
   background: color-mix(in srgb, var(--shot) 22%, var(--card)); }
 .svseg > .svfill { position: absolute; left: 0; right: 0; bottom: 0; height: var(--f);
   background: var(--shot); }
+/* The part of that fill the serve took outright, rising from the same floor: the fill's own
+   colour deepened. An ace is a point won like every other point in the column — there is no
+   failed half to drain — so the part taken outright deepens instead of the rest draining,
+   which is the mark the ring uses for the same idea and for the same reason. */
+.svseg > .svace { position: absolute; left: 0; right: 0; bottom: 0; height: var(--ace);
+  background: color-mix(in srgb, var(--shot) 62%, #000); }
 /* The double fault: a column of width and no height, because a point given away without a ball
    being played is one that was never going to be won. It carries the 45° hatch — the one
    direction the rest of the page cuts its corners on — so it reads as its own kind of column
@@ -1435,6 +1528,29 @@ a { color: var(--acc-d); }
   text-shadow: 0 0 2px var(--card), 0 0 2px var(--card); }
 .svwin em { font-style: normal; font-size: 9.5px; font-weight: inherit; text-transform: uppercase;
   letter-spacing: .04em; color: inherit; opacity: .85; }
+
+/* The ace share, against the top of the core it names — the same construction .svwin uses
+   against the top of the fill, a tier smaller because it is a part of that fill rather than
+   the whole of it. Inside the core by default, where it stands on the deepened tone; above it
+   when the core is too short to hold it, where it stands on the fill. Either ground is the
+   player's own colour at some depth, so the card-coloured core and its shot-coloured halo
+   carry it across both and there is no ink variant here. */
+.svacefig { position: absolute; left: 50%; transform: translateX(-50%);
+  top: calc(100% - var(--ace) + 1px); margin: 0;
+  display: flex; flex-direction: column; align-items: center;
+  line-height: 1.15; white-space: nowrap;
+  font-size: 11px; font-weight: 500; color: var(--card); font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 2px var(--shot), 0 0 2px var(--shot); pointer-events: none; }
+.svacefig.sup { font-weight: 700; }
+.svacefig.over { top: auto; bottom: calc(var(--ace) + 1px); }
+.svacefig em, .svacetuck em { font-style: normal; font-size: 8.5px; font-weight: inherit;
+  text-transform: uppercase; letter-spacing: .04em; color: inherit; opacity: .85; }
+/* The third place the ace figure can go: inside the win figure, as a line under "won". It is
+   a flex child there rather than a positioned box, so it inherits that element's placement and
+   both of its colour states — see svAce() for when this is the one that renders. */
+.svacetuck { display: flex; flex-direction: column; align-items: center;
+  font-style: normal; font-size: 11px; font-weight: 400; margin-top: 3px; }
+.svacetuck.sup { font-weight: 700; }
 
 /* --- the figures under the plot --------------------------------------------------------------
    Two shares, sitting directly under the columns they measure: 1st serves in under the first
@@ -1512,6 +1628,8 @@ a { color: var(--acc-d); }
   .svdimlabs { --lab: 52px; }
   .svwin { font-size: 11px; }
   .svwin em { font-size: 8.5px; }
+  .svacefig, .svacetuck { font-size: 9.5px; }
+  .svacefig em, .svacetuck em { font-size: 7.5px; letter-spacing: 0; }
   .svdimlab b, .svdf { font-size: 11px; }
   .svdimlab em, .svdf em { font-size: 8.5px; letter-spacing: 0; }
   .svn, .svlong { display: none; }
@@ -1538,7 +1656,7 @@ a { color: var(--acc-d); }
 /* The phone comparison of the two style columns (profileCompare). The flanking .pbside pair
    is ~150px wide apiece on a phone and prints every label twice; on the narrow layout this
    replaces them with one row per figure — A's value, the label once, B's value — so the two
-   numbers sit across a centre line. The wide layout keeps the columns, where the rings run
+   numbers sit across a centre line. The wide layout keeps the columns, where the ring runs
    between them. Hidden until the media query at the foot of this block turns it on. */
 .pbcmp { display: none; }
 
@@ -1587,7 +1705,7 @@ a { color: var(--acc-d); }
 .pbcmp-row b { font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap;
   font-variant-numeric: tabular-nums; }
 /* The losing side of a figure that has a better end — the winner stays in ink, this drops to
-   regular weight and the muted grey, matching the rings' lead/trail split. */
+   regular weight and the muted grey, matching the ring's lead/trail split. */
 .pbcmp-row b.trail { font-weight: 400; color: var(--muted); }
 .pbcmp-row .a { text-align: left; }
 .pbcmp-row .b { text-align: right; }
@@ -1597,25 +1715,26 @@ a { color: var(--acc-d); }
 .pbcmp-row .pbcl { text-align: center; font-size: 9.5px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 @media (max-width: 760px) {
-  /* The columns go; the comparison and the rings take a row each. No subgrid to keep here —
+  /* The columns go; the comparison and the ring take a row each. No subgrid to keep here —
      the phone layout already puts both players' figures on one row apiece. */
   .tapemain { grid-template-rows: auto auto; }
   .tapemain > .pbside { display: none; }
   .pbcmp { display: block; grid-column: 1 / -1; grid-row: 1; }
   .dnstack { grid-row: 2; }
 }
-/* One ring per row, centred. A ring is a fixed-size drawing with a fixed reserve either side
+/* The ring, centred in its row. It is a fixed-size drawing with a fixed reserve either side
    for the figures that hang off it (see .dn), so it reads centred at any track width
-   regardless of how much of the row is actually spare. */
+   regardless of how much of the row is actually spare. The column is kept for the case of a
+   panel that draws no ring at all, where it collapses to nothing. */
 .dnstack { grid-column: 1 / -1; grid-row: -2 / -1; margin-top: 18px;
   display: flex; flex-direction: column; align-items: center;
   gap: 22px; min-width: 0; }
 @media (min-width: 761px) {
   /* align-items stays "start": the style columns keep the same top edge as the box and as
-     "Charted history" above, rather than floating to the middle of a row the taller ring
-     stack now sets the height of. Only the stack itself is asked to centre — align-self on
-     .dnstack alone — so it climbs to the middle of that height while the rule at the top of
-     each style column stays put. */
+     "Charted history" above, rather than floating to the middle of a row the ring may set the
+     height of. Only the ring itself is asked to centre — align-self on .dnstack alone — so it
+     climbs to the middle of that height while the rule at the top of each style column stays
+     put. */
   /* The ring track takes what the flanks need and the style columns give it up: they hold
      three short lines each against a 90px min-content, so the ~22px apiece this costs them is
      slack rather than a squeeze. */
@@ -1624,25 +1743,26 @@ a { color: var(--acc-d); }
   /* A track of its own between the two columns, spanning every figure row rather than
      sitting under them. */
   .dnstack { grid-column: 2; grid-row: 1 / -1; margin-top: 0; align-self: center; }
-  /* Room to spend, now the rings have a track of their own instead of sharing a row with a
-     second ring: the wider a ring is drawn, the more its arc can say — and the further apart
-     two figures land when the values behind them are close, which is what decides whether a
-     label sits beside its own mark or on top of its neighbour. */
+  /* Room to spend on a wide panel: the wider the ring is drawn, the more its arc can say —
+     and the further apart the two figures land when the values behind them are close, which is
+     what decides whether a label sits beside its own mark or on top of its neighbour. */
   .tape { --dn-size: 200px; --dn-pad: 76px; }
 }
 /* The room the figures need outside the drawing. A label's anchor sits just past the band, so
    the one nearest nine or three o'clock starts a twentieth of the ring's width from its edge
-   and the whole line hangs past it — which makes this a function of the longest line a ring
-   carries rather than of the ring's size, and very nearly a constant across the two.
-   76px, from the widest case the data actually produces: a leader's points figure — set
-   heavier than the other side's, and so wider — on a return ring where the arc ends near nine
-   o'clock. Measured across all 363 players the rings print for, at both ring sizes. */
+   and the whole line hangs past it — which makes this a function of the longest line the ring
+   carries rather than of the ring's size, and so the same reserve at both sizes.
+   The widest line the data produces is the leader's holds figure — set heavier than the other
+   side's, and so wider — at 71px. It hangs furthest past the band when the value behind it is
+   near half the scale, which puts its anchor at nine or three o'clock, a twentieth of the
+   ring's width in from the edge: 61px of overhang on the 200px ring. Values do land there —
+   47 hold rates and 27 break rates on the charted tour sit within a tenth of half — so the
+   reserve is set against that case rather than against the common one. */
 .dn { min-width: 0; padding: 0 var(--dn-pad) 20px; }
 /* The two ends of the ring's scale, at the two ends of the ring: zero at the foot both sweeps
-   leave from, the ceiling at the top they climb toward. Printed rather than assumed, because
-   the two rings do not share one — "67" against an arc at two thirds says nothing without it
-   — and printed on the drawing rather than in a caption above it, because this is where a
-   reader looks to find out what an arc has reached.
+   leave from, the ceiling at the top they climb toward. Printed on the drawing rather than in
+   a caption above it, because this is where a reader looks to find out what an arc has
+   reached.
    Set inside the hole, hard against the band's inner edge — the end of the scale each one
    marks. Outside, in a row above and a row below, they cost the stack two lines of height
    per ring for twelve characters and leave the ceiling floating a whole label away from the
@@ -1660,18 +1780,12 @@ a { color: var(--acc-d); }
 .dncap.top { top: calc(19% + 2px); }
 .dncap.zero { bottom: calc(19% + 2px); }
 /* One box exactly the drawing's size, with everything else laid over it: the two ends of the
-   scale and the ring's name sit in the hole, and the six figures sit outside the band against
+   scale and the ring's name sit in the hole, and the four figures sit outside the band against
    their own marks. Those reach past this box, which is what .dn's padding holds room for. */
 .dnring { position: relative; width: var(--dn-size); height: var(--dn-size); }
-/* overflow visible so the leaders can run past the foot of the viewBox to the row the
-   outright-win figures sit on — see dnLead(). Nothing else is drawn outside the box. */
+/* overflow visible so the ends of the scale can reach a little past the band without being
+   clipped at the edge of the viewBox. */
 .dnring svg { display: block; width: 100%; height: 100%; overflow: visible; }
-/* The leader from a wedge to its figure. A hairline, and lighter than the figure it arrives
-   at: it is the connection that matters, not the line. 0.6 of the viewBox's 100 units comes
-   out near a physical pixel at both ring sizes, which is what keeps it from reading as a mark
-   on the drawing in its own right. */
-.dlead { fill: none; stroke: color-mix(in srgb, var(--muted) 55%, transparent);
-  stroke-width: 0.6; }
 /* The ring's name, in its own hole rather than set as a line of print over the row — see
    donut(). Shrunk and shortened (tapeRows' `short`) to fit the clear space the ring's stroke
    leaves at its centre, and centred there, which keeps it clear of the two scale ends tucked
@@ -1699,44 +1813,35 @@ a { color: var(--acc-d); }
   font-variant-numeric: tabular-nums; pointer-events: none; }
 .dlab.a { transform: translate(-100%, -50%); text-align: right; }
 .dlab.b { transform: translate(0, -50%); }
-/* The points total, still the largest thing on the ring: it is the figure the arc is drawn
-   for, and the other two are read against it. */
-.dpts { font-size: 14px; font-weight: 600; }
-.dpts.lead { color: var(--ink); font-weight: 800; }
-/* The denominator, hung off the figure the way "shots" hangs off rally length in the style
-   column. Its own colour and weight rather than inherited ones: the leader's figure is set in
-   bold ink, and a unit that came along would make the word "points" the loudest thing here. */
-.dpts .dvu { margin-left: 3px; font-size: 10px; font-weight: 500; color: var(--muted); }
-/* Side A sets the unit ahead of the number (see labels() in matchup.js), so the gap it
+/* The holds figure, the largest thing on the ring: it is what the arc is drawn for, and the
+   breaks figure across the band is read against it. */
+.darc { font-size: 14px; font-weight: 600; }
+.darc.lead { color: var(--ink); font-weight: 800; }
+/* The word hung off the figure, the way "shots" hangs off rally length in the style column.
+   Its own colour and weight rather than inherited ones: the leader's figure is set in bold
+   ink, and a word that came along would be the loudest thing here. */
+.darc .dvu { margin-left: 3px; font-size: 10px; font-weight: 500; color: var(--muted); }
+/* Side A sets the word ahead of the number (see labels() in matchup.js), so the gap it
    carries moves to its trailing edge to keep the same air between word and figure. */
-.dlab.a.dpts .dvu { margin-left: 0; margin-right: 3px; }
-/* The two smaller figures, each wearing the mark it names. A tier down from the total between
-   them, because they are both parts of it — the games figure is what it converts to, the
-   wedge figure is a slice of it — and three numbers at one size would be three headlines
-   around one ring. */
-.dgms, .dwdg { font-size: 10px; }
-/* Bolded in ink on the side that holds or breaks more — the same lead mark .dpts carries, a
-   tier lighter to match the smaller figure. */
-.dgms.lead { font-weight: 700; color: var(--ink); }
-/* The outright-win figures, in a row of their own under the ring — see dnLabel() for why they
-   are the two that come off the circle. Split either side of the centre line, which is the
-   same rule the other four follow and the only thing keeping the two players' apart when both
-   their wedges are a couple of degrees. Placed against 50% rather than by a transform, so the
-   gap either side of centre is the 5px it says and not a share of however long the text is. */
-/* Both halves of the placement have to out-specify .dlab.a / .dlab.b, which carry the
-   transform that pushes a circle label clear of the band. A bare .dwdg loses that tie and the
-   row is dragged a full label-width sideways and half a line up.
-   Set in percentages of the ring box, which is the same square the viewBox resolves against,
-   so 104% is DN_LEAD_Y and 30% is where the leader's horizontal run stops 2 units short. The
-   figure and the line that arrives at it therefore stay joined at every ring size, which they
-   would not if either end were pinned in pixels. */
-.dlab.a.dwdg, .dlab.b.dwdg { top: 104%; transform: translateY(-50%); }
-.dlab.a.dwdg { left: auto; right: 70%; }
-.dlab.b.dwdg { left: 70%; }
-/* The empty half of a ring, where a player is under the charting floor. It takes the foot
-   row, on that player's side of the centre line, so the gap is marked on the drawing and not
-   only in the note under it. */
-.dnone { font-size: 12px; opacity: .7; }
+.dlab.a.darc .dvu { margin-left: 0; margin-right: 3px; }
+/* The breaks figure, wearing the tick it names. A tier down from the holds figure: they are
+   games won on two denominators, and the ring is drawn for the arc. */
+.dtck { font-size: 10px; }
+/* Bolded in ink on the side that breaks more — the same lead mark .darc carries, a tier
+   lighter to match the smaller figure. */
+.dtck.lead { font-weight: 700; color: var(--ink); }
+/* The empty half of a ring, where a player is under the charting floor. It takes a row of its
+   own under the ring, on that player's side of the centre line, so the gap is marked on the
+   drawing and not only in the note under it. There is nothing on that half to place it
+   against, which is why it comes off the circle the two figures are anchored on.
+   Both halves of the placement have to out-specify .dlab.a / .dlab.b, which carry the
+   transform that pushes a circle label clear of the band; a bare .dnone loses that tie and is
+   dragged a full label-width sideways and half a line up. Set in percentages of the ring box,
+   the same square the viewBox resolves against, so the mark holds at every ring size. */
+.dlab.a.dnone, .dlab.b.dnone { top: 104%; transform: translateY(-50%); font-size: 12px;
+  opacity: .7; }
+.dlab.a.dnone { left: auto; right: 70%; }
+.dlab.b.dnone { left: 70%; }
 
 /* The unreached part of the domain, and the only thing saying how far a sweep could have
    gone. A full circle, because the two half-turns either side of 12 o'clock are the whole
@@ -1748,26 +1853,13 @@ a { color: var(--acc-d); }
 .dseg { fill: none; stroke-width: 10; stroke-linecap: butt; }
 .dseg.a { stroke: var(--a); }
 .dseg.b { stroke: var(--b); }
-/* the missed half of the same decision: same hue, drained of it */
-.dseg.miss { opacity: .38; }
-/* The other way an arc splits. An ace, or a winner off the return, is a point won like every
-   other point in that sweep — there is no failed half to drain — so the outright share deepens
-   instead of the rest draining. Drained, it was the wrong shape of statement and the wrong
-   weight: aces are a twelfth of a good server's points won, so ~90% of the serve ring would go
-   faint and come out paler than the return ring beside it. Deepened, the ring keeps its weight
-   and the marked part is the one that reads as emphatic, which is what winning a point
-   outright is.
-   It is the first segment of the sweep, so it starts at the foot and the two players' cores
-   meet at the origin. */
-.dseg.a.deep { stroke: color-mix(in srgb, var(--a) 60%, #000); }
-.dseg.b.deep { stroke: color-mix(in srgb, var(--b) 60%, #000); }
-/* The player's hold or break rate, as a spoke across the ring. It stands on both of the ring's
-   grounds — inside the arc on the return ring, on open track past the arc's end on the serve
-   ring — and no single colour is legible against both: on a violet or red arc a dark mark is
-   simply not there, and on the near-white track a light one is not. So it is a light core over
-   a dark halo, one of the two carrying it whichever ground it lands on, drawn as two lines
-   because SVG has no box-shadow. The cue bars under the shot-making triggers wear the same
-   mark, in CSS, for the same reason and against the same two grounds. */
+/* The player's break rate, as a spoke across the ring. It lands inside the arc for a returner
+   and out on open track past its end for a server, and no single colour is legible against
+   both: on a violet or red arc a dark mark is simply not there, and on the near-white track a
+   light one is not. So it is a light core over a dark halo, one of the two carrying it
+   whichever ground it lands on, drawn as two lines because SVG has no box-shadow. The cue bars
+   under the shot-making triggers wear the same mark, in CSS, for the same reason and against
+   the same two grounds. */
 .dtickhalo { stroke: color-mix(in srgb, var(--ink) 50%, transparent); stroke-width: 3.6;
   stroke-linecap: butt; }
 .dtick { stroke: var(--card); stroke-width: 1.8; stroke-linecap: butt; }

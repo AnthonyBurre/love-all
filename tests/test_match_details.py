@@ -85,6 +85,25 @@ def test_ace_and_double_fault_come_off_the_notation():
     assert s["serve_won"] == 4                 # the double fault is the point lost
 
 
+def test_aces_are_split_by_which_delivery_struck_them():
+    """The two cores the serve plot deepens, each on its own column's denominator.
+
+    A second-serve ace counted in with the first serves would draw a core inside a column
+    the point never reached, and the split is the whole point of the figure: the first
+    delivery is hit to be unreturnable and the second is not.
+    """
+    # The held game's ace is a first-serve ace; one more point, aced on the second delivery
+    # after the first missed.
+    rows = HOLD + [row(6, 1, "40-30", "6d", "4*", 1)]
+    s = fold(rows)[1]
+    assert s["aces"] == 2
+    assert (s["aces_first"], s["aces_second"]) == (1, 1)
+    # Each sits inside the column it is drawn in: first-serve aces among the first serves
+    # that landed, second-serve aces among the second serves that did.
+    assert s["aces_first"] <= s["first_in"]
+    assert s["aces_second"] <= s["second_pts"] - s["dfs"]
+
+
 def test_break_rate_reads_the_other_players_games():
     """Games broken over games the opponent served — not one minus their own hold."""
     sides = fold(HOLD + BREAK)
@@ -209,3 +228,60 @@ def test_predictive_spread_leaves_an_even_match_even():
     from match_charting_project.winprob_match import blend, predictive_models
     even = blend(predictive_models(0.64, 0.64, 3), lambda m: m.pre_match())
     assert even == pytest.approx(0.5, abs=1e-6)
+
+
+def test_shot_mix_counts_every_stroke_but_the_serve():
+    """The mix denominator is what the player hit, return included.
+
+    Strokes alternate from the serve, so the first rally letter is the returner's: in
+    ``4f3b1@`` the forehand is player 2's return and the backhand error is player 1's.
+    Two strokes, one on each side, and the serve on neither.
+    """
+    s = fold([row(1, 1, "0-0", "4f3b1@", None, 2)])
+    assert s[1]["rally_shots"] == 1 and s[2]["rally_shots"] == 1
+    assert s[2]["fh_gs"] == 1 and s[2]["bh_gs"] == 0
+    assert s[1]["bh_gs"] == 1 and s[1]["fh_gs"] == 0
+
+
+def test_slice_is_a_groundstroke_and_a_volley_is_not():
+    """The two denominators the panel prints have to stay apart: the mix is over every
+    stroke, and the wing rates are over drives and slices only."""
+    # Serve, a forehand slice (r) returned by player 2, a backhand volley winner (z) from
+    # the server.
+    s = fold([row(1, 1, "0-0", "4r3z1*", None, 1)])
+    a, b = s[1], s[2]
+    assert (b["rally_shots"], b["slice_shots"], b["fh_gs"]) == (1, 1, 1)
+    assert (a["rally_shots"], a["net_shots"], a["bh_gs"]) == (1, 1, 0)
+    # The volley winner belongs to the net game, not to the backhand's winner rate.
+    assert a["bh_winners"] == 0
+
+
+def test_error_rates_count_unforced_errors_only():
+    """A forced error is charged to whoever forced it everywhere else on this panel, so
+    the wing that was picked on does not wear it here either."""
+    forced = fold([row(1, 1, "0-0", "4f3b1#", None, 2)])
+    unforced = fold([row(1, 1, "0-0", "4f3b1@", None, 2)])
+    assert forced[1]["bh_gs"] == 1 and forced[1]["bh_errs"] == 0
+    assert unforced[1]["bh_gs"] == 1 and unforced[1]["bh_errs"] == 1
+
+
+def test_net_errors_are_read_off_the_net_shot_itself():
+    """A missed volley is a net error; a passing shot that beat one is not."""
+    # Server volleys (v) into the net, unforced.
+    s = fold([row(1, 1, "0-0", "4b3v1@", None, 2)])
+    assert s[1]["net_shots"] == 1 and s[1]["net_errs"] == 1
+    # The returner's backhand set it up and ends nothing: no error against them.
+    assert s[2]["bh_errs"] == 0
+
+
+def test_shot_mix_survives_a_json_round_trip():
+    """The tallies ship as counts and the panel divides them, so they have to be in the
+    payload rather than only in the walk."""
+    meta = {"p1": "A", "p2": "B", "gender": "M", "best_of": 3,
+            "charted_by": None, "won": 1}
+    payload = bmd._match_payload("m", meta, HOLD + BREAK, {}, {"M": 0.63})
+    side = json.loads(json.dumps(payload))["s"][0]
+    for k in ("rally_shots", "slice_shots", "net_shots", "net_errs",
+              "fh_gs", "bh_gs", "fh_winners", "fh_errs", "bh_winners", "bh_errs"):
+        assert k in side
+    assert side["rally_shots"] >= side["fh_gs"] + side["bh_gs"]

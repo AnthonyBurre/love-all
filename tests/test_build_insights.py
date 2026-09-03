@@ -26,21 +26,21 @@ from match_charting_project.site import build_insights
 ROWS = [
     {"player": "A Player", "gender": "M", "side": "deuce", "serve": "1st", "n": 9000,
      "wide": 0.30, "t": 0.60, "recent_wide": 0.55, "recent_t": 0.35,
-     "recent_n_eff": 1200.0, "recent_years": "2024-2026", "reliable": 1,
-     "drift_ratio": 2.5},
+     "recent_n_eff": 1200.0, "recent_matches": 19, "recent_years": "2024-2026",
+     "reliable": 1, "drift_ratio": 2.5},
     {"player": "A Player", "gender": "M", "side": "ad", "serve": "1st", "n": 8000,
      "wide": 0.40, "t": 0.50, "recent_wide": 0.62, "recent_t": 0.28,
-     "recent_n_eff": 1100.0, "recent_years": "2024-2026", "reliable": 0,
-     "drift_ratio": 2.5},
+     "recent_n_eff": 1100.0, "recent_matches": 19, "recent_years": "2024-2026",
+     "reliable": 0, "drift_ratio": 2.5},
     # Second serves and rows with no recent window are not part of the projection.
     {"player": "A Player", "gender": "M", "side": "deuce", "serve": "2nd", "n": 3000,
      "wide": 0.20, "t": 0.40, "recent_wide": 0.25, "recent_t": 0.45,
-     "recent_n_eff": 400.0, "recent_years": "2024-2026", "reliable": 1,
-     "drift_ratio": 2.5},
+     "recent_n_eff": 400.0, "recent_matches": 19, "recent_years": "2024-2026",
+     "reliable": 1, "drift_ratio": 2.5},
     {"player": "B Player", "gender": "W", "side": "deuce", "serve": "1st", "n": 400,
      "wide": 0.44, "t": 0.46, "recent_wide": None, "recent_t": None,
-     "recent_n_eff": None, "recent_years": "", "reliable": None,
-     "drift_ratio": None},
+     "recent_n_eff": None, "recent_matches": None, "recent_years": "",
+     "reliable": None, "drift_ratio": None},
 ]
 META = [{"gender": "M", "rule": "decay", "rule_param": 10, "recent_matches": 34,
          "n80_wide": 864, "n80_t": 1175, "n80_pay": 11315, "noise_inflation": 3.74,
@@ -84,6 +84,20 @@ def test_only_first_serves_with_a_recent_window(reports):
     serve, _meta = build_insights._serve_placement()
     assert len(serve) == 2                        # both sides of the 1st-serve rows
     assert set(serve.player) == {"A Player"}      # B Player has no recent window
+
+
+def test_window_is_the_players_own_not_the_tours(reports):
+    """The caption prints this count, and the meta rows carry a different one.
+
+    ``recent_matches`` in the meta CSV is the largest window on the tour (34 here);
+    the per-player column is how far the decay actually reaches for this player (19).
+    Shipping the meta figure per player overstated the window for about a third of
+    the rows the panel prints."""
+    _write(reports)
+    serve, meta = build_insights._serve_placement()
+    assert set(serve.matches) == {19}
+    assert serve["matches"].dtype.kind == "i"
+    assert {r["key"]: r["value"] for r in meta}["serve_recent_matches_M"] == 34
 
 
 def test_reliability_gate_survives_as_an_int(reports):
@@ -338,3 +352,164 @@ def test_return_winners_respect_their_own_floor(tmp_path, monkeypatch):
     """Below the floor there is no rate, so the arc draws in one colour and the line is absent."""
     monkeypatch.setattr(build_insights, "MIN_RETURN_PTS", 100)
     assert build_insights._return_winners(_parsed_db(tmp_path)).empty
+
+
+# --- the ace, split by delivery ----------------------------------------------------------
+# The two cores the serve plot deepens. Both failure modes here are quiet: counting a
+# second-serve ace among the first serves draws a core inside a column the point never
+# reached, and putting the second-serve rate on the landed second serves rather than on
+# every point that reached one breaks the division the panel does to recover it — the
+# result is still a percentage, and still wrong.
+def _ace_db(tmp_path):
+    import duckdb
+    con = duckdb.connect(str(tmp_path / "a.duckdb"))
+    con.execute("CREATE TABLE matches (match_id VARCHAR, gender VARCHAR, "
+                "player1 VARCHAR, player2 VARCHAR)")
+    con.execute("INSERT INTO matches VALUES ('m1', 'M', 'A Player', 'B Player')")
+    con.execute("CREATE TABLE points (match_id VARCHAR, pt BIGINT, svr BIGINT, "
+                "pt_winner BIGINT, second_serve VARCHAR)")
+    con.execute("CREATE TABLE points_parsed (match_id VARCHAR, pt BIGINT, "
+                "outcome VARCHAR, parse_ok BOOLEAN)")
+    #    second serve played?   outcome            what it is
+    rows = [
+        (None, "ace"),             # a first-serve ace
+        (None, "ace"),             # another
+        (None, "winner"),          # a first serve that landed and was played out
+        (None, "unforced_error"),  # ditto
+        ("4*", "ace"),             # first serve missed, second serve aced
+        ("6f1*", "winner"),        # a second serve that landed and was played out
+        ("5d", "double_fault"),    # both missed — a second-serve point, not a second serve
+    ]
+    for i, (ss, outcome) in enumerate(rows, 1):
+        con.execute("INSERT INTO points VALUES ('m1', ?, 1, 1, ?)", [i, ss])
+        con.execute("INSERT INTO points_parsed VALUES ('m1', ?, ?, TRUE)", [i, outcome])
+    return con
+
+
+def test_aces_are_split_by_the_delivery_that_struck_them(tmp_path, monkeypatch):
+    monkeypatch.setattr(build_insights, "MIN_ACE_PTS", 1)
+    r = build_insights._serve_aces(_ace_db(tmp_path)).set_index("player")
+    # Four points never reached a second serve and two of them were aced.
+    assert r.loc["A Player", "first_ace_pct"] == pytest.approx(2 / 4, abs=5e-5)
+    # Three points did, one of them aced. The denominator is those three and not the two
+    # second serves that landed — it is the one second_won_pct is on, and the panel divides
+    # both by second_in_pct to get the landed reading the plot draws.
+    assert r.loc["A Player", "second_ace_pct"] == pytest.approx(1 / 3, abs=5e-5)
+
+
+def test_the_double_fault_is_not_a_second_serve_ace(tmp_path, monkeypatch):
+    """A point where neither delivery landed is in the denominator and never the numerator."""
+    monkeypatch.setattr(build_insights, "MIN_ACE_PTS", 1)
+    r = build_insights._serve_aces(_ace_db(tmp_path)).set_index("player")
+    assert r.loc["A Player", "second_ace_pct"] < 1 / 2
+
+
+def test_serve_aces_respect_their_own_floor(tmp_path, monkeypatch):
+    """Below the floor there is no rate, and the plot's columns draw without their cores."""
+    monkeypatch.setattr(build_insights, "MIN_ACE_PTS", 100)
+    assert build_insights._serve_aces(_ace_db(tmp_path)).empty
+
+
+# --- the career shot mix ----------------------------------------------------------------
+# The panel prints a match's shot mix with the career reading directly underneath it as the
+# anchor. That only means anything if the two count the same strokes, so both builds walk the
+# notation through one shared helper (shots.notation.fold_shot_mix) — the test that the two
+# agree lives in tests/test_notation.py, and these pin what this build does around it: which
+# player each stroke lands on, and that a rate under its floor is withheld rather than printed
+# off a handful of shots.
+def _mix_db(tmp_path, points):
+    import duckdb
+    con = duckdb.connect(str(tmp_path / "mix.duckdb"))
+    con.execute("CREATE TABLE matches (match_id VARCHAR, gender VARCHAR, "
+                "player1 VARCHAR, player2 VARCHAR)")
+    con.execute("INSERT INTO matches VALUES ('m1', 'M', 'A Player', 'B Player')")
+    con.execute("CREATE TABLE points (match_id VARCHAR, pt BIGINT, svr BIGINT, "
+                "first_serve VARCHAR, second_serve VARCHAR, pt_winner BIGINT)")
+    con.executemany("INSERT INTO points VALUES ('m1', ?, ?, ?, NULL, ?)",
+                    [(i + 1, svr, s, win) for i, (svr, s, win) in enumerate(points)])
+    return con
+
+
+# Server is player 1 throughout. Strokes alternate from the serve, so the first rally letter
+# is player 2's return: "4f3b1@" is A's serve, B's forehand, A's backhand unforced error.
+RALLY = [(1, "4f3b1@", 2)] * 10 + [(1, "4r3z1*", 1)] * 10
+
+
+def test_shot_mix_lands_each_stroke_on_its_hitter(tmp_path, monkeypatch):
+    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
+    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
+    a, b = mix.loc["A Player"], mix.loc["B Player"]
+    # A hit ten backhand errors and ten backhand volley winners: every groundstroke of
+    # theirs is a backhand, and the volleys are not groundstrokes at all.
+    assert a["fh_share"] == 0.0
+    assert a["bh_err_pct"] == 1.0
+    assert a["net_pct"] == pytest.approx(0.5)
+    # B hit ten forehands and ten forehand slices, and ended nothing.
+    assert b["fh_share"] == 1.0
+    assert b["slice_pct"] == pytest.approx(0.5)
+    assert pd.isna(b["net_err_pct"])       # no net shots at all
+
+
+def test_a_volley_winner_is_not_a_backhand_winner(tmp_path, monkeypatch):
+    """The net game and the wing rates are separate denominators, and a put-away belongs
+    to the first. Counted into both, a serve-volleyer's backhand would read as the best
+    on tour."""
+    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
+    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
+    assert mix.loc["A Player", "bh_winner_pct"] == 0.0
+    # It is the net game's instead, on the net's own denominator.
+    assert mix.loc["A Player", "net_winner_pct"] == 1.0
+
+
+def test_rates_under_their_floor_are_withheld(tmp_path, monkeypatch):
+    """A career rate is an estimate of how a player plays, so it can be withheld; the
+    match figure it anchors is a count of what happened, and is not."""
+    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1000)
+    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1000)
+    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY))
+    for col in build_insights.MIX_RATES:
+        assert mix[col].isna().all(), col
+
+
+def test_the_stroke_groups_have_their_own_floor(tmp_path, monkeypatch):
+    """Nobody hits 800 volleys, so the two floors cannot be one number: at the stroke
+    floor the mix prints and the slice and net groups are what get held back."""
+    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
+    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1000)
+    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
+    assert mix.loc["A Player", "net_pct"] == pytest.approx(0.5)
+    assert pd.isna(mix.loc["A Player", "net_err_pct"])
+    assert pd.isna(mix.loc["A Player", "net_winner_pct"])
+
+
+def test_the_two_shares_are_complements_and_both_ship(tmp_path, monkeypatch):
+    """Each group's outcome rates are read against how often that stroke is played, so a
+    group without its own share row is missing what its other rows are measured against.
+    The redundancy is the point: printed side by side the two sum to the whole."""
+    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
+    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
+    for who in ("A Player", "B Player"):
+        assert mix.loc[who, "fh_share"] + mix.loc[who, "bh_share"] == pytest.approx(1.0)
+
+
+def test_a_slice_miss_is_charged_to_the_wing_that_played_it(tmp_path, monkeypatch):
+    """A backhand slice is a backhand and a slice. The groups cross-cut rather than partition,
+    and the slice ships as a share only, so its miss is counted once — by the hand."""
+    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
+    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    # Server's second stroke is a backhand slice missed unforced.
+    mix = build_insights._shot_mix(
+        _mix_db(tmp_path, [(1, "4f3s1@", 2)] * 4)).set_index("player")
+    a = mix.loc["A Player"]
+    assert a["bh_err_pct"] == 1.0
+    assert a["slice_pct"] == 1.0 and a["bh_share"] == 1.0
+
+
+def test_the_slice_ships_as_a_share_and_no_outcome_rates(tmp_path, monkeypatch):
+    """Neither survives the test that holds the return-winner rate above 1,000 return points:
+    the winner rate rests on one or two shots at any floor players clear, and the error rate
+    splits half at 0.52 while restating the wing error rates it cross-cuts."""
+    assert [c for c in build_insights.MIX_RATES if c.startswith("slice")] == ["slice_pct"]
