@@ -1257,7 +1257,11 @@ a { color: var(--acc-d); }
    column and no hierarchy at all.
    Label inline rather than stacked under, unlike .pbq: these run one per line, and half a phone
    column is not wide enough for "shot selection" to sit under a figure without wrapping. */
-.pbfig { margin: 7px 0 0; line-height: 1.2; display: flex; align-items: baseline; gap: 4px; }
+/* Wrapping, since the tour strip joined the row. On a wide flank the whole figure fits on one
+   line; where the column is narrower the strip drops to a line of its own rather than pushing
+   the row past the column's edge. */
+.pbfig { margin: 7px 0 0; line-height: 1.2; display: flex; align-items: baseline; gap: 4px;
+  flex-wrap: wrap; }
 .pbfig b { font-size: 14px; font-weight: 700; color: var(--ink); }
 /* The losing side of a figure with a better end — winner stays in ink, this drops to regular
    weight and the muted grey. Matches .pbcmp-row b.trail on the phone and the rings' lead/trail. */
@@ -1328,12 +1332,284 @@ a { color: var(--acc-d); }
 .pbnone > b { font-weight: 400; color: var(--muted); opacity: .55; }
 .pbnone.pbstyle, .pbnone.pbhand { color: var(--muted); opacity: .55; }
 
+/* --- the serve, on two axes (serveAnatomy) -----------------------------------------------
+   Two plots flanking a midline, A left and B right — the same split the scoreboard, the style
+   columns and the rings all carry, so which side a plot is on is already the key to whose it
+   is and no name is written over either.
+
+   Across is how often a delivery happens and up is what it won, so every column carries two
+   numbers instead of one. The first serve stands against the midline, the second beyond it and
+   the double faults at the far end, and both plots stand on one baseline — so the two players'
+   first serves meet at the centre and any two fill heights can be read against each other.
+
+   Every figure is put where the quantity it names already is. A rate that is a height is set on
+   the fill at that height (.svwin); a rate that is a share of some run of the width is set
+   under the wire that spans that run (.svspan), with a mark on the wire where the player sits.
+   The double faults are the one figure carried out to a line of its own, wired back to their
+   section of the first serve's wire (.svsect) rather than to their own column: a leader has to
+   arrive somewhere, and that column is six pixels wide on a phone at the median and three at
+   the tenth percentile.
+
+   A query container: the step below switches on the room this block actually has rather than
+   on the width of the window. The two are not the same question — the panel is a fixed fraction
+   of a wide screen and nearly all of a narrow one. */
+.svblock { container-type: inline-size;
+  margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.svhead { margin: 0 0 12px; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); }
+
+/* Two rows: the plots, and the figures under them. Two equal tracks that take what the block
+   has, under a cap — with nothing standing in a margin any more there is no margin to size, so
+   the plots run out into the room the figures used to need. The cap is what keeps a wide panel
+   from drawing a letterbox: 240 against the 132 height is about two to one, and past that the
+   columns are all width and their heights stop reading against each other. */
+.svpair { --plot-w: 240px; --plot-h: 132px; --gutter: 22px; --figgap: 5px;
+  /* the channel the double faults' wire climbs, held clear of the figures beside it */
+  --wire: 16px;
+  /* the plot to the wires, and the wires to the figures */
+  --dimgap: 5px; --gaugegap: 7px;
+  /* where the first serve's wire sits under the plot, and the step down to the second serve's
+     — the same step the figures under them are staggered by */
+  --tier-top: 5px; --tier-step: 11px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: calc(var(--plot-w) * 2 + var(--gutter)); margin-inline: auto;
+  column-gap: var(--gutter); row-gap: 0; }
+/* .svlabels is a wrapper, not a box: its one group takes a cell of the pair's own grid. */
+.svlabels { display: contents; }
+.svcol.a { grid-area: 1 / 1; --shot: var(--a); }
+.svcol.b { grid-area: 1 / 2; --shot: var(--b); }
+.svlabels.a { --shot: var(--a); }
+.svlabels.b { --shot: var(--b); }
+.svlabels.a .svdimlabs { grid-area: 2 / 1; }
+.svlabels.b .svdimlabs { grid-area: 2 / 2; }
+/* The empty half of the pair, where one player is under the charting floor: its tracks are
+   there whether or not they hold anything, so the plot opposite still reads as being on that
+   player's own side rather than sitting in the middle of the block. */
+.svcol.empty, .svlabels.empty { visibility: hidden; }
+
+/* The plot. row-reverse on side A puts the first serve against the midline on its right; side
+   B reads the same order out from its left. The 2px between columns is the container's gap,
+   not a border on each — a border-box box cannot be narrower than its own border, so a column
+   under about 1.2% of the width would be inflated to 2px and the row pushed past the end. */
+.svplot { display: flex; gap: 2px; width: 100%; height: var(--plot-h); }
+/* Side A reads its columns right to left, so the first serve lands against the midline on its
+   right and the double faults at its left edge; side B reads the same order out from its left.
+   Either way the flex start is the midline end, so where a column is missing its reserved gap
+   the slack falls at the outer edge on both — which is the edge every mark on the drawing is
+   measured from, and why the marks carry it (see serveBar). */
+.svcol.a .svplot { flex-direction: row-reverse; }
+/* A column spans the full height in the drained tone, so its own extent is the axis its fill is
+   read against — the ring's vocabulary, where the player's colour is what they won and the
+   same colour drained is what they did not. */
+.svseg { flex: 0 0 var(--w); min-width: 0; position: relative;
+  background: color-mix(in srgb, var(--shot) 22%, var(--card)); }
+.svseg > .svfill { position: absolute; left: 0; right: 0; bottom: 0; height: var(--f);
+  background: var(--shot); }
+/* The double fault: a column of width and no height, because a point given away without a ball
+   being played is one that was never going to be won. It carries the 45° hatch — the one
+   direction the rest of the page cuts its corners on — so it reads as its own kind of column
+   rather than as a second serve that lost every point. */
+.svseg.df { background:
+  repeating-linear-gradient(45deg, transparent 0 3px,
+    color-mix(in srgb, var(--shot) 55%, var(--card)) 3px 6px),
+  color-mix(in srgb, var(--shot) 16%, var(--card)); }
+
+/* The win rate, set on the fill at the fill's own top: the figure stands at the height it
+   names, which is the one place a leader would have taken it anyway. Centred on the column,
+   which is what says whose height it is — and where the column is narrower than the figure,
+   the overhang falls on the column beside it rather than off the plot.
+   The halo is what carries it across those grounds — the same trick the ring's tick uses. On
+   the fill the card-coloured core does the work; over the 2px gap between columns, or over a
+   neighbour that is drained at this height, the shot-coloured halo does. */
+.svwin { position: absolute; left: 50%; transform: translateX(-50%);
+  top: calc(100% - var(--f) + 1px); margin: 0;
+  display: flex; flex-direction: column; align-items: center;
+  line-height: 1.15; white-space: nowrap;
+  font-size: 12.5px; font-weight: 700; color: var(--card); font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 2px var(--shot), 0 0 2px var(--shot); pointer-events: none; }
+/* Too short a fill to stand in: the figure goes above the top instead, and the two colours
+   swap — ink on the drained tone, haloed in the card colour where it overhangs a fill. */
+.svwin.over { top: auto; bottom: calc(var(--f) + 1px); color: var(--ink);
+  text-shadow: 0 0 2px var(--card), 0 0 2px var(--card); }
+.svwin em { font-style: normal; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: inherit; opacity: .85; }
+
+/* --- the wires, and the figures under them -----------------------------------------------
+   One wire per serve, spanning that serve's own denominator, with a mark where the player sits
+   on it — see serveBar() for which run each one takes. The two stack off one datum at the
+   plot's outer edge, which is the origin every measure on this drawing is taken from, so they
+   read as a set of dimensions rather than two unrelated rules. */
+.svdims { position: relative; height: 24px; margin-top: var(--dimgap); }
+/* The wire is drawn as a gradient across a box that is always the whole plot, not as a box cut
+   to its own length: --to and --at are percentages of the plot's width, and inside a box cut to
+   --to they would have resolved against that instead and put every mark short of the thing it
+   was pointing at. */
+.svspan { position: absolute; left: 0; right: 0; height: 1px;
+  top: calc(var(--tier) * var(--tier-step) + var(--tier-top));
+  background: linear-gradient(to right,
+    color-mix(in srgb, var(--ink) 34%, transparent) 0 var(--to),
+    transparent var(--to) 100%); }
+.svcol.b .svspan { background: linear-gradient(to left,
+    color-mix(in srgb, var(--ink) 34%, transparent) 0 var(--to),
+    transparent var(--to) 100%); }
+.svspan.t0 { --tier: 0; }
+.svspan.t1 { --tier: 1; }
+/* A serve that never happened has no run to span, but its tier stays: the wire above must not
+   drop a line when the one below it is missing. */
+.svspan.off { visibility: hidden; }
+/* The inner end of the run, capped so the wire reads as spanning something rather than as
+   fading out. Ticked up toward the plot, like the datum it comes off. */
+.svspan::before { content: ""; position: absolute; bottom: 0; width: 1px; height: 4px;
+  background: color-mix(in srgb, var(--ink) 34%, transparent); }
+.svcol.a .svspan::before { left: calc(var(--to) - 1px); }
+.svcol.b .svspan::before { right: calc(var(--to) - 1px); }
+/* Where the player sits on that run. Taller than the cap and darker than the wire, because it
+   is the reading and the wire is only the frame it is read against. */
+.svspan::after { content: ""; position: absolute; bottom: 0; width: 1px; height: 9px;
+  background: color-mix(in srgb, var(--ink) 62%, transparent); }
+.svcol.a .svspan::after { left: var(--at); }
+.svcol.b .svspan::after { right: var(--at); }
+/* The double faults' section of the first serve's wire. Their share is over every service
+   point, which is the run that wire spans, so what carries their figure is a run of it: the
+   outermost slice, from the datum in to a tick of its own, drawn in the weight the marks on the
+   wires take rather than in the wire's own. */
+.svsect { position: absolute; top: var(--tier-top); left: 0; width: var(--to); height: 2px;
+  background: color-mix(in srgb, var(--ink) 62%, transparent); }
+.svcol.b .svsect { left: auto; right: 0; }
+/* The inner end of the section, ticked up toward the plot like the wires' own ends. Up rather
+   than down: the second serve's mark stands one gap away on the wire below — the two are the
+   sides of the same 2px gap — and a tick reaching down toward it would read as one smudge. */
+.svsect::after { content: ""; position: absolute; bottom: 0; width: 1px; height: 6px;
+  background: color-mix(in srgb, var(--ink) 62%, transparent); }
+.svcol.a .svsect::after { right: 0; }
+.svcol.b .svsect::after { left: 0; }
+/* The datum every measure here is taken from, standing at the plot's outer edge: both wires
+   come off it, and it carries the double faults' figure up from its own row to the section
+   above. It starts at the first serve's wire, which is where that figure is pointing. */
+.svdims::before { content: ""; position: absolute; top: var(--tier-top); bottom: 0;
+  width: 1px; background: color-mix(in srgb, var(--ink) 34%, transparent); }
+.svcol.a .svdims::before { left: 0; }
+.svcol.b .svdims::before { right: 0; }
+
+/* The figures. The two in-rates take a row under the wires, side by side and in the columns'
+   order — each under the run of plot its own wire measures, reading outward from the midline
+   the way everything else here does. The double faults take the line under them: a third cell
+   across would leave none of the three room, and the one whose figure is a hundredth of the
+   drawing is that one. */
+.svdimlabs { position: relative; display: flex; flex-wrap: wrap; align-items: flex-start;
+  margin-top: var(--gaugegap); column-gap: 8px; row-gap: 9px; }
+.svdimlab { display: flex; flex-direction: column; margin: 0; }
+/* Basis auto, not nought: a nought basis beside a row asking for the whole width sums to
+   exactly the width, so nothing overflows, so nothing wraps — the three cells shared one line
+   and the two with nothing to claim came out at no width at all. */
+.svdimlab:nth-child(1), .svdimlab:nth-child(2) { flex: 1 1 auto; min-width: 0; }
+.svdimlab > * { margin: 0; line-height: 1.15; white-space: nowrap; }
+/* The second serve's figure sits a tier below the first serve's, the same step down the wires
+   above it take. The two rates are not on one scale — the first is over every service point,
+   the second over the points that reached a second serve — and two figures set level with each
+   other are an invitation to read them as though they were. */
+.svdimlab:nth-child(2) { margin-top: var(--tier-step); }
+/* Words over figure over count — the order the placement grid and the tour strip both use, so
+   a cell of this kind reads the same wherever it turns up on the panel. */
+.svdimlab em { order: 1; }
+.svdimlab b { order: 2; }
+.svdimlab .svn { order: 3; }
+/* Outward from the midline: side A reads its columns right to left, so its cells do too. */
+.svlabels.a .svdimlab:nth-child(1) { order: 2; }
+.svlabels.a .svdimlab:nth-child(2) { order: 1; }
+.svlabels.a .svdimlab { align-items: flex-start; text-align: left; }
+.svlabels.b .svdimlab { align-items: flex-end; text-align: right; }
+/* The channel the double faults' wire climbs, held clear of the two cells beside it. */
+.svlabels.a .svdimlabs { padding-left: var(--wire); }
+.svlabels.b .svdimlabs { padding-right: var(--wire); }
+
+/* The double faults, hung off the far side under the cells and wired back to the section of the
+   first serve's wire that is theirs: the wire runs in from the figure, turns at the channel and
+   climbs the datum the two wires above come off, arriving at that section's outer end. One
+   square corner, which is the only bend anything on this drawing makes. */
+.svdimlab:nth-child(3) { order: 3; flex: 1 0 100%; flex-direction: row; align-items: center;
+  gap: var(--figgap); }
+.svlabels.a .svdimlab:nth-child(3) { margin-left: calc(-1 * var(--wire));
+  justify-content: flex-end; }
+.svlabels.b .svdimlab:nth-child(3) { margin-right: calc(-1 * var(--wire));
+  flex-direction: row-reverse; justify-content: flex-end; }
+.svdimlab:nth-child(3) > * { order: 0; }
+.svwire { display: block; flex: 1 1 auto; align-self: stretch; position: relative;
+  min-width: var(--wire); }
+.svwire::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+  background: color-mix(in srgb, var(--ink) 34%, transparent); }
+/* The climb, measured from the foot of the wires rather than from the wire's own box: it has to
+   arrive at the datum above, and the run of figures it passes is not a fixed height. It runs up
+   the plot's own outer edge, which is where that datum stands and where the section it points
+   at begins. Bottom is half the double-faults row, where the horizontal arrives. */
+.svdimlabs::before { content: ""; position: absolute; top: calc(-1 * var(--gaugegap));
+  bottom: 6px; width: 1px; background: color-mix(in srgb, var(--ink) 34%, transparent); }
+.svlabels.a .svdimlabs::before { left: 0; }
+.svlabels.b .svdimlabs::before { right: 0; }
+/* Nothing to arrive at: with no double faults there is no section on the wire above, so neither
+   the climb nor the run into the figure is drawn. The wire's box stays, because it is
+   also the spacer that holds the figure at the inner end of its line. */
+.svdimlab:nth-child(3).noline .svwire::after { display: none; }
+.svdimlabs:has(.svdimlab:nth-child(3).noline)::before { display: none; }
+
+.svdimlab b { font-size: 12.5px; font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums; }
+.svdimlab em { font-style: normal; font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+/* The count behind the rate, where the figures came from a match and there is one to give. It
+   is the quietest thing in the cell: the rate is what the cell is for, and this is the
+   evidence. */
+.svn { font-size: 9px; color: var(--muted); opacity: .8; white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+
+/* A narrower block. The plots come in on their own — the tracks are 1fr under a cap — so what
+   this step does is the type and the run of words: the counts go, and the two in-rates shorten
+   to the two words that tell them apart. The rate is the cell, and the count is the one part of
+   it the plot's own tooltips still carry. */
+@container (max-width: 575px) {
+  .svpair { --plot-h: 112px; --gutter: 14px; --figgap: 3px; }
+  .svwin { font-size: 11px; }
+  .svwin em { font-size: 8.5px; }
+  .svdimlab b { font-size: 11px; }
+  .svdimlab em { font-size: 8.5px; letter-spacing: 0; }
+  .svn, .svlong { display: none; }
+}
+
 /* The phone comparison of the two style columns (profileCompare). The flanking .pbside pair
    is ~150px wide apiece on a phone and prints every label twice; on the narrow layout this
    replaces them with one row per figure — A's value, the label once, B's value — so the two
    numbers sit across a centre line. The wide layout keeps the columns, where the rings run
    between them. Hidden until the media query at the foot of this block turns it on. */
 .pbcmp { display: none; }
+
+/* --- the tour strip (figBand) ------------------------------------------------------------
+   Where a figure sits on its own tour. Bits and strokes are units nobody arrives knowing, and
+   this is the difference between "3.2" and "unusually varied". The track runs the tour's 5th
+   to 95th percentile; the shaded part is its middle half, painted with a gradient rather than
+   a child element so the whole strip is one box and can be an <i> inside a <p>.
+   --lo/--hi/--at are written per figure by figBand(). */
+.pbband { display: block; position: relative; width: 62px; height: 5px; margin-top: 4px;
+  background: linear-gradient(to right,
+    color-mix(in srgb, var(--line) 60%, var(--card)) 0 var(--lo),
+    color-mix(in srgb, var(--muted) 30%, var(--card)) var(--lo) var(--hi),
+    color-mix(in srgb, var(--line) 60%, var(--card)) var(--hi) 100%); }
+/* The player's own mark. Ink rather than the player's colour: it lands on a grey track in a
+   column already capped in that player's colour, and against the shaded middle a mid-tone
+   violet or red is the one thing on the strip that could go missing. */
+.pbband::after { content: ""; position: absolute; left: var(--at); top: -2px;
+  width: 2px; height: 9px; margin-left: -1px; background: var(--ink); }
+/* Past the end of the strip: the mark sits on the end it went past and turns into a wedge
+   pointing off it, so a player the tour band exists to show is unusual is never drawn level
+   with the 95th percentile. */
+.pbband.out::after { width: 0; height: 0; top: -1px; background: none;
+  border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; }
+.pbband.hi::after { margin-left: -3px; border-left: 6px solid var(--ink); }
+.pbband.lo::after { margin-left: -3px; border-right: 6px solid var(--ink); }
+.pbside[data-side="b"] .pbband { margin-left: auto; }
+.pbcmp-row .pbband { width: 54px; margin-top: 3px; }
+.pbcmp-row .a .pbband { margin-right: auto; }
+.pbcmp-row .b .pbband { margin-left: auto; }
+
 /* The player-colour key, same split rule the scoreboard and each .pbside carry, with a gap
    cut at the centre so it doesn't read as one bar. */
 .pbcmp::before { content: ""; display: block; height: 4px; margin-bottom: 11px;

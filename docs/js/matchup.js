@@ -182,9 +182,23 @@ function matchSide(det, i) {
     break_rate: o && o.sv_games ? (o.sv_games - o.held) / o.sv_games : null,
     first_in_pct: rate(s.first_in, s.serve_pts),
     second_in_pct: rate(s.second_pts - s.dfs, s.second_pts),
+    // What landing the delivery was worth, on the same two denominators as the in-rates
+    // above: first-serve points over the first serves that landed, second-serve points over
+    // every point that reached a second serve — a double fault among them, since it is a
+    // service point lost and quoting the rate over only the second serves that landed would
+    // be quoting it over the ones the player got away with.
+    first_won_pct: rate(s.first_won, s.first_in),
+    second_won_pct: rate(s.second_won, s.second_pts),
     len_won: s.len_won == null ? null : Number(s.len_won),
     dirs: s.dirs, dirs2: s.dirs2,
     aces: s.aces, dfs: s.dfs, serve_pts: s.serve_pts,
+    // Counts, not rates. Seven break points is the median a player faces in a match and the
+    // tenth percentile is two, so a save rate would be printing "50%" off two points for a
+    // good part of the draw. "1 of 2" is the same fact without the false precision.
+    bp_faced: s.bp_faced, bp_saved: s.bp_saved,
+    // The raw serve tallies the anatomy bar splits — see serveSplit().
+    first_in: s.first_in, first_won: s.first_won,
+    second_pts: s.second_pts, second_won: s.second_won,
   };
 }
 
@@ -470,7 +484,7 @@ function patternCard(p) {
   // does not know which balls were volleys puts a bounce under one that never landed.
   const court = p.family === "ret"
     ? retSvg(p.serve_side, p.serve_dir, p.inc_code, p.resp_code, p.state_depth,
-             p.state_kind, p.resp_kind)
+      p.state_kind, p.resp_kind)
     : pairSvg(p.inc_code, p.resp_code, p.state_depth, p.state_kind, p.resp_kind);
   // Both denominators. The count alone cannot say whether this is what they do with the
   // ball or a corner of it: 277 answers looks the same printed on its own whether the
@@ -1449,50 +1463,23 @@ function profileBand(da, db) {
 // Kept as a list because everything downstream wants the same things — the key, how to print
 // it, what to call it — and a second copy of "times 100, one decimal" in the definitions is
 // the copy that drifts.
-// How the serve behaves before anyone plays a point off it, and the reason this list is not
-// only "figures with an exotic unit". None of the three is a share of any arc the rings draw —
-// they draw points won, and these are about where the ball landed — so on a ring each could
-// only ever be a figure parked beside a drawing it was not part of. Here they are what they
-// actually are: facts about how this player serves, beside how long their points run and how
-// far their shot choices stray.
 //
-// The three are one measurement told in full. A serve either goes in or it doesn't; the first
-// rate is how often the first one lands, the second is how often the one after a miss lands,
-// and a double fault is the case where neither did. Which is why the third is derived rather
-// than read: it is exactly (1 - second in) x (1 - first in), so a shipped copy of it would be
-// the same fact twice, free to disagree with the pair it came from. It is still printed —
-// nobody should have to multiply two percentages to find out how often a player serves the
-// point away — but there is one number behind it, not two.
+// The three serve figures that used to sit here — 1st serves in, 2nd serves in, double faults
+// — are drawn now instead of printed, as the anatomy bar under the rings. They were one
+// measurement told as three numbers on three different denominators, which is a thing a bar
+// says in one shape: see serveSplit(). Their replacements in the bar are the same three
+// quantities plus the two the panel never had, which is what a shape can carry and a column
+// of figures cannot.
 //
-// A figure's value for one player. Most are a column on the row; one is computed from two of
-// them, and every reader of FIGS goes through here so the derived one is never the case that
-// got missed.
-const figOf = (f, s) => (!s ? null : (f.get ? f.get(s) : num(s[f.k])));
+// A figure's value for one player: the column the figure names, off that player's row.
+const figOf = (f, s) => (!s ? null : num(s[f.k]));
 
-const dfOf = (s) => {
-  const f = num(s.first_in_pct), sec = num(s.second_in_pct);
-  return f == null || sec == null ? null : (1 - sec) * (1 - f);
-};
-
-// `better` marks the figures with a right side — a serve that lands is better than one that
-// doesn't, a double fault is worse — so the phone comparison can set the winner in ink and let
-// the other go quiet. Variety and rally length have no better end and stay level.
+// `better` marks the figures with a right side, so the phone comparison can set the winner in
+// ink and let the other go quiet. Variety and rally length have no better end and stay level.
 const FIGS = [
   {
-    k: "bits", label: "variety", unit: "bits",
+    k: "bits", label: "variety", unit: "bits", band: "bits",
     fmt: (v) => v.toFixed(1), say: (v) => `${v.toFixed(1)} bits`,
-  },
-  {
-    k: "first_in_pct", label: "1st serves in", unit: "", better: "hi",
-    fmt: (v) => pct(v), say: (v) => pct(v),
-  },
-  {
-    k: "second_in_pct", label: "2nd serves in", unit: "", better: "hi",
-    fmt: (v) => pct(v), say: (v) => pct(v),
-  },
-  {
-    k: "df_rate", label: "double faults", unit: "", get: dfOf, better: "lo",
-    fmt: (v) => pct(v), say: (v) => pct(v),
   },
   // No "shot selection" figure (sigma) ships. It correlates -0.81 (men) / -0.59 (women) with
   // rally length, two thirds of the men's spread is the player's own baseline aggressive shot
@@ -1503,6 +1490,246 @@ const FIGS = [
   // an adaptive player and a baited one identically. The triggers section answers the same
   // question concretely and with a direction.
 ];
+
+// --- the serve, as a two-axis plot -------------------------------------------------------
+// Every service point a player played, on two axes at once. Across is how often a delivery
+// happens: the first serves that landed, then the second serves that landed, then the double
+// faults where neither did — three parts that account for every service point, running outward
+// from the midline in the order a point reaches them. Up is what that delivery won, as a share
+// of its own column.
+//
+// The two axes are the reason it is not a stacked bar. On one axis a block can only show its
+// share of the bar, and not one of these rates is that: how often the first serve went in and
+// how often it won once it did are different questions on different denominators, and a single
+// stack has to pick one of them and leave the other to a printed figure. Given a width and a
+// height it carries both — and the area of the shaded part comes out as the player's share of
+// service points won, which is the figure on the serve ring directly above it.
+//
+//   area = w1·h1 + w2·h2 + w3·0 = first_won/n + second_won/n = serve points won
+//
+// That identity holds to 1.1e-16 over the 242 player-rows this site holds and all 820 careers.
+// It is a property of the drawing rather than a mark on it: the figure is already on the ring
+// a screen-inch above, and a rule across the plot to say it again was one line and one label
+// spent on the panel's least new number.
+//
+// The second-serve column is the second serves that *landed*, so its rate is over those rather
+// than over every point that reached a second serve — which is the rate a scoreboard quotes.
+// The two differ by the double faults, and they have to: a double fault is its own column here,
+// and counting it in the one beside it as well would put those points on the plot twice. Both
+// are printed, one as the column's height and one as its own row.
+function serveSplit(s) {
+  if (!s) return null;
+  const band = (h, r, hn, hd, rn, rd) => ({ h, r, hn, hd, rn, rd });
+  const n = num(s.serve_pts);
+  // A charted match: the tallies themselves, and the plot is a count of what happened.
+  if (n && s.first_in != null && s.first_won != null && s.second_won != null) {
+    const fi = Number(s.first_in), fw = Number(s.first_won);
+    const df = Number(s.dfs), si = Number(s.second_pts) - df, sw = Number(s.second_won);
+    if (fi < 0 || si < 0 || fw > fi || sw > si) return null;
+    return {
+      n, counts: true,
+      bands: [band(fi / n, fi ? fw / fi : 0, fi, n, fw, fi),
+              band(si / n, si ? sw / si : 0, si, n, sw, si),
+              band(df / n, 0, df, n, 0, df)],
+      // Kept beside the band rates because it is the figure a scoreboard quotes and the one a
+      // reader arrives with — see the note above on why it is not the band's own width.
+      second_in: si + df ? si / (si + df) : null,
+    };
+  }
+  // A career: the same three bands, recovered from the four rates. Each is a product of shares
+  // that sit on the denominator above it, so the three heights sum to one without being
+  // renormalised. The second band's own win rate is the one figure that has to be divided back
+  // out — the shipped rate is over every point that reached a second serve, and the band is
+  // only the ones that landed. It cannot exceed one: a double fault is never a point won, so
+  // the numerator of the first is a subset of the numerator of the second.
+  const fi = num(s.first_in_pct), fwp = num(s.first_won_pct);
+  const si = num(s.second_in_pct), swp = num(s.second_won_pct);
+  if ([fi, fwp, si, swp].some((x) => x == null)) return null;
+  const second = 1 - fi;
+  return {
+    n: null, counts: false,
+    bands: [band(fi, fwp), band(second * si, si ? Math.min(1, swp / si) : 0),
+            band(second * (1 - si), 0)],
+    second_in: si,
+  };
+}
+
+// The three columns, ordered outward from the midline: the first serve against it, the second
+// serve beyond that, the double faults at the far end. Widest nearest the centre, so the two
+// players' first serves meet along the midline and are read against each other directly, and
+// the band that is four per cent of a service game sits where it costs nothing.
+const SVBAND = ["first", "second", "df"];
+// What each column is, for the tooltip that carries its counts.
+const SVSAY = ["1st serves in", "2nd serves in", "double faults"];
+// The width the gaps between columns cost, always reserved for all three whether or not all
+// three are drawn. A plot with no double faults has one gap fewer to draw, and measuring its
+// columns against the width *its own* gaps leave would put it on a frequency axis 1.2% wider
+// than its opponent's — on a drawing whose whole point is reading two of them against each
+// other. Reserved, every plot shares one scale, and a player who never double-faulted leaves
+// the two pixels at the far end of theirs empty.
+const SV_GAPS = 4;
+// The fill a two-line figure needs to sit inside, as a share of the plot's height — under it
+// the figure stands above the fill's top instead. 24px of the narrowest 112px plot.
+const SV_WIN_OVER = 24 / 112;
+
+// One player's plot. Each column spans the full height in the drained tone, so its own extent
+// is the axis its fill is read against — the ring's vocabulary, where the player's colour is
+// what they won and the same colour drained is what they did not. Every column stands on the
+// same baseline and both players' plots share it, so a fill height means the same thing
+// anywhere on the drawing.
+//
+// Mirrored about the midline: A's columns run leftward from it and B's rightward, both from
+// the same origin, the way the two arcs leave the foot of a ring and climb opposite sides. The
+// mirror is where a plot sits and which way it runs — the columns are in the same order on
+// both sides, because reflecting that would make the two incomparable.
+//
+// Everything is measured from the plot's *outer* edge, which makes the two sides one set of
+// numbers: the double faults are the first slice of that measure on both, the second serve the
+// next, the first serve the rest. Only which edge the CSS hangs them off differs.
+function serveBar(sp, tag) {
+  if (!sp) return `<div class="svcol ${tag} empty"></div>`;
+  if (!sp.bands.some((x) => x.h)) return `<div class="svcol ${tag} empty"></div>`;
+  const [df, sec, fi] = [sp.bands[2].h, sp.bands[1].h, sp.bands[0].h];
+  // The boundaries, as distances from the outer edge, in the same units the columns are laid
+  // out in: the share of the width the gaps leave, plus the whole gaps already passed.
+  // The gap reserve is for three columns; a plot missing one draws one gap fewer and has two
+  // pixels of slack. Both plots pack toward the midline, so the slack always falls at the outer
+  // edge — which is the edge everything here is measured from, so every mark carries it.
+  const slack = (3 - sp.bands.filter((x) => x.h).length) * 2;
+  const at = (share, gapsPassed) =>
+    `calc((100% - ${SV_GAPS}px) * ${share.toFixed(5)} + ${gapsPassed * 2 + slack}px)`;
+  // How many gaps a column sits past, counted from the plot's outer edge: one for each column
+  // drawn outside it. Not a constant per column — a player with no double faults has no gap
+  // after that column either, and assuming the full three put every mark on their plot two
+  // pixels further in than the thing it was pointing at.
+  const gp = (k) => sp.bands.slice(k + 1).filter((x) => x.h).length;
+  const cols = [0, 1, 2].map((i) => {
+    const x = sp.bands[i];
+    if (!x.h) return "";
+    const say = sp.counts
+      ? `${x.hn} of ${x.hd} service points — ${SVSAY[i]}, ${x.rn} of ${x.rd} won`
+      : `${pct(x.h)} of service points — ${SVSAY[i]}, ${pct(x.r)} won`;
+    // The win rate rides on the column it belongs to on a narrow block, where there is no
+    // margin to stand it in: set on the fill, at the fill's own top, so the figure is at the
+    // height it names and needs no leader to say so. Nothing for the double faults, whose
+    // height is nought by construction and not a rate anyone read.
+    //
+    // Under a short fill it sits above the top instead, in ink on the drained tone rather than
+    // in the card colour on the fill. One of the two always has the room: the fill and the
+    // drain are 112px between them and the figure needs 24 of it.
+    const won = i < 2
+      ? `<b class="svwin${x.r < SV_WIN_OVER ? " over" : ""}">${pct(x.r)}<em>won</em></b>` : "";
+    return `<span class="svseg ${SVBAND[i]}"
+      style="--w:calc((100% - ${SV_GAPS}px) * ${x.h.toFixed(5)});--f:${(x.r * 100).toFixed(2)}%"
+      title="${esc(say)}"><i class="svfill"></i>${won}</span>`;
+  }).join("");
+  return `<div class="svcol ${tag}">
+    <div class="svplot">${cols}</div>
+    <div class="svdims">
+      ${/* One wire per serve, and what each spans is that serve's own denominator: the first
+           serve is measured over every service point, so its wire is the whole width; the
+           second is measured over the first serves that missed, so its wire is the run those
+           two columns take. The mark on it is where the player sits — which lands on a column
+           edge, because that edge is the same quantity: the first serve's mark is where the
+           first serves in begin, the second's is where the second serves in begin.
+
+           Both run from the plot's outer edge, which is the datum every measure on this drawing
+           is taken from, so the two stack as one set of dimensions off one origin. The ends are
+           past a different number of gaps — the second serve's run stops at its own column's
+           inner edge, one gap in, and the first serve's mark sits at the far side of the gap
+           after it — which is why neither is simply a share of the width. */""}
+      ${[[0, "100%", at(df + sec, gp(0))],
+         [1, at(df + sec, gp(1)), at(df, gp(1))]].map(([k, to, mark]) =>
+        sp.bands[k].h
+          ? `<i class="svspan t${k}" style="--to:${to};--at:${mark}"></i>`
+          : `<i class="svspan off"></i>`).join("")}
+      ${/* The double faults are a share of every service point, which is the run the first
+           serve's wire spans, so what carries their figure is a section of that wire: the slice
+           of it from the outer edge in to the column's own inner edge. No gaps passed — the
+           double faults are the outermost column, so nothing is drawn beyond them. */""}
+      ${df ? `<i class="svsect" style="--to:${at(df, gp(2))}"></i>` : ""}
+    </div>
+  </div>`;
+}
+
+// What the plot says, said in words under it: the three shares, each against the wire that
+// spans the denominator it is a share of. The win rates are not here — a rate that is a height
+// is said at that height, on the fill itself, which is the one place no leader has to reach.
+//
+// It replaces a set of coloured chips. A chip said which column a row belonged to and nothing
+// else — not which of the column's two dimensions the row was about, which is the thing this
+// drawing needs said, and not where on the column to look.
+const SVDIM = [
+  { key: '1st<span class="svlong"> serves</span> in', band: 0, dim: "h" },
+  { key: '2nd<span class="svlong"> serves</span> in', band: 1, dim: "second_in" },
+  { key: "double faults", band: 2, dim: "h" },
+];
+
+function serveLabels(sp, tag) {
+  if (!sp) return `<div class="svlabels ${tag} empty"></div>`;
+  const fig = (v, cn, cd) => `<b>${pct(v)}</b>` +
+    (cn == null ? "" : `<span class="svn">${cn} of ${cd}</span>`);
+  // The three shares. The two in-rates take a row under the wires, in the columns' order, each
+  // sitting under the run of plot its own wire measures; the double faults take the line under
+  // them, hung off the far end on a wire of their own.
+  const dims = SVDIM.map((r) => {
+    const b = sp.bands[r.band];
+    const v = r.dim === "second_in" ? sp.second_in : b.h;
+    if (v == null || (r.dim === "h" && !b.h && r.band !== 2)) return `<p class="svdimlab"></p>`;
+    // The double faults carry the wire that hangs their row off the section of the first
+    // serve's wire that is theirs. The two in-rates carry none: the wire that frames each of
+    // them is the one spanning its denominator up in .svdims, and it is already drawn against
+    // the plot it measures.
+    const wire = r.band === 2 ? `<i class="svwire"></i>` : "";
+    // A column of no width leaves no section on the wire above for a leader to arrive at — a
+    // match with no double faults draws neither. The row still prints, because nought double
+    // faults is a fact about the serve, but the wire comes off: a line run back from a figure
+    // with nothing there to meet it points at whatever is nearest, which is not what it
+    // measures.
+    const dead = !b.h ? " noline" : "";
+    return `<p class="svdimlab${dead}">${wire}${
+      fig(v, sp.counts && r.dim === "h" ? b.hn : null, b.hd)}<em>${r.key}</em></p>`;
+  }).join("");
+  return `<div class="svlabels ${tag}"><div class="svdimlabs">${dims}</div></div>`;
+}
+
+// The whole block: the two plots either side of a midline, each with its figures outside it.
+//
+// No names over the plots and no legend under them. The two players are already told apart by
+// the colours and the sides, which the scoreboard, the rings and the style columns all use the
+// same way; and with every quantity named and pointed at there is nothing left for a legend to
+// say.
+function serveAnatomy(da, db, ma, mb) {
+  const sa = serveSplit(ma || (da && da.s)), sb = serveSplit(mb || (db && db.s));
+  if (!sa && !sb) return "";
+  return `<div class="svblock">
+    <p class="svhead">every service point</p>
+    <div class="svpair">
+      ${serveLabels(sa, "a")}${serveBar(sa, "a")}${serveBar(sb, "b")}${serveLabels(sb, "b")}
+    </div>
+  </div>`;
+}
+
+// Where a figure sits on its tour, as a strip: the middle half of the charted tour shaded, the
+// player's own mark on it. Bits and strokes are not units anyone arrives knowing, and the band
+// is the difference between "3.2" and "unusually varied" — which is what the number is for.
+//
+// The strip runs p5 to p95 and the shading is p25 to p75, both read off the build rather than
+// written in, so a rebuild moves the band instead of quietly invalidating a sentence. A player
+// outside the strip is drawn at the end they went past and marked as being past it: clamping
+// silently would put the tour's most unusual player level with its 95th percentile, which is
+// the one player the band exists to show is unusual.
+function figBand(x, band) {
+  if (!band || x == null || !(band.max > band.min)) return "";
+  const at = (v) => (v - band.min) / (band.max - band.min);
+  const f = at(x);
+  const out = f < 0 ? " out lo" : f > 1 ? " out hi" : "";
+  const pos = Math.max(0, Math.min(1, f));
+  return `<i class="pbband${out}"
+    style="--lo:${(at(band.lo) * 100).toFixed(1)}%;--hi:${(at(band.hi) * 100).toFixed(1)}%;--at:${(pos * 100).toFixed(1)}%"
+    title="the middle half of the charted tour runs ${band.lo.toFixed(1)} to ${band.hi.toFixed(1)}"
+  ></i>`;
+}
 
 // Who these two players are: what kind of player this is, which hand they hold the racket in,
 // and the scores that belong with them rather than in a comparison. It carries the facts
@@ -1518,9 +1745,10 @@ const FIGS = [
 // The column's contents pulled out as data, so the wide flanking columns (profileSide) and
 // the narrow stacked comparison (profileCompare) build from one extraction rather than two
 // that drift.
-function profileParts(d, md) {
+function profileParts(d, md, spread) {
   if (!d && !md) return null;
   const s = (d && d.s) || {};
+  const sp = spread || {};
   // Printed for right-handers too, though most players are one: a key that only appears
   // sometimes leaves the reader to guess what its absence meant.
   const hand = s.hand ? `${s.hand === "L" ? "left" : "right"}-handed` : "";
@@ -1532,25 +1760,37 @@ function profileParts(d, md) {
   // "Between styles" is the true statement, and unlike the name it doesn't move.
   const arch = s.archetype
     ? (Number(s.style_confident) === 0 ? "Between styles" : s.archetype) : "";
-  // Strokes in the whole point, both players and the serve, averaged over the points this
-  // player appeared in — so it is as much a fact about who they play as about them, which is
-  // what the key says. One decimal: the tour's middle half spans about 0.8 of a stroke, and
-  // whole numbers would collapse most of the field onto "5".
+  // Strokes in the points this player won: the serve that starts a point and the shot that
+  // ends it, averaged over the ones they took. One decimal, because the tour's middle half
+  // spans well under a stroke and whole numbers would collapse most of the field onto "4".
   //
-  // Labelled "avg point length" rather than "avg rally": the figure counts the serve and the
-  // return like every other stroke, and "rally" invites the reader to assume those are left
-  // out. The unit says "shots", so the label only has to say what is averaged.
+  // The points they *won* in both modes, where the career column used to average every point
+  // either player played. That figure was a fact about the matchup as much as about the player
+  // — on a charted match it is literally one number describing both of them, which is why the
+  // match panel already asked the narrower question — and having the two modes print different
+  // quantities under labels a reader could not tell apart was the worse half of it. Little is
+  // lost by the swap: across the players who qualify the two correlate 0.989 (men) and 0.981
+  // (women), so the career column shows the same shape of the same fact, and now it is the
+  // shape the match column shows too. Nine players of the 359 who had the old figure fall
+  // under the new one's floor.
   //
-  // On a charted match the figure changes question: the length of the points this player
-  // *won*, which the career figure cannot ask. Averaged over every point either player
-  // played, point length is one number describing both of them, so the two columns print
-  // the same value and the comparison the panel is built around has nothing to compare.
-  // Restricted to the points a player won it is two numbers, and the gap between them is a
-  // real thing about the match — who was winning the short points and who the long ones.
-  const r = md ? md.len_won : num(s.avg_rally_len);
+  // Labelled "won point length" rather than "won rally length": the figure counts the serve
+  // and the return like every other stroke, and "rally" invites a reader to assume those are
+  // left out. The unit says "shots", so the label only has to say what is averaged.
+  //
+  // On a match the figure is that match's own and carries the career reading beneath it as the
+  // anchor, which is what says whether 4.4 shots was long or short for this player rather than
+  // for tennis. The tour strip goes the other way, to the career reading only: one match is
+  // not a draw from the distribution of careers the strip is cut over.
+  const r = md ? md.len_won : num(s.won_rally_len);
+  const career = num(s.won_rally_len);
   const rally = r == null ? null
-    : { v: Number(r).toFixed(1), unit: "shots",
-        label: md ? "avg length of points won" : "avg point length" };
+    : {
+      v: Number(r).toFixed(1), unit: "shots", raw: Number(r),
+      band: md ? null : sp.won_rally_len,
+      anchor: md && career != null ? career.toFixed(1) : null,
+      label: "avg won point length"
+    };
   // Independently gated. The figures come from different experiments with different
   // qualification thresholds, so a player can easily have one and not the other; a figure
   // held back because its neighbour is missing is a fact withheld for no reason.
@@ -1567,11 +1807,43 @@ function profileParts(d, md) {
     const mv = md ? figOf(f, md) : null;
     const v = mv != null ? mv : career;
     if (v == null) return null;
-    return { v: f.fmt(v), raw: v, unit: f.unit, label: f.label, better: f.better,
-             anchor: mv != null && career != null ? f.fmt(career) : null,
-             careerOnly: !!(md && mv == null) };
+    // The band belongs to whichever reading is on the line. A match figure is one match and
+    // the tour strip is cut over careers, so a figure taken from the match goes without it and
+    // the career anchor underneath carries the scale instead.
+    return {
+      v: f.fmt(v), raw: v, unit: f.unit, label: f.label, better: f.better,
+      band: mv != null ? null : (f.band ? sp[f.band] : null),
+      anchor: mv != null && career != null ? f.fmt(career) : null,
+      careerOnly: !!(md && mv == null)
+    };
   }).filter(Boolean);
+  const bp = bpFig(md);
+  if (bp) figs.push(bp);
   return { arch, hand, rally, figs };
+}
+
+// Break points, as the count they are. A rate would be the wrong shape twice over: the median
+// player-match faces seven of them and the tenth percentile faces two, so a good part of any
+// draw would be printing a percentage off two points — and a match figure on this panel is a
+// measurement rather than an estimate, so "saved 1 of 2" is the whole truth and "50%" is a
+// claim about a player.
+//
+// Only the saving side prints. The other half of the exchange is the same two numbers read
+// across the panel: with the two columns side by side, "saved 5 of 9" against "saved 4 of 6"
+// says Alcaraz converted 2 of the 6 and Sinner 4 of the 9. Reading a row across is what this
+// section is built to do, so shipping the converted pair as well would fill a second row with
+// a fact the first row already carries.
+//
+// No `better`. One player facing more break points than the other is mostly a fact about who
+// was serving under pressure, and a bolded winner would read as a verdict on a pair of numbers
+// that are not on the same denominator.
+function bpFig(md) {
+  if (!md || md.bp_faced == null) return null;
+  const faced = Number(md.bp_faced), saved = Number(md.bp_saved);
+  return {
+    v: faced ? `${saved} of ${faced}` : "none faced", raw: faced ? saved / faced : null,
+    unit: "", label: "break points saved"
+  };
 }
 
 // Which of two paired figures carries the win — "a" is the first argument, "b" the second, ""
@@ -1595,26 +1867,52 @@ function figWinner(xa, xb) {
 // phone comparison use.
 const EMPTY_PARTS = { arch: "", hand: "", rally: null, figs: [] };
 
+// Every row either player has is a row both of them have, and the side without it says so:
+// the figures are independently gated — variety needs 800 charted strokes and plenty of
+// first-round entrants do not have them — so letting a player's remaining figures close the
+// gap would set one player's break-point count level with the other's variety, in a band
+// whose whole purpose is reading a row across.
+//
+// (The other thing that pulls the columns out of step is a style label wrapping to two lines,
+// which is a layout problem and is answered by the subgrid these rows feed — see .tapemain.)
 // The rows the two columns share, in a fixed order, built from both sides at once.
 //
-// Two things pull the columns out of step, and this answers the second of them. The figures
-// are independently gated, so a player missing one — variety needs 800 charted strokes, and
-// plenty of first-round entrants do not have them — used to have their remaining figures
-// close the gap and move up a row. That set one player's double-fault rate level with the
-// other's variety, in a band whose entire purpose is reading a row across. Every row either
-// player has is now a row both of them have, and the side without it says so.
+// Career figures ahead of the match's own. Style and hand are career facts and they open the
+// column; on a charted match, variety is one too — it stays a career figure there because one
+// match moves it by 0.18 bits against a tour whose middle half spans 0.26 — and left in FIGS
+// order it landed between the length of the points won and the break points saved, so the
+// column ran career, career, match, career, match and a reader had to check the small print on
+// each line to know which window they were reading. Grouped, the column says who these players
+// are and then what they did on the day, and the "career figure" note under variety is the
+// boundary rather than an exception in the middle.
 //
-// (The first cause is a style label wrapping to two lines, which is a layout problem and is
-// answered by the subgrid these rows feed — see .tapemain in the stylesheet.)
+// Nothing moves on an uncharted match, where every figure is a career figure and none is
+// marked as one: `careerOnly` is only ever set when there is a match to be the other thing.
 function profilePlan(pa, pb) {
   const rows = [];
   const has = (p, l) => p.figs.some((x) => x.label === l);
+  const isCareer = (l) => [pa, pb].some((p) => {
+    const x = p.figs.find((y) => y.label === l);
+    return x && x.careerOnly;
+  });
   if (pa.arch || pb.arch) rows.push({ kind: "arch" });
   if (pa.hand || pb.hand) rows.push({ kind: "hand" });
+  // FIGS first and in its own order, then anything either side carries that FIGS does not
+  // name — the break-point count, which exists only on a charted match. Ordered off the
+  // sides rather than off a second constant list, so a figure that starts being produced
+  // gets a row without a second place to remember to add it to.
+  const seen = new Set();
+  const labels = [];
+  const push = (l) => {
+    if (seen.has(l) || !(has(pa, l) || has(pb, l))) return;
+    seen.add(l);
+    labels.push(l);
+  };
+  for (const f of FIGS) push(f.label);
+  for (const x of pa.figs.concat(pb.figs)) push(x.label);
+  for (const l of labels) if (isCareer(l)) rows.push({ kind: "fig", label: l });
   if (pa.rally || pb.rally) rows.push({ kind: "rally" });
-  for (const f of FIGS) {
-    if (has(pa, f.label) || has(pb, f.label)) rows.push({ kind: "fig", label: f.label });
-  }
+  for (const l of labels) if (!isCareer(l)) rows.push({ kind: "fig", label: l });
   return rows;
 }
 
@@ -1627,7 +1925,9 @@ function profileSide(p, o, tag, plan) {
     // second number on the same line pushed the label to a third row.
     const note = x.anchor ? `<i class="pbanch">career ${esc(x.anchor)}</i>`
       : x.careerOnly ? `<i class="pbanch">career figure</i>` : "";
-    return `<p class="${cls}"><b${trail}>${x.v}</b>${x.unit ? `<span>${esc(x.unit)}</span>` : ""}<em>${esc(x.label)}</em>${note}</p>`;
+    // The tour strip goes under the label rather than under the value: it is a fact about
+    // the unit, and above the label it would read as a second figure the label named.
+    return `<p class="${cls}"><b${trail}>${x.v}</b>${x.unit ? `<span>${esc(x.unit)}</span>` : ""}<em>${esc(x.label)}</em>${figBand(x.raw, x.band)}${note}</p>`;
   };
   // An em dash where this player has no figure, the same mark the phone comparison already
   // uses for the same absence — the label rides with it, so the row still says which figure
@@ -1637,7 +1937,7 @@ function profileSide(p, o, tag, plan) {
   const cell = (r) => {
     if (r.kind === "arch") return p.arch ? `<p class="pbstyle">${esc(p.arch)}</p>` : none("pbstyle");
     if (r.kind === "hand") return p.hand ? `<p class="pbhand">${esc(p.hand)}</p>` : none("pbhand");
-    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq", "avg point length");
+    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq", "avg won point length");
     const x = p.figs.find((y) => y.label === r.label);
     return x ? fig(x, "pbfig") : none("pbfig", r.label);
   };
@@ -1649,7 +1949,7 @@ function profileSide(p, o, tag, plan) {
 // two numbers sit across a centre line and read against each other directly. Renders whenever
 // either side has anything, filling the other side with an em dash; the flanking columns take
 // the wide layout, where the rings run between them and each figure sits by its own mark.
-function profileCompare(A, B) {
+function profileCompare(A, B, plan) {
   const any = (p) => p.arch || p.hand || p.rally || p.figs.length;
   if (!any(A) && !any(B)) return "";
   const map = (p) => {
@@ -1659,15 +1959,18 @@ function profileCompare(A, B) {
     return m;
   };
   const ma = map(A), mb = map(B);
-  const seq = [];
-  if (A.rally || B.rally) seq.push((A.rally || B.rally).label);
-  for (const f of FIGS) if (ma.has(f.label) || mb.has(f.label)) seq.push(f.label);
+  // Read off the same plan the wide columns are built from, rather than re-derived here. The
+  // two layouts are the same rows in the same order by construction then, which is what
+  // stopped being true the moment there were two orderings to keep in step.
+  const seq = plan.filter((r) => r.kind === "rally" || r.kind === "fig")
+    .map((r) => (r.kind === "rally" ? (A.rally || B.rally).label : r.label));
   // The career anchor rides under the value here too, so the phone layout says the same
   // thing the wide one does rather than dropping the half that gives the figure its scale.
   const val = (x) => x == null ? "—"
     : `${x.v}${x.unit ? ` <span class="pbcu">${esc(x.unit)}</span>` : ""}` +
-      (x.anchor ? `<i class="pbanch">career ${esc(x.anchor)}</i>`
-        : x.careerOnly ? `<i class="pbanch">career</i>` : "");
+    figBand(x.raw, x.band) +
+    (x.anchor ? `<i class="pbanch">career ${esc(x.anchor)}</i>`
+      : x.careerOnly ? `<i class="pbanch">career</i>` : "");
   // For a figure with a better end (serve-in rates, double faults) the winner keeps the ink
   // and the other side goes quiet — see figWinner().
   const rows = seq.map((l) => {
@@ -1746,6 +2049,20 @@ function figureKey(sa, sb, spread, match) {
   // The style line is a string, not a figure, so it needs its own test — num() on an
   // archetype name is NaN and `has` would drop the entry that most needs to exist.
   const hasStyle = [sa, sb].some((s) => s && s.archetype);
+  // The same rule for the two objects that are drawn rather than printed: define them only
+  // where they are on screen.
+  const hasServe = [sa, sb].some((s) => serveSplit(s));
+  const hasBp = [sa, sb].some((s) => s && s.bp_faced != null);
+  // The tour bands, in the words the strip is drawn from. Only for the figures at least one
+  // of these two players actually has a strip for — on a charted match the rally figure is
+  // the match's own and carries no strip, so its band is not quoted there either.
+  const sp = spread || {};
+  const bands = [["bits", sp.bits, "Variety", (v) => v.toFixed(1) + " bits"],
+  ["won_rally_len", match ? null : sp.won_rally_len, "Won point length",
+    (v) => v.toFixed(1) + " shots"]]
+    .filter(([k, band]) => band && [sa, sb].some((s) => s && num(s[k]) != null))
+    .map(([, band, name, f]) =>
+      `${name}'s middle half runs ${f(band.lo)} to ${f(band.hi)}.`);
 
   const defs = [
     // The style line leads the key because it leads the column, and because it is the one
@@ -1765,19 +2082,39 @@ function figureKey(sa, sb, spread, match) {
       <b>"Between styles"</b> means the two nearest groups fit this player about equally well.</div>`,
     // The key follows the column, so it opens on the figure the column leads with. Kept to one
     // line: the concept is plain, and the only thing a reader needs told is what gets counted.
-    match
-      ? `<div><b>Average length of points won</b> counts the serve that starts a point and
-        the shot that ends it, over the points that player won. The career figure averages
-        every point either player played, which is one number for both of them; restricted
-        to the points won it is two, and the gap is who took the short points and who the
-        long ones.</div>`
-      : !has("avg_rally_len") ? "" : `<div><b>Average point length</b> counts the serve that starts it and the
-      shot that ends it.</div>`,
+    !has("won_rally_len") && !match ? "" : `<div><b>Average won point length</b> counts the serve
+      that starts a point and the shot that ends it, over the points that player won. The points
+      they won rather than every point they played, because every point has two players in it
+      and its length is one number describing both of them — restricted to the ones each of
+      them took it is two numbers, and the gap between them is who was winning the short points
+      and who the long ones.</div>`,
     !match ? "" : `<div>Every rate on this panel is <b>this match only</b> — the rings, the
-      serve-in rates, the double faults and the placement — except where a line says
+      serve plot, the break points and the placement — except where a line says
       "career". Those carry no minimum-sample gate, because they are not estimates of how
       these players usually play: they are counts of what happened over the match's own
       points.</div>`,
+    // The bar is the section's one genuinely new object, so it gets the entry that says what
+    // its width is a share of. The two figures printed on it are on their own denominators
+    // rather than on the bar's, which is the one thing about it a reader could get wrong.
+    !hasServe ? "" : `<div>The <b>serve plot</b> is every service point that player played, on
+      two axes. <b>Across</b> is how often a delivery happens, running out from the middle: the
+      first serves that landed against the centre line, the second serves that landed beyond
+      them, the double faults where neither did at the far end — three columns that account for
+      every service point. <b>Up</b> is what that delivery won, out of its own column, and both
+      players' columns stand on the same baseline so any two heights can be read against each
+      other.
+      ${/* The one figure here that does not match the convention a scoreboard uses, and the
+           only thing about the drawing a reader could reasonably get wrong. It cannot match:
+           a double fault is its own column, and counting those points in the one beside it as
+           well would put them on the plot twice. */""}
+      <b>Won on 2nd</b> is over the second serves that <em>landed</em>, not over every point
+      that reached a second serve — a scoreboard quotes the second of those, and the difference
+      between them is the double faults, which have a column of their own here. Both are on the
+      panel: one as that column's height, the other as <b>2nd serves in</b>.</div>`,
+    !hasBp ? "" : `<div><b>Break points saved</b> is a count, not a rate: the median player
+      faces seven in a match and plenty face two, and a percentage off two points would be
+      dressing up a coin toss. The other half of the exchange is the same row read across —
+      one player's break points saved are the ones the other player failed to convert.</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from
       tour norms. A model built on the whole tour predicts each next shot from the two before
       it, and variety is how surprised that model is by this player, averaged over their shots
@@ -1787,6 +2124,13 @@ function figureKey(sa, sb, spread, match) {
       strokes to get one.${match ? ` It stays a career figure on a charted match: one match
       is about 350 strokes, and it moves the number by 0.18 bits against a tour whose middle
       half spans 0.26, so a match pair would mostly be comparing noise.` : ""}</div>`,
+    // The strip closes the key rather than opening it: it names the two figures it is drawn
+    // under, so it reads after their own entries rather than before them. The band numbers are
+    // read off the build rather than written into the sentence — a hardcoded "2.9 to 3.2" is
+    // right until the next rebuild and quietly wrong after it.
+    !bands.length ? "" : `<div>The <b>strip</b> under a figure is where that player sits on the
+      charted tour: the shaded part is the middle half of it, and the ends are the 5th and 95th
+      percentiles. ${bands.join(" ")} A player past either end is drawn at it and marked.</div>`,
     !match ? "" : `<div><b>Win probability</b> starts from what the two players' charted
       records had done before this match — their serve and return rates, combined into a
       point-win probability for each — and propagates it up the scoring tree, point to game
@@ -1816,8 +2160,8 @@ function tape(da, db, spread, det) {
   const cells = sa || sb ? tapeRows().map((r) => donut(r, sa, sb)).join("") : "";
   // Both columns' contents are extracted once and shared: the row plan is built from the two
   // together, and the phone comparison reads the same pair rather than re-deriving them.
-  const pA = profileParts(da, ma) || EMPTY_PARTS;
-  const pB = profileParts(db, mb) || EMPTY_PARTS;
+  const pA = profileParts(da, ma, spread) || EMPTY_PARTS;
+  const pB = profileParts(db, mb, spread) || EMPTY_PARTS;
   const plan = profilePlan(pA, pB);
   const sideA = profileSide(pA, pB, "a", plan), sideB = profileSide(pB, pA, "b", plan);
   if (!cells && !sideA && !sideB) return "";
@@ -1834,13 +2178,29 @@ function tape(da, db, spread, det) {
   // No header and no section wrapper: it carries straight on from the charted-history coverage
   // above it, which every figure here is measured against, so a labelled gap between the two
   // would only push them apart. The bordered box is its own boundary.
+  // The serve block runs full width under the three tracks, because it is the one thing in this
+  // box measured on a scale both players share outright — every service point either of them
+  // played, two bars on one axis either side of a midline, with the figures in the margins the
+  // full width leaves. Squeezed into a ~150px flanking column apiece they would be two bars
+  // that could not be laid against each other, which is the whole of what they are for here.
+  //
+  // Under the rings rather than over them. The rings are the headline pair and this is the
+  // anatomy of one half of them, so it reads as the serve ring opened up rather than as a
+  // second headline competing with it.
+  const serve = serveAnatomy(da, db, ma, mb);
   return `<section class="tape">
-    <div class="tapemain" style="--pbrows:${plan.length}">${sideA}${rings}${sideB}${profileCompare(pA, pB)}</div>
+    <div class="tapemain" style="--pbrows:${plan.length}">${sideA}${rings}${sideB}${profileCompare(pA, pB, plan)}</div>
+    ${serve}
     ${/* No key under the rings. Every mark on them now carries its own figure against it,
          wearing the mark as a glyph, so a key would be naming things the drawing has already
          named — and naming them a screen away from where they are. */""}
     ${thinNote}
-    ${figureKey(sa || (da && da.s), sb || (db && db.s), spread, !!det)}
+    ${/* Career fields under the match's own, so the key can see both. It defines what is on
+         screen, and on a charted match the columns still print two career figures — the style
+         label and variety — off rows the match side object does not carry. Handed only the
+         match side, `hasStyle` and has("bits") both came out false and the panel showed
+         "Between styles" and "3.1 bits" with nothing anywhere explaining either. */""}
+    ${figureKey({ ...(da && da.s), ...sa }, { ...(db && db.s), ...sb }, spread, !!det)}
   </section>`;
 }
 

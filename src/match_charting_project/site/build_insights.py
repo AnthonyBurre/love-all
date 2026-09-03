@@ -107,6 +107,18 @@ def _player_facts(con) -> pd.DataFrame:
     each over the serves that were actually hit: first serves over every point served,
     second serves over the points where the first one missed.
 
+    The two serve-won rates sit on those same denominators, so each pairs with the in-rate
+    above it: how often the delivery landed, then how often landing it won the point. A
+    second-serve point is counted lost when the second serve missed, which is why the
+    denominator there is every point that reached a second serve rather than every second
+    serve that landed — a double fault is a service point lost, and excluding it would
+    quote a rate over the subset of second serves the player got away with.
+
+    They are the half of the serve this panel never had. An in-rate alone does not say
+    whether the serve was worth landing: in the 2025 Wimbledon final Alcaraz landed 53%
+    of first serves, which reads as a collapse, and won 75% of them, exactly as many as
+    Sinner did off 62%.
+
     No double-fault rate ships. The panel still prints one, but it is exactly
     ``(1 - second_in_pct) * (1 - first_in_pct)`` — the share of points that reach a second
     serve, times the share of those the second serve misses — so shipping it as well would
@@ -135,13 +147,19 @@ def _player_facts(con) -> pd.DataFrame:
         "         AS first_in_pct,"
         "       (sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)) - sum(CAST(dfs AS INT)))"
         "         / CAST(NULLIF(sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)), 0)"
-        "                AS DOUBLE) AS second_in_pct "
+        "                AS DOUBLE) AS second_in_pct,"
+        "       sum(CAST(first_won AS INT))"
+        "         / CAST(NULLIF(sum(CAST(first_in AS INT)), 0) AS DOUBLE) AS first_won_pct,"
+        "       sum(CAST(second_won AS INT))"
+        "         / CAST(NULLIF(sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)), 0)"
+        "                AS DOUBLE) AS second_won_pct "
         "FROM stats_overview WHERE set = 'Total' "
         "GROUP BY gender, player HAVING sum(CAST(serve_pts AS INT)) >= 200").fetchall()
     facts = pd.DataFrame(hands, columns=["gender", "player", "hand"])
     return facts.merge(
         pd.DataFrame(serves, columns=["gender", "player", "ace_rate",
-                                      "first_in_pct", "second_in_pct"]),
+                                      "first_in_pct", "second_in_pct",
+                                      "first_won_pct", "second_won_pct"]),
         on=["gender", "player"], how="outer")
 
 
@@ -234,6 +252,44 @@ SELECT gender, player,
                 THEN 1 ELSE 0 END) / CAST(count(*) AS DOUBLE) AS ret_winner_rate
 FROM r GROUP BY gender, player HAVING count(*) >= {floor}
 """
+
+
+# The career reading of the charted match's "average length of points won": mean strokes in
+# the points this player actually won, over every charted match of theirs.
+#
+# It ships as the anchor under that match figure and nowhere else. As a figure in its own
+# right it would be the panel saying the same thing twice — across the players who qualify it
+# correlates 0.989 (men) and 0.981 (women) with avg_rally_len, which the column already
+# prints, so a reader comparing two players on it would be comparing their point lengths
+# through a second name for them. Under a match figure it is doing the one job that
+# correlation does not spoil: saying whether 4.4 shots was long or short *for this player*.
+#
+# Counted like the match figure it anchors, so the two are the same measurement over
+# different windows: parsed points only, strokes over the points the player won — see
+# build_match_details._fold_point.
+_WON_LEN_SQL = """
+WITH w AS (
+  SELECT m.gender,
+         CASE WHEN pp.winner_by_notation = 1 THEN m.player1 ELSE m.player2 END AS player,
+         pp.rally_len
+  FROM points_parsed pp
+  JOIN matches m USING (match_id)
+  WHERE pp.parse_ok AND pp.winner_by_notation IN (1, 2) AND pp.rally_len IS NOT NULL)
+SELECT gender, player, avg(rally_len) AS won_rally_len
+FROM w GROUP BY gender, player HAVING count(*) >= {floor}
+"""
+
+# Won points behind the career figure. Rally length has a standard deviation near 3.3 strokes,
+# so the standard error of this mean is 3.3/sqrt(n) — at a thousand won points that is 0.10,
+# which is one unit of the single decimal the figure prints at. Below it the anchor would be
+# moving in the digit it is shown in.
+MIN_WON_PTS = 1000
+
+
+def _won_point_len(con) -> pd.DataFrame:
+    """Mean strokes in the points each ``(gender, player)`` won, across their charted matches."""
+    rows = con.execute(_WON_LEN_SQL.format(floor=MIN_WON_PTS)).fetchall()
+    return pd.DataFrame(rows, columns=["gender", "player", "won_rally_len"])
 
 
 def _return_winners(con) -> pd.DataFrame:
@@ -364,6 +420,7 @@ def build() -> int:
     facts = _player_facts(con)
     games = _game_rates(con)
     ret_win = _return_winners(con)
+    won_len = _won_point_len(con)
     con.close()
 
     summary = pd.DataFrame([
@@ -417,6 +474,12 @@ def build() -> int:
                            "style_confident", "avg_rally_len", "n_points"]],
                          mean_over={"avg_rally_len": "n_points"}).drop(columns="n_points")
     summary = summary.merge(clusters, on=["player", "gender"], how="left")
+
+    # Beside avg_rally_len rather than with it: that one is point-weighted across a split
+    # career and collapsed from the clustering's era entities, this one is read straight off
+    # the point corpus by base name. They answer different questions and only one of them is
+    # ever on screen at a time — see _WON_LEN_SQL.
+    summary = summary.merge(won_len, on=["player", "gender"], how="left")
 
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
     summary = summary.merge(lang, on=["player", "gender"], how="left")

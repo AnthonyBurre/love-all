@@ -78,10 +78,17 @@ export async function serveGates() {
   return out;
 }
 
-// Where the charted tour sits on the three figures the profile band prints: rally length in
-// strokes, variety in bits, and shot selection as a σ in percentage points. None of the three
-// has a scale a reader arrives knowing, so each is printed against the band the middle half of
-// that tour occupies — which is what tells you whether 3.2 bits is ordinary or remarkable.
+// Where the charted tour sits on the figures the profile band prints: the length of the points
+// a player wins, in strokes, and variety in bits. Neither has a scale a reader arrives knowing, so each is drawn against
+// the tour it belongs to — which is what tells you whether 3.2 bits is ordinary or remarkable.
+//
+// Four numbers per metric, not two. The quartiles are the band the middle half of the tour
+// occupies, and they are what the figure is read against; the 5th and 95th percentiles are the
+// axis that band is drawn on, because a strip that ran only from p25 to p75 would have no room
+// left for the half of the tour that falls outside it and every such player would pile up on an
+// end. Ends rather than the true min and max, which are single players and would spend most of
+// the strip on ground nobody else stands on; a player past either end is drawn at it and says
+// so — see figBand() in matchup.js.
 //
 // Rally length replaced the 0-100 shot-quality score here, and the band is the reason the
 // swap is not a downgrade: that score was an exponential map of conceded win probability that
@@ -110,20 +117,25 @@ async function loadSpread() {
   try {
     const rows = await query(
       `SELECT gender,
-         count(bits) AS n_bits, count(avg_rally_len) AS n_rally,
+         count(bits) AS n_bits, count(won_rally_len) AS n_rally,
          quantile_cont(bits, 0.25) AS b_lo, quantile_cont(bits, 0.75) AS b_hi,
-         quantile_cont(avg_rally_len, 0.25) AS r_lo,
-         quantile_cont(avg_rally_len, 0.75) AS r_hi
+         quantile_cont(bits, 0.05) AS b_min, quantile_cont(bits, 0.95) AS b_max,
+         quantile_cont(won_rally_len, 0.25) AS r_lo,
+         quantile_cont(won_rally_len, 0.75) AS r_hi,
+         quantile_cont(won_rally_len, 0.05) AS r_min,
+         quantile_cont(won_rally_len, 0.95) AS r_max
        FROM player_summary GROUP BY gender`);
     for (const r of rows) {
       if (!out[r.gender]) continue;
       // A band needs a population behind it to be worth quoting. Below that the metric still
       // prints — it is the player's own number — it just goes without a tour to read it against.
-      const band = (n, lo, hi) => Number(n) >= 40 && lo != null && hi != null
-        ? { lo: Number(lo), hi: Number(hi), n: Number(n) } : null;
+      const band = (n, lo, hi, min, max) =>
+        Number(n) >= 40 && lo != null && hi != null && min != null && max != null
+          ? { lo: Number(lo), hi: Number(hi), min: Number(min), max: Number(max), n: Number(n) }
+          : null;
       out[r.gender] = {
-        bits: band(r.n_bits, r.b_lo, r.b_hi),
-        avg_rally_len: band(r.n_rally, r.r_lo, r.r_hi),
+        bits: band(r.n_bits, r.b_lo, r.b_hi, r.b_min, r.b_max),
+        won_rally_len: band(r.n_rally, r.r_lo, r.r_hi, r.r_min, r.r_max),
       };
     }
   } catch (e) { /* stale insights db: the figures print without their tour band */ }
