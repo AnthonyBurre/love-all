@@ -1569,7 +1569,10 @@ const SVSAY = ["1st serves in", "2nd serves in", "double faults"];
 // the two pixels at the far end of theirs empty.
 const SV_GAPS = 4;
 // The fill a two-line figure needs to sit inside, as a share of the plot's height — under it
-// the figure stands above the fill's top instead. 24px of the narrowest 112px plot.
+// the figure stands above the fill's top instead. 24px of a 112px plot, which is the shortest
+// the square plot gets: it is as tall as it is wide, and half a phone panel is wider than that.
+// Taller plots only send the figure outside the fill a little earlier than they had to, and
+// above the fill is a place it always fits.
 const SV_WIN_OVER = 24 / 112;
 
 // One player's plot. Each column spans the full height in the drained tone, so its own extent
@@ -1586,23 +1589,33 @@ const SV_WIN_OVER = 24 / 112;
 // Everything is measured from the plot's *outer* edge, which makes the two sides one set of
 // numbers: the double faults are the first slice of that measure on both, the second serve the
 // next, the first serve the rest. Only which edge the CSS hangs them off differs.
-function serveBar(sp, tag) {
+//
+// svGeom.at() is a distance along the plot from its outer edge, in the units the columns are
+// laid out in: the share of the width the gaps leave, plus the whole gaps already passed. It
+// places each figure's centre (--c) over its own column.
+//
+// The gap reserve is for three columns; a plot missing one draws one gap fewer and has two
+// pixels of slack. Both plots pack toward the midline, so the slack always falls at the outer
+// edge — which is the edge every distance here is measured from, so every figure carries it.
+// gp() is how many gaps a point sits past, one for each column drawn outside it: not a constant
+// per column, because a player with no double faults has no gap after that column either, and
+// assuming the full three puts every figure two pixels off its column.
+function svGeom(sp) {
+  const slack = (3 - sp.bands.filter((x) => x.h).length) * 2;
+  return {
+    at: (share, gapsPassed) =>
+      `calc((100% - ${SV_GAPS}px) * ${share.toFixed(5)} + ${gapsPassed * 2 + slack}px)`,
+    gp: (k) => sp.bands.slice(k + 1).filter((x) => x.h).length,
+  };
+}
+
+// The word for the double-faults column, long form and the short one a narrow block swaps in.
+const DF_KEY = '<span class="svlong">double</span><span class="svabbr">dbl</span> faults';
+
+function serveBar(sp, tag, cmp) {
   if (!sp) return `<div class="svcol ${tag} empty"></div>`;
   if (!sp.bands.some((x) => x.h)) return `<div class="svcol ${tag} empty"></div>`;
-  const [df, sec, fi] = [sp.bands[2].h, sp.bands[1].h, sp.bands[0].h];
-  // The boundaries, as distances from the outer edge, in the same units the columns are laid
-  // out in: the share of the width the gaps leave, plus the whole gaps already passed.
-  // The gap reserve is for three columns; a plot missing one draws one gap fewer and has two
-  // pixels of slack. Both plots pack toward the midline, so the slack always falls at the outer
-  // edge — which is the edge everything here is measured from, so every mark carries it.
-  const slack = (3 - sp.bands.filter((x) => x.h).length) * 2;
-  const at = (share, gapsPassed) =>
-    `calc((100% - ${SV_GAPS}px) * ${share.toFixed(5)} + ${gapsPassed * 2 + slack}px)`;
-  // How many gaps a column sits past, counted from the plot's outer edge: one for each column
-  // drawn outside it. Not a constant per column — a player with no double faults has no gap
-  // after that column either, and assuming the full three put every mark on their plot two
-  // pixels further in than the thing it was pointing at.
-  const gp = (k) => sp.bands.slice(k + 1).filter((x) => x.h).length;
+  const { at } = svGeom(sp);
   const cols = [0, 1, 2].map((i) => {
     const x = sp.bands[i];
     if (!x.h) return "";
@@ -1618,77 +1631,79 @@ function serveBar(sp, tag) {
     // in the card colour on the fill. One of the two always has the room: the fill and the
     // drain are 112px between them and the figure needs 24 of it.
     const won = i < 2
-      ? `<b class="svwin${x.r < SV_WIN_OVER ? " over" : ""}">${pct(x.r)}<em>won</em></b>` : "";
+      ? `<b class="svwin${x.r < SV_WIN_OVER ? " over" : ""}${sup(cmp, `w${i}`, tag)}">${
+          pct(x.r)}<em>won</em></b>` : "";
     return `<span class="svseg ${SVBAND[i]}"
       style="--w:calc((100% - ${SV_GAPS}px) * ${x.h.toFixed(5)});--f:${(x.r * 100).toFixed(2)}%"
       title="${esc(say)}"><i class="svfill"></i>${won}</span>`;
   }).join("");
+  // The double-faults figure belongs to the hatch column at the plot's outer edge, so it is
+  // drawn with the plot rather than in the row of figures below: turned on its side and run
+  // along that column on a wide block, dropped under it with a hairline to the middle of its
+  // edge on a narrow one. --dfm is that midpoint, measured from the plot's outer edge.
+  const df = sp.bands[2];
+  const dfLab = `<b class="svdf${sup(cmp, "df", tag)}" style="--dfm:${at(df.h / 2, 0)}"
+    >${pct(df.h)}<em>${DF_KEY}</em></b>`;
   return `<div class="svcol ${tag}">
     <div class="svplot">${cols}</div>
-    <div class="svdims">
-      ${/* One wire per serve, and what each spans is that serve's own denominator: the first
-           serve is measured over every service point, so its wire is the whole width; the
-           second is measured over the first serves that missed, so its wire is the run those
-           two columns take. The mark on it is where the player sits — which lands on a column
-           edge, because that edge is the same quantity: the first serve's mark is where the
-           first serves in begin, the second's is where the second serves in begin.
-
-           Both run from the plot's outer edge, which is the datum every measure on this drawing
-           is taken from, so the two stack as one set of dimensions off one origin. The ends are
-           past a different number of gaps — the second serve's run stops at its own column's
-           inner edge, one gap in, and the first serve's mark sits at the far side of the gap
-           after it — which is why neither is simply a share of the width. */""}
-      ${[[0, "100%", at(df + sec, gp(0))],
-         [1, at(df + sec, gp(1)), at(df, gp(1))]].map(([k, to, mark]) =>
-        sp.bands[k].h
-          ? `<i class="svspan t${k}" style="--to:${to};--at:${mark}"></i>`
-          : `<i class="svspan off"></i>`).join("")}
-      ${/* The double faults are a share of every service point, which is the run the first
-           serve's wire spans, so what carries their figure is a section of that wire: the slice
-           of it from the outer edge in to the column's own inner edge. No gaps passed — the
-           double faults are the outermost column, so nothing is drawn beyond them. */""}
-      ${df ? `<i class="svsect" style="--to:${at(df, gp(2))}"></i>` : ""}
-    </div>
+    ${dfLab}
   </div>`;
 }
 
-// What the plot says, said in words under it: the three shares, each against the wire that
-// spans the denominator it is a share of. The win rates are not here — a rate that is a height
-// is said at that height, on the fill itself, which is the one place no leader has to reach.
-//
-// It replaces a set of coloured chips. A chip said which column a row belonged to and nothing
-// else — not which of the column's two dimensions the row was about, which is the thing this
-// drawing needs said, and not where on the column to look.
+// What the plot says, said in words under it: the two in-rates, each centred under the column it
+// is the width of. The win rates are not here — a rate that is a height is said at that height,
+// on the fill itself — and the double faults ride the plot's outer edge (see serveBar).
 const SVDIM = [
-  { key: '1st<span class="svlong"> serves</span> in', band: 0, dim: "h" },
-  { key: '2nd<span class="svlong"> serves</span> in', band: 1, dim: "second_in" },
-  { key: "double faults", band: 2, dim: "h" },
+  { key: '1st<span class="svlong"> serves</span> in', band: 0, dim: "h", cmp: "h0" },
+  { key: '2nd<span class="svlong"> serves</span> in', band: 1, dim: "second_in", cmp: "h1" },
 ];
 
-function serveLabels(sp, tag) {
+// --- which of the two is the better figure -------------------------------------------------
+// Five rates are drawn twice here, once per player: the two win rates on the fills and the
+// three shares under the plots. Each pair is set in one weight, and the better of the two in
+// bold — so who serves better, and on which of the five, reads off the drawing before any of
+// the numbers themselves are.
+//
+// More is better on five of them and fewer on the sixth: a double fault is a point given away.
+// A tie bolds neither — two equal figures with one of them in bold claims a difference that is
+// not there — and so does a half of the pair that has no plot, where there is nothing to be
+// ahead of.
+const SVCMP = [
+  ["w0", (x) => x.bands[0].h && x.bands[0].r, false],
+  ["w1", (x) => x.bands[1].h && x.bands[1].r, false],
+  ["h0", (x) => x.bands[0].h, false],
+  ["h1", (x) => x.second_in, false],
+  ["df", (x) => x.bands[2].h, true],
+];
+
+function serveCmp(sa, sb) {
+  const out = {};
+  if (!sa || !sb) return out;
+  for (const [k, get, lower] of SVCMP) {
+    const va = get(sa), vb = get(sb);
+    if (va == null || vb == null || va === vb) continue;
+    out[k] = (lower ? va < vb : va > vb) ? "a" : "b";
+  }
+  return out;
+}
+
+const sup = (cmp, key, tag) => (cmp && cmp[key] === tag ? " sup" : "");
+
+function serveLabels(sp, tag, cmp) {
   if (!sp) return `<div class="svlabels ${tag} empty"></div>`;
-  const fig = (v, cn, cd) => `<b>${pct(v)}</b>` +
+  const fig = (v, key, cn, cd) => `<b class="svfig${sup(cmp, key, tag)}">${pct(v)}</b>` +
     (cn == null ? "" : `<span class="svn">${cn} of ${cd}</span>`);
-  // The three shares. The two in-rates take a row under the wires, in the columns' order, each
-  // sitting under the run of plot its own wire measures; the double faults take the line under
-  // them, hung off the far end on a wire of their own.
+  // Both shares sit centred under their columns on one line. --c is the column's own middle,
+  // measured from the plot's outer edge — everything outside the column, plus half of it — and
+  // the CSS centres the figure on it, held inside the plot.
+  const { at, gp } = svGeom(sp);
   const dims = SVDIM.map((r) => {
     const b = sp.bands[r.band];
     const v = r.dim === "second_in" ? sp.second_in : b.h;
-    if (v == null || (r.dim === "h" && !b.h && r.band !== 2)) return `<p class="svdimlab"></p>`;
-    // The double faults carry the wire that hangs their row off the section of the first
-    // serve's wire that is theirs. The two in-rates carry none: the wire that frames each of
-    // them is the one spanning its denominator up in .svdims, and it is already drawn against
-    // the plot it measures.
-    const wire = r.band === 2 ? `<i class="svwire"></i>` : "";
-    // A column of no width leaves no section on the wire above for a leader to arrive at — a
-    // match with no double faults draws neither. The row still prints, because nought double
-    // faults is a fact about the serve, but the wire comes off: a line run back from a figure
-    // with nothing there to meet it points at whatever is nearest, which is not what it
-    // measures.
-    const dead = !b.h ? " noline" : "";
-    return `<p class="svdimlab${dead}">${wire}${
-      fig(v, sp.counts && r.dim === "h" ? b.hn : null, b.hd)}<em>${r.key}</em></p>`;
+    if (v == null || (r.dim === "h" && !b.h)) return `<p class="svdimlab"></p>`;
+    const c = at(sp.bands.slice(r.band + 1).reduce((t, x) => t + x.h, 0) + b.h / 2, gp(r.band));
+    return `<p class="svdimlab" style="--c:${c}">${
+      fig(v, r.cmp, sp.counts && r.dim === "h" ? b.hn : null, b.hd)}<em>${r.key}</em></p>`;
   }).join("");
   return `<div class="svlabels ${tag}"><div class="svdimlabs">${dims}</div></div>`;
 }
@@ -1702,10 +1717,12 @@ function serveLabels(sp, tag) {
 function serveAnatomy(da, db, ma, mb) {
   const sa = serveSplit(ma || (da && da.s)), sb = serveSplit(mb || (db && db.s));
   if (!sa && !sb) return "";
+  const cmp = serveCmp(sa, sb);
   return `<div class="svblock">
-    <p class="svhead">every service point</p>
+    <p class="svhead">serve outcomes</p>
     <div class="svpair">
-      ${serveLabels(sa, "a")}${serveBar(sa, "a")}${serveBar(sb, "b")}${serveLabels(sb, "b")}
+      ${serveLabels(sa, "a", cmp)}${serveBar(sa, "a", cmp)}${
+        serveBar(sb, "b", cmp)}${serveLabels(sb, "b", cmp)}
     </div>
   </div>`;
 }
@@ -2110,7 +2127,9 @@ function figureKey(sa, sb, spread, match) {
       <b>Won on 2nd</b> is over the second serves that <em>landed</em>, not over every point
       that reached a second serve — a scoreboard quotes the second of those, and the difference
       between them is the double faults, which have a column of their own here. Both are on the
-      panel: one as that column's height, the other as <b>2nd serves in</b>.</div>`,
+      panel: one as that column's height, the other as <b>2nd serves in</b>. Where a figure is
+      drawn for both players, the better of the two is set in <b>bold</b> — fewer double
+      faults being the better of that pair.</div>`,
     !hasBp ? "" : `<div><b>Break points saved</b> is a count, not a rate: the median player
       faces seven in a match and plenty face two, and a percentage off two points would be
       dressing up a coin toss. The other half of the exchange is the same row read across —
