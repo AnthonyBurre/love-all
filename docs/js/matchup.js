@@ -704,8 +704,8 @@ function tapeRows() {
   return [
     {
       k: "hold_rate", label: "service games held", short: ["games", "won"],
-      hi: 1, top: "100", better: "hi", fmt: pct, unit: "held",
-      mark: { k: "break_rate", label: "broken" },
+      hi: 1, top: "100", better: "hi", fmt: pct, unit: "serve",
+      mark: { k: "break_rate", label: "return" },
     },
   ];
 }
@@ -1485,8 +1485,8 @@ function serveSplit(s) {
     return {
       n, counts: true,
       bands: [band(fi / n, fi ? fw / fi : 0, fi ? a1 / fi : 0, fi, n, fw, fi, a1),
-              band(si / n, si ? sw / si : 0, si ? a2 / si : 0, si, n, sw, si, a2),
-              band(df / n, 0, 0, df, n, 0, df, 0)],
+      band(si / n, si ? sw / si : 0, si ? a2 / si : 0, si, n, sw, si, a2),
+      band(df / n, 0, 0, df, n, 0, df, 0)],
       // Kept beside the band rates because it is the figure a scoreboard quotes and the one a
       // reader arrives with — see the note above on why it is not the band's own width.
       second_in: si + df ? si / (si + df) : null,
@@ -1509,9 +1509,9 @@ function serveSplit(s) {
   return {
     n: null, counts: false,
     bands: [band(fi, fwp, fap),
-            band(second * si, si ? Math.min(1, swp / si) : 0,
-                 si && sap != null ? Math.min(1, sap / si) : 0),
-            band(second * (1 - si), 0, 0)],
+    band(second * si, si ? Math.min(1, swp / si) : 0,
+      si && sap != null ? Math.min(1, sap / si) : 0),
+    band(second * (1 - si), 0, 0)],
     second_in: si,
   };
 }
@@ -1612,11 +1612,9 @@ function serveBar(sp, tag, cmp) {
     // tone in the card's own colour, which is nothing at all.
     const ace = svAce(x, i, tag, cmp);
     const won = i < 2
-      ? `<b class="svwin${x.r < SV_FIG_H || ace.tucked ? " over" : ""}${
-          sup(cmp, `w${i}`, tag)}">${pct(x.r)}<em>won</em>${ace.tucked}</b>` : "";
+      ? `<b class="svwin${x.r < SV_FIG_H || ace.tucked ? " over" : ""}${sup(cmp, `w${i}`, tag)}">${pct(x.r)}<em>won</em>${ace.tucked}</b>` : "";
     return `<span class="svseg ${SVBAND[i]}"
-      style="--w:calc((100% - ${SV_GAPS}px) * ${x.h.toFixed(5)});--f:${
-        (x.r * 100).toFixed(2)}%;--ace:${(x.a * 100).toFixed(2)}%"
+      style="--w:calc((100% - ${SV_GAPS}px) * ${x.h.toFixed(5)});--f:${(x.r * 100).toFixed(2)}%;--ace:${(x.a * 100).toFixed(2)}%"
       title="${esc(say)}"><i class="svfill"></i>${ace.core}${won}${ace.fig}</span>`;
   }).join("");
   // The double-faults figure belongs to the hatch column at the plot's outer edge, so it is
@@ -1724,8 +1722,7 @@ function serveLabels(sp, tag, cmp) {
     const v = r.dim === "second_in" ? sp.second_in : b.h;
     if (v == null || (r.dim === "h" && !b.h)) return `<p class="svdimlab"></p>`;
     const c = at(sp.bands.slice(r.band + 1).reduce((t, x) => t + x.h, 0) + b.h / 2, gp(r.band));
-    return `<p class="svdimlab" style="--c:${c}">${
-      fig(v, r.cmp, sp.counts && r.dim === "h" ? b.hn : null, b.hd)}<em>${r.key}</em></p>`;
+    return `<p class="svdimlab" style="--c:${c}">${fig(v, r.cmp, sp.counts && r.dim === "h" ? b.hn : null, b.hd)}<em>${r.key}</em></p>`;
   }).join("");
   return `<div class="svlabels ${tag}"><div class="svdimlabs">${dims}</div></div>`;
 }
@@ -1790,8 +1787,7 @@ function serveAnatomy(da, db, ma, mb) {
   return `<div class="svblock">
     <p class="svhead">serve outcomes · ${win}</p>
     <div class="svpair">
-      ${serveLabels(sa, "a", cmp)}${serveBar(sa, "a", cmp)}${
-        serveBar(sb, "b", cmp)}${serveLabels(sb, "b", cmp)}
+      ${serveLabels(sa, "a", cmp)}${serveBar(sa, "a", cmp)}${serveBar(sb, "b", cmp)}${serveLabels(sb, "b", cmp)}
     </div>
     ${serveKey(sa, sb)}
   </div>`;
@@ -1879,7 +1875,7 @@ function profileParts(d, md, spread) {
       v: Number(r).toFixed(1), unit: "shots", raw: Number(r), fmt: (v) => v.toFixed(1),
       band: md ? null : sp.won_rally_len,
       anchor: md && career != null ? career.toFixed(1) : null,
-      label: "avg won point length"
+      label: "avg winning rally"
     };
   // Independently gated. The figures come from different experiments with different
   // qualification thresholds, so a player can easily have one and not the other; a figure
@@ -2033,8 +2029,7 @@ function gsWing(x, cmp, tag) {
     const f = clamp01(v / GS_CAP);
     const over = f >= GS_FIG_OVER;
     const n = x.n == null ? "" : ` of ${x.n}`;
-    const fig = `<b class="gsfig ${cls}${over ? " on" : ""}${
-      sup(cmp, `${x.w}_${k}`, tag)}" style="--h:${(f * 50).toFixed(2)}%">${pct(v)}</b>`;
+    const fig = `<b class="gsfig ${cls}${over ? " on" : ""}${sup(cmp, `${x.w}_${k}`, tag)}" style="--h:${(f * 50).toFixed(2)}%">${pct(v)}</b>`;
     return `<i class="gsb ${cls}" style="--h:${(f * 50).toFixed(2)}%"
       title="${esc(`${pct(v)}${n} ${x.name} groundstrokes — ${say}`)}"></i>${fig}`;
   };
@@ -2052,12 +2047,11 @@ function gsBar(g, tag, cmp) {
   return `<div class="gscol ${tag}">
     <div class="gsplot">${g.wings.map((x) => gsWing(x, cmp, tag)).join("")}
       <i class="gsmid"></i></div>
-    <p class="gslabs">${g.wings.map((x) => `<span style="--w:${
-      (x.share * 100).toFixed(3)}%"><b>${pct(x.share)}</b><em>${x.name}</em>${
-      // What the match rates were divided by, under the wing they belong to. A match is a short
-      // window and the denominator is part of the figure; a career one has a floor behind it
-      // instead, and the count would only restate the coverage band heading the panel.
-      x.n == null ? "" : `<i>${esc(`${x.n} shots`)}</i>`}</span>`).join("")}</p>
+    <p class="gslabs">${g.wings.map((x) => `<span style="--w:${(x.share * 100).toFixed(3)}%"><b>${pct(x.share)}</b><em>${x.name}</em>${
+    // What the match rates were divided by, under the wing they belong to. A match is a short
+    // window and the denominator is part of the figure; a career one has a floor behind it
+    // instead, and the count would only restate the coverage band heading the panel.
+    x.n == null ? "" : `<i>${esc(`${x.n} shots`)}</i>`}</span>`).join("")}</p>
   </div>`;
 }
 
@@ -2177,7 +2171,7 @@ function profileSide(p, o, tag, plan) {
   const cell = (r) => {
     if (r.kind === "arch") return p.arch ? `<p class="pbstyle">${esc(p.arch)}</p>` : none("pbstyle");
     if (r.kind === "hand") return p.hand ? `<p class="pbhand">${esc(p.hand)}</p>` : none("pbhand");
-    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq", "avg won point length");
+    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq", "avg winning rally");
     const x = p.figs.find((y) => y.label === r.label);
     return x ? fig(x, "pbfig") : none("pbfig", r.label);
   };
@@ -2390,8 +2384,7 @@ function figureKey(sa, sb, spread, match) {
       volley, overhead, half-volley or swinging volley, and its two rates are out of those net
       shots rather than out of every stroke. These cut across the wings rather than dividing
       them — a backhand slice is in the groundstroke square and here — so each figure is a share of
-      its own denominator and nothing is counted twice inside one.${
-      match ? ` On a charted match each is that match's own, with the count it was taken over
+      its own denominator and nothing is counted twice inside one.${match ? ` On a charted match each is that match's own, with the count it was taken over
       under it: 33% of three net shots and 33% of thirty are the same number and not the same
       fact.` : ""}</div>`,
     !hasMix && !hasGround ? "" : `<div>Every <b>error rate</b> on this panel counts
@@ -2401,8 +2394,7 @@ function figureKey(sa, sb, spread, match) {
       forehands, and how often a player misses one says almost nothing about how often they put
       one away. The <b>slice</b> is a share and no more: neither of its outcome rates is steady
       enough to draw, and a slicer's misses are already in the groundstroke square, counted by
-      the hand that played them.${
-      match ? "" : ` A career rate needs 800 strokes of the kind it measures behind it; the two
+      the hand that played them.${match ? "" : ` A career rate needs 800 strokes of the kind it measures behind it; the two
       net rates need 200, nobody having hit 800 volleys. Below that the figure is not drawn for
       that player.`}</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from
