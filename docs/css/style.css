@@ -747,9 +747,12 @@ a { color: var(--acc-d); }
    A's name. Set here rather than by reversing the pair in the markup, because the phone
    layout flows these same cells across rows into two columns, where source order is
    left-to-right and A does come first. */
+/* --sgap is the gap between one set's games and the next. fitHeader() closes it up from 11px
+   toward 4px before it spends anything else, so a five-set line — four of these gaps across
+   the middle of the band — hands its width back to the names first. Unset, it runs at 11. */
 .mscore { grid-column: 2; grid-row: 1 / span 2; align-self: stretch;
   display: grid; grid-auto-flow: column dense; grid-template-rows: 1fr 1fr;
-  row-gap: 2px; column-gap: 11px; font-variant-numeric: tabular-nums; }
+  row-gap: 2px; column-gap: var(--sgap, 11px); font-variant-numeric: tabular-nums; }
 /* dense, because pinning the rows is only half of it: the sparse cursor never goes back a
    column, so a pinned cell pushes the next one a column along and a set's two games come
    out on a diagonal instead of stacked. Dense restarts the search each time, which fills
@@ -1144,10 +1147,12 @@ a { color: var(--acc-d); }
    coverBar). The floor above still holds the first block to 3px, so a season is never thinner
    than a single charted match; the rest carry no floor, so the split never lengthens the bar
    past its points and the pyramid's outline is the same drawing it was before. The cut
-   between blocks is a 1px inset shadow of the panel colour, not a border or a gap — it takes
+   between blocks is a 1px inset shadow in the line grey, not a border or a gap — it takes
    up no width, so a season with a dozen sub-pixel matches still ends exactly where its single
-   bar did; the cuts there just wash together, and the readout still carries the match count. */
-.covbar > i + i { min-width: 0; box-shadow: inset 1px 0 0 var(--card); }
+   bar did; the cuts there just wash together, and the readout still carries the match count.
+   Grey rather than the card colour, so a cut reads as a division of the bar and not as the
+   ground showing through it. */
+.covbar > i + i { min-width: 0; box-shadow: inset 1px 0 0 var(--line); }
 /* The axis, as its two ends: newest season over the midline, oldest under it. Centred on the
    band, which is centred on the midline the bars meet at. Small, muted, tabular — a scale the
    bars hang between, not a third thing being said. */
@@ -1333,8 +1338,10 @@ a { color: var(--acc-d); }
    plot mirrors because its columns are an order (first, second, double fault) and both players
    read it outward from the midline; these are two named sides of one body, and reflecting them
    would put a lefty's forehand where their backhand is. */
-.gsblock { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
-.gspair { --plot-w: 240px; --gutter: 22px;
+/* Its own section now, so the section heading and note are the boundary — no rule of its own. */
+.gsblock { margin-top: 4px; }
+.gspair { --plot-w: 240px; --gutter: 26px;
+  position: relative;
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   max-width: calc(var(--plot-w) * 2 + var(--gutter)); margin-inline: auto;
   column-gap: var(--gutter); }
@@ -1399,25 +1406,23 @@ a { color: var(--acc-d); }
   letter-spacing: .06em; color: var(--muted); }
 .gslabs i { font-style: normal; font-size: 8.5px; font-weight: 500; color: var(--muted);
   font-variant-numeric: tabular-nums; }
-/* The legend. Each swatch is the band it names, drawn the way the plot draws it and the way up
-   the plot draws it — a block above a midline for winners, a hatch below for errors — so the
-   key is a small picture of the thing rather than a sentence about it. Grey, because it names
-   a part of both plots and either player's colour would claim it for that player. */
-.gslegend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px;
-  margin: -6px 0 14px; font-size: 9.5px; line-height: 1.5; color: var(--muted); }
-.gskey { position: relative; flex: none; width: 13px; height: 13px; margin-right: -2px;
-  background: color-mix(in srgb, var(--muted) 12%, var(--card)); }
-.gskey::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
-  margin-top: -.5px; background: color-mix(in srgb, var(--muted) 45%, var(--card)); }
-.gskey i { position: absolute; left: 0; right: 0; height: 36%; }
-.gskey.w i { bottom: 50%; background: var(--muted); }
-.gskey.e i { top: 50%; background:
-  repeating-linear-gradient(45deg, transparent 0 3px,
-    color-mix(in srgb, var(--muted) 75%, var(--card)) 3px 6px),
-  color-mix(in srgb, var(--muted) 22%, var(--card)); }
-/* The two facts a swatch cannot carry: what the height is measured to, and what the width is.
-   After the legend and set apart, so the block's key reads as marks first and scale second. */
-.gsscale { flex: 1 1 auto; min-width: 0; }
+/* The two half-names, down the midline between the plots. The gutter is dead space on both
+   plots — the innermost wing butts against it — so a word set there points at the half it
+   names without a swatch or a sentence. "winners" reads bottom-to-top, the way its bands
+   climb; "unforced errors" reads top-to-bottom, the way its bands fall. Grey, because it
+   names a part of both plots and either player's colour would claim it for that player.
+   Pinned to the plot's own 150px, not the pair's full height, so it stops at the baseline
+   rather than running down past it into the width labels. */
+.gsaxis { position: absolute; left: 50%; top: 0; width: 0; height: 150px;
+  pointer-events: none; }
+/* Rotated with a transform, not writing-mode, so the line stays centred on the gutter both
+   ways. "winners" reads up the top half, "unforced errors" down the bottom half. A fixed
+   width keeps the long one to two stacked lines rather than one that runs past the plot. */
+.gsaxis b { position: absolute; left: 50%; width: 46px; margin-left: -23px; margin-top: 0;
+  text-align: center; line-height: 1.15;
+  font-size: 9px; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
+.gsaxis .w { top: 25%; transform: translateY(-50%) rotate(-90deg); }
+.gsaxis .e { top: 75%; transform: translateY(-50%) rotate(90deg); }
 
 /* --- the serve, on two axes (serveAnatomy) -----------------------------------------------
    Two plots flanking a midline, A left and B right — the same split the scoreboard, the style
@@ -1440,8 +1445,10 @@ a { color: var(--acc-d); }
    A query container: the step below switches on the room this block actually has rather than
    on the width of the window. The two are not the same question — the panel is a fixed fraction
    of a wide screen and nearly all of a narrow one. */
-.svblock { container-type: inline-size;
-  margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+/* It leads the serve section now (fullFirst), so the section heading and note are the
+   boundary above it; the rule that separates it from the direction columns is on those,
+   see .msec.fullfirst .seccols. */
+.svblock { container-type: inline-size; margin-top: 4px; }
 .svhead { margin: 0 0 12px; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--muted); }
 
@@ -1461,6 +1468,10 @@ a { color: var(--acc-d); }
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   max-width: calc(var(--plot-w) * 2 + var(--gutter)); margin-inline: auto;
   column-gap: var(--gutter); row-gap: 0; }
+/* Room under the plot for the dropped pooled-ace figure — the same level the double-fault
+   label drops to, so on a wide block (where the DF label runs up the sliver instead) this is
+   the one thing needing the space. */
+.svpair.aces { padding-bottom: 30px; }
 /* .svlabels is a wrapper, not a box: its one group takes a cell of the pair's own grid. */
 .svlabels { display: contents; }
 .svcol.a { grid-area: 1 / 1; --shot: var(--a); }
@@ -1620,6 +1631,42 @@ a { color: var(--acc-d); }
 .svcol.a .svdf::before { left: 0; }
 .svcol.b .svdf::before { right: 0; }
 
+/* --- the pooled ace rate ---------------------------------------------------------------
+   The two ace cores added back to one figure: aces over every service point, the number a
+   scoreboard quotes. The figure drops below the in-rate row — the level the double-fault
+   label drops to, so those in-rate labels stay up close to the graph — on a stem that rises
+   to just under the baseline and forks into two short diagonals gesturing up toward the
+   cores. No run across the bar and no right angle: the fork stops well short of the core
+   centres. --acm is the midpoint of the two core centres, from the plot's outer edge — the
+   left on side A, the right on side B, like the double-fault label. Aces on the first
+   delivery only (.one): no fork, the stem runs straight up. */
+.svacetot { position: absolute; top: 100%; height: 0; pointer-events: none;
+  --acstem: calc(var(--labgap) + var(--labrow) + var(--rowgap)); }
+.svcol.a .svacetot { left: var(--acm); }
+.svcol.b .svacetot { right: var(--acm); }
+/* the stem, from 6px under the baseline down to the figure */
+.svacetot::before { content: ""; position: absolute; left: 0; top: 6px; width: 1px;
+  height: calc(var(--acstem) - 6px);
+  background: color-mix(in srgb, var(--ink) 32%, transparent); }
+.svacetot.one::before { top: 0; height: var(--acstem); }
+/* the two diagonals of the fork, splaying up-and-out from the stem's top (at 6px under the
+   baseline) — 12px long so the tips land a few pixels short of the baseline and well inside
+   the gap between the two core centres */
+.svacetot span { position: absolute; left: 0; top: -6px; width: 1px; height: 12px;
+  transform-origin: bottom center;
+  background: color-mix(in srgb, var(--ink) 32%, transparent); }
+.svacetot span.l { transform: rotate(-28deg); }
+.svacetot span.r { transform: rotate(28deg); }
+.svacetot.one span { display: none; }
+/* the figure */
+.svacetot > b { position: absolute; left: 0; transform: translateX(-50%); top: var(--acstem);
+  display: flex; flex-direction: column; align-items: center; margin: 0;
+  line-height: 1.15; white-space: nowrap;
+  font-size: 11px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.svacetot.sup > b { font-weight: 700; }
+.svacetot > b em { font-style: normal; font-size: 8.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
 /* A narrower block. The plots come in on their own — the tracks are 1fr under a cap — so what
    this step does is the type and the run of words: the counts go, and the two in-rates shorten
    to the two words that tell them apart. */
@@ -1630,6 +1677,8 @@ a { color: var(--acc-d); }
   .svwin em { font-size: 8.5px; }
   .svacefig, .svacetuck { font-size: 9.5px; }
   .svacefig em, .svacetuck em { font-size: 7.5px; letter-spacing: 0; }
+  .svacetot > b { font-size: 9.5px; }
+  .svacetot > b em { font-size: 7.5px; letter-spacing: 0; }
   .svdimlab b, .svdf { font-size: 11px; }
   .svdimlab em, .svdf em { font-size: 8.5px; letter-spacing: 0; }
   .svn, .svlong { display: none; }
@@ -1657,8 +1706,10 @@ a { color: var(--acc-d); }
    is ~150px wide apiece on a phone and prints every label twice; on the narrow layout this
    replaces them with one row per figure — A's value, the label once, B's value — so the two
    numbers sit across a centre line. The wide layout keeps the columns, where the ring runs
-   between them. Hidden until the media query at the foot of this block turns it on. */
-.pbcmp { display: none; }
+   between them. Both hidden until the media query at the foot of this block turns them on.
+   .pbtops carries the style and handedness lines, which sit above the ring there; .pbcmp
+   carries the figure rows, below it. */
+.pbcmp, .pbtops { display: none; }
 
 /* --- the tour strip (figBand) ------------------------------------------------------------
    Where a figure sits on its own tour. Bits and strokes are units nobody arrives knowing, and
@@ -1684,13 +1735,14 @@ a { color: var(--acc-d); }
 .pbband.hi::after { margin-left: -3px; border-left: 6px solid var(--ink); }
 .pbband.lo::after { margin-left: -3px; border-right: 6px solid var(--ink); }
 .pbside[data-side="b"] .pbband { margin-left: auto; }
-.pbcmp-row .pbband { width: 54px; margin-top: 3px; }
+.pbcmp-row .pbband { width: 54px; margin-top: 2px; }
 .pbcmp-row .a .pbband { margin-right: auto; }
 .pbcmp-row .b .pbband { margin-left: auto; }
 
 /* The player-colour key, same split rule the scoreboard and each .pbside carry, with a gap
-   cut at the centre so it doesn't read as one bar. */
-.pbcmp::before { content: ""; display: block; height: 4px; margin-bottom: 11px;
+   cut at the centre so it doesn't read as one bar. It caps .pbtops now — the first profile
+   element on the phone — so the style and handedness lines below it read left/right. */
+.pbtops::before { content: ""; display: block; height: 4px; margin-bottom: 11px;
   background: linear-gradient(to right, var(--a) 0 calc(50% - 8px),
     transparent calc(50% - 8px) calc(50% + 8px), var(--b) calc(50% + 8px) 100%); }
 .pbcmp-head { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px;
@@ -1699,10 +1751,13 @@ a { color: var(--acc-d); }
 .pbcmp-head.arch span { font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--ink); }
 .pbcmp-head.hand { margin-top: 2px; }
 .pbcmp-head.hand span { font-size: 11px; color: var(--muted); }
-.pbcmp-head.hand + .pbcmp-row, .pbcmp-head.arch + .pbcmp-row { margin-top: 15px; }
+/* .pbcmp's first row leads the block now that the heads live in .pbtops above the ring. */
+.pbcmp > .pbcmp-row:first-child { margin-top: 0; }
+/* Tight rows: this list runs seven deep on a phone, and a figure with a one-word label and a
+   short tour strip does not need the air a two-line block would. */
 .pbcmp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  column-gap: 12px; align-items: baseline; margin-top: 10px; }
-.pbcmp-row b { font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap;
+  column-gap: 12px; align-items: baseline; margin-top: 6px; }
+.pbcmp-row b { font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap;
   font-variant-numeric: tabular-nums; }
 /* The losing side of a figure that has a better end — the winner stays in ink, this drops to
    regular weight and the muted grey, matching the ring's lead/trail split. */
@@ -1715,12 +1770,16 @@ a { color: var(--acc-d); }
 .pbcmp-row .pbcl { text-align: center; font-size: 9.5px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 @media (max-width: 760px) {
-  /* The columns go; the comparison and the ring take a row each. No subgrid to keep here —
-     the phone layout already puts both players' figures on one row apiece. */
-  .tapemain { grid-template-rows: auto auto; }
+  /* The columns go; style + handedness, then the ring, then the figure rows take a row each.
+     No subgrid to keep here — the phone layout already puts both players' figures on one row
+     apiece. Style leads because it is what the pairing is about; the ring sits under it as
+     the headline number; the figures follow as its footnotes. The child combinator is what
+     beats the unconditional `grid-row: -2 / -1` further down the sheet. */
+  .tapemain { grid-template-rows: auto auto auto; }
   .tapemain > .pbside { display: none; }
-  .pbcmp { display: block; grid-column: 1 / -1; grid-row: 1; }
-  .dnstack { grid-row: 2; }
+  .tapemain > .pbtops { display: block; grid-column: 1 / -1; grid-row: 1; }
+  .tapemain > .dnstack { grid-row: 2; margin-top: 8px; }
+  .tapemain > .pbcmp { display: block; grid-column: 1 / -1; grid-row: 3; margin-top: 18px; }
 }
 /* The ring, centred in its row. It is a fixed-size drawing with a fixed reserve either side
    for the figures that hang off it (see .dn), so it reads centred at any track width
@@ -1907,6 +1966,9 @@ a { color: var(--acc-d); }
    one. Browsers without subgrid drop the rule and get two independent stacks. */
 .seccols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 0;
   grid-template-rows: repeat(var(--rows, 1), auto); }
+/* When the full-width drawing leads the section (the serve outcomes plot), the columns come
+   after it and take the rule that separates the two. */
+.msec.fullfirst .seccols { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
 /* The player's colour caps the column instead of running down its left edge. A left rule
    put two thin verticals in the middle of the panel, competing with the gutter between
    the columns; a rule across the top states the ownership once, at the point the eye
@@ -2205,6 +2267,13 @@ a { color: var(--acc-d); }
   .mp .mseed { display: none; }
   .mflag { font-size: 14px; }
   .sg { font-size: 14px; min-width: 13px; }
+  /* The winner's caret stops overhanging into the name-to-score gap. That gap closes to
+     4-10px on a phone (--mgap tokens above), and a 12px overhang put the gold glyph on top
+     of the first game. It takes its own ~10px in the row instead — fitHeader measures the
+     result — and comes down a size, a phone header having no room for a mark meant to be
+     found from across the band. */
+  .mwin { font-size: 12px; }
+  .mp.a .mwin, .mp.b .mwin { margin: 0 -2px; }
 }
 @keyframes sheet { from { opacity: 0; transform: translateY(28px); } }
 
@@ -2221,7 +2290,7 @@ a { color: var(--acc-d); }
      to be the variable and not a literal in the padding shorthand. --band-t has to be that
      number to the pixel: a 13 here against a 14 there puts the corner row over the panel's
      top edge, where it is clipped. */
-  .matchup { --pad-l: 14px; --pad-r: 34px; --band-t: 13px; --band-b: 12px; }
+  .matchup { --pad-l: 12px; --pad-r: 22px; --band-t: 13px; --band-b: 12px; }
   .mbody { --pad-t: 12px; padding-bottom: 20px; }
   .tape { padding: 11px 12px 12px; }
   /* The court sections stay two-up. Stacking them puts a player's three drawings a
