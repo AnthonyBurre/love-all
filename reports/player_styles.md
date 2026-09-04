@@ -4,59 +4,59 @@
 
 *Long, evolving careers are split into early/late **era entities** via the `player_eras` layer, so each era clusters on its own — see “Career-era splits” below.*
 
-## Men — 242 entities, 4 archetypes (silhouette 0.13)
+## Men — 240 entities, 4 archetypes (silhouette 0.14)
 
 ![pca](figures/styles_pca_men.png)
 
-### 0. Slice & variety — 26 players
-- **Defining:** ↑return_slice  ↑slice_pct  ↑ace_rate
-- **Exemplars:** Grigor Dimitrov, Tim Van Rijthoven, Robin Haase, Daniel Altmaier, Tommy Haas, Roger Federer (2010–2021)
-
-### 1. Baseline grinder / counterpuncher — 83 players
+### 0. Baseline grinder / counterpuncher — 81 players
 - **Defining:** ↑avg_rally_len  ↓ace_rate  ↓serve_t
-- **Exemplars:** Novak Djokovic (2005–2016), Roberto Bautista Agut, Tommy Paul, Alejandro Tabilo, Pablo Carreno Busta, Carlos Alcaraz
+- **Exemplars:** Novak Djokovic (2005–2016), Roberto Bautista Agut, Tommy Paul, Alejandro Tabilo, Pablo Carreno Busta, Jannik Sinner
 
-### 2. Big-serving baseliner — 104 players
+### 1. Slice & variety — 25 players
+- **Defining:** ↑return_slice  ↑slice_pct  ↑ace_rate
+- **Exemplars:** Grigor Dimitrov, Tim Van Rijthoven, Daniel Altmaier, Robin Haase, Tommy Haas, Roger Federer (2010–2021)
+
+### 2. Net-rusher / serve-volleyer — 30 players
+- **Defining:** ↑net_pct  ↓fh_share  ↓avg_rally_len
+- **Exemplars:** Boris Becker (1991–1999), Michael Stich, Mark Philippoussis, Richard Krajicek (1992–1996), Boris Becker (1985–1990), John Mcenroe (1978–1985)
+
+### 3. Big-serving baseliner — 104 players
 - **Defining:** ↑unforced_rate  ↓return_slice  ↑serve_t
 - **Exemplars:** Karen Khachanov (2015–2022), Lucas Pouille, Tomas Berdych (2005–2013), Stefanos Tsitsipas (2023–2026), Zizou Bergs, Alexei Popyrin
 
-### 3. Net-rusher / serve-volleyer — 29 players
-- **Defining:** ↑net_pct  ↓fh_share  ↓avg_rally_len
-- **Exemplars:** Boris Becker (1991–1999), Michael Stich, Boris Becker (1985–1990), Mark Philippoussis, John Mcenroe (1978–1985), Richard Krajicek (1992–1996)
-
 ![heatmap](figures/styles_heatmap_men.png)
 
-## Women — 152 entities, 4 archetypes (silhouette 0.11)
+## Women — 151 entities, 4 archetypes (silhouette 0.11)
 
 ![pca](figures/styles_pca_women.png)
 
-### 0. Baseline grinder / counterpuncher — 33 players
-- **Defining:** ↑avg_rally_len  ↓serve_t  ↓ace_rate
-- **Exemplars:** Anhelina Kalinina, Marie Bouzkova, Jelena Jankovic, Sloane Stephens, Flavia Pennetta, Mirra Andreeva
-
-### 1. Slice & net specialist — 7 players
+### 0. Slice & net specialist — 5 players
 - **Defining:** ↑return_slice  ↑slice_pct  ↑net_pct
-- **Exemplars:** Amelie Mauresmo, Monica Niculescu, Ashleigh Barty, Taylor Townsend, Steffi Graf, Tatjana Maria
+- **Exemplars:** Monica Niculescu, Amelie Mauresmo, Steffi Graf, Tatjana Maria, Martina Navratilova
 
-### 2. Big serve / first-strike — 36 players
-- **Defining:** ↑ace_rate  ↓avg_rally_len  ↑gs_winner_rate
-- **Exemplars:** Linda Noskova, Barbora Krejcikova, Anett Kontaveit, Ekaterina Alexandrova, Elena Rybakina, Sabine Lisicki
+### 1. Big serve / first-strike — 39 players
+- **Defining:** ↑ace_rate  ↓avg_rally_len  ↑serve_t
+- **Exemplars:** Linda Noskova, Barbora Krejcikova, Clara Tauson, Elena Rybakina, Veronika Kudermetova, Coco Vandeweghe
 
-### 3. Baseline all-rounder — 76 players
-- **Defining:** ↑fh_share  ↓serve_wide  ↓ace_rate
-- **Exemplars:** Maria Sakkari, Eugenie Bouchard (2017–2023), Leylah Fernandez, Andrea Petkovic, Bianca Andreescu (2017–2022), Elise Mertens
+### 2. Baseline grinder / counterpuncher — 51 players
+- **Defining:** ↑avg_rally_len  ↓df_rate  ↓ace_rate
+- **Exemplars:** Anhelina Kalinina, Jelena Jankovic, Marie Bouzkova, Emma Raducanu, Sloane Stephens, Flavia Pennetta
+
+### 3. Baseline all-rounder — 56 players
+- **Defining:** ↑fh_share  ↑df_rate  ↓serve_wide
+- **Exemplars:** Eugenie Bouchard, Andrea Petkovic, Leylah Fernandez, Maria Sakkari, Bianca Andreescu (2017–2022), Elise Mertens
 
 ![heatmap](figures/styles_heatmap_women.png)
 
 ## Career-era splits (via the `player_eras` layer)
 
-35 evolving careers were split into early/late entities and fingerprinted independently. Where the eras land in **different** archetypes, the split captured a real style shift:
+32 evolving careers were split into early/late entities and fingerprinted independently. Where the eras land in **different** archetypes, the split captured a real style shift:
 
 **Diverged into different archetypes (5):**
 - **Ivan Lendl** (M) — 1979–1987: Baseline grinder / counterpuncher → 1988–1994: Slice & variety
 - **Karen Khachanov** (M) — 2015–2022: Big-serving baseliner → 2023–2026: Baseline grinder / counterpuncher
 - **Michael Chang** (M) — 1989–1994: Baseline grinder / counterpuncher → 1995–1998: Big-serving baseliner
 - **Daria Kasatkina** (W) — 2015–2022: Baseline grinder / counterpuncher → 2023–2026: Baseline all-rounder
-- **Magda Linette** (W) — 2016–2024: Baseline grinder / counterpuncher → 2025–2026: Baseline all-rounder
+- **Jessica Pegula** (W) — 2015–2024: Baseline all-rounder → 2025–2026: Baseline grinder / counterpuncher
 
-**Stayed in one archetype (30):** Alexander Bublik (M), Alexander Zverev (M), Andre Agassi (M), Andrey Rublev (M), Andy Murray (M), Benoit Paire (M), Boris Becker (M), David Ferrer (M), Feliciano Lopez (M), Goran Ivanisevic (M), Jannik Sinner (M), Jimmy Connors (M), John Mcenroe (M), Juan Martin Del Potro (M), Lleyton Hewitt (M), Novak Djokovic (M), Pete Sampras (M), Rafael Nadal (M), Richard Krajicek (M), Roger Federer (M), Stefan Edberg (M), Stefanos Tsitsipas (M), Tim Henman (M), Tomas Berdych (M), Bianca Andreescu (W), Eugenie Bouchard (W), Jessica Pegula (W), Karolina Pliskova (W), Venus Williams (W), Victoria Azarenka (W)
+**Stayed in one archetype (27):** Alexander Bublik (M), Alexander Zverev (M), Andre Agassi (M), Andrey Rublev (M), Andy Murray (M), Benoit Paire (M), Boris Becker (M), David Ferrer (M), Feliciano Lopez (M), Goran Ivanisevic (M), Jimmy Connors (M), John Mcenroe (M), Juan Martin Del Potro (M), Novak Djokovic (M), Pete Sampras (M), Rafael Nadal (M), Richard Krajicek (M), Roger Federer (M), Stefan Edberg (M), Stefanos Tsitsipas (M), Tim Henman (M), Tomas Berdych (M), Bianca Andreescu (W), Karolina Pliskova (W), Magda Linette (W), Venus Williams (W), Victoria Azarenka (W)

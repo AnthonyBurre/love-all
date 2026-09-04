@@ -31,7 +31,12 @@ from collections import Counter, defaultdict
 import duckdb
 
 from match_charting_project.paths import DB_PATH, PROJECT_ROOT
-from match_charting_project.shots.notation import parse_point, serve_dir
+from match_charting_project.shots.notation import (
+    blank_mix,
+    fold_shot_mix,
+    parse_point,
+    serve_dir,
+)
 from match_charting_project.shots.score import serve_side
 from match_charting_project.winprob_match import (
     blend,
@@ -43,6 +48,23 @@ from match_charting_project.winprob_match import (
 OUT_DIR = PROJECT_ROOT / "data" / "match_details"
 SIDES = ("deuce", "ad")
 DIRS = ("4", "5", "6")          # wide / body / T, in the order the panel draws them
+
+# The game scores at which the returner is one point from the break, in the server-first
+# notation the ``pts`` column is written in. Same reading as the score-aware eval's
+# ``_BREAK`` (``experiments/score_aware_eval/model.py``); keep the two in step.
+#
+# A point is a break point every time it is played at one of these scores, so a deuce game
+# that reaches advantage-returner three times supplies three of them. That is the
+# convention every scoreboard quotes, and it is the one the source's own ``bk_pts`` column
+# uses: derived this way the two agree on 3,081 of the 3,098 player-matches in the charted
+# corpus (99.4%), and on ``bp_saved`` for 3,087 of them. The seventeen that disagree are
+# all cases where a game supplied a second break point that the source did not count; the
+# rule here is applied identically to every match rather than inherited match by match,
+# which is what makes the number comparable between the two players of a panel.
+#
+# Tiebreaks are excluded for free: their scores are integer counts, so none of them can
+# match a game token, and a set is not broken inside one anyway.
+_BREAK = frozenset({"0-40", "15-40", "30-40", "40-AD"})
 
 _POINTS_SQL = (
     "SELECT p.match_id, p.pt, p.svr, p.set1, p.set2, p.gm1, p.gm2, p.pts, "
@@ -56,10 +78,24 @@ _POINTS_SQL = (
 def _blank_side() -> dict:
     return {
         "serve_pts": 0, "serve_won": 0, "aces": 0, "dfs": 0,
+        # The aces again, split by which delivery struck them. They ride beside the tallies
+        # of the column each one is drawn inside on the serve plot — first_in and second_pts
+        # — because that is the denominator each share is taken over.
+        "aces_first": 0, "aces_second": 0,
         "first_in": 0, "first_won": 0, "second_pts": 0, "second_won": 0,
         "ret_pts": 0, "ret_won": 0, "ret_winners": 0,
         "sv_games": 0, "held": 0,
+        # Break points from the server's end: how many were played against them, and how
+        # many of those they won. The other player's chances are the same two numbers read
+        # from the other side, so the panel derives "converted 2 of 6" from the opponent's
+        # row rather than carrying a second pair that could disagree with it.
+        "bp_faced": 0, "bp_saved": 0,
         "pts_won": 0, "_len_won": 0,
+        # The shot mix, over every stroke the player hit that was not a serve — the return
+        # among them. The same tallies the career aggregate keeps off the same shared walk
+        # (notation.fold_shot_mix), because the panel prints one under the other: the
+        # match's rate, and the player's career rate as the anchor beneath it.
+        **blank_mix(),
         # First-delivery placement per court, counted wide/body/T. The first delivery
         # whether or not it landed, which is the convention the career mix uses
         # (serve_tendencies reads serve_dir off the raw first_serve column), so the two
@@ -79,6 +115,11 @@ def _fold_point(sides: dict, row: tuple, games: dict) -> None:
     # server and the winner per game key and reading it after the walk gives holds
     # without a second pass or a game-boundary detector.
     games[(s1, s2, g1, g2)] = (svr, win)
+
+    if pts in _BREAK:
+        srv_side["bp_faced"] += 1
+        if win == svr:
+            srv_side["bp_saved"] += 1
 
     srv_side["serve_pts"] += 1
     ret_side["ret_pts"] += 1
@@ -113,6 +154,7 @@ def _fold_point(sides: dict, row: tuple, games: dict) -> None:
     sides[win]["_len_won"] += p.rally_len
     if p.outcome == "ace":
         srv_side["aces"] += 1
+        srv_side["aces_second" if second else "aces_first"] += 1
     elif p.outcome == "double_fault":
         srv_side["dfs"] += 1
     elif p.outcome == "winner":
@@ -120,6 +162,8 @@ def _fold_point(sides: dict, row: tuple, games: dict) -> None:
         # Same rule as the career figure (build_insights._RETURN_WINNER_SQL).
         if p.rally_len == 2 and p.last_hitter == ret:
             ret_side["ret_winners"] += 1
+
+    fold_shot_mix(p, lambda hitter: sides[hitter])
 
 
 def _finish_side(s: dict) -> dict:

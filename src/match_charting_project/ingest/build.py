@@ -83,6 +83,10 @@ def build_matches() -> "tuple[pd.DataFrame, dict]":
     # Before anything is coerced: a shifted row has a date where the tournament should
     # be, so parsing first would turn a recoverable row into a null and hide the cause.
     matches, fixes = validate.repair_matches(matches)
+    # Before the derived columns, so nothing downstream is computed over a row that is
+    # about to leave: a tier for a 12-and-under event is a tier nobody should read.
+    matches, scope = validate.drop_out_of_scope(matches)
+    fixes.update(scope)
     matches["date"] = pd.to_datetime(matches["date"], format="%Y%m%d", errors="coerce")
     matches["year"] = matches["date"].dt.year.astype("Int64")
     if "best_of" in matches:
@@ -95,7 +99,7 @@ def build_matches() -> "tuple[pd.DataFrame, dict]":
     return matches, fixes
 
 
-def build_points() -> "tuple[pd.DataFrame, dict]":
+def build_points(exclude_ids: "set[str] | None" = None) -> "tuple[pd.DataFrame, dict]":
     frames = []
     for gender in GENDERS:
         for decade in POINT_DECADES:
@@ -115,11 +119,18 @@ def build_points() -> "tuple[pd.DataFrame, dict]":
     # After the numeric coercion, since finding where one chart ends and the next
     # begins means comparing point numbers, not the strings they arrived as.
     points, fixes = validate.dedupe_points(points)
+    # The points files are keyed by match_id alone and know nothing about which events
+    # are in scope, so a match dropped from `matches` would otherwise leave its points
+    # behind — invisible to anything that joins, and counted by anything that doesn't.
+    if exclude_ids:
+        drop = points["match_id"].isin(exclude_ids)
+        fixes["out_of_scope_points"] = int(drop.sum())
+        points = points.loc[~drop].reset_index(drop=True)
     points.to_parquet(PROCESSED_DIR / "points.parquet", index=False)
     return points, fixes
 
 
-def build_stats(which: str = "core") -> list[str]:
+def build_stats(which: str = "core", exclude_ids: "set[str] | None" = None) -> list[str]:
     names = STATS_DATASETS if which == "all" else CORE_STATS
     written = []
     for name in names:
@@ -134,6 +145,9 @@ def build_stats(which: str = "core") -> list[str]:
         if not frames:
             continue
         stats = pd.concat(frames, ignore_index=True)
+        # Keyed by match_id like the points files, and equally blind to scope.
+        if exclude_ids and "match_id" in stats:
+            stats = stats.loc[~stats["match_id"].isin(exclude_ids)].reset_index(drop=True)
         stats.to_parquet(PROCESSED_DIR / f"stats_{_slug(name)}.parquet", index=False)
         written.append(name)
     return written
@@ -170,9 +184,12 @@ def build_frames(stats_which: str = "core") -> tuple[pd.DataFrame, pd.DataFrame]
     ensure_dirs()
     matches, fix_m = build_matches()
     print(f"  matches : {len(matches):>9,} rows -> matches.parquet")
-    points, fix_p = build_points()
+    excluded = {r["match_id"] for r in fix_m.get("out_of_scope", [])}
+    points, fix_p = build_points(excluded)
+    # The count belongs to the match-side report, which is where the exclusion is named.
+    fix_m["out_of_scope_points"] = fix_p.pop("out_of_scope_points", 0)
     print(f"  points  : {len(points):>9,} rows -> points.parquet")
-    stats = build_stats(stats_which)
+    stats = build_stats(stats_which, excluded)
     print(f"  stats   : {', '.join(stats) if stats else 'none'}")
 
     m_rep = validate.matches_report(matches)
@@ -191,6 +208,11 @@ def build_frames(stats_which: str = "core") -> tuple[pd.DataFrame, pd.DataFrame]
         f"{fix_p['double_charted']} double-charted matches "
         f"(-{fix_p.get('dropped_rows', 0):,} point rows)"
     )
+    if fix_m.get("out_of_scope"):
+        print(
+            f"  scope   : {len(fix_m['out_of_scope'])} non-professional match(es) "
+            f"dropped (-{fix_m.get('out_of_scope_points', 0):,} point rows)"
+        )
     print(
         f"  quality : {m_rep['invalid_surface']} bad surfaces, "
         f"{p_rep['duplicate_match_pt']} dup points -> reports/data_quality.md"

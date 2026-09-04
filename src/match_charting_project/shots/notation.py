@@ -316,6 +316,82 @@ def iter_parsed_points(con, where: str = "", sample: "int | None" = None):
         yield parse_point(fs, ss, svr, win)
 
 
+# The shot mix, as the eleven tallies both builds keep: what a player hit, and what each wing
+# and the net did with it. Shared for the same reason ``aggressive_shot`` is — the per-match
+# sidecar (``site.build_match_details``) and the career aggregate (``site.build_insights``)
+# print one under the other on the same panel, as a match figure and the career anchor beneath
+# it, and two copies of "which letters are a groundstroke" would eventually disagree about a
+# drop volley and put the disagreement on screen as a career trend.
+#
+# ``net_shots`` is the stroke played at the net — volley, overhead, half-volley, swinging
+# volley — and not the wider net-forwardness the style fingerprint measures, which also counts
+# an approach struck from the baseline. Both are defensible; only one can wear the words "net
+# shot" on a page whose notation key defines them.
+#
+# Errors are the unforced ones. A forced error is charged to the player who forced it
+# everywhere else on this panel, and a wing that gets picked on should not wear it here.
+#
+# The wings and the stroke types cross-cut rather than partition: a backhand slice is counted
+# in ``bh_gs`` and in ``slice_shots``. They are two readings of the same strokes — which hand,
+# and what kind of ball — and each is a share of its own denominator, so nothing is double
+# counted inside a rate. The slice is tallied as a count only, no outcomes: neither of its
+# rates survived the reliability test that ships a figure here (build_insights._shot_mix),
+# and what its misses cost is the wings' story, told above by the hand that played them.
+MIX_FIELDS = ("rally_shots", "slice_shots",
+              "net_shots", "net_winners", "net_errs",
+              "fh_gs", "bh_gs", "fh_winners", "fh_errs", "bh_winners", "bh_errs")
+
+
+def blank_mix() -> dict:
+    return dict.fromkeys(MIX_FIELDS, 0)
+
+
+def fold_shot_mix(point: ParsedPoint, acc_of) -> None:
+    """Add one decoded point's strokes to each hitter's mix tallies.
+
+    ``acc_of(hitter)`` hands back the counter dict for that player — a side of a match for
+    the sidecar, a career row for the insights build — so the walk is shared and only the
+    bookkeeping around it differs.
+
+    Counted per stroke, which is the denominator the rest of the panel reads shot-making on:
+    a forehand winner happened on one forehand, and dividing it by points played would mix in
+    how long the rallies ran. The serve is skipped: it is neither wing, and it has a plot of
+    its own.
+    """
+    for s in point.shots:
+        if s.is_serve:
+            continue
+        acc = acc_of(s.hitter)
+        acc["rally_shots"] += 1
+        kind = stroke_kind(s.letter, False)
+        if kind == "slice":
+            acc["slice_shots"] += 1
+        if kind == "net":
+            acc["net_shots"] += 1
+            # Both ends of the net shot, where the wings below get the same pair. Counting
+            # only the errors would say what coming forward costs and never what it earns,
+            # which is the wrong half to keep: about 40% of net shots are outright winners
+            # against 6% of forehands, and the two rates are all but uncorrelated, so the
+            # payoff is not recoverable from the cost.
+            if s.terminal == "*":
+                acc["net_winners"] += 1
+            elif s.terminal == "@":
+                acc["net_errs"] += 1
+        elif kind in ("drive", "slice"):
+            # A drive or a slice off a known wing. Every drive and slice letter sits in one
+            # wing list or the other, so the miss is unreachable in practice; written as a
+            # lookup rather than "FH, otherwise BH" so a stroke the decoder cannot place
+            # stays out of both denominators instead of being filed as a backhand.
+            wing = {"FH": "fh", "BH": "bh"}.get(s.side)
+            if wing is None:
+                continue
+            acc[f"{wing}_gs"] += 1
+            if s.terminal == "*":
+                acc[f"{wing}_winners"] += 1
+            elif s.terminal == "@":
+                acc[f"{wing}_errs"] += 1
+
+
 def aggressive_shot(shots: list, i: int, n_shots: "int | None" = None) -> "tuple[int, int, int]":
     """Read the stroke at ``i`` as (winner, own unforced error, induced forced error).
 

@@ -8,10 +8,10 @@ Assigned, then — in brackets — how many of those went on to surface a patter
 
 | tour | side + serve direction | side only | sides pooled |
 | --- | --- | --- | --- |
-| Men | 90 (88) | 57 (52) | 829 (100) |
+| Men | 90 (88) | 57 (52) | 828 (100) |
 | Women | 53 (50) | 61 (54) | 614 (70) |
 
-- **Men**: 1,281,836 points → 1,266,981 parsed → 835,191 reached a third shot → 733,587 usable serve+1 observations (both directions and the return's depth charted, and a known hand for the server).
+- **Men**: 1,281,713 points → 1,266,869 parsed → 835,098 reached a third shot → 733,494 usable serve+1 observations (both directions and the return's depth charted, and a known hand for the server).
 - **Women**: 568,325 points → 565,232 parsed → 396,427 reached a third shot → 383,217 usable serve+1 observations (both directions and the return's depth charted, and a known hand for the server).
 
 The finest tier needs the serve's direction, which the coarser two do not, and that turned out to cost almost nothing: Men 87, Women 120 observations carry no charted serve direction, well under a tenth of a percent on either tour. Requiring the return's *depth* has already selected points from charters working at full detail, and those charters record the serve.
@@ -30,7 +30,7 @@ A *court disagreement* is a situation both service courts fund on their own, whe
 **Roger Federer** — tier: side + serve direction
 
 - deuce court, wide serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.51x vs 16% of the field, n=453/1880, halves 1.48/1.57, wins 62% vs 60% on this ball overall, tour 60%)
-- deuce court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.5x vs 21% of the field, n=393/1222, halves 1.45/1.59, wins 56% vs 55% on this ball overall, tour 56%)
+- deuce court, body serve · mid-depth drive return into the middle → **crosscourt FH drive** (1.5x vs 21% of the field, n=393/1222, halves 1.44/1.59, wins 56% vs 55% on this ball overall, tour 56%)
   - *courts disagree*: deep drive return into the middle → inside-out FH drive on the deuce side (n=2154), crosscourt FH drive on the ad side (n=1426)
   - *courts disagree*: short drive return into the middle → inside-out FH drive on the deuce side (n=1963), crosscourt FH drive on the ad side (n=1509)
 
@@ -50,7 +50,7 @@ A *court disagreement* is a situation both service courts fund on their own, whe
 
 **Pete Sampras** — tier: side + serve direction
 
-- deuce court, wide serve · mid-depth drive return into the middle → **BH net shot to the BH corner** (11.25x vs 3% of the field, n=162/513, halves 10.24/13.23, wins 71% vs 61% on this ball overall, tour 73%)
+- deuce court, wide serve · mid-depth drive return into the middle → **BH net shot to the BH corner** (11.24x vs 3% of the field, n=162/513, halves 10.24/13.23, wins 71% vs 61% on this ball overall, tour 73%)
 - deuce court, wide serve · mid-depth drive return into the BH corner → **BH net shot to the BH corner** (8.32x vs 6% of the field, n=133/260, halves 8.31/10.13, wins 58% vs 48% on this ball overall, tour 64%)
   - *courts disagree*: mid-depth drive return into the middle → BH net shot to the BH corner on the deuce side (n=1081), BH net shot to the FH corner on the ad side (n=938)
   - *courts disagree*: short drive return into the middle → BH net shot to the BH corner on the deuce side (n=737), FH net shot to the FH corner on the ad side (n=826)
@@ -64,7 +64,7 @@ A *court disagreement* is a situation both service courts fund on their own, whe
 
 **Stefan Edberg** — tier: side + serve direction
 
-- deuce court, body serve · mid-depth drive return into the middle → **BH net shot to the BH corner** (32.43x vs 1% of the field, n=216/462, halves 36.56/32.13, wins 72% vs 65% on this ball overall, tour 55%)
+- deuce court, body serve · mid-depth drive return into the middle → **BH net shot to the BH corner** (32.42x vs 1% of the field, n=216/462, halves 36.55/32.12, wins 72% vs 65% on this ball overall, tour 55%)
 - deuce court, T serve · mid-depth drive return into the middle → **BH net shot to the BH corner** (30.33x vs 1% of the field, n=192/451, halves 31.66/32.87, wins 68% vs 60% on this ball overall, tour 56%)
   - *courts disagree*: mid-depth drive return into the middle → BH net shot to the BH corner on the deuce side (n=1370), FH net shot to the FH corner on the ad side (n=1087)
   - *courts disagree*: short drive return into the middle → BH net shot to the BH corner on the deuce side (n=1163), FH net shot to the FH corner on the ad side (n=941)

@@ -11,7 +11,13 @@ from collections import defaultdict
 import pytest
 
 from match_charting_project.paths import DB_PATH
-from match_charting_project.shots.notation import aggressive_shot, parse_point, stroke_kind
+from match_charting_project.shots.notation import (
+    aggressive_shot,
+    blank_mix,
+    fold_shot_mix,
+    parse_point,
+    stroke_kind,
+)
 
 # (first_serve, second_serve, server, pt_winner,
 #  outcome, server_won, rally_len, ending_side)
@@ -197,3 +203,81 @@ def test_every_letter_lands_in_the_group_its_stroke_belongs_to():
     assert {stroke_kind(c, False) for c in "rs"} == {"slice"}
     assert {stroke_kind(c, False) for c in "tq"} == {"other"}
     assert stroke_kind("", True) == "serve"
+
+
+# --- the shot mix ------------------------------------------------------------------------
+# One walk, two builds. The per-match sidecar and the career aggregate print one under the
+# other on the panel — a match rate with the career rate beneath it as its anchor — so a
+# second copy of "which letters are a groundstroke" would eventually put a disagreement on
+# screen as a career trend. These pin the rules the shared walk applies.
+def _mix(*points):
+    """Fold a few points and hand back both players' tallies."""
+    acc = {1: blank_mix(), 2: blank_mix()}
+    for fs, svr, win in points:
+        p = parse_point(fs, None, svr, win)
+        assert p.parse_ok, fs
+        fold_shot_mix(p, lambda h: acc[h])
+    return acc
+
+
+def test_the_serve_is_on_neither_wing():
+    """Skipped outright: it is not a forehand or a backhand, and counting it would put
+    every server's mix denominator a third above every returner's."""
+    a = _mix(("4f3b1@", 1, 2))
+    assert a[1]["rally_shots"] == 1 and a[2]["rally_shots"] == 1
+
+
+def test_a_slice_is_a_groundstroke_and_a_volley_is_not():
+    a = _mix(("4r3z1*", 1, 1))
+    assert (a[2]["slice_shots"], a[2]["fh_gs"]) == (1, 1)
+    assert (a[1]["net_shots"], a[1]["bh_gs"], a[1]["bh_winners"]) == (1, 0, 0)
+    # The put-away is the net game's, and it is counted — the net carries both ends, so the
+    # panel can say what coming forward earns as well as what it costs.
+    assert a[1]["net_winners"] == 1
+
+
+def test_the_net_carries_a_winner_and_an_error():
+    a = _mix(("4b3v2*", 1, 1), ("4b3v2@", 1, 2), ("4b3v2#", 1, 2))
+    # Three volleys: one winner, one unforced miss, and one the passing shot forced — which
+    # is charged to whoever forced it, so it lands in neither.
+    assert a[1]["net_shots"] == 3
+    assert (a[1]["net_winners"], a[1]["net_errs"]) == (1, 1)
+
+
+def test_only_unforced_errors_count_against_the_stroke():
+    """A forced error is charged to the player who forced it, so the wing that was picked
+    on does not wear it."""
+    forced = _mix(("4f3b1#", 1, 2))
+    unforced = _mix(("4f3b1@", 1, 2))
+    assert forced[1]["bh_gs"] == 1 and forced[1]["bh_errs"] == 0
+    assert unforced[1]["bh_errs"] == 1
+
+
+def test_a_net_shot_is_the_stroke_not_the_approach():
+    """The panel's notation key calls a volley, overhead, half-volley or swinging volley a
+    net shot. An approach struck from the baseline is a groundstroke that happens to be
+    marked as one, and it stays in the wing it was hit off."""
+    a = _mix(("4b3f1+f3v2*", 1, 1))
+    # The server's strokes: an approach forehand (f1+), then a volley winner.
+    assert a[1]["net_shots"] == 1
+    assert a[1]["fh_gs"] == 1 and a[1]["fh_winners"] == 0
+
+
+def test_the_two_builds_fold_the_same_point_the_same_way():
+    """The sidecar's side tallies and the insights walk are the same eleven numbers, because
+    they are the same call — this is what lets a career figure anchor a match one."""
+    from match_charting_project.site import build_insights, build_match_details
+
+    row = ("m", 1, 1, 0, 0, 0, 0, "0-0", "4f3b1@", None, 2)
+    sides = {1: build_match_details._blank_side(), 2: build_match_details._blank_side()}
+    build_match_details._fold_point(sides, row, {})
+
+    career = {1: blank_mix(), 2: blank_mix()}
+    p = parse_point("4f3b1@", None, 1, 2)
+    fold_shot_mix(p, lambda h: career[h])
+
+    for n in (1, 2):
+        for k in career[n]:
+            assert sides[n][k] == career[n][k], (n, k)
+    # And the columns the career build derives from them are the ten the panel reads.
+    assert len(build_insights.MIX_RATES) == 10

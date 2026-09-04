@@ -21,6 +21,20 @@ import re
 import pandas as pd
 
 VALID_SURFACES = {"Hard", "Clay", "Grass", "Carpet"}
+# Events outside professional tennis, dropped from the corpus by name.
+#
+# A scope rule rather than a quality one: these rows are sound, they just describe a
+# different level of the sport, and a career rate that mixes levels is measuring two
+# things at once. Age bracket is what decides it, so "juniors" in a name is not the test.
+#
+# The Nike Junior Tour is a 12-and-under series, and its one charted match is Sinner at
+# 12. The junior slams read as juniors too and are kept: they are the ITF Junior Circuit's
+# 18-and-under events, the top of junior tennis, and this corpus reaches them through
+# Federer, Tsitsipas, De Minaur and Raducanu. The corpus itself separates the two — median
+# years from the event to the player's first charted pro match is 1.1 at Wimbledon Juniors
+# and 1.2 at the AO (Shapovalov 0.1, Andreeva 0.2, Federer 0.3), 0.2 at the NCAA finals,
+# and 5.4 at the Nike Junior Tour.
+OUT_OF_SCOPE_TOURNAMENTS = {"nike junior tour"}
 QUALIFYING_ROUNDS = {"Q1", "Q2", "Q3", "Q4"}
 # A hand cell holds one of these or nothing. Their appearing in the *player*
 # column is the signature of the shift below.
@@ -141,6 +155,22 @@ def repair_matches(matches: pd.DataFrame) -> "tuple[pd.DataFrame, dict]":
             for col in [c for c in MATCH_COLS[MATCH_COLS.index("surface"):] if c in df.columns]:
                 df.loc[bad, col] = None
     return df, rep
+
+
+def drop_out_of_scope(matches: pd.DataFrame) -> "tuple[pd.DataFrame, dict]":
+    """Drop matches played outside professional tennis, naming each one dropped.
+
+    Separate from `repair_matches` because it answers a different question. That one asks
+    whether a row is intact; this one asks whether an intact row belongs. Both report what
+    they removed, and neither removes anything it cannot name.
+    """
+    tourn = matches["tournament"].fillna("").astype(str).str.strip().str.lower()
+    out = tourn.isin(OUT_OF_SCOPE_TOURNAMENTS)
+    rep = {"out_of_scope": [
+        {"match_id": str(r.match_id), "tournament": str(r.tournament)}
+        for r in matches.loc[out].itertuples()
+    ]}
+    return matches.loc[~out].reset_index(drop=True), rep
 
 
 def dedupe_points(points: pd.DataFrame) -> "tuple[pd.DataFrame, dict]":
@@ -298,6 +328,20 @@ def render_markdown(m_rep: dict, p_rep: dict,
     lines = ["# Data quality report", ""]
     # Repairs lead, because they are the only section that names a *cause*. The counts
     # below are symptoms, and a shifted row shows up in three of them at once.
+    if fix_m and fix_m.get("out_of_scope"):
+        rows = fix_m["out_of_scope"]
+        lines.append("## Out of scope")
+        lines.append(
+            f"- **{len(rows)} match** dropped as not professional tennis "
+            f"(**{fix_m.get('out_of_scope_points', 0):,}** point rows). Not a quality "
+            f"finding: the rows are intact, they record a different level of the sport. "
+            f"The rule is the age bracket, not the word \"juniors\" — the ITF Junior "
+            f"Circuit's 18-and-under slam events are kept, and this corpus reaches them "
+            f"through Federer, Tsitsipas, De Minaur and Raducanu."
+        )
+        for row in rows:
+            lines.append(f"  - `{row['match_id']}` — {row['tournament']}")
+        lines.append("")
     if fix_m or fix_p:
         lines.append("## Ingest repairs")
         if fix_m:

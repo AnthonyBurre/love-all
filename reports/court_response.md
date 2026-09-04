@@ -8,7 +8,7 @@ Without a multiplicity correction, and reading the lift off the same data the ga
 
 | | players screened | candidates tested | directions confirmed | surfaced |
 |---|--:|--:|--:|--:|
-| Men | 1,001 | 54,170 | 7,899 | 1,444 |
+| Men | 1,000 | 54,163 | 7,902 | 1,444 |
 | Women | 729 | 30,865 | 3,799 | 999 |
 
 **What the winner's curse was worth here.** For the 795 patterns confirmed from a single direction — where the displayed lift comes from a fold with no vote in the selection — the mean discovery lift is 1.85x and the mean displayed lift is 1.40x, so **47% of the discovered edge survives out of sample**. That is close to what `rally_patterns` measured on a different screen over different features (50%), which is some evidence it is a property of this kind of search rather than of either experiment.
@@ -21,9 +21,9 @@ The correction is cheap here: it takes this table from 2,804 patterns over 805 p
 
 ## Men
 
-- 1,281,836 points → 1,266,981 parsed → 3,579,737 rally-shot pairs → 3,519,200 usable observations, 733,587 of them shot-3 responses to a depth-charted return.
+- 1,281,713 points → 1,266,869 parsed → 3,579,280 rally-shot pairs → 3,518,746 usable observations, 733,494 of them shot-3 responses to a depth-charted return.
 - 427 players clear the gates with at least one stable pattern.
-- **Split-half stability**: r = +0.75 across 26,614 player-state-response cells — the tendencies repeat in the other half of the same player's matches.
+- **Split-half stability**: r = +0.75 across 26,613 player-state-response cells — the tendencies repeat in the other half of the same player's matches.
 - **Distinctiveness**: the most-shared headline pattern (drive into the BH corner → crosscourt BH slice) tops 56 of 427 profiles (13%).
 
 **Highest-volume profiles** (lift vs the field in the same state; the discovery-fold lift in parentheses):
@@ -75,7 +75,7 @@ The correction is cheap here: it takes this table from 2,804 patterns over 805 p
 
 ## Against the current signature panel
 
-- The site's signatures: the single most-shared pair (`FH drive→3→BH drive→3`) appears on 67 of 309 player cards (22%).
+- The site's signatures: the single most-shared pair (`FH drive→3→BH drive→3`) appears on 63 of 309 player cards (20%).
 - Here, uncharted-direction artifacts are excluded by construction, handedness is normalized out of the state, and the split-half gate drops anything that does not repeat.
 
 ![stability](figures/court_response_stability.png)

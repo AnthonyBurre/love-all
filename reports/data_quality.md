@@ -1,5 +1,9 @@
 # Data quality report
 
+## Out of scope
+- **1 match** dropped as not professional tennis (**123** point rows). Not a quality finding: the rows are intact, they record a different level of the sport. The rule is the age bracket, not the word "juniors" — the ITF Junior Circuit's 18-and-under slam events are kept, and this corpus reaches them through Federer, Tsitsipas, De Minaur and Raducanu.
+  - `20131001-M-Nike_Junior_Tour-F-Jannik_Sinner-Gabriele_Felline` — Nike Junior Tour
+
 ## Ingest repairs
 - Match rows with fields shifted out of their columns: **9**
   - dropped — the same match_id also arrived intact, so nothing is lost: **8**
@@ -38,7 +42,7 @@
   - `19920606-M-Roland_Garros-SF-Jim_Courier-Andre_Agassi` — 173 rows, 1 point(s) in conflict
 
 ## Matches
-- Total: **11,638**
+- Total: **11,637**
 - Invalid surface: **0** (values: none)
 - Missing surface: **3**
 - Unparseable date: **10**
@@ -46,7 +50,7 @@
 - Missing match_id: **0**
 
 ## Points
-- Total: **1,850,161**
+- Total: **1,850,038**
 - Missing match_id: **0**
 - Missing pt_winner: **0**
 - Duplicate (match_id, pt): **0**

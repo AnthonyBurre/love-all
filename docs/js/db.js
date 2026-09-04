@@ -61,27 +61,25 @@ export async function query(sql, params = []) {
   return (await conn.query(sql)).toArray().map((r) => r.toJSON());
 }
 
-// Serve-placement gates and tour baselines, keyed by gender then by what they are
-// (n80_wide, tour_deuce_t, …). These are thresholds the serve_tendencies experiment
-// owns — how much charted data a placement share needs before it means anything, and
-// what the tour does — so the panel reads them rather than carrying its own copy that
-// would go stale the next time the experiment is rerun.
-export async function serveGates() {
-  const out = { M: {}, W: {} };
-  try {
-    const rows = await query("SELECT key, value FROM meta WHERE key LIKE 'serve_%'");
-    for (const r of rows) {
-      const m = String(r.key).match(/^serve_(.+)_([MW])$/);
-      if (m) out[m[2]][m[1]] = r.value;
-    }
-  } catch (e) { /* stale insights db: the serve section stays hidden */ }
-  return out;
-}
+// The serve_tendencies gates still ship in `meta` under serve_* keys — the n80 sample
+// thresholds and the tour's own placement mix. Nothing on the site reads them: the sample
+// gate is applied in the build as `reliable`, and the one figure the panel took from here,
+// the recency window, is now per player on player_serve rather than the tour's largest.
 
-// Where the charted tour sits on the three figures the profile band prints: rally length in
-// strokes, variety in bits, and shot selection as a σ in percentage points. None of the three
-// has a scale a reader arrives knowing, so each is printed against the band the middle half of
-// that tour occupies — which is what tells you whether 3.2 bits is ordinary or remarkable.
+// Where the charted tour sits on the figures the profile band prints: the length of the points
+// a player wins, the variety of their shot choices, and the eight rates of their shot mix.
+// None has a scale a reader arrives knowing, so each is drawn against
+// the tour it belongs to — which is what tells you whether 3.2 bits is ordinary or remarkable.
+// A percentage looks like it needs no scale and needs one most: 4.1% of strokes played at the
+// net is a tour-median baseliner and 6.9% is Federer.
+//
+// Four numbers per metric, not two. The quartiles are the band the middle half of the tour
+// occupies, and they are what the figure is read against; the 5th and 95th percentiles are the
+// axis that band is drawn on, because a strip that ran only from p25 to p75 would have no room
+// left for the half of the tour that falls outside it and every such player would pile up on an
+// end. Ends rather than the true min and max, which are single players and would spend most of
+// the strip on ground nobody else stands on; a player past either end is drawn at it and says
+// so — see figBand() in matchup.js.
 //
 // Rally length replaced the 0-100 shot-quality score here, and the band is the reason the
 // swap is not a downgrade: that score was an exponential map of conceded win probability that
@@ -105,26 +103,46 @@ export function tourSpread() {
   return _spread;
 }
 
+// The columns a strip is cut over, named once and turned into SQL below. A list rather than
+// ten hand-written quartile pairs: the query is the same four quantiles and a count per
+// column, and written out longhand a column added to the panel meant editing the SELECT, the
+// aliases and the reader in three places that could each be got wrong on their own.
+//
+// The names are this file's own literals, never anything a visitor supplies, so interpolating
+// them into the SQL is safe.
+const SPREAD_COLS = [
+  "bits", "won_rally_len", "ace_rate", "ret_winner_rate",
+  "fh_share", "fh_winner_pct", "fh_err_pct",
+  "bh_share", "bh_winner_pct", "bh_err_pct",
+  "slice_pct",
+  "net_pct", "net_winner_pct", "net_err_pct",
+];
+
 async function loadSpread() {
   const out = { M: {}, W: {} };
   try {
+    // Aliased by position, so a column name with anything awkward in it could never reach
+    // the identifier: c3_lo is read back off the same index the name came from.
+    const sel = SPREAD_COLS.map((c, i) =>
+      `count(${c}) AS c${i}_n,
+       quantile_cont(${c}, 0.25) AS c${i}_lo, quantile_cont(${c}, 0.75) AS c${i}_hi,
+       quantile_cont(${c}, 0.05) AS c${i}_min, quantile_cont(${c}, 0.95) AS c${i}_max`);
     const rows = await query(
-      `SELECT gender,
-         count(bits) AS n_bits, count(avg_rally_len) AS n_rally,
-         quantile_cont(bits, 0.25) AS b_lo, quantile_cont(bits, 0.75) AS b_hi,
-         quantile_cont(avg_rally_len, 0.25) AS r_lo,
-         quantile_cont(avg_rally_len, 0.75) AS r_hi
-       FROM player_summary GROUP BY gender`);
+      `SELECT gender, ${sel.join(", ")} FROM player_summary GROUP BY gender`);
     for (const r of rows) {
       if (!out[r.gender]) continue;
       // A band needs a population behind it to be worth quoting. Below that the metric still
       // prints — it is the player's own number — it just goes without a tour to read it against.
-      const band = (n, lo, hi) => Number(n) >= 40 && lo != null && hi != null
-        ? { lo: Number(lo), hi: Number(hi), n: Number(n) } : null;
-      out[r.gender] = {
-        bits: band(r.n_bits, r.b_lo, r.b_hi),
-        avg_rally_len: band(r.n_rally, r.r_lo, r.r_hi),
-      };
+      const band = (n, lo, hi, min, max) =>
+        Number(n) >= 40 && lo != null && hi != null && min != null && max != null
+          ? { lo: Number(lo), hi: Number(hi), min: Number(min), max: Number(max), n: Number(n) }
+          : null;
+      const g = {};
+      SPREAD_COLS.forEach((c, i) => {
+        g[c] = band(r[`c${i}_n`], r[`c${i}_lo`], r[`c${i}_hi`],
+          r[`c${i}_min`], r[`c${i}_max`]);
+      });
+      out[r.gender] = g;
     }
   } catch (e) { /* stale insights db: the figures print without their tour band */ }
   return out;
