@@ -24,12 +24,19 @@ from match_charting_project.live.players import (
     tourn_key,
 )
 from match_charting_project.paths import DB_PATH, PROJECT_ROOT
-from match_charting_project.shots.notation import blank_mix, fold_shot_mix, parse_point
+from match_charting_project.shots.notation import (
+    MIX_FIELDS,
+    blank_mix,
+    fold_shot_mix,
+    parse_point,
+)
 from match_charting_project.winprob_match import current_strength
 
 REPORTS = PROJECT_ROOT / "reports"
-# The shot-mix rate columns, in the order the panel's figure column prints them. Named once
-# so the empty-corpus fallback and any reader of this file see the same list.
+# The shot-mix rate columns, in the order the panel's figure column prints them. ``_shot_mix``
+# returns exactly these, so the name is a contract rather than a second copy of the list: a
+# rate computed and left off is dropped at that boundary, and a name here with nothing behind
+# it raises on the way out.
 MIX_RATES = ("fh_share", "fh_winner_pct", "fh_err_pct",
              "bh_share", "bh_winner_pct", "bh_err_pct",
              "slice_pct",
@@ -99,6 +106,19 @@ def _charted_matches(con) -> pd.DataFrame:
     return df[["gender", "year", "tourn_key", "p1_norm", "p2_norm", "match_id", "charted_by"]]
 
 
+# The service points an ace rate needs behind it. Nothing here is shrunk toward anything, so
+# over one short set a couple of aces reads as a 15% rate; 200 points is about two matches.
+#
+# Both ace figures answer to it — the pooled rate below and the delivery split in
+# ``_serve_aces`` — but not to the same count of points, and the difference is not cosmetic.
+# The pooled rate is totalled off ``stats_overview`` and the split off the parsed notation,
+# where about 3% of points do not decode, so a player near the floor can clear it on one and
+# not the other. One did in the current corpus: Marcelo Arevalo, 215 charted service points
+# and 174 that parse, gets the pooled rate and no split, and his serve plot draws no ace core.
+# Naming the floor once is what keeps that a known 41-point gap rather than two loose 200s.
+MIN_ACE_PTS = 200
+
+
 def _player_facts(con) -> pd.DataFrame:
     """Handedness, ace rate and the two serve-in rates per ``(gender, player)``, from the DB.
 
@@ -110,6 +130,15 @@ def _player_facts(con) -> pd.DataFrame:
     holding a date or a tie name), so anything that isn't R or L is dropped before the
     vote rather than allowed to win one — and a player charted only in those rows comes
     out null, which the panel prints as nothing.
+
+    A tie comes out null for the same reason. Charters disagree about 44 players' hands and
+    the vote settles 43 of them outright — Nadal is charted left-handed 420 times against 3
+    — but Marcelo Filippini is charted twice, once each way, and there is no majority to
+    read. Naming one of them is a coin toss reported as a fact, and it was not even a stable
+    one: with an arbitrary tiebreak he changed hands between rebuilds. Hand is not
+    decoration — the groundstroke square puts the forehand on the side the player's is, and
+    the court patterns name their zones by it — so the honest answer is to say nothing,
+    which is the answer the archetype already gives when two styles fit equally well.
 
     Ace rate is over service points across every charted match. The two serve-in rates are
     each over the serves that were actually hit: first serves over every point served,
@@ -133,9 +162,7 @@ def _player_facts(con) -> pd.DataFrame:
     be shipping the same fact twice and inviting the two copies to disagree. Recovered from
     the two rounded rates it is out by at most 0.003pp, against a figure printed to a tenth.
 
-    They need the floor because none is shrunk toward anything: over a single charted match
-    a couple of aces in a short set reads as a 15% ace rate. 200 service points is about
-    two matches.
+    They need the floor because none is shrunk toward anything — see ``MIN_ACE_PTS``.
     """
     hands = con.execute(
         "WITH seen AS ("
@@ -144,9 +171,13 @@ def _player_facts(con) -> pd.DataFrame:
         "  SELECT gender, player2, upper(trim(player2_hand)) FROM matches), "
         "voted AS ("
         "  SELECT gender, player, hand,"
-        "         row_number() OVER (PARTITION BY gender, player ORDER BY count(*) DESC) rn"
+        "         rank() OVER (PARTITION BY gender, player ORDER BY count(*) DESC) rk"
         "  FROM seen WHERE hand IN ('R', 'L') GROUP BY gender, player, hand) "
-        "SELECT gender, player, hand FROM voted WHERE rn = 1").fetchall()
+        # rank() rather than row_number(), and the HAVING is what it buys: a tie ranks both
+        # hands 1 and the player drops out with no hand at all, where row_number() picked one
+        # of them arbitrarily. A player absent here comes through the outer join below as null.
+        "SELECT gender, player, min(hand) AS hand FROM voted WHERE rk = 1 "
+        "GROUP BY gender, player HAVING count(*) = 1").fetchall()
     serves = con.execute(
         "SELECT gender, player,"
         "       sum(CAST(aces AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE)"
@@ -162,7 +193,8 @@ def _player_facts(con) -> pd.DataFrame:
         "         / CAST(NULLIF(sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)), 0)"
         "                AS DOUBLE) AS second_won_pct "
         "FROM stats_overview WHERE set = 'Total' "
-        "GROUP BY gender, player HAVING sum(CAST(serve_pts AS INT)) >= 200").fetchall()
+        f"GROUP BY gender, player HAVING sum(CAST(serve_pts AS INT)) >= {MIN_ACE_PTS}"
+    ).fetchall()
     facts = pd.DataFrame(hands, columns=["gender", "player", "hand"])
     return facts.merge(
         pd.DataFrame(serves, columns=["gender", "player", "ace_rate",
@@ -325,6 +357,14 @@ MIN_MIX_SHOTS = 800
 # -0.00), so what coming forward costs is not recoverable from what it earns, and no other
 # figure on the panel carries it. Raising the floor is the only lever on it and there is
 # nothing to raise it to: 400 leaves 159 players and 800 leaves 79.
+#
+# It also opens the net *share*, which is otherwise on MIN_MIX_SHOTS like the other two shares.
+# A player can clear this floor without clearing that one — it takes hitting better than a
+# quarter of your strokes at the net — and the share is then the one figure held back while the
+# two rates read against it print. That is the group missing the thing its other rows are
+# measured against, which is the rule the two wing shares already answer to. Chris Lewis is the
+# whole of it in this corpus: 559 rally strokes, 214 of them at the net, a 38% net share that
+# is the most distinctive thing about him and was the only one of his three figures withheld.
 MIN_STROKE_SHOTS = 200
 
 _MIX_SQL = (
@@ -337,10 +377,11 @@ _MIX_SQL = (
 def _shot_mix(con) -> pd.DataFrame:
     """Career shot mix per ``(gender, player)``: what they hit, and what each wing did.
 
-    The career reading of the eight figures the charted-match panel prints from the sidecar,
-    off the same shared stroke walk (``notation.fold_shot_mix``), so the two are one
-    measurement over two windows — the match's own rate, and this underneath it as the anchor
-    that says whether that rate was ordinary for the player.
+    The career reading of the ten figures the charted-match panel prints from the sidecar —
+    six in the groundstroke square, four in the style column — off the same shared stroke walk
+    (``notation.fold_shot_mix``), so the two are one measurement over two windows: the match's
+    own rate, and this underneath it as the anchor that says whether that rate was ordinary
+    for the player.
 
     A whole-corpus walk in Python, which sounds worse than it is: 1.85M points decode in about
     ten seconds, against the minutes the experiment CSVs feeding the rest of this file already
@@ -361,14 +402,27 @@ def _shot_mix(con) -> pd.DataFrame:
                 continue
             names = {1: (gender, p1), 2: (gender, p2)}
             fold_shot_mix(point, lambda h: acc[names[h]])
-    df = pd.DataFrame([{"gender": g, "player": p, **c} for (g, p), c in acc.items()])
-    if df.empty:
-        return pd.DataFrame(columns=["gender", "player", *MIX_RATES])
+    # Columns named even when there are no rows, so a corpus nothing parses walks the same
+    # path as a full one and comes out with every rate column present and empty. A second
+    # hand-kept list of the rate names for that case is the list that drifts from the
+    # assignments below.
+    df = pd.DataFrame([{"gender": g, "player": p, **c} for (g, p), c in acc.items()],
+                      columns=["gender", "player", *MIX_FIELDS])
     gs = df.fh_gs + df.bh_gs
 
-    def rate(num, den, floor):
-        """A share, null under the floor — a rate off too few strokes is not shipped."""
-        return (df[num] / den).where(den >= floor).round(4)
+    def rate(num, den, floor, also=None):
+        """A share, null under the floor — a rate off too few strokes is not shipped.
+
+        ``also`` is a second way in for a share whose group has cleared a floor of its own:
+        the figure still stands on ``den``, but a group that gets to print its outcome rates
+        gets to print how often it is played too.
+        """
+        keep = den >= floor if also is None else (den >= floor) | also
+        return (df[num] / den).where(keep).round(4)
+
+    # The net group's floor as a mask, because two rows read it: the outcome rates take it as
+    # their own denominator's floor, and the share takes it as `also` — see MIN_STROKE_SHOTS.
+    net_ok = df.net_shots >= MIN_STROKE_SHOTS
 
     out = pd.DataFrame({"gender": df.gender, "player": df.player})
     # Grouped the way the panel draws them: which hand, then what kind of ball. The two
@@ -398,10 +452,15 @@ def _shot_mix(con) -> pd.DataFrame:
     # at 217, but a rate bought at that price has to be telling the reader something the panel
     # does not already have, and this one is not.
     out["slice_pct"] = rate("slice_shots", df.rally_shots, MIN_MIX_SHOTS)
-    out["net_pct"] = rate("net_shots", df.rally_shots, MIN_MIX_SHOTS)
+    # The share rides the net group's own floor as well as the mix one, so it is never the row
+    # missing from a group that prints the two rates read against it. Where it comes through
+    # that way the denominator is under MIN_MIX_SHOTS — a share off 559 strokes rather than
+    # 800 — which is the looser reading, and the alternative is withholding the frequency of
+    # the one stroke the panel has just spent two rows on.
+    out["net_pct"] = rate("net_shots", df.rally_shots, MIN_MIX_SHOTS, net_ok)
     out["net_winner_pct"] = rate("net_winners", df.net_shots, MIN_STROKE_SHOTS)
     out["net_err_pct"] = rate("net_errs", df.net_shots, MIN_STROKE_SHOTS)
-    return out
+    return out[["gender", "player", *MIX_RATES]]
 
 
 def _return_winners(con) -> pd.DataFrame:
@@ -469,13 +528,8 @@ SELECT gender, player,
 FROM s GROUP BY gender, player HAVING count(*) >= {floor}
 """
 
-# The same 200 service points the pooled ace rate needs in _player_facts, for the same reason:
-# nothing here is shrunk toward anything, so over one short set a couple of aces reads as a
-# 15% rate. The split does not want a floor of its own — it is the pooled figure cut in two,
-# and a player who has earned one has earned both halves of it.
-MIN_ACE_PTS = 200
-
-
+# The split takes no floor of its own — it is the pooled figure cut in two, so it answers to
+# the same MIN_ACE_PTS defined above _player_facts, counted here over the points that parse.
 def _serve_aces(con) -> pd.DataFrame:
     """First- and second-serve ace rates per ``(gender, player)`` — see ``_SERVE_ACE_SQL``."""
     rows = con.execute(_SERVE_ACE_SQL.format(floor=MIN_ACE_PTS)).fetchall()
@@ -602,27 +656,33 @@ def build() -> int:
     mix = _shot_mix(con)
     con.close()
 
+    # `current_strength` is read for the player list this table is keyed on, and for the tour
+    # means in `meta` below — not for its two rates. Those were the rings' serve and return
+    # points won; the rings draw games now, and the serve plot answers what a service point is
+    # made of at a resolution a single rate never had. Nothing on the site has read either
+    # since, so they are not shipped: two doubles a row in a file every visitor downloads
+    # whole, and a column nothing reads is a column the next reader has to rule out by hand.
     summary = pd.DataFrame([
-        {"gender": g, "player": p, "serve_rate": round(sv, 4), "return_rate": round(rt, 4),
+        {"gender": g, "player": p,
          "matches_charted": cov.get((g, p), {}).get("matches", 0),
          "points_charted": cov.get((g, p), {}).get("points", 0),
          "year_min": cov.get((g, p), {}).get("year_min"),
          "year_max": cov.get((g, p), {}).get("year_max")}
-        for (g, p), (sv, rt) in strength.items()
+        for g, p in strength
     ])
 
     summary = summary.merge(facts, on=["player", "gender"], how="left")
-    # Hold and break rate ride beside the point rates they are the game-level reading of.
-    # Left-joined like the rest: below MIN_GAMES they come through null and the ring simply
-    # goes without its mark, the same way a thin server's arc goes without its ace wedge.
+    # Hold and break rate: what the ring draws, and the game-level reading of the serve and
+    # return the rest of the panel is made of. Left-joined like the rest: below MIN_GAMES they
+    # come through null and the ring goes without its mark.
     summary = summary.merge(games, on=["player", "gender"], how="left")
     summary = summary.merge(ret_win, on=["player", "gender"], how="left")
     # The ace rate the panel already carried, cut by which delivery struck it — the two shares
     # the serve plot deepens the foot of each column with. Left-joined like the rest.
     summary = summary.merge(serve_aces, on=["player", "gender"], how="left")
-    # The shot mix, eight rates wide. Left-joined like everything else, so a player under a
+    # The shot mix, ten rates wide. Left-joined like everything else, so a player under a
     # floor comes through null and the panel drops that row rather than printing a rate off
-    # forty forehands. Eight doubles over ~1,700 rows is a few tens of KB in a file every
+    # forty forehands. Ten doubles over ~1,700 rows is a few tens of KB in a file every
     # visitor downloads whole, which is what these are worth: they are the only figures on the
     # panel that say what a player actually hits.
     summary = summary.merge(mix, on=["player", "gender"], how="left")

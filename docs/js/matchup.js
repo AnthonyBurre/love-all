@@ -1,5 +1,5 @@
-// The matchup drawer: experimental pre-match win probability + a card per player,
-// all queried from insights.duckdb via DuckDB-WASM.
+// The matchup drawer: a card per player, and on a charted match the experimental win
+// probability through it, all queried from insights.duckdb via DuckDB-WASM.
 import { query, tourSpread } from "./db.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong } from "./schedule.js";
@@ -203,11 +203,15 @@ function matchSide(det, i) {
 }
 
 // The shot mix and what each wing did with it, off the per-stroke tallies the sidecar
-// carries (build_match_details._fold_shots).
+// carries (build_match_details._fold_point, over the shared walk in notation.fold_shot_mix).
 //
 // Two denominators, and which one a rate is on is the only thing here a reader could get
 // wrong, so the counts ride along with the rates and the figure prints the one it was divided
-// by (FIGS `den`). The mix is over every stroke that was not a serve — the return among them
+// by. Four of them, because four is what gets printed: `shots` and `net_shots` are the FIGS
+// `den` values, and the two wing counts sit under the square's own labels (gsBar). A count
+// nothing prints is a count that can drift from the rate beside it unnoticed.
+//
+// The mix is over every stroke that was not a serve — the return among them
 // — because that is the whole of what the player hit and a share has to be a share of
 // something whole. The outcome rates are over the groundstrokes of that wing, since "how
 // often does the forehand end the point" is a question about forehands and not about how
@@ -222,11 +226,9 @@ function shotMix(s) {
   const rate = (w, d) => (d ? Number(w) / Number(d) : null);
   return {
     shots: s.rally_shots == null ? null : n,
-    gs: s.fh_gs == null ? null : gs,
     net_shots: s.net_shots == null ? null : Number(s.net_shots),
     fh_gs: s.fh_gs == null ? null : Number(s.fh_gs),
     bh_gs: s.bh_gs == null ? null : Number(s.bh_gs),
-    slice_shots: s.slice_shots == null ? null : Number(s.slice_shots),
     fh_share: rate(s.fh_gs, gs),
     fh_winner_pct: rate(s.fh_winners, s.fh_gs),
     fh_err_pct: rate(s.fh_errs, s.fh_gs),
@@ -1356,13 +1358,9 @@ const FIGS = [
     k: "bits", label: "variety", unit: "bits", band: "bits",
     fmt: (v) => v.toFixed(1),
   },
-  // Return winners: a point the returner took without playing it out, over every point they
-  // returned, which is how it is normally quoted. The other outright win — the ace rate — is
-  // on the serve plot now, pooled under the two cores it splits into, so the column carries
-  // the return end and the plot carries the serve end.
   // The shot mix, as four figures in the column. They are the last thing about how a player
-  // plays rather than what they won with it, so they sit under variety and ahead of the two
-  // outright wins — the column then runs style, then choice, then outcome.
+  // plays rather than what they won with it, so they sit under variety and ahead of the
+  // outright win below them — the column then runs style, then choice, then outcome.
   //
   // `den` names the count a *match* reading was divided by, printed under the figure as its
   // note. A match is a small enough window that the denominator is part of the figure: 33% of
@@ -1392,9 +1390,14 @@ const FIGS = [
     k: "net_err_pct", label: "net error rate", unit: "", band: "net_err_pct",
     fmt: pct, better: "lo", den: "net_shots",
   },
-  // The one figure on this panel that says something the serve does not: it correlates 0.03
-  // (men) and -0.01 (women) with return points won, where an ace rate largely explains why a
-  // server wins the ones they do.
+  // Return winners: a point the returner took without playing it out, over every point they
+  // returned, which is how it is normally quoted. The other outright win — the ace rate — is
+  // on the serve plot now, pooled under the two cores it splits into, so the column carries
+  // the return end and the plot carries the serve end.
+  //
+  // It is also the one figure on this panel that says something the serve does not: it
+  // correlates 0.03 (men) and -0.01 (women) with return points won, where an ace rate largely
+  // explains why a server wins the ones they do.
   {
     k: "ret_winner_rate", label: "return winners", unit: "", band: "ret_winner_rate",
     fmt: pct, better: "hi",
@@ -2305,35 +2308,21 @@ function figureKey(sa, sb, spread, match) {
            Naming one of them is a coin toss reported as a finding, so the panel doesn't. */""}
       <b>"Between styles"</b> means the two nearest groups fit this player about equally well.</div>`,
     !has("won_rally_len") && !match ? "" : `<div><b>Average won point length</b> counts the serve
-      and the shot that ends the point, over the points that player won — not every point played,
-      since one point's length is a single number for both players and only the ones each of them
-      won tells the two apart.</div>`,
+      and the shot that ends the point, over the points that player won.</div>`,
     !match ? "" : `<div>Every rate on this panel is <b>this match only</b> — the rings, the
       serve plot, the break points and the placement — except where a line says
       "career". Those carry no minimum-sample gate, because they are not estimates of how
       these players usually play: they are counts of what happened over the match's own
       points.</div>`,
-    !hasOutright ? "" : `<div><b>Return winners</b> are points the returner took without playing
-      them out — a point that ended on the return with the returner winning it, over every point
-      they returned. Nothing is added for a forced error: a forced error on the return is the
-      returner's own miss and the server takes the point. The rate needs 1,000 charted return
-      points to be drawn. Its serve-side twin, the <b>ace rate</b>, is on the serve plot —
-      pooled under the two cores, split by delivery inside them.</div>`,
-    !hasBp ? "" : `<div><b>Break points saved</b> is a count, not a rate: many matches turn on
-      two or three of them, and a percentage off two points says little. The other half of the
-      exchange is the same row read across — one player's break points saved are the ones the
-      other failed to convert.</div>`,
+    !hasOutright ? "" : `<div><b>Return winners</b> are clean winners on the return over every 
+      point returned.</div>`,
     !hasMix ? "" : `<div><b>Slice share</b> and <b>net share</b> are out of every non-serve
       stroke that player hit, the return counted as one. A <b>net shot</b> is a volley,
       overhead, half-volley or swinging volley; its winner and error rates are out of those
-      net shots, not out of every stroke. These cross the wings rather than split them — a
-      backhand slice is in the groundstroke square and here too.${match ? ` On a charted match each is that match's own, with the count it was taken over
-      under it.` : ""}</div>`,
+      net shots, not out of every stroke.</div>`,
     !hasMix && !hasGround ? "" : `<div>Every <b>error rate</b> here counts <b>unforced</b>
-      errors only — a forced error is charged to the player who forced it. The <b>slice</b>
-      carries no outcome rates: neither is steady enough to draw, and a slicer's misses are
-      already in the groundstroke square under the hand that played them.${match ? "" : ` A career rate needs 800 strokes of its kind; the two net rates need 200,
-      nobody having hit 800 volleys.`}</div>`,
+      errors only.${match ? "" : ` A career rate needs 800 strokes of its kind, or 200 net shots
+      for the three net figures — nobody has hit 800 volleys.`}</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from tour
       norms. A model built on the whole tour predicts each next shot from the two before it, and
       variety is how surprised that model is by this player, in bits: a shot it gave even odds

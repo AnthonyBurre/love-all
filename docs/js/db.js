@@ -67,8 +67,8 @@ export async function query(sql, params = []) {
 // the recency window, is now per player on player_serve rather than the tour's largest.
 
 // Where the charted tour sits on the figures the profile band prints: the length of the points
-// a player wins, the variety of their shot choices, and the eight rates of their shot mix.
-// None has a scale a reader arrives knowing, so each is drawn against
+// a player wins, the variety of their shot choices, the four rates of their shot mix, and the
+// return-winner rate. None has a scale a reader arrives knowing, so each is drawn against
 // the tour it belongs to — which is what tells you whether 3.2 bits is ordinary or remarkable.
 // A percentage looks like it needs no scale and needs one most: 4.1% of strokes played at the
 // net is a tour-median baseliner and 6.9% is Federer.
@@ -104,18 +104,20 @@ export function tourSpread() {
 }
 
 // The columns a strip is cut over, named once and turned into SQL below. A list rather than
-// ten hand-written quartile pairs: the query is the same four quantiles and a count per
+// seven hand-written quartile pairs: the query is the same four quantiles and a count per
 // column, and written out longhand a column added to the panel meant editing the SELECT, the
 // aliases and the reader in three places that could each be got wrong on their own.
+//
+// Exactly the columns a strip is drawn for — FIGS `band` in matchup.js, plus the rally length
+// profileParts reads directly. The groundstroke square is the reason that is not the same as
+// "every rate the panel prints": it deliberately carries no tour reference inside the plot, so
+// cutting bands for its six wing rates would be four quantiles apiece computed for nobody.
 //
 // The names are this file's own literals, never anything a visitor supplies, so interpolating
 // them into the SQL is safe.
 const SPREAD_COLS = [
-  "bits", "won_rally_len", "ace_rate", "ret_winner_rate",
-  "fh_share", "fh_winner_pct", "fh_err_pct",
-  "bh_share", "bh_winner_pct", "bh_err_pct",
-  "slice_pct",
-  "net_pct", "net_winner_pct", "net_err_pct",
+  "bits", "won_rally_len", "ret_winner_rate",
+  "slice_pct", "net_pct", "net_winner_pct", "net_err_pct",
 ];
 
 async function loadSpread() {

@@ -1269,27 +1269,8 @@ a { color: var(--acc-d); }
    has to lead from that edge too or it floats off the rule capping the column. */
 .pbside[data-side="b"] .pbfig { justify-content: flex-end; }
 /* The first one carries the gap off whatever sits above it, which is the headline figure on a
-   fully-charted player and the hand line on a player the ratings never reached. The verdict is
-   the third case: a player with a shot-quality band but no rally length, where these follow the
-   verdict's block label directly and .pbfig's own 7px would set them against it. */
-.pbq + .pbfig, .pbverdict + .pbfig { margin-top: 10px; }
-/* The verdict's label is a block, so the figure under it needs more air than .pbq's own 9px —
-   which was sized to sit under a one-line hand note, not under a two-part item. */
-.pbverdict + .pbq { margin-top: 13px; }
-/* The shot-quality verdict, leading the figures. It takes .pbq's shape — finding first, label
-   under it — at a smaller size, because it is a finding of the same kind and not a footnote to
-   the figure below it: it stands on its own subject, and the label under it says which
-   subject that is.
-   Deliberately not set at .pbq's 22px even though it comes first. It is a phrase, not a
-   digit, and at that size it is a headline sentence over three lines in half a phone column —
-   so the one number in the column stays the one thing set large, and order rather than size is
-   what puts the judgement first.
-   The finding is a phrase rather than a digit, so it wraps; line-height and a block label are
-   what let it do that without colliding with the hand line above. */
-.pbverdict { margin: 10px 0 0; line-height: 1.25; }
-.pbverdict b { font-size: 13px; font-weight: 700; color: var(--ink); }
-.pbverdict em { display: block; margin-top: 1px; font-style: normal; font-size: 9.5px;
-  font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+   fully-charted player and the hand line on a player the ratings never reached. */
+.pbq + .pbfig { margin-top: 10px; }
 /* the per-column dot, used where a stacked phone column has to name its own player */
 .tdot { flex: none; width: 9px; height: 9px; }
 .tdot.a { background: var(--a); }
@@ -2050,7 +2031,6 @@ a { color: var(--acc-d); }
 .tmeter i > span.miss { opacity: .38; }
 .tmeter u { position: absolute; top: -2.5px; bottom: -2.5px; width: 2px; margin-left: -1px;
   background: var(--card); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 50%, transparent); }
-.warnmark { color: var(--warn); }
 .trig code { background: color-mix(in srgb, var(--line) 55%, var(--card)); padding: 1px 4px; font-size: 11px; }
 
 /* serve direction: the two service boxes as the server sees them, deuce left and ad
