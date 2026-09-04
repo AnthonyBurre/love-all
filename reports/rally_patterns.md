@@ -8,7 +8,7 @@ A player enters on **strokes they actually hit past the opening** (≥1,500), no
 
 | | players | strokes past the opening | exposure p10 / median / p90 |
 |---|--:|--:|:--|
-| Men | 159 | 1,051,221 | 0.33 / 0.40 / 0.47 |
+| Men | 159 | 1,051,138 | 0.33 / 0.40 / 0.47 |
 | Women | 98 | 356,848 | 0.36 / 0.43 / 0.50 |
 
 **Exposure** is the share of a player's charted points that reach the fifth shot at all, and it is the deepest limitation here. Blinding the opening does not remove the serve from these profiles — it *conditions on* it. Karlovic's rally book is built from the one point in five his serve failed to settle; Ferrer's from half of his. Every claim below is conditional on the point having got this far, and the exposure column ships next to it so that reading is available rather than buried.
@@ -36,10 +36,10 @@ A screen this strict can come back empty, and an empty result only reads next to
 |---|--:|--:|--:|--:|--:|--:|--:|
 | window | 2 | 4,839 | 113 | 94 | 69 / 18 | 1.26× | 46% |
 | window | 3 | 1,752 | 2 | 2 | 1 / 1 | — | — *(n=2)* |
-| window | 4 | 362 | 0 | 0 | 0 / 0 | — | — *(n=0)* |
+| window | 4 | 361 | 0 | 0 | 0 / 0 | — | — *(n=0)* |
 | target | 2 | 8,564 | 212 | 190 | 123 / 41 | 1.48× | 66% |
 | target | 3 | 5,822 | 20 | 15 | 13 / 2 | 1.24× | 33% |
-| target | 4 | 1,437 | 3 | 2 | 2 / 0 | — | — *(n=3)* |
+| target | 4 | 1,436 | 3 | 2 | 2 / 0 | — | — *(n=3)* |
 
 *Calibration is quoted only where at least 10 patterns reached the held-out measurement; below that the number would be an anecdote with a percent sign on it.*
 
