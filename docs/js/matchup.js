@@ -1575,7 +1575,7 @@ const DF_KEY = '<span class="svlong">double</span><span class="svabbr">dbl</span
 // The pooled ace rate: aces over every service point, which is the two cores added back
 // together — (first_share x first_ace) + (second_share x second_ace). It is the figure a
 // scoreboard quotes and the one this panel used to carry beside variety; here it sits under
-// the plot with a hairline to each core it is the sum of, so the split above and the total
+// the plot, braced to the two cores it is the sum of, so the split above and the total
 // below are the same quantity at two grains.
 const acePooled = (sp) =>
   sp.bands[0].h * sp.bands[0].a + sp.bands[1].h * sp.bands[1].a;
@@ -1624,20 +1624,37 @@ function serveBar(sp, tag, cmp) {
   const df = sp.bands[2];
   const dfLab = `<b class="svdf${sup(cmp, "df", tag)}" style="--dfm:${at(df.h / 2, 0)}"
     >${pct(df.h)}<em>${DF_KEY}</em></b>`;
-  // The pooled ace figure, dropped below the in-rate row and joined to the two cores by a
-  // stem that splays into a short fork just under the baseline — no tie across the bar, no
-  // right angle. --acm is the midpoint of the two ace-core centres, measured from the plot's
-  // outer edge like every other mark here. A serve with no second-serve aces (.one) drops the
-  // fork and runs the stem straight up.
+  // The pooled ace figure hangs below the plot at --acm (the midpoint of the two core
+  // centres), joined to the two ace cores by a pair of hairline tines that leave the figure
+  // and meet each core tangent to the vertical — one soft brace, no straight run and no
+  // corner. The CSS pulls the first-serve tine in from --acsp (half the core-centre gap) to
+  // clear the "1st serves in" label — that core is wide, its centre far under the label. The
+  // second-serve tine goes to --acout, a hair inside that core's midline-facing edge: the
+  // furthest out it can land and still touch a core that sits wholly under its own label, so
+  // that arm reads longer. Both drop a row on the narrow layout so they never share a strip
+  // with the double-fault label. Each tine is an <svg> box spanning exactly one figure-to-top
+  // gap, so its ends land without any arithmetic here. A serve with no second-serve aces
+  // (.one) has one core: the figure sits under it on a straight hairline.
   const c0 = sp.bands[0].a
     ? at(sp.bands[1].h + sp.bands[2].h + sp.bands[0].h / 2, gp(0)) : null;
   const c1 = sp.bands[1].a ? at(sp.bands[2].h + sp.bands[1].h / 2, gp(1)) : null;
   const one = !(c0 && c1);
   const acm = one ? (c0 || c1) : `calc((${c0} + ${c1}) / 2)`;
+  const acsp = one ? "0px" : `calc((${c0} - (${c1})) / 2)`;
+  // 0.95 of the way across the second-serve band: just inside its midline-facing edge.
+  const acout = one ? "" : `;--acout:${at(sp.bands[2].h + sp.bands[1].h * 0.95, gp(1))}`;
+  // The two ogees, handed to the side: on A the tine box measures from the left edge and on B
+  // from the right, so the "in" tine (figure → first-serve core, against the midline) and the
+  // "out" tine (figure → second-serve core, toward the edge) trade their path with the side.
+  const tine = (cls, d) =>
+    `<svg class="svtn ${cls}" viewBox="0 0 12 12" preserveAspectRatio="none" aria-hidden="true"
+      ><path d="${d}" vector-effect="non-scaling-stroke"/></svg>`;
+  const tines = one ? "" : tag === "a"
+    ? tine("in", "M0 12C0 7 12 5 12 0") + tine("out", "M12 12C12 7 0 5 0 0")
+    : tine("in", "M12 12C12 7 0 5 0 0") + tine("out", "M0 12C0 7 12 5 12 0");
   const aceLab = (c0 || c1)
-    ? `<div class="svacetot${one ? " one" : ""}${sup(cmp, "atot", tag)}" style="--acm:${acm}">
-        <span class="l"></span><span class="r"></span>
-        <b>${pct(acePooled(sp))}<em><span class="svlong">total </span>ace rate</em></b></div>`
+    ? `<div class="svacetot${one ? " one" : ""}${sup(cmp, "atot", tag)}" style="--acm:${acm};--acsp:${acsp}${acout}">
+        ${tines}<b>${pct(acePooled(sp))}<em><span class="svlong">total </span>ace rate</em></b></div>`
     : "";
   return `<div class="svcol ${tag}">
     <div class="svplot">${cols}</div>
@@ -1693,7 +1710,7 @@ const SVDIM = [
 
 // --- which of the two is the better figure -------------------------------------------------
 // Eight rates are drawn twice here, once per player: the two win rates and the two ace shares
-// on the fills, the pooled ace rate bracketed under them, the two in-rates under the plots,
+// on the fills, the pooled ace rate braced under them, the two in-rates under the plots,
 // and the double faults along the outer edge. Each pair is set in one weight, and the better
 // of the two in bold — so who serves better, and on which figure, reads off the drawing
 // before any of the numbers themselves are.
@@ -1750,22 +1767,22 @@ function serveLabels(sp, tag, cmp) {
 // the colours and the sides, which the scoreboard, the rings and the style columns all use the
 // same way; and with every quantity named and pointed at there is nothing left for a legend to
 // say.
-// The window rides in the head, the same way the groundstroke block marks a match's own
-// figures. It carries more weight here: the block sits under the placement strips, which are
-// a recency-weighted window and say so in their own caption, and two windows in one section
-// have to be told apart or the reader carries the first one down onto the second. This one is
-// every service point in the player's charted history — the same span the hold rate on the
-// ring above is taken over, which is what makes the plot what that hold is made of.
+// The window rides in the head, the same way the groundstroke block marks its own. It earns
+// the space here: the next section, "serve direction", is a recency-weighted window and says
+// so in its own caption, and a reader crossing from one to the other assumes they match
+// unless each says which it is. This one is every service point in the player's charted
+// history — the same span the hold rate on the ring above is taken over, which is what makes
+// the plot what that hold is made of.
 function serveAnatomy(da, db, ma, mb) {
   const sa = serveSplit(ma || (da && da.s)), sb = serveSplit(mb || (db && db.s));
   if (!sa && !sb) return "";
   const cmp = serveCmp(sa, sb);
   const win = ma || mb ? "this match" : "whole charted career";
-  // The pooled-ace bracket wants a row of its own under the plots — see .svpair.aces — so
-  // long as either player has a core to point at.
+  // The pooled-ace figure and its tines need room reserved under the plots — see .svpair.aces
+  // — so long as either player has a core to point at.
   const aces = [sa, sb].some((s) => s && (s.bands[0].a || s.bands[1].a)) ? " aces" : "";
   return `<div class="svblock">
-    <p class="svhead">serve outcomes · ${win}</p>
+    <p class="svhead">every service point · ${win}</p>
     <div class="svpair${aces}">
       ${serveLabels(sa, "a", cmp)}${serveBar(sa, "a", cmp)}${serveBar(sb, "b", cmp)}${serveLabels(sb, "b", cmp)}
     </div>
@@ -2425,9 +2442,9 @@ const countCards = (html) =>
 // `full` is a drawing that belongs to the section but not to either column: it is measured on
 // a scale the two players share, and a scale cannot be shared across a gutter — two plots in
 // two columns are two plots that cannot be laid against each other. It runs at the section's
-// full width, under the columns by default and over them when `fullFirst` is set — as it is
-// in the serve section, where the outcomes plot is the lead and the direction columns follow.
-function section(title, note, a, b, aHtml, bHtml, kind = "cards", full = "", fullFirst = false) {
+// full width, under whatever columns the section also has (the serve and groundstroke plots
+// each stand alone in their section, so in practice it is the only thing under the heading).
+function section(title, note, a, b, aHtml, bHtml, kind = "cards", full = "") {
   if (!aHtml && !bHtml && !full) return "";
   const col = (html, side, tag) => `<div class="seccol" data-side="${tag}">
     <p class="colwho"><span class="tdot ${tag}"></span>${esc(last(side.name) || "TBD")}</p>
@@ -2451,10 +2468,10 @@ function section(title, note, a, b, aHtml, bHtml, kind = "cards", full = "", ful
   const cols = aHtml || bHtml
     ? `<div class="seccols" style="--rows:${rows}">${col(aHtml, a, "a")}${col(bHtml, b, "b")}</div>`
     : "";
-  return `<section class="msec ${kind}${fullFirst ? " fullfirst" : ""}">
+  return `<section class="msec ${kind}">
     <h3 class="sechead">${title}</h3>
     ${note ? `<p class="secnote">${note}</p>` : ""}
-    ${fullFirst ? `${full}${cols}` : `${cols}${full}`}
+    ${cols}${full}
   </section>`;
 }
 
@@ -2743,33 +2760,32 @@ function headHtml(m, t, round) {
 // so it has to arrive before them, and style is the first per-player comparison the body
 // makes, which is what the section is for.
 //
-// "The serve" is then the first single-player measurement. Every point starts with one, and it
-// is the only thing here a viewer can expect to see happen in the match they just tapped.
+// "Serve outcome" is then the first single-player measurement. Every point starts with a
+// serve, and it is the only thing here a viewer can expect to see happen in the match they
+// just tapped. It is one plot, run full width because its two axes are a scale shared across
+// both players: every service point sized by how often that delivery happens and what it won.
 //
-// Placement and outcomes are one section because they are one subject: where the delivery is
-// aimed and what aiming it there was worth. They were two, a screen and a half apart, with the
-// outcomes plot closing the side-by-side box — which put the two halves of the serve in
-// different parts of the panel and left this section the shortest thing in it.
+// "Serve direction" follows — the same subject one step earlier, where each first serve was
+// aimed, as a strip per court side. Two windows meet across the pair, and each says which it
+// is rather than leaving the reader to assume they match: direction is recency-weighted with a
+// 10-match half-life, because the serve_tendencies experiment showed that predicts a player's
+// next matches better than their career mix, and the outcome rates are the whole charted
+// career, where they have always been measured. The second is not the first with a different
+// denominator — it would take the same held-out check on rates that experiment never ran —
+// so the plot keeps its span and prints it.
 //
-// Two windows meet here, and each says which it is rather than leaving the reader to assume
-// they match: placement is recency-weighted with a 10-match half-life, because the
-// serve_tendencies experiment showed that predicts a player's next matches better than their
-// career mix, and the outcome rates are the whole charted career, where they have always been
-// measured. The second is not the first with a different denominator — it would take the same
-// held-out check on rates that experiment never ran — so the plot keeps its span and prints it.
-//
-// The three pattern sections then run in the order a point does: where the serve goes, what the
-// server does with the ball it comes back as ("off the return"), and only then the mid-rally
-// exchange ("court patterns"). Off the return is built out of the service court and the serve's
-// own direction, so it continues the section above it. Below court patterns it would put a
-// mid-rally ball between the serve and the shot the serve sets up.
+// From "serve direction" on, the sections run in the order a point does: where the serve goes,
+// what the server does with the ball it comes back as ("off the return"), and only then the
+// mid-rally exchange ("court patterns"). Off the return is built out of the service court and
+// the serve's own direction, so it continues the section above it. Below court patterns it
+// would put a mid-rally ball between the serve and the shot the serve sets up.
 //
 // The title is gated on there being a player under it. With neither side charted the body is
 // the invitation to go and chart one, and "Charted history" over "Neither player has Match
 // Charting history yet" heads a section with the word "history" twice and no history in it.
 // The two conditions are exact opposites, so exactly one of them ever prints.
-// The charted-match panel. Six career sections become three about the match: how it swung,
-// what each player's serve and return did in it, and where the serves went.
+// The charted-match panel. Seven career sections become four about the match: how it swung,
+// what each serve was worth, where the first one went, and the groundstroke exchange.
 //
 // Everything from "serve + 1" down is dropped rather than recomputed. Those sections are
 // lifts against the tour of a player's era — a court pattern rests on a median 334
@@ -2833,10 +2849,11 @@ function matchBodyHtml(m, pa, pb, spread, det) {
   }
   return head +
     tape(pa, pb, spread, det) +
-    section("the serve", `serve outcomes, then where the first serve went by court side and
-      what it won`, a, b,
-      serveMatchHtml(pa, ma), serveMatchHtml(pb, mb), "text",
-      serveAnatomy(pa, pb, ma, mb), true) +
+    section("serve outcome", `every service point on two axes — how often each delivery
+      landed, and what it won`, a, b,
+      "", "", "text", serveAnatomy(pa, pb, ma, mb)) +
+    section("serve direction", `percent in and percent won by first and second serve`, a, b,
+      serveMatchHtml(pa, ma), serveMatchHtml(pb, mb), "text") +
     section("the groundstrokes", `winners and unforced errors per wing, each sized by its
       share of that player's groundstrokes`, a, b,
       "", "", "text", groundAnatomy(pa, pb, ma, mb)) +
@@ -2885,8 +2902,10 @@ function bodyHtml(m, pa, pb, spread, det) {
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
   return (pa || pb ? CHARTED_TITLE + profileBand(pa, pb) : "") +
     tape(pa, pb, spread) +
-    section("the serve", `all serve outcomes, then first serve direction ad and deuce`, a, b,
-      serveHtml(pa), serveHtml(pb), "text", serveAnatomy(pa, pb), true) +
+    section("serve outcome", `percent in and percent won by first and second serve`, a, b,
+      "", "", "text", serveAnatomy(pa, pb)) +
+    section("serve direction", `where the first serve goes`, a, b,
+      serveHtml(pa), serveHtml(pb), "text") +
     none +
     section("serve + 1", `what they do with returns${PAYOFF_LEGEND}`, a, b,
       familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
