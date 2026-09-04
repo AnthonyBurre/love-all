@@ -410,6 +410,45 @@ def test_serve_aces_respect_their_own_floor(tmp_path, monkeypatch):
     assert build_insights._serve_aces(_ace_db(tmp_path)).empty
 
 
+# --- which hand a player holds the racket in ---------------------------------------------
+# Charters disagree, so the hand is a vote across a player's charted matches. What the vote
+# does with a disagreement it cannot settle is the part worth pinning: the figure feeds the
+# side the groundstroke square draws a forehand on and the zone names on the court patterns,
+# so a wrong hand is not a wrong digit, it is two drawings mirrored.
+def _hand_db(tmp_path, rows):
+    import duckdb
+    con = duckdb.connect(str(tmp_path / "hand.duckdb"))
+    con.execute("CREATE TABLE matches (match_id VARCHAR, gender VARCHAR, player1 VARCHAR, "
+                "player2 VARCHAR, player1_hand VARCHAR, player2_hand VARCHAR)")
+    con.executemany(
+        "INSERT INTO matches VALUES (?, 'M', ?, 'Opponent', ?, 'R')",
+        [(f"m{i}", who, hand) for i, (who, hand) in enumerate(rows)])
+    con.execute("CREATE TABLE stats_overview (gender VARCHAR, player VARCHAR, set VARCHAR, "
+                "aces VARCHAR, serve_pts VARCHAR, first_in VARCHAR, dfs VARCHAR, "
+                "first_won VARCHAR, second_won VARCHAR)")
+    return con
+
+
+def test_a_majority_settles_the_hand(tmp_path):
+    """The vote is a majority and not a first-seen: one stray row does not flip a career."""
+    con = _hand_db(tmp_path, [("Lefty", "L")] * 9 + [("Lefty", "R")])
+    facts = build_insights._player_facts(con).set_index("player")
+    assert facts.loc["Lefty", "hand"] == "L"
+
+
+def test_a_tied_hand_comes_out_null_rather_than_picked(tmp_path):
+    """Two charters, one each way, no majority to read — so the panel says nothing rather
+    than reporting a coin toss as a fact. An arbitrary tiebreak was worse than arbitrary: the
+    same corpus gave the same player a different hand on the next rebuild."""
+    con = _hand_db(tmp_path, [("Split", "L"), ("Split", "R")])
+    facts = build_insights._player_facts(con)
+    split = facts[facts.player == "Split"]
+    assert len(split) == 0 or pd.isna(split.iloc[0]["hand"])
+    # The opponent is charted right-handed every time and keeps their hand, so the tie
+    # withholds one player's figure rather than the column.
+    assert facts.set_index("player").loc["Opponent", "hand"] == "R"
+
+
 # --- the career shot mix ----------------------------------------------------------------
 # The panel prints a match's shot mix with the career reading directly underneath it as the
 # anchor. That only means anything if the two count the same strokes, so both builds walk the
@@ -482,6 +521,31 @@ def test_the_stroke_groups_have_their_own_floor(tmp_path, monkeypatch):
     assert mix.loc["A Player", "net_pct"] == pytest.approx(0.5)
     assert pd.isna(mix.loc["A Player", "net_err_pct"])
     assert pd.isna(mix.loc["A Player", "net_winner_pct"])
+
+
+def test_the_net_group_prints_all_three_rows_or_none(tmp_path, monkeypatch):
+    """The live direction of the two floors, and the one the shipped numbers take: a player can
+    clear the net floor without clearing the mix one — it takes hitting better than a quarter of
+    your strokes at the net — and the share is the row that would go missing. It is the row the
+    other two are read against, so it comes through with them.
+
+    A serve-volleyer is the case rather than a curiosity: Chris Lewis has 214 net shots in 559
+    rally strokes, and a 38% net share is the most distinctive thing the panel could say
+    about him."""
+    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1000)
+    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
+    net = ["net_pct", "net_winner_pct", "net_err_pct"]
+    for who in ("A Player", "B Player"):
+        present = [c for c in net if pd.notna(mix.loc[who, c])]
+        assert present in ([], net), (who, present)
+    # A hits half its strokes at the net, and gets the share off a denominator under the mix
+    # floor. B never comes in, so the group is absent for them rather than a run of zeroes.
+    assert mix.loc["A Player", "net_pct"] == pytest.approx(0.5)
+    assert pd.isna(mix.loc["B Player", "net_pct"])
+    # The share is the only figure the net floor opens. The slice sits on the mix floor alone
+    # and stays withheld, which is what keeps this a rule about a group and not a way in.
+    assert pd.isna(mix.loc["A Player", "slice_pct"])
 
 
 def test_the_two_shares_are_complements_and_both_ship(tmp_path, monkeypatch):

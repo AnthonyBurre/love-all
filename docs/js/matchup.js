@@ -2321,8 +2321,8 @@ function figureKey(sa, sb, spread, match) {
       overhead, half-volley or swinging volley; its winner and error rates are out of those
       net shots, not out of every stroke.</div>`,
     !hasMix && !hasGround ? "" : `<div>Every <b>error rate</b> here counts <b>unforced</b>
-      errors only.${match ? "" : ` A career rate needs 800 strokes of its kind; the two net rates need 200,
-      nobody having hit 800 volleys.`}</div>`,
+      errors only.${match ? "" : ` A career rate needs 800 strokes of its kind, or 200 net shots
+      for the three net figures — nobody has hit 800 volleys.`}</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from tour
       norms. A model built on the whole tour predicts each next shot from the two before it, and
       variety is how surprised that model is by this player, in bits: a shot it gave even odds

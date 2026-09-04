@@ -131,6 +131,15 @@ def _player_facts(con) -> pd.DataFrame:
     vote rather than allowed to win one — and a player charted only in those rows comes
     out null, which the panel prints as nothing.
 
+    A tie comes out null for the same reason. Charters disagree about 44 players' hands and
+    the vote settles 43 of them outright — Nadal is charted left-handed 420 times against 3
+    — but Marcelo Filippini is charted twice, once each way, and there is no majority to
+    read. Naming one of them is a coin toss reported as a fact, and it was not even a stable
+    one: with an arbitrary tiebreak he changed hands between rebuilds. Hand is not
+    decoration — the groundstroke square puts the forehand on the side the player's is, and
+    the court patterns name their zones by it — so the honest answer is to say nothing,
+    which is the answer the archetype already gives when two styles fit equally well.
+
     Ace rate is over service points across every charted match. The two serve-in rates are
     each over the serves that were actually hit: first serves over every point served,
     second serves over the points where the first one missed.
@@ -162,9 +171,13 @@ def _player_facts(con) -> pd.DataFrame:
         "  SELECT gender, player2, upper(trim(player2_hand)) FROM matches), "
         "voted AS ("
         "  SELECT gender, player, hand,"
-        "         row_number() OVER (PARTITION BY gender, player ORDER BY count(*) DESC) rn"
+        "         rank() OVER (PARTITION BY gender, player ORDER BY count(*) DESC) rk"
         "  FROM seen WHERE hand IN ('R', 'L') GROUP BY gender, player, hand) "
-        "SELECT gender, player, hand FROM voted WHERE rn = 1").fetchall()
+        # rank() rather than row_number(), and the HAVING is what it buys: a tie ranks both
+        # hands 1 and the player drops out with no hand at all, where row_number() picked one
+        # of them arbitrarily. A player absent here comes through the outer join below as null.
+        "SELECT gender, player, min(hand) AS hand FROM voted WHERE rk = 1 "
+        "GROUP BY gender, player HAVING count(*) = 1").fetchall()
     serves = con.execute(
         "SELECT gender, player,"
         "       sum(CAST(aces AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE)"
@@ -344,6 +357,14 @@ MIN_MIX_SHOTS = 800
 # -0.00), so what coming forward costs is not recoverable from what it earns, and no other
 # figure on the panel carries it. Raising the floor is the only lever on it and there is
 # nothing to raise it to: 400 leaves 159 players and 800 leaves 79.
+#
+# It also opens the net *share*, which is otherwise on MIN_MIX_SHOTS like the other two shares.
+# A player can clear this floor without clearing that one — it takes hitting better than a
+# quarter of your strokes at the net — and the share is then the one figure held back while the
+# two rates read against it print. That is the group missing the thing its other rows are
+# measured against, which is the rule the two wing shares already answer to. Chris Lewis is the
+# whole of it in this corpus: 559 rally strokes, 214 of them at the net, a 38% net share that
+# is the most distinctive thing about him and was the only one of his three figures withheld.
 MIN_STROKE_SHOTS = 200
 
 _MIX_SQL = (
@@ -389,9 +410,19 @@ def _shot_mix(con) -> pd.DataFrame:
                       columns=["gender", "player", *MIX_FIELDS])
     gs = df.fh_gs + df.bh_gs
 
-    def rate(num, den, floor):
-        """A share, null under the floor — a rate off too few strokes is not shipped."""
-        return (df[num] / den).where(den >= floor).round(4)
+    def rate(num, den, floor, also=None):
+        """A share, null under the floor — a rate off too few strokes is not shipped.
+
+        ``also`` is a second way in for a share whose group has cleared a floor of its own:
+        the figure still stands on ``den``, but a group that gets to print its outcome rates
+        gets to print how often it is played too.
+        """
+        keep = den >= floor if also is None else (den >= floor) | also
+        return (df[num] / den).where(keep).round(4)
+
+    # The net group's floor as a mask, because two rows read it: the outcome rates take it as
+    # their own denominator's floor, and the share takes it as `also` — see MIN_STROKE_SHOTS.
+    net_ok = df.net_shots >= MIN_STROKE_SHOTS
 
     out = pd.DataFrame({"gender": df.gender, "player": df.player})
     # Grouped the way the panel draws them: which hand, then what kind of ball. The two
@@ -421,7 +452,12 @@ def _shot_mix(con) -> pd.DataFrame:
     # at 217, but a rate bought at that price has to be telling the reader something the panel
     # does not already have, and this one is not.
     out["slice_pct"] = rate("slice_shots", df.rally_shots, MIN_MIX_SHOTS)
-    out["net_pct"] = rate("net_shots", df.rally_shots, MIN_MIX_SHOTS)
+    # The share rides the net group's own floor as well as the mix one, so it is never the row
+    # missing from a group that prints the two rates read against it. Where it comes through
+    # that way the denominator is under MIN_MIX_SHOTS — a share off 559 strokes rather than
+    # 800 — which is the looser reading, and the alternative is withholding the frequency of
+    # the one stroke the panel has just spent two rows on.
+    out["net_pct"] = rate("net_shots", df.rally_shots, MIN_MIX_SHOTS, net_ok)
     out["net_winner_pct"] = rate("net_winners", df.net_shots, MIN_STROKE_SHOTS)
     out["net_err_pct"] = rate("net_errs", df.net_shots, MIN_STROKE_SHOTS)
     return out[["gender", "player", *MIX_RATES]]
@@ -620,19 +656,25 @@ def build() -> int:
     mix = _shot_mix(con)
     con.close()
 
+    # `current_strength` is read for the player list this table is keyed on, and for the tour
+    # means in `meta` below — not for its two rates. Those were the rings' serve and return
+    # points won; the rings draw games now, and the serve plot answers what a service point is
+    # made of at a resolution a single rate never had. Nothing on the site has read either
+    # since, so they are not shipped: two doubles a row in a file every visitor downloads
+    # whole, and a column nothing reads is a column the next reader has to rule out by hand.
     summary = pd.DataFrame([
-        {"gender": g, "player": p, "serve_rate": round(sv, 4), "return_rate": round(rt, 4),
+        {"gender": g, "player": p,
          "matches_charted": cov.get((g, p), {}).get("matches", 0),
          "points_charted": cov.get((g, p), {}).get("points", 0),
          "year_min": cov.get((g, p), {}).get("year_min"),
          "year_max": cov.get((g, p), {}).get("year_max")}
-        for (g, p), (sv, rt) in strength.items()
+        for g, p in strength
     ])
 
     summary = summary.merge(facts, on=["player", "gender"], how="left")
-    # Hold and break rate ride beside the point rates they are the game-level reading of.
-    # Left-joined like the rest: below MIN_GAMES they come through null and the ring simply
-    # goes without its mark, the same way a thin server's arc goes without its ace wedge.
+    # Hold and break rate: what the ring draws, and the game-level reading of the serve and
+    # return the rest of the panel is made of. Left-joined like the rest: below MIN_GAMES they
+    # come through null and the ring goes without its mark.
     summary = summary.merge(games, on=["player", "gender"], how="left")
     summary = summary.merge(ret_win, on=["player", "gender"], how="left")
     # The ace rate the panel already carried, cut by which delivery struck it — the two shares
