@@ -2,7 +2,7 @@
 // probability through it, all queried from insights.duckdb via DuckDB-WASM.
 import { query, tourSpread } from "./db.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
-import { dayLong } from "./schedule.js";
+import { dayLong, localStart } from "./schedule.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -50,9 +50,15 @@ function flagEmoji(country) {
   return cc ? String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)) : "";
 }
 
-// A finished/scheduled match's date, formatted short ("Jul 13, 2026"). "" when absent
-// (older archived draws carry no per-match date) or unparseable. Read in UTC (ESPN's
-// datetimes are Z): the day a match was played is fixed, not the viewer's timezone.
+// A finished match's date, formatted short ("Jul 13, 2026"). "" when absent (older archived
+// draws carry no per-match date) or unparseable. Read in UTC (ESPN's datetimes are Z): the
+// day a match was played is fixed, not the viewer's timezone.
+//
+// For a played match `iso` is the real start instant, not a day marker, so this is the UTC
+// day rather than the venue day — the two diverge only when the start crosses midnight UTC
+// against venue-local, i.e. a US night session starting after ~20:00 ET, which then reads a
+// day late. venueDay()'s noon split can't help (it assumes a midnight marker); a true fix
+// would need the venue's offset from the feed, which isn't worth it for one cosmetic label.
 function matchDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -2682,21 +2688,23 @@ function eyebrow(t, round) {
   return [esc(event), round ? esc(round.label) : ""].filter(Boolean).join(" · ");
 }
 
-// When. A scheduled match carries its date and start time inside ESPN's detail string once
-// it has a court and a session, so printing the long date beside that would just say the day
-// twice. Before that the detail is the literal word "TBD", which is a non-empty string and
-// would print itself over a date the feed already knows, so an unscheduled match falls back
-// to its day. A finished one says only the day: the state it
-// is in is already on the scoreboard, in the caret against the winner's name, and a word
-// for it beside the date was the same fact a second time in weaker type. ESPN's detail
-// here is only ever "Final" or "Retired", so nothing else is being dropped with it.
-// The live dot is drawn in CSS now rather than typed as ●, and it is a square: nothing on
-// this site is round. ESPN's own hyphen between the day and the time becomes the middot the
-// rest of the page separates with, so the header's two chrome lines punctuate alike.
+// When. A scheduled match with a court and a session gets its start time from `localStart`,
+// which reads ESPN's UTC start instant in the viewer's own timezone and labels the zone; the
+// "ET" fallback is for the feed states where that instant can't be trusted. Before a session
+// is assigned the detail is the literal word "TBD", a non-empty string that would print
+// itself over a date the feed already knows, so an unscheduled match falls back to its day.
+// A finished one says only the day: the state it is in is already on the scoreboard, in the
+// caret against the winner's name, and a word for it beside the date was the same fact a
+// second time in weaker type. ESPN's detail here is only ever "Final" or "Retired", so
+// nothing else is being dropped with it. The live dot is drawn in CSS rather than typed as
+// ●, and it is a square: nothing on this site is round. ESPN's hyphen between the day and
+// the time in the fallback becomes the middot the rest of the page separates with, so the
+// header's two chrome lines punctuate alike.
 function whenLine(m) {
   if (m.state === "in") return `<span class="live">${esc(m.detail || "Live")}</span>`;
   if (m.state !== "post") {
-    const d = m.detail && m.detail !== "TBD" ? m.detail.replace(/ - /g, " · ") : dayLong(m.date);
+    const scheduled = m.detail && m.detail !== "TBD";
+    const d = scheduled ? localStart(m.date, m.detail) : dayLong(m.date);
     return esc(d);
   }
   const day = matchDate(m.date);
