@@ -1575,8 +1575,8 @@ const DF_KEY = '<span class="svlong">double</span><span class="svabbr">dbl</span
 // The pooled ace rate: aces over every service point, which is the two cores added back
 // together — (first_share x first_ace) + (second_share x second_ace). It is the figure a
 // scoreboard quotes and the one this panel used to carry beside variety; here it sits under
-// the plot, braced to the two cores it is the sum of, so the split above and the total
-// below are the same quantity at two grains.
+// the plot, braced to the cores it is the sum of, so the split above and the total below are
+// the same quantity at two grains.
 const acePooled = (sp) =>
   sp.bands[0].h * sp.bands[0].a + sp.bands[1].h * sp.bands[1].a;
 
@@ -1625,35 +1625,41 @@ function serveBar(sp, tag, cmp) {
   const dfLab = `<b class="svdf${sup(cmp, "df", tag)}" style="--dfm:${at(df.h / 2, 0)}"
     >${pct(df.h)}<em>${DF_KEY}</em></b>`;
   // The pooled ace figure hangs below the plot at --acm (the midpoint of the two core
-  // centres), joined to the two ace cores by a pair of hairline tines that leave the figure
-  // and meet each core tangent to the vertical — one soft brace, no straight run and no
-  // corner. The CSS pulls the first-serve tine in from --acsp (half the core-centre gap) to
-  // clear the "1st serves in" label — that core is wide, its centre far under the label. The
-  // second-serve tine goes to --acout, a hair inside that core's midline-facing edge: the
-  // furthest out it can land and still touch a core that sits wholly under its own label, so
-  // that arm reads longer. Both drop a row on the narrow layout so they never share a strip
-  // with the double-fault label. Each tine is an <svg> box spanning exactly one figure-to-top
-  // gap, so its ends land without any arithmetic here. A serve with no second-serve aces
-  // (.one) has one core: the figure sits under it on a straight hairline.
-  const c0 = sp.bands[0].a
-    ? at(sp.bands[1].h + sp.bands[2].h + sp.bands[0].h / 2, gp(0)) : null;
-  const c1 = sp.bands[1].a ? at(sp.bands[2].h + sp.bands[1].h / 2, gp(1)) : null;
-  const one = !(c0 && c1);
-  const acm = one ? (c0 || c1) : `calc((${c0} + ${c1}) / 2)`;
-  const acsp = one ? "0px" : `calc((${c0} - (${c1})) / 2)`;
-  // 0.95 of the way across the second-serve band: just inside its midline-facing edge.
-  const acout = one ? "" : `;--acout:${at(sp.bands[2].h + sp.bands[1].h * 0.95, gp(1))}`;
+  // centres), joined to the ace cores by hairline tines that leave the figure and meet each
+  // core tangent to the vertical — one soft brace, no straight run and no corner. The CSS
+  // pulls the first-serve tine in from --acsp (half the core-centre gap) to clear the "1st
+  // serves in" label — that core is wide, its centre far under the label. The second-serve
+  // tine goes to --acout, a hair inside that core's midline-facing edge: the furthest out it
+  // can land and still touch a core that sits wholly under its own label, so that arm reads
+  // longer. Both drop a row on the narrow layout so they never share a strip with the
+  // double-fault label. Each tine is an <svg> box spanning exactly one figure-to-top gap, so
+  // its ends land without any arithmetic here.
+  //
+  // c0 and c1 are the two columns' own centres — where the ace core sits when the column has
+  // one, since the core spans the full column. A charted match often has no second-serve
+  // aces; then only the first-serve tine is drawn, but the figure keeps its midpoint spot so
+  // it never slides under an in-rate label.
+  const c0 = at(sp.bands[1].h + sp.bands[2].h + sp.bands[0].h / 2, gp(0));
+  const c1 = at(sp.bands[2].h + sp.bands[1].h / 2, gp(1));
+  const acm = `calc((${c0} + ${c1}) / 2)`;
+  const acsp = `calc((${c0} - (${c1})) / 2)`;
+  // 0.95 of the way across the second-serve band: just inside its midline-facing edge. Only
+  // set when that tine is drawn.
+  const acout = sp.bands[1].a
+    ? `;--acout:${at(sp.bands[2].h + sp.bands[1].h * 0.95, gp(1))}` : "";
   // The two ogees, handed to the side: on A the tine box measures from the left edge and on B
   // from the right, so the "in" tine (figure → first-serve core, against the midline) and the
   // "out" tine (figure → second-serve core, toward the edge) trade their path with the side.
   const tine = (cls, d) =>
     `<svg class="svtn ${cls}" viewBox="0 0 12 12" preserveAspectRatio="none" aria-hidden="true"
       ><path d="${d}" vector-effect="non-scaling-stroke"/></svg>`;
-  const tines = one ? "" : tag === "a"
-    ? tine("in", "M0 12C0 7 12 5 12 0") + tine("out", "M12 12C12 7 0 5 0 0")
-    : tine("in", "M12 12C12 7 0 5 0 0") + tine("out", "M0 12C0 7 12 5 12 0");
-  const aceLab = (c0 || c1)
-    ? `<div class="svacetot${one ? " one" : ""}${sup(cmp, "atot", tag)}" style="--acm:${acm};--acsp:${acsp}${acout}">
+  const path = tag === "a"
+    ? { in: "M0 12C0 7 12 5 12 0", out: "M12 12C12 7 0 5 0 0" }
+    : { in: "M12 12C12 7 0 5 0 0", out: "M0 12C0 7 12 5 12 0" };
+  const tines = (sp.bands[0].a ? tine("in", path.in) : "")
+    + (sp.bands[1].a ? tine("out", path.out) : "");
+  const aceLab = (sp.bands[0].a || sp.bands[1].a)
+    ? `<div class="svacetot${sup(cmp, "atot", tag)}" style="--acm:${acm};--acsp:${acsp}${acout}">
         ${tines}<b>${pct(acePooled(sp))}<em><span class="svlong">total </span>ace rate</em></b></div>`
     : "";
   return `<div class="svcol ${tag}">
