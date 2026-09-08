@@ -271,6 +271,10 @@ def test_hold_and_break_are_scored_for_the_right_player(tmp_path, monkeypatch):
     # Player 1 served games 1, 3 and 5 and held two of them; player 2 served 2 and 4 and
     # held one. Break rates are the same games read from the other side. The rates ship
     # rounded to four places, which is the tolerance here.
+    #
+    # Player 1's two holds also pin that a game goes to whoever won its *last* point:
+    # game 3 opens with a point to the returner and still ends as a hold, so reading the
+    # first point of a game instead would score it 1/3 here.
     assert g.loc["A Player", "hold_rate"] == pytest.approx(2 / 3, abs=5e-5)
     assert g.loc["B Player", "hold_rate"] == pytest.approx(1 / 2, abs=5e-5)
     assert g.loc["A Player", "break_rate"] == pytest.approx(1 / 2, abs=5e-5)
@@ -283,13 +287,6 @@ def test_tiebreaks_are_not_service_games(tmp_path, monkeypatch):
     assert g.loc["A Player", "serve_games"] == 3
     assert g.loc["B Player", "serve_games"] == 2
     assert g.loc["A Player", "return_games"] == 2
-
-
-def test_a_game_goes_to_whoever_won_its_last_point(tmp_path, monkeypatch):
-    """Game 3 opens with a point to the returner and still ends as a hold."""
-    monkeypatch.setattr(build_insights, "MIN_GAMES", 1)
-    g = build_insights._game_rates(_points_db(tmp_path)).set_index("player")
-    assert g.loc["A Player", "hold_rate"] == pytest.approx(2 / 3, abs=5e-5)
 
 
 def test_thin_players_come_through_null_rather_than_wrong(tmp_path, monkeypatch):
@@ -336,16 +333,11 @@ def test_return_winners_are_credited_to_the_returner(tmp_path, monkeypatch):
     r = build_insights._return_winners(_parsed_db(tmp_path)).set_index("player")
     # B returned the five points A served and struck two winners off the return; A returned
     # the three points B served and struck one.
+    #
+    # B won three of those five points, so the 2/5 is also what holds the rally-length
+    # guard in place: a winner four shots in is not a return winner, and neither is an ace.
     assert r.loc["B Player", "ret_winner_rate"] == pytest.approx(2 / 5, abs=5e-5)
     assert r.loc["A Player", "ret_winner_rate"] == pytest.approx(1 / 3, abs=5e-5)
-
-
-def test_only_winners_struck_on_the_return_count(tmp_path, monkeypatch):
-    """A winner four shots into the rally is not a return winner, and neither is an ace."""
-    monkeypatch.setattr(build_insights, "MIN_RETURN_PTS", 1)
-    r = build_insights._return_winners(_parsed_db(tmp_path)).set_index("player")
-    # B won three of the five points they returned; only two of those came off the return.
-    assert r.loc["B Player", "ret_winner_rate"] < 3 / 5
 
 
 def test_return_winners_respect_their_own_floor(tmp_path, monkeypatch):
@@ -394,14 +386,10 @@ def test_aces_are_split_by_the_delivery_that_struck_them(tmp_path, monkeypatch):
     # Three points did, one of them aced. The denominator is those three and not the two
     # second serves that landed — it is the one second_won_pct is on, and the panel divides
     # both by second_in_pct to get the landed reading the plot draws.
+    #
+    # One of those three is the double fault, which is why 1/3 rather than 1/2: a point
+    # where neither delivery landed is in the denominator and never the numerator.
     assert r.loc["A Player", "second_ace_pct"] == pytest.approx(1 / 3, abs=5e-5)
-
-
-def test_the_double_fault_is_not_a_second_serve_ace(tmp_path, monkeypatch):
-    """A point where neither delivery landed is in the denominator and never the numerator."""
-    monkeypatch.setattr(build_insights, "MIN_ACE_PTS", 1)
-    r = build_insights._serve_aces(_ace_db(tmp_path)).set_index("player")
-    assert r.loc["A Player", "second_ace_pct"] < 1 / 2
 
 
 def test_serve_aces_respect_their_own_floor(tmp_path, monkeypatch):

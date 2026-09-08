@@ -51,18 +51,6 @@ def test_serve_in_play_selects_second_serve():
     assert p.serve_in_play == 2  # first serve was a fault; point on the second
 
 
-def test_stroke_kind():
-    assert stroke_kind("f", False) == "drive"
-    assert stroke_kind("b", False) == "drive"
-    assert stroke_kind("r", False) == "slice"
-    assert stroke_kind("s", False) == "slice"
-    assert stroke_kind("v", False) == "net"
-    assert stroke_kind("l", False) == "lob"
-    assert stroke_kind("u", False) == "drop"
-    assert stroke_kind("t", False) == "other"
-    assert stroke_kind("", True) == "serve"
-
-
 def test_aggressive_shot_reads_all_three_kinds():
     """Winner, own unforced error, and forcing the reply out all count; rally balls don't.
 

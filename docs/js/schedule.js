@@ -35,3 +35,28 @@ export const dayShort = (iso) =>
 // there, so a scheduled one and a finished one read the same way.
 export const dayLong = (iso) =>
   fmt(iso, { year: "numeric", month: "short", day: "numeric" });
+
+// A scheduled match's start in the reader's own timezone, self-labeled: "Sun, Aug 31,
+// 12:30 PM EDT". ESPN writes a real UTC start instant into `iso` at the same time it puts a
+// clock time in `detail`, but `detail`'s time is always US Eastern, so a reader anywhere
+// else is left converting it in their head. This reads the instant instead.
+//
+// It trusts `iso` only when the two agree on the wall time in Eastern. Were the feed ever to
+// pair a real `detail` time with a stale day marker in `iso` (midnight at the venue), the
+// marker's Eastern wall time would not match, and this falls back to ESPN's own string —
+// its Eastern zone labelled exactly once, whether or not the feed already spelled it out.
+// Callers pass a real `detail` here (never "TBD"): the day-only cases are theirs to handle.
+export function localStart(iso, detail) {
+  const raw = (detail || "").replace(/ - /g, " · ");
+  const stated = raw.match(/\d{1,2}:\d{2}\s*[AP]M/i);
+  const d = iso ? new Date(iso) : null;
+  if (d && !isNaN(d) && stated) {
+    const norm = (s) => s.replace(/\s+/g, " ").trim().toUpperCase();
+    const eastern = norm(d.toLocaleTimeString("en-US",
+      { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }));
+    if (norm(stated[0]) === eastern)
+      return d.toLocaleString([], { weekday: "short", month: "short", day: "numeric",
+        hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  }
+  return /\b(ET|EDT|EST)\b/i.test(raw) ? raw : `${raw} ET`;
+}

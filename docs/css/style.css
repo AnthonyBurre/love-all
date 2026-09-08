@@ -3597,8 +3597,9 @@ a {
    the narrow layout that label drops flat under the plot, so the figure drops past it to a
    row of its own (see the max-width block below) and the tines lengthen to match.
 
-   .one — aces on one delivery only — has a single core: the figure sits under it (--acfx
-   forced back to --acm) joined by a straight hairline, no tines. */
+   When a delivery has no ace core — a charted match often has no second-serve aces — serveBar
+   just leaves that tine out. The figure keeps its midpoint spot, so it never slides under an
+   in-rate label. */
 .svacetot {
    position: absolute;
    top: 100%;
@@ -3612,10 +3613,6 @@ a {
    --acin: calc(var(--acm) + var(--acspread));
    /* --acout is passed in by serveBar */
    --acfx: clamp(var(--achalf), var(--acm), calc(100% - var(--achalf)));
-}
-
-.svacetot.one {
-   --acfx: var(--acm);
 }
 
 /* each tine: an <svg> box spanning exactly one figure-to-core gap, its ogee stretched to fit
@@ -3651,24 +3648,6 @@ a {
 .svcol.b .svacetot>.svtn.out {
    right: var(--acout);
    width: calc(var(--acfx) - var(--acout));
-}
-
-/* .one: straight hairline from the single core down to the figure */
-.svacetot.one::before {
-   content: "";
-   position: absolute;
-   top: 0;
-   width: 1px;
-   height: var(--acstem);
-   background: color-mix(in srgb, var(--ink) 34%, transparent);
-}
-
-.svcol.a .svacetot.one::before {
-   left: var(--acm);
-}
-
-.svcol.b .svacetot.one::before {
-   right: var(--acm);
 }
 
 /* the figure */
