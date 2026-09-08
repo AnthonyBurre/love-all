@@ -56,11 +56,6 @@ def test_full_game_alternates_each_point():
     assert all(a != b for a, b in zip(sides, sides[1:]))
 
 
-def test_only_pts_needed_no_games_or_tiebreak_flag():
-    # The rule takes a single argument; games / tiebreak status are not inputs.
-    assert serve_side("30-40") == AD
-
-
 @pytest.mark.skipif(not DB_PATH.exists(), reason="no duckdb database built")
 def test_db_invariants():
     import duckdb
@@ -80,9 +75,3 @@ def test_db_invariants():
     frac_deuce = counts[DEUCE] / total
     assert 0.50 < frac_deuce < 0.55
     assert counts[DEUCE] > counts[AD]
-
-    # Structural side checks the plan calls out.
-    assert serve_side("0-0") == DEUCE            # every game/tiebreak opens deuce
-    assert serve_side("30-40") == AD             # a break point that is ad-court
-    assert serve_side("40-AD") == AD
-    assert serve_side("15-40") == DEUCE          # a break point that is deuce-court

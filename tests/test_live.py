@@ -23,9 +23,17 @@ def test_match_player_exact_fuzzy_and_miss():
     assert players.match_player("Some Qualifier", "M", uni) is None
 
 
+# A scheduled match as the feed really writes one: a UTC start instant, and a clock time
+# in the detail string that is always US Eastern and says so. The two agree — 21:00Z is
+# 5:00 PM EDT — which is the condition the site's `localStart` checks before it converts
+# the instant into the reader's own zone. A fixture carrying a bare time and no start at
+# all can only ever exercise the fallback.
+MATCH_START = "2026-09-03T21:00Z"
+MATCH_DETAIL = "9/3 - 5:00 PM EDT"
+
 _RAW = {"events": [{"id": "188-2026", "name": "Wimbledon", "major": True, "groupings": [
     {"grouping": {"slug": "mens-singles"}, "competitions": [
-        {"id": "m1", "round": {"displayName": "Final"},
+        {"id": "m1", "round": {"displayName": "Final"}, "date": "2026-07-14T13:00Z",
          "status": {"type": {"state": "post", "shortDetail": "Final"}},
          "competitors": [
              {"athlete": {"displayName": "Champ Winner"}, "flag": {"alt": "Spain"},
@@ -111,8 +119,8 @@ def _event(id, name, venue, slug="mens-singles", major=False, date="2026-07-27T1
     return {"id": id, "name": name, "major": major, "date": date,
             "venue": {"displayName": venue},
             "groupings": [{"grouping": {"slug": slug}, "competitions": [
-                {"id": f"{id}-c", "round": {"displayName": "Final"},
-                 "status": {"type": {"state": "pre", "shortDetail": "1:00 PM"}},
+                {"id": f"{id}-c", "round": {"displayName": "Final"}, "date": MATCH_START,
+                 "status": {"type": {"state": "pre", "shortDetail": MATCH_DETAIL}},
                  "competitors": [{"athlete": {"displayName": "A One"}},
                                  {"athlete": {"displayName": "B Two"}}]}]}]}
 
@@ -185,6 +193,22 @@ def test_parse_carries_the_venue_city():
                    cal=CAL_2026)[0]
     assert t.city == "Washington"               # not the sponsor's name for it
     assert brackets.serialize(t)["city"] == "Washington"
+
+
+def test_parse_carries_the_matchs_own_start_through_to_the_payload():
+    """The competition's `date` is the only real start instant on the wire, and the site
+    reads it to print when a scheduled match is due in the reader's timezone. The feed
+    carries a sibling `startDate` on the same dict, so a slip to the wrong key would leave
+    every scheduled match undated with nothing else on the page to show it.
+    """
+    t = espn.parse({"events": [_event("888-2026", "Mubadala DC Open", "Washington, USA")]},
+                   cal=CAL_2026)[0]
+    m = t.matches[0]
+    assert m.date == MATCH_START
+    assert m.detail == MATCH_DETAIL
+    payload = brackets.serialize(t, use_fixture=False)
+    match = payload["rounds"][0]["matches"][0]
+    assert (match["date"], match["detail"]) == (MATCH_START, MATCH_DETAIL)
 
 
 def test_tourn_key_bridges_feed_city_and_db_name():
@@ -447,17 +471,14 @@ def test_coverage_by_year_adds_up_to_the_totals_it_is_drawn_under():
     total = players.coverage(con)[("M", "Ann")]
     by_year = {y: (m, p) for g, pl, y, m, p in players.coverage_by_year(con)
                if (g, pl) == ("M", "Ann")}
+    # Two seasons and no third: the undated match is dropped from the breakdown rather
+    # than binned under a null year.
     assert by_year == {2023: (2, 7), 2025: (1, 5)}
-    # The dated seasons account for the whole of the total bar the one undated match, and
+    # The dated seasons account for the whole of the total bar that one undated match, and
     # the span the chart is drawn across is the one the totals line claims.
     assert sum(m for m, _ in by_year.values()) == total["matches"] - 1
     assert sum(p for _, p in by_year.values()) == total["points"] - 2
     assert (min(by_year), max(by_year)) == (total["year_min"], total["year_max"])
-
-
-def test_coverage_by_year_drops_matches_with_no_year():
-    con = _cov_db()
-    assert all(y is not None for _g, _p, y, _m, _pt in players.coverage_by_year(con))
 
 
 def test_coverage_by_match_is_one_row_per_match_summing_to_the_season_bars():

@@ -1,0 +1,9 @@
+{
+  "name": "love-all",
+  "private": true,
+  "type": "module",
+  "description": "Test harness for the static site's browser modules in docs/js. No build step and no dependencies: the site ships the sources as they are, and these run on Node's built-in test runner.",
+  "scripts": {
+    "test": "TZ=UTC node --test \"tests/js/*.test.js\""
+  }
+}

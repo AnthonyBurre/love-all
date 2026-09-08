@@ -230,48 +230,10 @@ def test_predictive_spread_leaves_an_even_match_even():
     assert even == pytest.approx(0.5, abs=1e-6)
 
 
-def test_shot_mix_counts_every_stroke_but_the_serve():
-    """The mix denominator is what the player hit, return included.
-
-    Strokes alternate from the serve, so the first rally letter is the returner's: in
-    ``4f3b1@`` the forehand is player 2's return and the backhand error is player 1's.
-    Two strokes, one on each side, and the serve on neither.
-    """
-    s = fold([row(1, 1, "0-0", "4f3b1@", None, 2)])
-    assert s[1]["rally_shots"] == 1 and s[2]["rally_shots"] == 1
-    assert s[2]["fh_gs"] == 1 and s[2]["bh_gs"] == 0
-    assert s[1]["bh_gs"] == 1 and s[1]["fh_gs"] == 0
-
-
-def test_slice_is_a_groundstroke_and_a_volley_is_not():
-    """The two denominators the panel prints have to stay apart: the mix is over every
-    stroke, and the wing rates are over drives and slices only."""
-    # Serve, a forehand slice (r) returned by player 2, a backhand volley winner (z) from
-    # the server.
-    s = fold([row(1, 1, "0-0", "4r3z1*", None, 1)])
-    a, b = s[1], s[2]
-    assert (b["rally_shots"], b["slice_shots"], b["fh_gs"]) == (1, 1, 1)
-    assert (a["rally_shots"], a["net_shots"], a["bh_gs"]) == (1, 1, 0)
-    # The volley winner belongs to the net game, not to the backhand's winner rate.
-    assert a["bh_winners"] == 0
-
-
-def test_error_rates_count_unforced_errors_only():
-    """A forced error is charged to whoever forced it everywhere else on this panel, so
-    the wing that was picked on does not wear it here either."""
-    forced = fold([row(1, 1, "0-0", "4f3b1#", None, 2)])
-    unforced = fold([row(1, 1, "0-0", "4f3b1@", None, 2)])
-    assert forced[1]["bh_gs"] == 1 and forced[1]["bh_errs"] == 0
-    assert unforced[1]["bh_gs"] == 1 and unforced[1]["bh_errs"] == 1
-
-
-def test_net_errors_are_read_off_the_net_shot_itself():
-    """A missed volley is a net error; a passing shot that beat one is not."""
-    # Server volleys (v) into the net, unforced.
-    s = fold([row(1, 1, "0-0", "4b3v1@", None, 2)])
-    assert s[1]["net_shots"] == 1 and s[1]["net_errs"] == 1
-    # The returner's backhand set it up and ends nothing: no error against them.
-    assert s[2]["bh_errs"] == 0
+# The mix tallies themselves — which strokes count, on which wing, and which outcomes are
+# charged to them — are pinned in tests/test_notation.py against the shared walk this build
+# calls (notation.fold_shot_mix, reached from _fold_point). What is this build's own is the
+# trip into the payload, below.
 
 
 def test_shot_mix_survives_a_json_round_trip():
