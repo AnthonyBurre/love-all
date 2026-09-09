@@ -3,6 +3,7 @@
 import { query, tourSpread } from "./db.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong, localStart } from "./schedule.js";
+import { flagEmoji } from "./flags.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -22,33 +23,6 @@ const pct = (x) => {
 // The same two slot markers bracket.js treats as non-entrants: they fill a side of a card,
 // but there is no player behind them to look anything up for.
 const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== "Bye";
-
-// Country name (ESPN's flag alt text) → ISO 3166-1 alpha-2, so we can show a flag emoji
-// instead of the country name. Covers every nation that turns up in the draws; anything
-// unmapped falls back to the plain name.
-const ISO2 = {
-  Andorra: "AD", Argentina: "AR", Armenia: "AM", Australia: "AU", Austria: "AT",
-  Belarus: "BY", Belgium: "BE", Bolivia: "BO", "Bosnia and Herzegovina": "BA", Brazil: "BR",
-  Bulgaria: "BG", Canada: "CA", Chile: "CL", China: "CN", "Chinese Taipei": "TW",
-  Colombia: "CO", Croatia: "HR", Czechia: "CZ", "Czech Republic": "CZ", Denmark: "DK",
-  Egypt: "EG", Estonia: "EE", Finland: "FI", France: "FR", Georgia: "GE", Germany: "DE",
-  "Great Britain": "GB", Greece: "GR", Hungary: "HU", India: "IN", Indonesia: "ID",
-  Israel: "IL", Italy: "IT", Japan: "JP", Kazakhstan: "KZ", Korea: "KR", "South Korea": "KR",
-  Laos: "LA", Latvia: "LV", Liechtenstein: "LI", Lithuania: "LT", Luxembourg: "LU",
-  Macedonia: "MK", "North Macedonia": "MK", Mexico: "MX", Monaco: "MC", Montenegro: "ME",
-  Netherlands: "NL", "New Zealand": "NZ", Norway: "NO", Paraguay: "PY", Peru: "PE",
-  Philippines: "PH", Poland: "PL", Portugal: "PT", Romania: "RO", Russia: "RU", Serbia: "RS",
-  Slovakia: "SK", Slovenia: "SI", "South Africa": "ZA", Spain: "ES", Sweden: "SE",
-  Switzerland: "CH", Thailand: "TH", Tunisia: "TN", "Türkiye": "TR", Turkey: "TR",
-  USA: "US", "United States": "US", Ukraine: "UA", Uzbekistan: "UZ",
-};
-
-// A country name → its 🇫🇷 flag emoji (a pair of regional-indicator letters), or "" when
-// the name isn't mapped so the caller can fall back to the text.
-function flagEmoji(country) {
-  const cc = ISO2[country];
-  return cc ? String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)) : "";
-}
 
 // A finished match's date, formatted short ("Jul 13, 2026"). "" when absent (older archived
 // draws carry no per-match date) or unparseable. Read in UTC (ESPN's datetimes are Z): the

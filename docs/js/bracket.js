@@ -3,6 +3,7 @@
 // (one top-down grid of the draw, sliced by selector chips).
 
 import { dayShort, localStart } from "./schedule.js";
+import { flagEmoji } from "./flags.js";
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -10,6 +11,17 @@ const el = (tag, cls, text) => {
   if (text != null) n.textContent = text;
   return n;
 };
+
+// The flag that goes ahead of a name on a card, titled with the country it stands for —
+// the panel's header does the same. Null for a country we can't place, so the name simply
+// starts where the flag would have been rather than after an empty gap.
+function flagEl(country) {
+  const glyph = flagEmoji(country);
+  if (!glyph) return null;
+  const s = el("span", "flag", glyph);
+  s.title = country;
+  return s;
+}
 
 // A match is only as analyzable as its lesser-charted player: tier = min(both).
 // Completed draws that have any charting shade per *match* instead — charted or not —
@@ -67,14 +79,26 @@ function setsEl(mine, theirs, wins) {
 const BYE = "Bye";
 const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== BYE;
 
+// Seed and name go in an inner span that can be squeezed; the flag trails it as a sibling.
+// Nesting the flag inside would put it on the wrong side of the ellipsis — the clip happens
+// at the end of the line, so a name too long for its card would drop its flag and keep the
+// letters. Outside, the letters go and the flag stays.
+function fillName(nm, s, named) {
+  const who = el("span", "who");
+  if (s.seed) who.append(el("span", "seed", s.seed));
+  who.append(document.createTextNode(s.name || "TBD"));
+  nm.append(who);
+  const flag = named && flagEl(s.country);
+  if (flag) nm.append(flag);
+}
+
 function sideRow(s, opp) {
   const named = isEntrant(s);
   const row = el("div", "side " + (s.winner ? "win" : named ? "lose" : "") +
               (s.name === BYE ? " byeside" : ""));
   const nm = el("span", "nm");
   if (named) nm.dataset.full = s.name;
-  if (s.seed) nm.append(el("span", "seed", s.seed));
-  nm.append(document.createTextNode(s.name || "TBD"));
+  fillName(nm, s, named);
   row.append(nm, setsEl(s.sets, opp && opp.sets, s.set_wins));
   return row;
 }
@@ -98,25 +122,43 @@ const abbrevHard = (name) => {
 };
 function fitNames(root) {
   for (const nm of root.querySelectorAll(".nm[data-full]")) {
-    if (nm.scrollWidth <= nm.clientWidth) continue;
-    nm.lastChild.textContent = abbrev(nm.dataset.full);        // "F. Auger-Aliassime", seed kept
-    if (nm.scrollWidth <= nm.clientWidth) continue;
-    const seed = nm.querySelector(".seed");                    // the seed badge goes next
-    if (seed) { seed.remove(); if (nm.scrollWidth <= nm.clientWidth) continue; }
-    nm.lastChild.textContent = abbrevHard(nm.dataset.full);    // then middle names, then CSS ellipsis
+    const who = nm.querySelector(".who");                      // the part that can be shortened
+    const fits = () => who.scrollWidth <= who.clientWidth;
+    if (fits()) continue;
+    who.lastChild.textContent = abbrev(nm.dataset.full);       // "F. Auger-Aliassime", seed kept
+    if (fits()) continue;
+    const seed = who.querySelector(".seed");                   // the seed badge goes next
+    if (seed) { seed.remove(); if (fits()) continue; }
+    who.lastChild.textContent = abbrevHard(nm.dataset.full);   // then middle names, then CSS ellipsis
   }
 }
 
 // The wide layout groups by column instead of by player — both names on one line, both
 // scores on the line below — so a match reads in one row instead of two. Used in the
 // by-quarter view, where cards run wide enough for it.
-function nameSpan(s) {
+function nameSpan(s, withFlag) {
   const named = isEntrant(s);
   const span = el("span", "nm " + (s.winner ? "win" : named ? "lose" : ""));
   if (named) span.dataset.full = s.name;
-  if (s.seed) span.append(el("span", "seed", s.seed));
-  span.append(document.createTextNode(s.name || "TBD"));
+  fillName(span, s, named && withFlag);
   return span;
+}
+
+// Has anyone put a number on the board — a finished match, or a live one mid-set. False for
+// a bye, a placeholder, and a fixture still to be played, none of which have a scoreline.
+const isScored = (m) => [m.a, m.b].some((s) => (s.sets || []).some((x) => x != null));
+
+// One side of the wide layout's scoreline, with that side's flag on the outer edge: left of
+// the left player's games, right of the right player's, so the pair flanks the score the way
+// the two names above it bracket the card. `right` is which side of the card this is.
+function scoreSide(s, opp, right, withFlag) {
+  const wrap = el("span", "scoreside");
+  const sets = setsEl(s.sets, opp && opp.sets, s.set_wins);
+  const flag = withFlag && isEntrant(s) && flagEl(s.country);
+  if (!flag) wrap.append(sets);
+  else if (right) wrap.append(sets, flag);
+  else wrap.append(flag, sets);
+  return wrap;
 }
 
 function matchCard(m, t, cov, onClick, wide) {
@@ -130,11 +172,14 @@ function matchCard(m, t, cov, onClick, wide) {
   // the only thing saying why there is no match to play. The other tiers keep theirs.
   if (m.bye || tier.cls !== "t-tbd") card.title = tier.note;
   if (wide) {
+    // A played match drops its flags onto the scoreline, where they flank the games and
+    // leave the two names to meet across the row above with nothing between them. One
+    // still to be played has no scoreline to flank, so its flags stay beside the names.
+    const scored = isScored(m);
     const names = el("div", "namesrow");
-    names.append(nameSpan(m.a), nameSpan(m.b));
+    names.append(nameSpan(m.a, !scored), nameSpan(m.b, !scored));
     const scores = el("div", "scoresrow");
-    scores.append(setsEl(m.a.sets, m.b.sets, m.a.set_wins),
-                  setsEl(m.b.sets, m.a.sets, m.b.set_wins));
+    scores.append(scoreSide(m.a, m.b, false, scored), scoreSide(m.b, m.a, true, scored));
     card.append(names, scores);
   } else {
     card.append(sideRow(m.a, m.b), sideRow(m.b, m.a));
