@@ -61,7 +61,7 @@ async function playerData(name, gender) {
   try {
     patterns = await query(
       "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
-      "win_rate, tour_win_rate, field_share, state_win_rate, serve_side, serve_dir, " +
+      "win_rate, tour_win_rate, state_win_rate, serve_side, serve_dir, " +
       "state_kind, resp_kind " +
       "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
       [name, gender]);
@@ -497,12 +497,6 @@ function patternCard(p) {
            vs ${r}</span>`);
     }
   }
-  // What the lift is taken against. "3.4x the tour" is two very different claims off a
-  // 27% base and off a 0.4% one; without the share, a mild over-index on the tour's own
-  // favourite shot and a genuine oddity look alike.
-  const share = num(p.field_share);
-  const vs = share == null ? "" : ` <span class="pshare">tour ${share < 0.01
-    ? "under 1" : Math.round(share * 100)}%</span>`;
   // The return family is the serve+1: its state names the court and often the serve, so
   // the drawing starts at the serve rather than at the return. retSvg falls back to the
   // pair drawing for a pattern surfaced with the sides pooled.
@@ -518,12 +512,16 @@ function patternCard(p) {
   const of = num(p.n_state);
   const n = `n=${Number(p.count).toLocaleString()}${of
     ? `<span class="pof">/${of.toLocaleString()}</span>` : ""}`;
+  // The payoff leads a line of its own now, so it drops the " · " that joined it to the count;
+  // the count follows underneath as the card's quiet last line.
+  const win = payoff.replace(/^ · /, "");
   return `<div class="pcard2">
     <div class="pcourt">${court}</div>
     <div class="pmeta">
-      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span>${vs}</p>
+      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span></p>
       <p class="pdesc">${esc(p.state)}<b>→ ${esc(p.response)}</b></p>
-      <p class="pfoot">${n}${payoff}</p>
+      ${win ? `<p class="pfoot">${win}</p>` : ""}
+      <p class="pn">${n}</p>
     </div>
   </div>`;
 }
@@ -629,7 +627,7 @@ function trigSets(d) {
   return base + [...greens, ...traps].map((t) => trigLine(t, hand, norm)).join("") + immune;
 }
 
-// --- "side by side": one ring ---------------------------------------------------------
+// --- "basic stats": one ring ---------------------------------------------------------
 // One shared axis, bent into a circle. 6 o'clock is zero for both players, A sweeps up the
 // left of it and B up the right, and a half-turn each is the top. They grow from a shared
 // origin and the comparison is still "whose reaches further" — read as a sweep rather than as
@@ -1753,22 +1751,14 @@ function serveLabels(sp, tag, cmp) {
 // the colours and the sides, which the scoreboard, the rings and the style columns all use the
 // same way; and with every quantity named and pointed at there is nothing left for a legend to
 // say.
-// The window rides in the head, the same way the groundstroke block marks its own. It earns
-// the space here: the next section, "serve direction", is a recency-weighted window and says
-// so in its own caption, and a reader crossing from one to the other assumes they match
-// unless each says which it is. This one is every service point in the player's charted
-// history — the same span the hold rate on the ring above is taken over, which is what makes
-// the plot what that hold is made of.
 function serveAnatomy(da, db, ma, mb) {
   const sa = serveSplit(ma || (da && da.s)), sb = serveSplit(mb || (db && db.s));
   if (!sa && !sb) return "";
   const cmp = serveCmp(sa, sb);
-  const win = ma || mb ? "this match" : "whole charted career";
   // The pooled-ace figure and its tines need room reserved under the plots — see .svpair.aces
   // — so long as either player has a core to point at.
   const aces = [sa, sb].some((s) => s && (s.bands[0].a || s.bands[1].a)) ? " aces" : "";
   return `<div class="svblock">
-    <p class="svhead">every service point · ${win}</p>
     <div class="svpair${aces}">
       ${serveLabels(sa, "a", cmp)}${serveBar(sa, "a", cmp)}${serveBar(sb, "b", cmp)}${serveLabels(sb, "b", cmp)}
     </div>
@@ -1806,7 +1796,7 @@ function figBand(x, band, fmt = (v) => v.toFixed(1)) {
 // BH corner" is a different corner for a lefty), so the key to reading those drawings has to
 // arrive before them.
 //
-// It moved into "side by side" from its own band under "Charted history" — the counts up there
+// It moved into "basic stats" from its own band under "Charted history" — the counts up there
 // are what every number in the panel is measured against and earn the title to themselves;
 // style, hand, and the figures here are the first *comparison*, which is what this section is
 // for.
@@ -1864,12 +1854,8 @@ function profileParts(d, md, spread) {
   // held back because its neighbour is missing is a fact withheld for no reason.
   //
   // In match mode a figure the match can measure is taken from the match and carries the
-  // career value beneath it as the anchor — "67%" alone has no scale, and "67%, career 62%"
-  // is the whole story. A figure the match cannot measure keeps its career value and says
-  // so on the line. Variety is the one that cannot: it is a mean per-shot surprise under a
-  // tour-wide model, so it is unbiased at any sample size, but one match moves it by 0.18
-  // bits against a tour whose middle half spans 0.26 — two match figures side by side would
-  // be showing a gap that is mostly noise, and the career pair is the honest comparison.
+  // career value beneath it as the anchor. A figure the match cannot measure keeps its career value and says
+  // so on the line. 
   const figs = FIGS.map((f) => {
     const career = figOf(f, s);
     const mv = md ? figOf(f, md) : null;
@@ -2044,13 +2030,11 @@ function groundAnatomy(da, db, ma, mb) {
   const ga = gsSplit(da && da.s, ma), gb = gsSplit(db && db.s, mb);
   if (!ga && !gb) return "";
   const cmp = gsCmp(ga, gb);
-  const win = ma || mb ? "this match" : "whole charted career";
   // The two halves are named down the midline itself: "winners" reading up the top half the
   // way the winner bands climb, "unforced errors" reading down the bottom half the way the
   // error bands fall. The word sits on the axis it describes, so there is no swatch legend to
   // carry a direction across to the drawing.
   return `<div class="gsblock">
-    <p class="svhead">groundstroke outcomes · ${win}</p>
     <div class="gspair">${gsBar(ga, "a", cmp)}${gsBar(gb, "b", cmp)}
       <i class="gsaxis" aria-hidden="true"><b class="w">winners</b><b class="e">unforced errors</b></i>
     </div>
@@ -2142,17 +2126,18 @@ function profileSide(p, o, tag, plan) {
     // the unit, and above the label it would read as a second figure the label named.
     return `<p class="${cls}"><b${trail}>${x.v}</b>${x.unit ? `<span>${esc(x.unit)}</span>` : ""}<em>${esc(x.label)}</em>${figBand(x.raw, x.band, x.fmt)}${note}</p>`;
   };
-  // An em dash where this player has no figure, the same mark the phone comparison already
-  // uses for the same absence — the label rides with it, so the row still says which figure
-  // is missing rather than leaving an unexplained gap opposite a number.
-  const none = (cls, label) => `<p class="${cls} pbnone"><b>—</b>` +
-    (label ? `<em>${esc(label)}</em>` : "") + `</p>`;
+  // An em dash where this player has no figure, and nothing else — no label beside it. Every
+  // row here is one at least one player has, so the figure's name is always in the other
+  // column on the same subgrid row, level with the dash; printing it again next to the dash
+  // gave a thinly-charted player a whole column of "— net winner rate / — net error rate"
+  // that named nothing the row opposite hadn't.
+  const none = (cls) => `<p class="${cls} pbnone"><b>—</b></p>`;
   const cell = (r) => {
     if (r.kind === "arch") return p.arch ? `<p class="pbstyle">${esc(p.arch)}</p>` : none("pbstyle");
     if (r.kind === "hand") return p.hand ? `<p class="pbhand">${esc(p.hand)}</p>` : none("pbhand");
-    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq", "avg winning rally");
+    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq");
     const x = p.figs.find((y) => y.label === r.label);
-    return x ? fig(x, "pbfig") : none("pbfig", r.label);
+    return x ? fig(x, "pbfig") : none("pbfig");
   };
   return `<div class="pbside ${tag}" data-side="${tag}">${plan.map(cell).join("")}</div>`;
 }
@@ -2230,11 +2215,10 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
     someone chose to chart. That weights the numbers toward big occasions rather than
     sampling a career evenly.</p>`;
 
-// The strip's own heading. It had none while the title above sat inside it; with the title
-// promoted to head the body, the one chart here without a name would have been this one.
-// "Side by side" names the form rather than the contents, because the form is what tells it
-// from its neighbours: every other section gives each player a column, and this is the one
-// place the two are measured on a shared axis.
+// The section's name in the code is "basic stats". It prints no heading of its own, following
+// straight on from the coverage band above that every figure in it is measured against — a
+// labelled gap between the two would only push them apart. It is the one place the two players
+// are measured on a shared axis (the ring); every other section gives each of them a column.
 //
 // One ring, holding the one comparison that is genuinely shared: how often each of them wins
 // a game, on serve and on return. Every other per-player figure is a fact about that player
@@ -2441,7 +2425,7 @@ function section(title, note, a, b, aHtml, bHtml, kind = "cards", full = "") {
   // everything below it out of step with the thing it is supposed to be read against.
   const rows = 1 + Math.max(countCards(aHtml), countCards(bHtml));
   // Whose column is whose is said once per layout, and only where the layout stops saying it
-  // by itself. Side by side — at any width — each column is capped by a rule in its player's
+  // by itself. In two columns — at any width — each is capped by a rule in its player's
   // colour, in the same left-right order as the split under the scoreboard, which never
   // scrolls away — so repeating the names in the sticky bar would carry the same key twice
   // over columns that had not moved. Stacked, the position is genuinely gone, and each column
@@ -2743,7 +2727,7 @@ function headHtml(m, t, round) {
 // The coverage band leads, under "Charted history", because the charted counts are the
 // denominator of every number in the panel — everything under it is read through them.
 //
-// "Side by side" comes next, and opens with style, hand, and the per-player figures ahead of
+// "Basic stats" comes next, and opens with style, hand, and the per-player figures ahead of
 // the ring: the handedness there is the key to reading the court drawings two sections down,
 // so it has to arrive before them, and style is the first per-player comparison the body
 // makes, which is what the section is for.
