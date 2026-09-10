@@ -63,8 +63,13 @@ async function main() {
     $("status").textContent = "Could not load the current draws.";
     return;
   }
+  // Spelled-out components rather than dateStyle/timeStyle: the two style shorthands can't be
+  // paired with timeZoneName, and the zone is the point — the time reads in the viewer's own.
   $("updated").textContent =
-    "Updated " + new Date(data.updated).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    "Updated " + new Date(data.updated).toLocaleString([], {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "numeric", minute: "2-digit", timeZoneName: "short",
+    });
   if (!data.tournaments.length) {
     $("status").textContent = "No Grand Slam, 1000 or 500 draws are live right now. Check back during an event.";
     return;

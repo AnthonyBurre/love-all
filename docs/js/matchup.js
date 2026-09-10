@@ -512,16 +512,16 @@ function patternCard(p) {
   const of = num(p.n_state);
   const n = `n=${Number(p.count).toLocaleString()}${of
     ? `<span class="pof">/${of.toLocaleString()}</span>` : ""}`;
-  // The payoff leads a line of its own now, so it drops the " · " that joined it to the count;
-  // the count follows underneath as the card's quiet last line.
+  // The count sits on its own line, then the payoff under it — which drops the " · " that
+  // would have joined the payoff to a count on the same line.
   const win = payoff.replace(/^ · /, "");
   return `<div class="pcard2">
     <div class="pcourt">${court}</div>
     <div class="pmeta">
       <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span></p>
       <p class="pdesc">${esc(p.state)}<b>→ ${esc(p.response)}</b></p>
-      ${win ? `<p class="pfoot">${win}</p>` : ""}
       <p class="pn">${n}</p>
+      ${win ? `<p class="pfoot">${win}</p>` : ""}
     </div>
   </div>`;
 }
