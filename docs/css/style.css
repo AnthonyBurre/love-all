@@ -976,12 +976,12 @@ a {
    line it sits on; as a flex item it would reserve its width down every line of a wrapped
    name, indenting the second and third to the depth of a flag beside only the first.
    flow-root is what keeps the float inside the name's own box. */
-.match .wsides > .nm {
+.match .wsides>.nm {
    display: flow-root;
    min-width: 0;
 }
 
-.match .wsides > .nm.right {
+.match .wsides>.nm.right {
    text-align: right;
 }
 
@@ -2189,7 +2189,7 @@ a {
    opacity: 0.55;
 }
 
-/* --- the comparison strip, headed "side by side" ---------------------------------
+/* --- the comparison strip: "basic stats" ---------------------------------
    Both players' game-winning on one axis, bent into a ring: each sweeps out of a shared origin
    at the foot, so a gap reads as a shape rather than as arithmetic between two distant
    columns. A spoke across the band carries the other half of the same question, the return
@@ -4571,7 +4571,7 @@ a {
    color: var(--muted);
 }
 
-/* The figure definitions, closing the side-by-side box (figureKey). It borrows .notekey's look
+/* The figure definitions, closing the basic-stats box (figureKey). It borrows .notekey's look
    wholesale, because it is the same object as the notation key at the foot of the panel and a
    second disclosure style would only make the reader learn the convention twice.
    Ruled off rather than merely spaced: everything above it in this box is about these two
@@ -5516,7 +5516,7 @@ a {
 
    /* The court sections stay two-up. Stacking them puts a player's three drawings a
      screen and a half from the three they are meant to be read against, which is the
-     section — so the card gives up its side-by-side layout instead, and the comparison
+     section — so the card gives up its two-column layout instead, and the comparison
      survives the phone. The sequence sections have no drawing to trade and do stack. */
    .seccols {
       grid-template-columns: 1fr 1fr;

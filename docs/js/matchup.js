@@ -627,7 +627,7 @@ function trigSets(d) {
   return base + [...greens, ...traps].map((t) => trigLine(t, hand, norm)).join("") + immune;
 }
 
-// --- "side by side": one ring ---------------------------------------------------------
+// --- "basic stats": one ring ---------------------------------------------------------
 // One shared axis, bent into a circle. 6 o'clock is zero for both players, A sweeps up the
 // left of it and B up the right, and a half-turn each is the top. They grow from a shared
 // origin and the comparison is still "whose reaches further" — read as a sweep rather than as
@@ -1796,7 +1796,7 @@ function figBand(x, band, fmt = (v) => v.toFixed(1)) {
 // BH corner" is a different corner for a lefty), so the key to reading those drawings has to
 // arrive before them.
 //
-// It moved into "side by side" from its own band under "Charted history" — the counts up there
+// It moved into "basic stats" from its own band under "Charted history" — the counts up there
 // are what every number in the panel is measured against and earn the title to themselves;
 // style, hand, and the figures here are the first *comparison*, which is what this section is
 // for.
@@ -1854,12 +1854,8 @@ function profileParts(d, md, spread) {
   // held back because its neighbour is missing is a fact withheld for no reason.
   //
   // In match mode a figure the match can measure is taken from the match and carries the
-  // career value beneath it as the anchor — "67%" alone has no scale, and "67%, career 62%"
-  // is the whole story. A figure the match cannot measure keeps its career value and says
-  // so on the line. Variety is the one that cannot: it is a mean per-shot surprise under a
-  // tour-wide model, so it is unbiased at any sample size, but one match moves it by 0.18
-  // bits against a tour whose middle half spans 0.26 — two match figures side by side would
-  // be showing a gap that is mostly noise, and the career pair is the honest comparison.
+  // career value beneath it as the anchor. A figure the match cannot measure keeps its career value and says
+  // so on the line. 
   const figs = FIGS.map((f) => {
     const career = figOf(f, s);
     const mv = md ? figOf(f, md) : null;
@@ -2130,17 +2126,18 @@ function profileSide(p, o, tag, plan) {
     // the unit, and above the label it would read as a second figure the label named.
     return `<p class="${cls}"><b${trail}>${x.v}</b>${x.unit ? `<span>${esc(x.unit)}</span>` : ""}<em>${esc(x.label)}</em>${figBand(x.raw, x.band, x.fmt)}${note}</p>`;
   };
-  // An em dash where this player has no figure, the same mark the phone comparison already
-  // uses for the same absence — the label rides with it, so the row still says which figure
-  // is missing rather than leaving an unexplained gap opposite a number.
-  const none = (cls, label) => `<p class="${cls} pbnone"><b>—</b>` +
-    (label ? `<em>${esc(label)}</em>` : "") + `</p>`;
+  // An em dash where this player has no figure, and nothing else — no label beside it. Every
+  // row here is one at least one player has, so the figure's name is always in the other
+  // column on the same subgrid row, level with the dash; printing it again next to the dash
+  // gave a thinly-charted player a whole column of "— net winner rate / — net error rate"
+  // that named nothing the row opposite hadn't.
+  const none = (cls) => `<p class="${cls} pbnone"><b>—</b></p>`;
   const cell = (r) => {
     if (r.kind === "arch") return p.arch ? `<p class="pbstyle">${esc(p.arch)}</p>` : none("pbstyle");
     if (r.kind === "hand") return p.hand ? `<p class="pbhand">${esc(p.hand)}</p>` : none("pbhand");
-    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq", "avg winning rally");
+    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq");
     const x = p.figs.find((y) => y.label === r.label);
-    return x ? fig(x, "pbfig") : none("pbfig", r.label);
+    return x ? fig(x, "pbfig") : none("pbfig");
   };
   return `<div class="pbside ${tag}" data-side="${tag}">${plan.map(cell).join("")}</div>`;
 }
@@ -2218,11 +2215,10 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
     someone chose to chart. That weights the numbers toward big occasions rather than
     sampling a career evenly.</p>`;
 
-// The strip's own heading. It had none while the title above sat inside it; with the title
-// promoted to head the body, the one chart here without a name would have been this one.
-// "Side by side" names the form rather than the contents, because the form is what tells it
-// from its neighbours: every other section gives each player a column, and this is the one
-// place the two are measured on a shared axis.
+// The section's name in the code is "basic stats". It prints no heading of its own, following
+// straight on from the coverage band above that every figure in it is measured against — a
+// labelled gap between the two would only push them apart. It is the one place the two players
+// are measured on a shared axis (the ring); every other section gives each of them a column.
 //
 // One ring, holding the one comparison that is genuinely shared: how often each of them wins
 // a game, on serve and on return. Every other per-player figure is a fact about that player
@@ -2429,7 +2425,7 @@ function section(title, note, a, b, aHtml, bHtml, kind = "cards", full = "") {
   // everything below it out of step with the thing it is supposed to be read against.
   const rows = 1 + Math.max(countCards(aHtml), countCards(bHtml));
   // Whose column is whose is said once per layout, and only where the layout stops saying it
-  // by itself. Side by side — at any width — each column is capped by a rule in its player's
+  // by itself. In two columns — at any width — each is capped by a rule in its player's
   // colour, in the same left-right order as the split under the scoreboard, which never
   // scrolls away — so repeating the names in the sticky bar would carry the same key twice
   // over columns that had not moved. Stacked, the position is genuinely gone, and each column
@@ -2731,7 +2727,7 @@ function headHtml(m, t, round) {
 // The coverage band leads, under "Charted history", because the charted counts are the
 // denominator of every number in the panel — everything under it is read through them.
 //
-// "Side by side" comes next, and opens with style, hand, and the per-player figures ahead of
+// "Basic stats" comes next, and opens with style, hand, and the per-player figures ahead of
 // the ring: the handedness there is the key to reading the court drawings two sections down,
 // so it has to arrive before them, and style is the first per-player comparison the body
 // makes, which is what the section is for.
