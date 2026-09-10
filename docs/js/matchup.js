@@ -61,7 +61,7 @@ async function playerData(name, gender) {
   try {
     patterns = await query(
       "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
-      "win_rate, tour_win_rate, field_share, state_win_rate, serve_side, serve_dir, " +
+      "win_rate, tour_win_rate, state_win_rate, serve_side, serve_dir, " +
       "state_kind, resp_kind " +
       "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
       [name, gender]);
@@ -497,12 +497,6 @@ function patternCard(p) {
            vs ${r}</span>`);
     }
   }
-  // What the lift is taken against. "3.4x the tour" is two very different claims off a
-  // 27% base and off a 0.4% one; without the share, a mild over-index on the tour's own
-  // favourite shot and a genuine oddity look alike.
-  const share = num(p.field_share);
-  const vs = share == null ? "" : ` <span class="pshare">tour ${share < 0.01
-    ? "under 1" : Math.round(share * 100)}%</span>`;
   // The return family is the serve+1: its state names the court and often the serve, so
   // the drawing starts at the serve rather than at the return. retSvg falls back to the
   // pair drawing for a pattern surfaced with the sides pooled.
@@ -518,12 +512,16 @@ function patternCard(p) {
   const of = num(p.n_state);
   const n = `n=${Number(p.count).toLocaleString()}${of
     ? `<span class="pof">/${of.toLocaleString()}</span>` : ""}`;
+  // The payoff leads a line of its own now, so it drops the " · " that joined it to the count;
+  // the count follows underneath as the card's quiet last line.
+  const win = payoff.replace(/^ · /, "");
   return `<div class="pcard2">
     <div class="pcourt">${court}</div>
     <div class="pmeta">
-      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span>${vs}</p>
+      <p class="plift">${Number(p.lift).toFixed(1)}×<span> the tour</span></p>
       <p class="pdesc">${esc(p.state)}<b>→ ${esc(p.response)}</b></p>
-      <p class="pfoot">${n}${payoff}</p>
+      ${win ? `<p class="pfoot">${win}</p>` : ""}
+      <p class="pn">${n}</p>
     </div>
   </div>`;
 }
@@ -1753,22 +1751,14 @@ function serveLabels(sp, tag, cmp) {
 // the colours and the sides, which the scoreboard, the rings and the style columns all use the
 // same way; and with every quantity named and pointed at there is nothing left for a legend to
 // say.
-// The window rides in the head, the same way the groundstroke block marks its own. It earns
-// the space here: the next section, "serve direction", is a recency-weighted window and says
-// so in its own caption, and a reader crossing from one to the other assumes they match
-// unless each says which it is. This one is every service point in the player's charted
-// history — the same span the hold rate on the ring above is taken over, which is what makes
-// the plot what that hold is made of.
 function serveAnatomy(da, db, ma, mb) {
   const sa = serveSplit(ma || (da && da.s)), sb = serveSplit(mb || (db && db.s));
   if (!sa && !sb) return "";
   const cmp = serveCmp(sa, sb);
-  const win = ma || mb ? "this match" : "whole charted career";
   // The pooled-ace figure and its tines need room reserved under the plots — see .svpair.aces
   // — so long as either player has a core to point at.
   const aces = [sa, sb].some((s) => s && (s.bands[0].a || s.bands[1].a)) ? " aces" : "";
   return `<div class="svblock">
-    <p class="svhead">every service point · ${win}</p>
     <div class="svpair${aces}">
       ${serveLabels(sa, "a", cmp)}${serveBar(sa, "a", cmp)}${serveBar(sb, "b", cmp)}${serveLabels(sb, "b", cmp)}
     </div>
@@ -2044,13 +2034,11 @@ function groundAnatomy(da, db, ma, mb) {
   const ga = gsSplit(da && da.s, ma), gb = gsSplit(db && db.s, mb);
   if (!ga && !gb) return "";
   const cmp = gsCmp(ga, gb);
-  const win = ma || mb ? "this match" : "whole charted career";
   // The two halves are named down the midline itself: "winners" reading up the top half the
   // way the winner bands climb, "unforced errors" reading down the bottom half the way the
   // error bands fall. The word sits on the axis it describes, so there is no swatch legend to
   // carry a direction across to the drawing.
   return `<div class="gsblock">
-    <p class="svhead">groundstroke outcomes · ${win}</p>
     <div class="gspair">${gsBar(ga, "a", cmp)}${gsBar(gb, "b", cmp)}
       <i class="gsaxis" aria-hidden="true"><b class="w">winners</b><b class="e">unforced errors</b></i>
     </div>

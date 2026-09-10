@@ -427,7 +427,13 @@ a {
    display: flex;
    flex-direction: column;
    align-items: center;
-   justify-content: flex-end;
+   /* Every card in a round starts at the same level: the grid stretches the cells of a row
+      to equal height, and the card sits at the top of its cell. A card with fewer sets is
+      shorter, so it ends higher up — and the wire out of its bottom edge into the next
+      round is drawn from that edge, so the short card just gets a longer tail. The chip
+      row is the exception: its selector is pinned back to the cell floor (see .qsel) so the
+      fan-out below it keeps its footing whatever the card above is doing. */
+   justify-content: flex-start;
    gap: 8px;
    min-width: 0;
    /* A card's width comes from its grid track, not from the window — the view is offered
@@ -496,6 +502,10 @@ a {
    display: inline-flex;
    align-items: center;
    justify-content: center;
+   /* Held to the bottom of the cell while the card floats to the top: the chip marks the
+      level the rounds below it hang from, and that level should not jump around with the
+      set count of the match above. */
+   margin-top: auto;
    border: 1px solid var(--line);
    background: var(--card);
    clip-path: var(--chip-clip);
@@ -3414,10 +3424,28 @@ a {
    not a border on each — a border-box box cannot be narrower than its own border, so a column
    under about 1.2% of the width would be inflated to 2px and the row pushed past the end. */
 .svplot {
+   position: relative;
    display: flex;
    gap: 2px;
    width: 100%;
    aspect-ratio: 1 / 1;
+}
+
+/* Faint gridlines every 10th of each axis. Across is the share of service points a column takes
+   and up is the share of them it won, and a reader after "about 62%" off either axis had no mark
+   to measure against. Laid over the fills — the drained columns underneath are opaque — and kept
+   pale enough that the figures on the fills still read straight through. */
+.svplot::after {
+   content: "";
+   position: absolute;
+   inset: 0;
+   pointer-events: none;
+   --sv-grid: color-mix(in srgb, var(--muted) 16%, transparent);
+   background:
+      repeating-linear-gradient(to right, var(--sv-grid) 0, var(--sv-grid) 1px,
+         transparent 1px, transparent 10%),
+      repeating-linear-gradient(to bottom, var(--sv-grid) 0, var(--sv-grid) 1px,
+         transparent 1px, transparent 10%);
 }
 
 /* Side A reads its columns right to left, so the first serve lands against the midline on its
@@ -4247,6 +4275,35 @@ a {
       --dn-size: 200px;
       --dn-pad: 76px;
    }
+
+   /* The two style columns' strip rows, mirrored so they read as reflections across the ring:
+     side B hangs the tour strip on its outer (right) edge with the label against it, and side A
+     runs the same row the other way — strip on the outer (left) edge, label against it. The
+     value stays pinned to its inner edge on both sides, so the flexible space falls between the
+     value and the label rather than between the label and its strip, where it used to vary with
+     the label's length. Only strip rows flip; a strip-less row (a match-measured figure, an
+     em-dash placeholder) keeps the layout side B's strip-less rows already have. The phone
+     layout collapses both columns into one shared row (.pbcmp), and .pbq above is left alone —
+     it already hangs value and strip on the outer edge on both sides. */
+   .pbside[data-side="a"] .pbfig:has(.pbband) {
+      flex-direction: row-reverse;
+   }
+
+   /* Label hard against the strip on each side — the auto margin opens up between the value and
+     the label instead, so every label starts (side A) or ends (side B) at the same offset from
+     its strip whatever its length. .pbband's own margin is zeroed on side B to override the
+     block-scope rule further down that pushes it off the value with margin-left: auto. */
+   .pbside[data-side="a"] .pbfig:has(.pbband)>em {
+      margin-right: auto;
+   }
+
+   .pbside[data-side="b"] .pbfig:has(.pbband)>em {
+      margin-left: auto;
+   }
+
+   .pbside[data-side="b"] .pbfig:has(.pbband)>.pbband {
+      margin-left: 0;
+   }
 }
 
 /* The room the figures need outside the drawing. A label's anchor sits just past the band, so
@@ -4701,17 +4758,6 @@ a {
    letter-spacing: .05em;
 }
 
-/* the base the multiple is taken against, on its own line under it: a lift is only
-   readable next to the share it multiplies, and at 17px the two numbers would compete */
-.pshare {
-   display: block;
-   font-size: 10.5px;
-   font-weight: 600;
-   color: var(--muted);
-   letter-spacing: 0;
-   text-transform: none;
-}
-
 .pdesc {
    margin: 3px 0 0;
    font-size: 12.5px;
@@ -4739,6 +4785,15 @@ a {
    figure with a scale, not as two numbers of equal weight */
 .pof {
    opacity: .65;
+}
+
+/* the count, on its own line under the payoff: how often this was played and out of how
+   many chances, the provenance behind the numbers above rather than a finding of its own */
+.pn {
+   margin: 2px 0 0;
+   font-size: 10.5px;
+   color: var(--muted);
+   font-variant-numeric: tabular-nums;
 }
 
 /* the payoff comparison is one phrase — a narrow column mustn't break "▲5 vs their
