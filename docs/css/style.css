@@ -430,6 +430,12 @@ a {
    justify-content: flex-end;
    gap: 8px;
    min-width: 0;
+   /* A card's width comes from its grid track, not from the window — the view is offered
+      from 701px up and the track is a width over four — so the steps that keep a surname
+      on one line are keyed to the cell rather than to a media query. The cell and not the
+      card itself, because a container cannot style itself; below the 250px cap the two
+      are the same width anyway (see .qcell .match). */
+   container: matchcard / inline-size;
 }
 
 .qcell.span2 {
@@ -604,6 +610,17 @@ a {
 
    .quarters .match::before {
       display: none;
+   }
+
+   /* With the wedge gone the card's left inset is 4px wider than its right for nothing —
+      the padding was cut to clear a triangle that is no longer drawn. Evened up, which
+      matters most on a wide card: that layout is a mirror about its own centre line, and
+      an off-centre content box put the spine 2px left of where the card looks like it
+      splits. Same 24px in total, so no card gets any narrower — it only moves. Inside the
+      @supports block with the rule that retires the wedge, because where corner-shape
+      isn't supported the wedge is still there and still needs the room. */
+   .quarters .match.wide {
+      padding: 8px 12px;
    }
 
    .quarters .match {
@@ -927,43 +944,161 @@ a {
 
 /* set winner's games, bracket + drawer */
 
-/* wide layout (by-quarter view): groups by column instead of by player — both
-   names on one line, both scores on the line below — so a match reads in one row. */
-.match .namesrow,
-.match .scoresrow {
-   display: flex;
-   justify-content: space-between;
-   gap: 8px;
+/* wide layout (by-quarter view): the card is divided left and right rather than top and
+   bottom — a name down each side and the scoreline between them, running vertically, one
+   row per set. The rule down the middle draws the same split the two names make.
+
+   Two digits and a hairline are ~30px wide, so the games are never in contention with the
+   names for the card's width. That is the point of standing the scoreline up: laid across
+   one row under both names, the two players' games had every bit of the card's slack
+   between them, so the slack was the first thing to go — on a five-set match in a 176px
+   card they ended up 3.7px apart, which is closer than the 5px between one player's own
+   sets, and by 164px they overlapped. Vertically the gap is fixed by the grid and the
+   width stops mattering. What the layout spends instead is height: a line per set. */
+.match .wsides {
+   display: grid;
+   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+   column-gap: 9px;
+   align-items: start;
 }
 
-.match .scoresrow {
-   margin-top: 3px;
-}
-
-/* A played match's flag rides down here beside its games, on the outer edge of the card:
-   the scoreline's own margin, rather than a gap opened between the two players' scores. */
-.match .scoreside {
-   display: flex;
-   align-items: center;
-   gap: 5px;
+/* flow-root, not flex. The flag is floated (see fillName) so that it shortens only the
+   line it sits on; as a flex item it would reserve its width down every line of a wrapped
+   name, indenting the second and third to the depth of a flag beside only the first.
+   flow-root is what keeps the float inside the name's own box. */
+.match .wsides > .nm {
+   display: flow-root;
    min-width: 0;
 }
 
-.match .scoreside .flag {
-   margin-left: 0;
+.match .wsides > .nm.right {
+   text-align: right;
+}
+
+/* A match with no games on the board yet: the two names across the full width, wrapping
+   the same way, with nothing between them to build a scoreline around. */
+.match .namesrow {
+   display: flex;
+   justify-content: space-between;
+   align-items: flex-start;
+   gap: 10px;
 }
 
 .match .namesrow .nm {
-   flex: 0 1 auto;
+   display: flow-root;
+   flex: 1 1 0;
    min-width: 0;
 }
 
-.match .namesrow .nm.win {
+.match .namesrow .nm:last-child {
+   text-align: right;
+}
+
+.match.wide .nm.win {
    font-weight: 700;
 }
 
-.match .namesrow .nm.lose {
+.match.wide .nm.lose {
    color: var(--muted);
+}
+
+/* A wide card's name wraps where a stacked one clips, so: block, to take a second line and
+   to report a real clientWidth to fitNames — an inline span reports zero and the fit
+   cascade never fires. overflow stays visible, because hidden would make this a formatting
+   context of its own and the whole block would sit beside the floated flag instead of
+   wrapping under it. */
+.match.wide .who {
+   display: block;
+   min-width: 0;
+   white-space: normal;
+   overflow: visible;
+   text-overflow: clip;
+   line-height: 1.2;
+}
+
+/* set by fitNames on the one name no amount of shortening got inside its column */
+.match.wide .who.breakword {
+   overflow-wrap: break-word;
+}
+
+.match.wide .flag.lead {
+   float: left;
+   margin: 1px 5px 0 0;
+}
+
+.match.wide .flag.trail {
+   float: right;
+   margin: 1px 0 0 5px;
+}
+
+/* the scoreline: one row per set either side of the rule, which spans all of them */
+.match .spine {
+   display: grid;
+   grid-template-columns: auto 1px auto;
+   column-gap: var(--spine-gap, 7px);
+}
+
+.match .spine .rule {
+   grid-column: 2;
+   grid-row: 1 / -1;
+   background: var(--line);
+}
+
+.match .spine .gm {
+   font-variant-numeric: tabular-nums;
+   font-size: 11.5px;
+   line-height: 1.15;
+   color: var(--muted);
+}
+
+.match .spine .gm.a {
+   grid-column: 1;
+   text-align: right;
+}
+
+.match .spine .gm.b {
+   grid-column: 3;
+   text-align: left;
+}
+
+.match .spine .gm.won {
+   font-weight: 700;
+   color: var(--ink);
+}
+
+/* Narrow cards, where the wide layout's name columns get tight. Under a 200px card a
+   column is below 70px — narrower than most surnames at 13.5px — so "Djokovic" broke in
+   half instead of wrapping at its space. The type comes down in steps to 12px, which is
+   the size the 8-across cards above already set, and the gutters give a few pixels up
+   with it: in a column this narrow, 4px of gutter is worth more than another step of
+   type. Together they hold Djokovic, Zverev and Sinner on a line of their own down to
+   the narrowest card the view can produce, at a 720px window. Surnames past about ten
+   characters need 65px or more and still wrap; no size that stays readable gets those in,
+   and the full draw is a click away for anyone who wants the names whole. */
+@container matchcard (max-width: 200px) {
+   .match .wsides {
+      column-gap: 6px;
+   }
+
+   .match .spine {
+      --spine-gap: 5px;
+   }
+
+   .match.wide .nm {
+      font-size: 12.5px;
+   }
+}
+
+@container matchcard (max-width: 180px) {
+   .match.wide .nm {
+      font-size: 12px;
+   }
+}
+
+@container matchcard (max-width: 170px) {
+   .match.wide .nm {
+      font-size: 11.5px;
+   }
 }
 
 .match .detail {
