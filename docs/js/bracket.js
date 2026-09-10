@@ -3,6 +3,7 @@
 // (one top-down grid of the draw, sliced by selector chips).
 
 import { dayShort, localStart } from "./schedule.js";
+import { flagEmoji } from "./flags.js";
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -10,6 +11,17 @@ const el = (tag, cls, text) => {
   if (text != null) n.textContent = text;
   return n;
 };
+
+// The flag that goes ahead of a name on a card, titled with the country it stands for —
+// the panel's header does the same. Null for a country we can't place, so the name simply
+// starts where the flag would have been rather than after an empty gap.
+function flagEl(country) {
+  const glyph = flagEmoji(country);
+  if (!glyph) return null;
+  const s = el("span", "flag", glyph);
+  s.title = country;
+  return s;
+}
 
 // A match is only as analyzable as its lesser-charted player: tier = min(both).
 // Completed draws that have any charting shade per *match* instead — charted or not —
@@ -42,21 +54,26 @@ export function matchTier(m, gender, cov) {
   return { cls: "t-none", note: `uncharted matchup — ${note}` };
 }
 
+// Did this side take set i?
+//
+// `wins` is the feed's per-set verdict for this side (true won / false lost / null not
+// decided). When it's there, an undecided set is never won — so a suspended match's
+// live fifth set doesn't read as taken by whoever leads it. Older archived draws carry no
+// such list and are all finished, so there we fall back to the higher score.
+function wonSet(mine, theirs, wins, i) {
+  if (Array.isArray(wins) && wins.length > 0) return wins[i] === true;
+  const t = theirs && theirs[i];
+  return t != null && Math.trunc(mine[i]) > Math.trunc(t);
+}
+
 // Per-set score cells: each set is its own span, bold when this side took that set.
 // The match winner then reads as the row with more bold numbers — no need to hunt for
 // the highlighted name. `theirs` is the opponent's sets.
-//
-// `wins` is the feed's per-set verdict for this side (true won / false lost / null not
-// decided). When it's there, an undecided set is never bold — so a suspended match's
-// live fifth set doesn't read as won by whoever leads it. Older archived draws carry no
-// such list and are all finished, so there we fall back to the higher score.
 function setsEl(mine, theirs, wins) {
   const sets = el("span", "sets");
-  const known = Array.isArray(wins) && wins.length > 0;
   (mine || []).forEach((x, i) => {
     if (x == null) return;
-    const t = theirs && theirs[i];
-    const won = known ? wins[i] === true : t != null && Math.trunc(x) > Math.trunc(t);
+    const won = wonSet(mine, theirs, wins, i);
     sets.append(el("span", "set" + (won ? " won" : ""), String(Math.trunc(x))));
   });
   return sets;
@@ -67,23 +84,42 @@ function setsEl(mine, theirs, wins) {
 const BYE = "Bye";
 const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== BYE;
 
+// Seed and name go in an inner span that can be squeezed; the flag is a sibling of it,
+// never nested. Nesting would put it on the wrong side of the ellipsis — the clip happens
+// at the end of the line, so a name too long for its card would drop its flag and keep the
+// letters. Outside, the letters go and the flag stays.
+//
+// `side` is "lead" or "trail" on a wide card, where the flag brackets the pair of names
+// instead of trailing both of them, and is left unset on a stacked one. It also decides
+// where the flag goes in the markup: a wide card's flag is floated so that it shortens
+// only the line it sits on, and a float affects nothing written before it — a trailing
+// flag placed after the name would be pushed below the whole wrapped block. So on a wide
+// card it goes in front whichever side it belongs on, and CSS puts it back.
+function fillName(nm, s, named, side) {
+  const who = el("span", "who");
+  if (s.seed) who.append(el("span", "seed", s.seed));
+  who.append(document.createTextNode(s.name || "TBD"));
+  const flag = named && flagEl(s.country);
+  if (flag && side) { flag.classList.add(side); nm.append(flag, who); }
+  else if (flag) nm.append(who, flag);
+  else nm.append(who);
+}
+
 function sideRow(s, opp) {
   const named = isEntrant(s);
   const row = el("div", "side " + (s.winner ? "win" : named ? "lose" : "") +
               (s.name === BYE ? " byeside" : ""));
   const nm = el("span", "nm");
   if (named) nm.dataset.full = s.name;
-  if (s.seed) nm.append(el("span", "seed", s.seed));
-  nm.append(document.createTextNode(s.name || "TBD"));
+  fillName(nm, s, named);
   row.append(nm, setsEl(s.sets, opp && opp.sets, s.set_wins));
   return row;
 }
 
-// Names render in full; one that overflows its card is abbreviated to first initial
-// + surname ("F. Auger-Aliassime"). If that still overflows, capitalized middle
-// names go too ("R. Andres Burruchaga" → "R. Burruchaga") — but lowercase surname
-// particles stay ("A. de Minaur") — and only then does the CSS ellipsis kick in.
-// Run after the cards are in the laid-out DOM — it measures them.
+// Names render in full; one that overflows is abbreviated to first initial + surname
+// ("F. Auger-Aliassime"), and if that still overflows, capitalized middle names go too
+// ("R. Andres Burruchaga" → "R. Burruchaga") — but lowercase surname particles stay
+// ("A. de Minaur"). Run after the cards are in the laid-out DOM — it measures them.
 const abbrev = (name) => {
   const cut = name.indexOf(" ");
   return cut > 0 ? `${name[0]}. ${name.slice(cut + 1)}` : name;
@@ -96,27 +132,67 @@ const abbrevHard = (name) => {
   while (i < rest.length - 1 && /^[A-Z]/.test(rest[i])) i++;
   return `${parts[0][0]}. ${rest.slice(i).join(" ")}`;
 };
+// Where those two steps land depends on the card the name is on.
+//
+// A stacked card has one line to give, so the name is clipped: abbreviate, drop the seed
+// badge, abbreviate harder, and whatever still overflows meets the CSS ellipsis.
+//
+// A wide card wraps instead, and is never ellipsised. A name that doesn't fit its column
+// takes a second line at its own space, so overflow there means one *word* is wider than
+// the column — which is the only thing shortening can help with, and the seed badge can't,
+// so it stays. A word still too long after both steps is broken mid-way as the last
+// resort: "Starodubtse|va" is not a name anyone would print, but it beats hiding half of it.
 function fitNames(root) {
   for (const nm of root.querySelectorAll(".nm[data-full]")) {
-    if (nm.scrollWidth <= nm.clientWidth) continue;
-    nm.lastChild.textContent = abbrev(nm.dataset.full);        // "F. Auger-Aliassime", seed kept
-    if (nm.scrollWidth <= nm.clientWidth) continue;
-    const seed = nm.querySelector(".seed");                    // the seed badge goes next
-    if (seed) { seed.remove(); if (nm.scrollWidth <= nm.clientWidth) continue; }
-    nm.lastChild.textContent = abbrevHard(nm.dataset.full);    // then middle names, then CSS ellipsis
+    const who = nm.querySelector(".who");                      // the part that can be shortened
+    const fits = () => who.scrollWidth <= who.clientWidth + 0.5;
+    if (fits()) continue;
+    const wraps = !!nm.closest(".match.wide");
+    who.lastChild.textContent = abbrev(nm.dataset.full);       // "F. Auger-Aliassime", seed kept
+    if (fits()) continue;
+    if (!wraps) {
+      const seed = who.querySelector(".seed");                 // the seed badge goes next
+      if (seed) { seed.remove(); if (fits()) continue; }
+    }
+    who.lastChild.textContent = abbrevHard(nm.dataset.full);   // then middle names
+    if (fits() || !wraps) continue;
+    who.classList.add("breakword");
   }
 }
 
-// The wide layout groups by column instead of by player — both names on one line, both
-// scores on the line below — so a match reads in one row instead of two. Used in the
-// by-quarter view, where cards run wide enough for it.
-function nameSpan(s) {
+// The wide layout divides the card left and right rather than top and bottom: one player
+// down each side, with the scoreline between them. Used in the by-quarter view, on every
+// row but the 8-across one.
+function nameSpan(s, side, extra) {
   const named = isEntrant(s);
-  const span = el("span", "nm " + (s.winner ? "win" : named ? "lose" : ""));
+  const span = el("span", "nm " + (s.winner ? "win" : named ? "lose" : "") +
+                (s.name === BYE ? " byeside" : "") + (extra ? " " + extra : ""));
   if (named) span.dataset.full = s.name;
-  if (s.seed) span.append(el("span", "seed", s.seed));
-  span.append(document.createTextNode(s.name || "TBD"));
+  fillName(span, s, named, side);
   return span;
+}
+
+// Has anyone put a number on the board — a finished match, or a live one mid-set. False for
+// a bye, a placeholder, and a fixture still to be played, none of which have a scoreline.
+const isScored = (m) => [m.a, m.b].some((s) => (s.sets || []).some((x) => x != null));
+
+// The wide card's scoreline, stood on its end: a two-column grid with one row per set, the
+// left player's games right-aligned against a hairline and the right player's left-aligned
+// off it. Each cell is placed on its set's row explicitly, so the two runs stay in step
+// even where a retirement leaves one side a set the other never played.
+function spine(m) {
+  const board = el("div", "spine");
+  board.append(el("span", "rule"));
+  for (const [s, opp, side] of [[m.a, m.b, "a"], [m.b, m.a, "b"]]) {
+    (s.sets || []).forEach((x, i) => {
+      if (x == null) return;
+      const won = wonSet(s.sets, opp && opp.sets, s.set_wins, i);
+      const g = el("span", "gm " + side + (won ? " won" : ""), String(Math.trunc(x)));
+      g.style.gridRow = i + 1;
+      board.append(g);
+    });
+  }
+  return board;
 }
 
 function matchCard(m, t, cov, onClick, wide) {
@@ -130,12 +206,23 @@ function matchCard(m, t, cov, onClick, wide) {
   // the only thing saying why there is no match to play. The other tiers keep theirs.
   if (m.bye || tier.cls !== "t-tbd") card.title = tier.note;
   if (wide) {
-    const names = el("div", "namesrow");
-    names.append(nameSpan(m.a), nameSpan(m.b));
-    const scores = el("div", "scoresrow");
-    scores.append(setsEl(m.a.sets, m.b.sets, m.a.set_wins),
-                  setsEl(m.b.sets, m.a.sets, m.b.set_wins));
-    card.append(names, scores);
+    // Three columns: a name, the scoreline, a name. The scoreline runs down the middle of
+    // the card, which is the same left/right split the two names make, drawn as a rule
+    // instead of as the empty space between them. Two digits and a hairline are ~30px
+    // wide, so the games are never in contention with the names for the card's width; what
+    // this layout spends instead is height, a line per set.
+    //
+    // A match with no games on the board has no scoreline to build around, so it is just
+    // its two names across the full width.
+    if (isScored(m)) {
+      const body = el("div", "wsides");
+      body.append(nameSpan(m.a, "lead"), spine(m), nameSpan(m.b, "trail", "right"));
+      card.append(body);
+    } else {
+      const names = el("div", "namesrow");
+      names.append(nameSpan(m.a, "lead"), nameSpan(m.b, "trail"));
+      card.append(names);
+    }
   } else {
     card.append(sideRow(m.a, m.b), sideRow(m.b, m.a));
   }
