@@ -306,22 +306,28 @@ function mitre(x1, y1, x2, y2) {
 // diagonal between the rounds. Its geometry is the opposite of the full draw's: the rounds
 // stack ~50px apart vertically while a card can sit 290px away across the row, so a single
 // diagonal came out almost flat and the pair converging on a parent read as a wide, shallow
-// hexagon. Squared up — down out of the parent, across on the level between the two rounds,
+// hexagon. Squared up — down out of the parent, across on the rail between the two rounds,
 // down into the child — with both right angles cut at 45°, the same pair traces the cut
 // corners the cards and the chips wear, and the shape is the octagon rather than the hex.
 //
-// The cut is clamped to half of each span so a short or nearly-straight wire loses the
+// `ry` is that rail: the y every wire crossing one round gap turns on, one level for the
+// whole row. Cards in a round differ in height — a five-setter beside a love-and-love win
+// ends lower — so the wires leave their parents at different heights; sharing the rail lands
+// their crossbars on one line, and a card that ends higher just drops a longer stub to reach
+// it, the same trade the layout already makes for the set count.
+//
+// The cut is clamped to what each end leaves so a short or nearly-straight wire loses the
 // corner instead of overshooting through it.
 const WIRE_CUT = 9;
-function octagonal(x1, y1, x2, y2) {
+function octagonal(x1, y1, x2, y2, ry) {
   const r = (v) => Math.round(v * 10) / 10;
   if (Math.abs(x2 - x1) < 0.6) return `M ${r(x1)} ${r(y1)} L ${r(x2)} ${r(y2)}`;
-  const hdir = x2 > x1 ? 1 : -1, vdir = y2 > y1 ? 1 : -1;
-  const cut = Math.min(WIRE_CUT, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2);
-  const my = (y1 + y2) / 2;
-  return `M ${r(x1)} ${r(y1)} L ${r(x1)} ${r(my - vdir * cut)} ` +
-         `L ${r(x1 + hdir * cut)} ${r(my)} L ${r(x2 - hdir * cut)} ${r(my)} ` +
-         `L ${r(x2)} ${r(my + vdir * cut)} L ${r(x2)} ${r(y2)}`;
+  const hdir = x2 > x1 ? 1 : -1;
+  const cut = Math.min(WIRE_CUT, Math.abs(x2 - x1) / 2,
+                       Math.abs(ry - y1), Math.abs(y2 - ry));
+  return `M ${r(x1)} ${r(y1)} L ${r(x1)} ${r(ry - cut)} ` +
+         `L ${r(x1 + hdir * cut)} ${r(ry)} L ${r(x2 - hdir * cut)} ${r(ry)} ` +
+         `L ${r(x2)} ${r(ry + cut)} L ${r(x2)} ${r(y2)}`;
 }
 
 function drawConnectors(rounds, root, cards) {
@@ -718,15 +724,23 @@ export function renderQuarters(t, root, cov, onClick, section) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "wires");
   const rect = root.getBoundingClientRect();
-  const wire = (from, to, hot) => {
+  const yBot = (elm) => elm.getBoundingClientRect().bottom - rect.top;
+  const yTop = (elm) => elm.getBoundingClientRect().top - rect.top;
+  const wire = (from, to, ry, hot) => {
     const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
     const x1 = a.left - rect.left + a.width / 2, y1 = a.bottom - rect.top;
     const x2 = b.left - rect.left + b.width / 2, y2 = b.top - rect.top;
     const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("d", octagonal(x1, y1, x2, y2));
+    p.setAttribute("d", octagonal(x1, y1, x2, y2, ry));
     if (hot) p.setAttribute("class", "hot");
     svg.appendChild(p);
   };
+  // One rail per round gap: midway between the lowest edge any card in the upper row reaches
+  // and the shared top of the row below. Every wire across that gap turns on it, so unequal
+  // card heights don't scatter the crossbars. `parents` is the whole upper row for a tree
+  // step, the one picked chip for a chip step.
+  const railFor = (parents, kids) =>
+    (Math.max(...parents.map(yBot)) + yTop(kids[0])) / 2;
   // The hot line does not stop at the chip row. Stopping there would draw everything below it
   // at one weight, leaving the half of the picture that answers "how did these two get here"
   // as the half with no thread through it.
@@ -758,7 +772,11 @@ export function renderQuarters(t, root, cov, onClick, section) {
   rows.forEach((row, i) => {
     const next = rows[i + 1];
     if (!next) return;
-    if (next.matches.length === row.matches.length * 2) {
+    const tree = next.matches.length === row.matches.length * 2;
+    const parents = tree ? cards[i] : row.pick ? [chips[i][row.pick.selected]] : null;
+    if (!parents) return;
+    const ry = railFor(parents, cards[i + 1]);
+    if (tree) {
       // A tree step: the next row's matches 2j and 2j+1 feed this row's match j.
       row.matches.forEach((_, j) => {
         // Above the chips, the picked section's path up to the final is hot.
@@ -769,12 +787,12 @@ export function renderQuarters(t, root, cov, onClick, section) {
           // feeder — which is only true of the feeder they actually came through.
           const onThread = !!(threaded[i] && threaded[i + 1] &&
                               threaded[i].has(j) && threaded[i + 1].has(k));
-          wire(cards[i][j], cards[i + 1][k], (toSection && k === pickedFeeder) || onThread);
+          wire(cards[i][j], cards[i + 1][k], ry, (toSection && k === pickedFeeder) || onThread);
         }
       });
-    } else if (row.pick) {
+    } else {
       // A chip step: the picked chip fans out to every match of the row below.
-      for (const kid of cards[i + 1]) wire(chips[i][row.pick.selected], kid, true);
+      for (const kid of cards[i + 1]) wire(chips[i][row.pick.selected], kid, ry, true);
     }
   });
   svg.setAttribute("width", root.scrollWidth);

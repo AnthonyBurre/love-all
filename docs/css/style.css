@@ -1091,7 +1091,7 @@ a {
    }
 
    .match .spine {
-      --spine-gap: 4px;
+      --spine-gap: 2px;
    }
 
    .match.wide .nm {
