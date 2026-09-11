@@ -1045,7 +1045,7 @@ a {
 .match .spine {
    display: grid;
    grid-template-columns: auto 1px auto;
-   column-gap: var(--spine-gap, 7px);
+   column-gap: var(--spine-gap, 3px);
 }
 
 .match .spine .rule {
@@ -1091,7 +1091,7 @@ a {
    }
 
    .match .spine {
-      --spine-gap: 5px;
+      --spine-gap: 2px;
    }
 
    .match.wide .nm {
@@ -5368,6 +5368,18 @@ a {
 
    .site-head .billing {
       font-size: 12.5px;
+   }
+
+   /* The updated time now carries a zone, so the two halves of this line no longer share
+      one comfortably: the charting link drops to its own line and the middot between them
+      goes with the break. */
+   .meta .metasep {
+      display: none;
+   }
+
+   .meta .contribute {
+      display: block;
+      margin-top: 3px;
    }
 
    .nm {
