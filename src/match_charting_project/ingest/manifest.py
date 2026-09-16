@@ -19,8 +19,6 @@ import requests
 from match_charting_project.ingest.sources import REPO, all_sources
 from match_charting_project.paths import PROCESSED_DIR, RAW_DIR, ensure_dirs
 
-INGESTION_LOG = None  # set lazily to avoid import-time path binding
-
 
 def _log_path():
     from match_charting_project.paths import DATA_DIR

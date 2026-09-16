@@ -23,7 +23,7 @@ from match_charting_project.live.players import (
     normalize,
     tourn_key,
 )
-from match_charting_project.paths import DB_PATH, PROJECT_ROOT
+from match_charting_project.paths import DATA_DIR, DB_PATH, PROJECT_ROOT
 from match_charting_project.shots.notation import (
     MIX_FIELDS,
     blank_mix,
@@ -41,7 +41,7 @@ MIX_RATES = ("fh_share", "fh_winner_pct", "fh_err_pct",
              "bh_share", "bh_winner_pct", "bh_err_pct",
              "slice_pct",
              "net_pct", "net_winner_pct", "net_err_pct")
-OUT = PROJECT_ROOT / "data" / "insights.duckdb"
+OUT = DATA_DIR / "insights.duckdb"
 _ERA_RE = re.compile(r"^(?P<base>.+) \((?P<y0>\d{4})[–-](?P<y1>\d{4})\)$")
 # Only recent slam/1000 identities ship: the site archives completed events going forward,
 # never older ones, so their per-match charting status is all the fast path can ever need.

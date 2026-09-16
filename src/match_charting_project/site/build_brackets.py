@@ -13,16 +13,17 @@ charting — both re-derived from ``insights.duckdb`` every run, so nothing goes
 
 import json
 import shutil
+import sys
 from datetime import datetime, timezone
 
 import duckdb
 
 from match_charting_project.live import brackets, draws, espn, feeds, history, players
-from match_charting_project.paths import PROJECT_ROOT
+from match_charting_project.paths import DATA_DIR, PROJECT_ROOT
 
 DOCS_DATA = PROJECT_ROOT / "docs" / "data"
-INSIGHTS = PROJECT_ROOT / "data" / "insights.duckdb"
-MATCH_DETAILS = PROJECT_ROOT / "data" / "match_details"
+INSIGHTS = DATA_DIR / "insights.duckdb"
+MATCH_DETAILS = DATA_DIR / "match_details"
 
 
 def _insights() -> "tuple[dict, dict]":
@@ -138,15 +139,24 @@ def payload() -> dict:
     # the draw pages — and because it also decides each event's tour level, which
     # `current_tournaments` reads. Adopted sheets are never re-fetched and the calendar only
     # re-reads once it has aged out, so the steady-state hourly run costs no Wikipedia calls.
+    #
+    # Both Wikipedia reads degrade rather than fail — the cached calendar still places most
+    # events, and a draw with no sheet falls back to name inference. Both say so on stderr,
+    # as `espn._fetch` does for the same reason: a degraded build otherwise looks exactly
+    # like a clean one, and the unslotted draw it ships is the only evidence. The draw
+    # failure is the louder of the two — an outage here leaves `data/draws.json` unwritten,
+    # which the deploy workflow then has nothing to persist.
     try:
         feeds.refresh_calendar_if_stale()
-    except Exception:
-        pass                              # a calendar outage degrades to the cached copy
+    except Exception as exc:
+        print(f"warning: Wikipedia calendar refresh failed ({type(exc).__name__}: {exc}); "
+              "using the cached calendar", file=sys.stderr)
     tours = espn.current_tournaments()
     try:
         feeds.refresh_draws(tours)
-    except Exception:
-        pass                              # a draw feed outage degrades to name inference
+    except Exception as exc:
+        print(f"warning: Wikipedia draw refresh failed ({type(exc).__name__}: {exc}); "
+              "draws fall back to name inference", file=sys.stderr)
     # How old the live scores actually are — the oldest of the two league fetches, so a
     # half-stale build dates itself by its worst half rather than its best.
     fetched_at = min((t.fetched_at for t in tours if t.fetched_at), default="")

@@ -28,9 +28,10 @@ share, and both give 0 (deuce), so the overlap is harmless.
 
 DEUCE, AD, NA = "deuce", "ad", "na"
 
-# Game-token -> points completed. Shared reading with the score-aware eval's
-# ``_PT`` (``experiments/score_aware_eval/model.py``); keep the two in step.
-_PT = {"0": 0, "15": 1, "30": 2, "40": 3, "AD": 4}
+# Game-token -> points completed. The one copy: ``winprob_match`` and the score-aware eval
+# both read it to tell a game score from a tiebreak's integer counts, which is the same
+# reading this module needs for the serve side.
+POINT_TOKENS = {"0": 0, "15": 1, "30": 2, "40": 3, "AD": 4}
 
 
 def serve_side(pts: "str | None") -> str:
@@ -46,8 +47,8 @@ def serve_side(pts: "str | None") -> str:
     if len(toks) != 2:
         return NA
     a, b = toks
-    if a in _PT and b in _PT:                 # 0/15/30/40/AD game tokens
-        played = _PT[a] + _PT[b]
+    if a in POINT_TOKENS and b in POINT_TOKENS:        # 0/15/30/40/AD game tokens
+        played = POINT_TOKENS[a] + POINT_TOKENS[b]
     elif a.isdigit() and b.isdigit():         # integer tiebreak counts
         played = int(a) + int(b)
     else:

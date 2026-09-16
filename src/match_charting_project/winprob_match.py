@@ -5,7 +5,7 @@ probability of winning a point on their own serve — up the scoring tree:
 point -> game -> set -> match. That propagation is exact under the assumption that
 points are independent given the server (validated by the ``score_aware_eval``
 experiment). Graduated from ``experiments/match_winprob/`` so the Pages-site build
-(and the JS port in ``docs/js/winprob.js``) can consume it.
+(and the win-probability curve in ``docs/js/matchup.js``) can consume it.
 
 Everything is from **player1's** perspective (``wp`` = P(player1 wins the match)).
 Two parameters drive it:
@@ -27,7 +27,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
 
-_PT = {"0": 0, "15": 1, "30": 2, "40": 3, "AD": 4}
+from match_charting_project.shots.score import POINT_TOKENS
 
 
 @dataclass
@@ -251,11 +251,11 @@ def parse_score(svr, set1, set2, gm1, gm2, pts, tb_games: int = 6) -> "Score | N
     toks = pts.split("-")
     if len(toks) != 2:
         return None
-    tb = any(t not in _PT for t in toks)
+    tb = any(t not in POINT_TOKENS for t in toks)
     if not tb and toks == ["0", "0"] and gm1 == gm2 == tb_games and gm1 >= 6:
         tb = True
     try:
-        sp, rp = (int(toks[0]), int(toks[1])) if tb else (_PT[toks[0]], _PT[toks[1]])
+        sp, rp = (int(toks[0]), int(toks[1])) if tb else (POINT_TOKENS[toks[0]], POINT_TOKENS[toks[1]])
     except (ValueError, KeyError):
         return None
     pa, pb = (sp, rp) if svr == 1 else (rp, sp)

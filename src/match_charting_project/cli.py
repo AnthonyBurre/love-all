@@ -1,6 +1,7 @@
 """Command-line entry point: download, build, ingest, coverage, validate, info."""
 
 import argparse
+import sys
 
 from match_charting_project.paths import DB_PATH
 
@@ -58,13 +59,25 @@ def _live() -> None:
 
 def _feeds_calendar(season: "int | None", if_stale: bool = False) -> None:
     """Re-read the season pages: tour levels, and the per-event draw-page links the draw feed
-    needs. ``--if-stale`` skips the read while the cache is fresh — what CI runs hourly."""
+    needs. ``--if-stale`` skips the read while the cache is fresh — what CI runs hourly.
+
+    ``--if-stale`` is the CI form, and it never fails the process: it is a step of its own in
+    the hourly deploy, so a raised exception exits non-zero and takes every step after it —
+    including the Pages deploy — with it. A calendar outage is a degradation the site is built
+    to survive on its cached copy, not a reason to stop publishing, so it is reported and
+    stepped over. The bare form is hand-run and keeps its traceback.
+    """
     from collections import Counter
 
     from match_charting_project.live import feeds
 
     if if_stale:
-        doc, refreshed = feeds.refresh_calendar_if_stale(season)
+        try:
+            doc, refreshed = feeds.refresh_calendar_if_stale(season)
+        except Exception as exc:
+            print(f"warning: calendar refresh failed ({type(exc).__name__}: {exc}); "
+                  "keeping the cached calendar", file=sys.stderr)
+            return
         if not refreshed:
             print(f"  calendar cache is fresh ({doc.get('fetched')}) — not re-reading.")
             return
@@ -212,11 +225,42 @@ def _coverage() -> None:
     figs = coverage_report.render_all(con)
     con.close()
 
-    def _headline(cov, rounds, draw, first_round, last_round, gender):
+    # What a tier's headline line is made of: what to call it, its coverage and
+    # round-completion frames, the column its best draw is named by, the structural
+    # denominator, and the opening round that denominator covers. The two tiers differ
+    # only in these seven things. The denominator comes from `coverage`, which derives it
+    # from the round structure it is a sum of, so the figure the report divides by and the
+    # figure it prints are the same one.
+    # `short` is the console line's word for the tier, spelled out rather than cut from
+    # `tier`: the console row is fixed-width and its heading has never been the plural.
+    tiers = [
+        ("slams", "slam", slam, slam_rounds, "slam",
+         coverage.SLAM_DRAW_MATCHES, "R128"),
+        ("Masters 1000", "masters", masters, masters_rounds, "event",
+         coverage.MASTERS_LATE_MATCHES, "R16"),
+    ]
+
+    def _headline(cov, rounds, gender, opening):
+        """``(best draw, opening-round %, final %)`` for one gender, or None where this
+        tier holds nothing for them.
+
+        Every part of it is allowed to be missing, and none of them stops the report. A
+        gender with no charted event at this tier has no best draw to name, and a round
+        nobody charted has no completion figure. Both come back absent and the caller
+        says so in the line, rather than being read off an empty frame.
+        """
         c = cov[cov["gender"] == gender]
-        best = c.loc[c["coverage_pct"].idxmax()]
+        if c.empty:
+            return None
         rp = rounds[rounds["gender"] == gender].set_index("round")["completion_pct"]
-        return best, float(rp.get(first_round)), float(rp.get(last_round))
+        at = lambda r: (float(rp[r]) if r in rp.index else None)      # noqa: E731
+        return c.loc[c["coverage_pct"].idxmax()], at(opening), at("F")
+
+    # A percentage that may not exist. "n/a" rather than a zero: no charted match in a
+    # round is not a round charted zero per cent of the time, and the two read alike.
+    # `sign` off for the console line, which already carries one "%" per figure pair.
+    def _pc(v, sign=True):
+        return ("n/a" if v is None else f"{v:.0f}%" if sign else f"{v:.0f}")
 
     lines = ["# Coverage summary", ""]
     lines.append("## Dataset totals")
@@ -232,20 +276,21 @@ def _coverage() -> None:
     print("  -- coverage highlights --")
     for g in ("M", "W"):
         label = _GENDER_LABEL[g]
-        s_best, s_open, s_final = _headline(slam, slam_rounds, 127, "R128", "F", g)
-        m_best, m_open, m_final = _headline(masters, masters_rounds, 15, "R16", "F", g)
-        lines.append(f"- **{label} slams** — best draw {s_best['slam']} "
-                     f"{int(s_best['year'])} at **{s_best['coverage_pct']:.0f}%** "
-                     f"({int(s_best['charted'])}/127); finals {s_final:.0f}% vs "
-                     f"R128 {s_open:.0f}%.")
-        lines.append(f"- **{label} Masters 1000** — best draw {m_best['event']} "
-                     f"{int(m_best['year'])} at **{m_best['coverage_pct']:.0f}%** "
-                     f"({int(m_best['charted'])}/15); finals {m_final:.0f}% vs "
-                     f"R16 {m_open:.0f}%.")
-        print(f"  {label:<6} slam best {s_best['coverage_pct']:>3.0f}%  "
-              f"F/R128 {s_final:.0f}/{s_open:.0f}   |   "
-              f"masters best {m_best['coverage_pct']:>3.0f}%  "
-              f"F/R16 {m_final:.0f}/{m_open:.0f}")
+        said = []
+        for tier, short, cov, rounds, name_col, denom, opening in tiers:
+            hit = _headline(cov, rounds, g, opening)
+            if hit is None:
+                lines.append(f"- **{label} {tier}** — nothing charted.")
+                said.append(f"{short} best   —")
+                continue
+            best, open_pct, final_pct = hit
+            lines.append(f"- **{label} {tier}** — best draw {best[name_col]} "
+                         f"{int(best['year'])} at **{best['coverage_pct']:.0f}%** "
+                         f"({int(best['charted'])}/{denom}); finals {_pc(final_pct)} vs "
+                         f"{opening} {_pc(open_pct)}.")
+            said.append(f"{short} best {best['coverage_pct']:>3.0f}%  "
+                        f"F/{opening} {_pc(final_pct, False)}/{_pc(open_pct, False)}")
+        print(f"  {label:<6} " + "   |   ".join(said))
     lines.append("")
 
     by_section = {key: {g: [] for g in ("M", "W")} for key, _ in _SECTIONS}

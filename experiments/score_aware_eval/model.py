@@ -27,11 +27,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from match_charting_project.shots.notation import parse_point  # noqa: E402
-from match_charting_project.shots.score import serve_side  # noqa: E402
+from match_charting_project.shots.score import POINT_TOKENS, serve_side  # noqa: E402
 from match_charting_project.shots.winprob import WinProbModel  # noqa: E402
 
 NA = "na"  # missing / unparseable score
-_PT = {"0": 0, "15": 1, "30": 2, "40": 3, "AD": 4}  # game-token -> count
 # Leverage in server-first notation: who is one point from winning the game.
 _BREAK = {"0-40", "15-40", "30-40", "40-AD"}  # returner one point from the break
 _HOLD = {"40-0", "40-15", "40-30", "AD-40"}   # server one point from the hold
@@ -39,7 +38,7 @@ _HOLD = {"40-0", "40-15", "40-30", "AD-40"}   # server one point from the hold
 
 def _is_tiebreak(pts: str, g1, g2) -> bool:
     toks = pts.split("-")
-    if any(t not in _PT for t in toks):  # integer tiebreak counts aren't game tokens
+    if any(t not in POINT_TOKENS for t in toks):  # integer tiebreak counts aren't game tokens
         return True
     return g1 is not None and g2 is not None and g1 >= 6 and g2 >= 6
 

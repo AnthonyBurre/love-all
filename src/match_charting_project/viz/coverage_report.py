@@ -17,7 +17,6 @@ from match_charting_project.paths import PROJECT_ROOT  # noqa: E402
 
 FIG_DIR = PROJECT_ROOT / "reports" / "figures"
 GENDERS = ("M", "W")
-_GENDER_COLOR = {"M": "#1f77b4", "W": "#d62728"}
 _GENDER_LABEL = {"M": "Men", "W": "Women"}
 _GENDER_FILE = {"M": "men", "W": "women"}
 

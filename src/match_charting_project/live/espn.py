@@ -26,10 +26,10 @@ from match_charting_project.analysis.tiers import (
     classify_tier,
 )
 from match_charting_project.live import UA, feeds, levels
-from match_charting_project.paths import PROJECT_ROOT
+from match_charting_project.paths import DATA_DIR
 
 _SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/tennis/{league}/scoreboard"
-_CACHE = PROJECT_ROOT / "data" / "live"
+_CACHE = DATA_DIR / "live"
 _FETCHED_AT = "_fetched_at"     # our key, added to the cached copy only — not ESPN's shape
 # Scores only move while a draw is being played, so that is the only time we poll on the
 # hourly schedule. Off-week the cache is served untouched and one probe a day is enough to
