@@ -58,12 +58,6 @@ ERROR_LOCS = set("ndwx")
 TERMINALS = set("*#@")
 MODIFIERS = set("+-=^")
 
-# Plain-language meaning for the codes we surface in reports.
-SERVE_DIR_NAME = {"4": "wide", "5": "body", "6": "T", "0": "unknown"}
-DIRECTION_NAME = {"1": "fh_corner", "2": "middle", "3": "bh_corner"}
-DEPTH_NAME = {"7": "shallow", "8": "mid", "9": "deep"}
-ERROR_LOC_NAME = {"n": "net", "d": "deep", "w": "wide", "x": "wide_deep"}
-
 # Stroke "kind" groups, the canonical taxonomy shared by the materialized table and any
 # model. Drive vs slice is well charted (~12% slices) and shapes the rally. Volleys,
 # overheads, half-volleys and swinging volleys are all struck at or inside the net.

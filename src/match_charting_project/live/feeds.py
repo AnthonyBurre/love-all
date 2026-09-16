@@ -30,10 +30,10 @@ from datetime import date, datetime, timedelta, timezone
 
 from match_charting_project.live import wiki
 from match_charting_project.live.players import tourn_key
-from match_charting_project.paths import PROJECT_ROOT
+from match_charting_project.paths import DATA_DIR
 
-CALENDAR = PROJECT_ROOT / "data" / "calendar.json"
-DRAWS = PROJECT_ROOT / "data" / "draws.json"
+CALENDAR = DATA_DIR / "calendar.json"
+DRAWS = DATA_DIR / "draws.json"
 
 # A parsed draw must reproduce this share of the live feed's first-round pairings to be
 # adopted. Set high: the right draw scores 1.0, and the nearest wrong answers score ≤0.06.
@@ -48,7 +48,6 @@ AGREEMENT_FLOOR = 0.9
 CALENDAR_MAX_AGE = timedelta(days=1)
 
 TOURS = {"M": "ATP", "W": "WTA"}
-SOURCE_NOTE = "Draw sheets, tour levels and surfaces come from Wikipedia."
 
 
 # --- cache I/O -------------------------------------------------------------------------
@@ -106,15 +105,29 @@ def refresh_calendar_if_stale(season: "int | None" = None) -> "tuple[dict, bool]
 
 
 def refresh_calendar(season: "int | None" = None) -> dict:
-    """Re-read both tours' season pages into the calendar cache. Returns the cache."""
+    """Re-read both tours' season pages into the calendar cache. Returns the cache.
+
+    A read that comes back with nothing for a tour is not written. A network failure
+    already can't reach the write — ``wiki._api`` lets the exception out — but a
+    *successful* fetch that parses to nothing can: rename the "Schedule" heading on a
+    season page and ``find_section`` returns None, ``parse_calendar("")`` yields no
+    events, and a good cache is overwritten with an empty one. The site then can't tell
+    a 500 from a 250 until the next refresh. Both tours have to contribute, because one
+    empty half is the same failure for the gender it covers.
+    """
     season = season or date.today().year
     doc = {"season": season, "fetched": _stamp(), "events": []}
     for gender, tour in TOURS.items():
         page = f"{season} {tour} Tour"
         idx = wiki.find_section(page, "Schedule")
         text = wiki.fetch_wikitext(page, section=idx) if idx is not None else None
-        for ev in wiki.parse_calendar(text or ""):
-            doc["events"].append({**ev, "gender": gender, "source_page": page})
+        found = [{**ev, "gender": gender, "source_page": page}
+                 for ev in wiki.parse_calendar(text or "")]
+        if not found:
+            raise RuntimeError(
+                f"no events parsed from '{page}' — keeping the cached calendar. The page's "
+                "Schedule section may have been renamed or restructured.")
+        doc["events"] += found
     _write(CALENDAR, doc)
     return doc
 

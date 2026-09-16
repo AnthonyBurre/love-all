@@ -30,7 +30,7 @@ from collections import Counter, defaultdict
 
 import duckdb
 
-from match_charting_project.paths import DB_PATH, PROJECT_ROOT
+from match_charting_project.paths import DATA_DIR, DB_PATH
 from match_charting_project.shots.notation import (
     blank_mix,
     fold_shot_mix,
@@ -45,7 +45,7 @@ from match_charting_project.winprob_match import (
     walk_forward_strength,
 )
 
-OUT_DIR = PROJECT_ROOT / "data" / "match_details"
+OUT_DIR = DATA_DIR / "match_details"
 SIDES = ("deuce", "ad")
 DIRS = ("4", "5", "6")          # wide / body / T, in the order the panel draws them
 
@@ -90,7 +90,7 @@ def _blank_side() -> dict:
         # from the other side, so the panel derives "converted 2 of 6" from the opponent's
         # row rather than carrying a second pair that could disagree with it.
         "bp_faced": 0, "bp_saved": 0,
-        "pts_won": 0, "_len_won": 0,
+        "pts_won": 0, "_len_won": 0, "_len_won_n": 0,
         # The shot mix, over every stroke the player hit that was not a serve — the return
         # among them. The same tallies the career aggregate keeps off the same shared walk
         # (notation.fold_shot_mix), because the panel prints one under the other: the
@@ -152,6 +152,7 @@ def _fold_point(sides: dict, row: tuple, games: dict) -> None:
     if not p.parse_ok:
         return
     sides[win]["_len_won"] += p.rally_len
+    sides[win]["_len_won_n"] += 1
     if p.outcome == "ace":
         srv_side["aces"] += 1
         srv_side["aces_second" if second else "aces_first"] += 1
@@ -170,9 +171,8 @@ def _finish_side(s: dict) -> dict:
     """Turn the running tallies into the shape the panel reads."""
     won = s.pop("pts_won")
     total_len = s.pop("_len_won")
-    # Average length of the points this player *won*, so the two sides differ — the career
-    # figure averages every point either player played and is the same number for both.
-    s["len_won"] = round(total_len / won, 2) if won else None
+    parsed_won = s.pop("_len_won_n")
+    s["len_won"] = round(total_len / parsed_won, 2) if parsed_won else None
     s["pts_won"] = won
     return s
 
@@ -258,7 +258,7 @@ def build() -> int:
     # One date-ordered pass over the whole point corpus, which is where the no-leakage
     # property comes from: a match is scored only off the matches that came before it.
     pq, mu = walk_forward_strength(con)
-    ins = PROJECT_ROOT / "data" / "insights.duckdb"
+    ins = DATA_DIR / "insights.duckdb"
     if not ins.exists():
         con.close()
         raise SystemExit("data/insights.duckdb missing — run site build-insights first")

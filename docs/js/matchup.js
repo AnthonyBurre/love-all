@@ -4,6 +4,7 @@ import { query, tourSpread } from "./db.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong, localStart } from "./schedule.js";
 import { flagEmoji } from "./flags.js";
+import { ename, isEntrant } from "./feed.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -20,9 +21,6 @@ const pct = (x) => {
   const v = Math.round(Number(x) * 1000) / 10;
   return v === 0 ? "0" : v === 100 ? "100%" : v.toFixed(1) + "%";
 };
-// The same two slot markers bracket.js treats as non-entrants: they fill a side of a card,
-// but there is no player behind them to look anything up for.
-const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== "Bye";
 
 // A finished match's date, formatted short ("Jul 13, 2026"). "" when absent (older archived
 // draws carry no per-match date) or unparseable. Read in UTC (ESPN's datetimes are Z): the
@@ -328,7 +326,13 @@ function trigLine(t, hand, base) {
 function serveHtml(d) {
   const rows = (d && d.serve) || [];
   if (!rows.length) return "";
-  const pct = (v) => `${Math.round(Number(v) * 100)}%`;
+  // Whole percents, not the module-level `pct`'s one decimal: a placement share is a
+  // tendency read off a few hundred serves, and the match strip below (serveMatchHtml)
+  // prints its own shares the same way, so the two read as one measurement. Named apart
+  // from `pct` rather than shadowing it — they round to different precisions, and a
+  // shadow that only differs in the digit it keeps is the kind that gets called by
+  // accident.
+  const wholePct = (v) => `${Math.round(Number(v) * 100)}%`;
   const order = { deuce: 0, ad: 1 };
   const sorted = [...rows].sort((a, b) => order[a.side] - order[b.side]);
   // Laid out the way the server sees it. The deuce box is screen-left and the ad box
@@ -340,7 +344,7 @@ function serveHtml(d) {
   // zone belongs to — so the share reads as a bar without a second element to lay out.
   const zone = (label, v) =>
     `<span class="srvzone" style="--p:${(Number(v) * 100).toFixed(1)}%">
-      <span class="zl">${label}</span><b>${pct(v)}</b></span>`;
+      <span class="zl">${label}</span><b>${wholePct(v)}</b></span>`;
   const box = (r) => {
     const zones = r.side === "ad"
       ? zone("T", r.t) + zone("wide", r.wide)
@@ -368,7 +372,7 @@ function serveHtml(d) {
     .filter((r) => Number(r.drift_ratio) >= 1.5 && Math.abs(r.t - r.career_t) >= 0.05)
     .sort((a, b) => Math.abs(b.t - b.career_t) - Math.abs(a.t - a.career_t))[0];
   if (big) {
-    moved = `<p class="tnum">${big.side} court: T share ${big.t > big.career_t ? "up from" : "down from"} <b>${pct(big.career_t)}</b>
+    moved = `<p class="tnum">${big.side} court: T share ${big.t > big.career_t ? "up from" : "down from"} <b>${wholePct(big.career_t)}</b>
       across their whole career</p>`;
   }
   // Break points: side-adjusted, since break points skew to the ad court and the court
@@ -2629,13 +2633,9 @@ function nameHtml(name) {
     `<span class="mabbr">${abbr}</span></span>`;
 }
 
-// What to call the event here: the same call app.js makes for the page's own <h1> — the
-// calendar's common name ("Canadian Open") over the feed's own name, which is the title
-// sponsor's ("National Bank Open presented by Rogers") and not what anyone calls the thing.
-// Unlike the page header, there is no line underneath for the sponsor's name to fall back
-// to, so it is simply dropped here rather than restated in an eyebrow that is read once.
-const ename = (t) => (t.event || {}).common_name || t.name;
-
+// The event's screen name (see ename in feed.js). Unlike the page header there is no line
+// underneath for the sponsor's own name to fall back to, so it is simply dropped here
+// rather than restated in an eyebrow that is read once.
 // Where this match sits: event and round. It rides in the top corner beside the close
 // button rather than over the names, because it is the context you read once on opening
 // and then stop looking at, and the scoreboard is what the header is for. No draw here:
@@ -3133,9 +3133,16 @@ function fitHeader() {
   fitGap(grid, max, min, 1);
 }
 
+// Not while the panel is closed. closeMatchup() leaves the header markup in place, so
+// `#matchupHead .mgrid` is still found and the whole ladder above runs against a node
+// nobody can see — up to five bisections, each reading getComputedStyle and clientHeight
+// per name, on every resize frame. It measures nothing useful either: a hidden element
+// reports clientHeight 0, so namesOver() is false at the first rung and the gap it settles
+// on is written onto a header the next open rebuilds anyway. The draw behind holds its own
+// resize the same way, for the same reason — see the listener in app.js main().
 let fitQueued = false;
 function onResize() {
-  if (fitQueued) return;
+  if (fitQueued || document.getElementById("matchup").hidden) return;
   fitQueued = true;
   requestAnimationFrame(() => { fitQueued = false; fitHeader(); });
 }

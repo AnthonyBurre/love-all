@@ -4,6 +4,7 @@
 import { renderTree, renderQuarters, renderRoundList, currentRound } from "./bracket.js";
 import { openMatchup, closeMatchup } from "./matchup.js";
 import { query } from "./db.js";
+import { ename } from "./feed.js";
 
 let data = null;
 // "G|player" -> charted match count, or null while that is genuinely unknown — which is every
@@ -27,12 +28,8 @@ const $ = (id) => document.getElementById(id);
 // labelled by year, so Wimbledon 2025 and a live Wimbledon never collide in the dropdown.
 const SEP = "␟";
 const gkey = (t) => (t.completed ? `${t.name}${SEP}${t.season}` : t.name);
-// What to call an event on screen. The feed's own name is the title sponsor's — "National
-// Bank Open presented by Rogers" — which is not what anyone calls the thing, so lead with
-// the name the calendar says people use and leave the sponsor's to the line under the
-// title. Keyed identity stays on the feed name: it's the stable one, it's what pairs the
-// two draws of an event, and a calendar that can't place an event doesn't change it.
-const ename = (t) => (t.event || {}).common_name || t.name;
+// The event's screen name (see ename in feed.js) — the sponsor's own goes on the billing
+// line under the title instead.
 const glabel = (t) => (t.completed ? `${t.season} ${ename(t)}` : ename(t));
 
 // Season/tournament theme: slams get their own palette, everything below them follows its

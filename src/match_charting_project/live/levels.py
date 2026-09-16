@@ -16,11 +16,6 @@ the calendar after common names ("Washington Open").
 TOUR_500 = "ATP / WTA 500"
 
 
-def tournament_id(event_id: str) -> str:
-    """ESPN's stable per-tournament id, with the season stripped: '888-2026' -> '888'."""
-    return str(event_id or "").split("-")[0]
-
-
 def city(venue_display: str) -> str:
     """The city out of ESPN's venue string: 'Washington, USA' -> 'Washington'."""
     return (venue_display or "").split(",")[0].strip()

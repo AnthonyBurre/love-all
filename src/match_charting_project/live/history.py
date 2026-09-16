@@ -21,9 +21,9 @@ import urllib.request
 from datetime import date, datetime, timedelta, timezone
 
 from match_charting_project.live import UA, brackets, espn
-from match_charting_project.paths import PROJECT_ROOT
+from match_charting_project.paths import DATA_DIR
 
-HISTORY = PROJECT_ROOT / "data" / "history.json"
+HISTORY = DATA_DIR / "history.json"
 _SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/tennis/{league}/scoreboard?dates={d}"
 # Generous main-draw windows (month/day) per slam, so a single seed sweep catches every
 # round through the final regardless of the year's exact scheduling.

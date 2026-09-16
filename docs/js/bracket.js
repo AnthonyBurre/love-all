@@ -4,6 +4,7 @@
 
 import { dayShort, localStart } from "./schedule.js";
 import { flagEmoji } from "./flags.js";
+import { BYE, isEntrant } from "./feed.js";
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -79,10 +80,8 @@ function setsEl(mine, theirs, wins) {
   return sets;
 }
 
-// "Bye" and "TBD" are slot markers rather than entrants: they print, but they never take
-// the winner/loser styling, and they're never measured for name abbreviation.
-const BYE = "Bye";
-const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== BYE;
+// The feed's two slot markers print, but they never take the winner/loser styling and
+// they're never measured for name abbreviation — see isEntrant in feed.js.
 
 // Seed and name go in an inner span that can be squeezed; the flag is a sibling of it,
 // never nested. Nesting would put it on the wrong side of the ellipsis — the clip happens
