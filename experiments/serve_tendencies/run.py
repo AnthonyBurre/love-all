@@ -972,12 +972,11 @@ def write_report(raw, per):
         body_fx, wide_fx = o["charter_fx"]["body"], o["charter_fx"]["wide"]
         body_share = o[("tour", "deuce", 1)][1][1]
         if body_fx and wide_fx:
-            md.append(f"- **The body serve is partly a charter's opinion.** Charters "
-                      f"disagree about it by ±{body_fx['sd']:.1%} on the same players, "
-                      f"against a tour body share of {body_share:.0%} — the disagreement "
-                      "is a large fraction of the category. A serve near the middle can "
-                      "be charted body or wide, and different charters draw that line "
-                      "differently.")
+            md.append("- **The body serve is partly a charter's opinion.** Charters "
+                      f"disagree about it by ±{body_fx['sd']:.1%} on the same players, against a "
+                      f"tour body share of {body_share:.0%} , so the disagreement is "
+                      "a large fraction of the category. A serve near the middle can be charted "
+                      "body or wide, and different charters draw that line differently.")
             md.append(f"- Wide and T carry a smaller fingerprint (±{wide_fx['sd']:.1%} "
                       "for wide), which is why every headline below is stated in "
                       "wide-versus-T terms. Body shares are reported for completeness "
@@ -1115,14 +1114,13 @@ def write_report(raw, per):
             md.append("")
             keep = [d["phi_year"] / d["phi"] for d in deep
                     if d["phi_year"] == d["phi_year"] and d["phi"] > 0]
-            md.append("The last column expects each match at the player's rate that "
-                      "season, so a long career's slow drift stops counting as "
-                      "match-to-match movement. Across these profiles it keeps a median "
+            md.append("The last column expects each match at the player's rate that season, so a "
+                      "long career's slow drift stops counting as match-to-match movement. Across "
+                      "these profiles it keeps a median "
                       f"{float(np.median(keep)):.0%} of the dispersion, so most of the "
-                      "movement is between matches within a season — though "
-                      "the individual drops are large enough that any single player's "
-                      "restlessness should be read from this column, not the previous "
-                      "one.")
+                      "movement is between matches within a season, though the individual drops "
+                      "are large enough that any single player's restlessness should be read from "
+                      "this column, not the previous one.")
             md.append("")
 
         # -- Step 5 ------------------------------------------------------------
@@ -1188,11 +1186,11 @@ def write_report(raw, per):
             pooled = sum(x["delta"] * x["n"] for x in rows) / sum(x["n"] for x in rows)
             up = sum(1 for x in hits if x["delta"] > 0)
             md.append(f"- **{label} share on break points**, each player against their own "
-                      f"normal-point rate with the side held fixed: the pooled shift is "
-                      f"{pooled:+.1%} across {len(rows)} players with {MIN_BREAK}+ "
-                      f"break-point first serves — near nothing. But {k} players move "
-                      f"beyond chance at FDR {FDR_Q:g} ({up} toward the {label}, "
-                      f"{len(hits) - up} away), so the tour-wide average is hiding "
+                      "normal-point rate with the side held fixed: the pooled shift is "
+                      f"{pooled:+.1%} across {len(rows)} players with {MIN_BREAK}+ break-point "
+                      f"first serves (near nothing). But {k} players move beyond chance at FDR "
+                      f"{FDR_Q:g} ({up} toward the {label}, {len(hits) - up} away), so the "
+                      "tour-wide average is hiding "
                       "players who cancel out.")
             movers = sorted(rows, key=lambda x: -abs(x["z"]))[:5]
             md.append("  " + "; ".join(
@@ -1251,17 +1249,17 @@ def write_report(raw, per):
                  for k, v in groups.items() if v]
         if parts:
             md.append("- Where the gain comes from, as log-loss saved against the career "
-                      "average: " + "; ".join(parts) + ". The rule earns its keep on the "
-                      "careers step 5 flagged and costs almost nothing on the rest, which "
-                      "is the argument for applying it to everyone rather than "
-                      "branching.")
-        md.append(f"- Twenty matches is worth about {wn['w20_serves']:,.0f} charted first "
-                  f"serves and spans {wn['w20_span']:.0f} years for the median player — "
-                  "which is the catch. A window short enough to be current is not "
-                  "automatically long enough to clear step 3's bar of "
+                      "average: " + "; ".join(parts) + ". The rule helps most on the careers step "
+                                                       "5 flagged and costs almost nothing on the "
+                                                       "rest, which is the argument for applying "
+                                                       "it to everyone rather than branching.")
+        md.append(f"- Twenty matches is worth about {wn['w20_serves']:,.0f} charted first serves "
+                  f"and spans {wn['w20_span']:.0f} years for the median player. The "
+                  "catch: a window short enough to be current is not automatically long enough to "
+                  "clear step 3's bar of "
                   f"{o['cards']['wide share (deuce, 1st serve)']['n80']:,.0f} serves per "
-                  "side, so a card should print the window's own denominator and stay "
-                  "silent when it is thin.")
+                  "side, so a card should print the window's own denominator and stay silent when "
+                  "it is thin.")
         bw = min((k for k in wn["loss"] if k[0] == "window" and k[1]),
                  key=lambda k: wn["loss"][k])
         bd = min((k for k in wn["loss"] if k[0] == "decay"), key=lambda k: wn["loss"][k])
@@ -1283,13 +1281,12 @@ def write_report(raw, per):
     md.append("- `serve_side` owns the descriptive split and stays the place to look up "
               "what a mix *is*. This experiment owns the error bars: which of those "
               "numbers repeat, and from how much data. Nothing here replaces it.")
-    md.append("- `blind_reid` scores the serve as one feature block against the return "
-              "and rally blocks and finds it the weakest of the three for naming a "
-              "player. That is discrimination between players, not reliability within "
-              "one, and the two answers are compatible: placement is stable per player "
-              "and still separates players less sharply than net play and slice do. "
-              "Step 3 explains why that can happen — a stable statistic with a narrow "
-              "true spread carries little identifying information.")
+    md.append("- `blind_reid` scores the serve as one feature block against the return and rally "
+              "blocks and finds it the weakest of the three for naming a player. That is "
+              "discrimination between players, not reliability within one, and the two answers "
+              "are compatible: placement is stable per player and still separates players less "
+              "sharply than net play and slice do. Step 3 explains why that can happen: a stable "
+              "statistic with a narrow true spread carries little identifying information.")
     md.append("- `career_splits` decides whether a whole career becomes two entities, in "
               "a 10-feature style space that already includes serve location. Step 5 is "
               "that design narrowed to placement alone, so it answers 'did the serve "
@@ -1317,9 +1314,8 @@ def write_report(raw, per):
               "which still makes small-sample profiles noisy. Some of the match-to-match "
               "movement it measures is the charter changing between matches, not the "
               "player.")
-    md.append("- Step 6's break-point test is charter-safe by construction — both buckets "
-              "come from the same matches — but steps 3 and 5 compare across matches and "
-              "inherit step 1's fingerprint.")
+    md.append("- Step 6's break-point test is charter-safe, since both buckets come from the same "
+              "matches, but steps 3 and 5 compare across matches and inherit step 1's fingerprint.")
     md.append("- Double faults are not separated out of the second-serve mix; a second "
               "serve that was missed still carries its target here.")
     md.append("")
@@ -1327,8 +1323,8 @@ def write_report(raw, per):
     md.append("")
     md.append("- Join `player_eras` so the drift step reports against the eras "
               "`career_splits` already blessed, instead of a fresh median split.")
-    md.append("- Add the returner's handedness to the target, so 'wide in the ad court' "
-              "becomes 'into the backhand' — step 4 already builds the join.")
+    md.append("- Add the returner's handedness to the target, so 'wide in the ad court' becomes "
+              "'into the backhand'; step 4 already builds the join.")
     md.append("- Chase the step-4 residual: opponent identity, surface and round are the "
               "obvious candidates for the match-to-match movement that handedness and "
               "year both fail to explain.")

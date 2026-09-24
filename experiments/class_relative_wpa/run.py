@@ -202,17 +202,17 @@ def main() -> None:
     # Brief markdown: what the raw metric turns out to measure, then overperformers vs
     # their style and the best in each archetype.
     md = ["# Class-relative shot quality\n",
-          "*Decision quality (avg win-prob conceded per stroke, lower = better) measured "
-          "with one style-blind eval, then compared against what a player's own style "
-          "predicts. `class_rel_z` < 0 means a player concedes less than their style "
-          "predicts. Read the validation section first — the raw metric is mostly style, "
-          "and only the class-relative residual carries any skill claim at all. CSV has "
-          "every player; below are the highlights.*\n"]
+          "*Decision quality (avg win-prob conceded per stroke, lower = better) measured with one "
+          "style-blind eval, then compared against what a player's own style predicts. "
+          "`class_rel_z` < 0 means a player concedes less than their style predicts. Read the "
+          "validation section first: the raw metric is mostly style, and only the class-relative "
+          "residual carries any skill claim at all. CSV has every player; below are the "
+          "highlights.*\n"]
 
     md.append("## Is `avg_wpa_lost` measuring shot quality?\n")
-    md.append("Mostly not. WPA telescopes inside a point, so the total swing is near-fixed "
-              "and the per-stroke average is identically *(win probability conceded per "
-              "point) / (strokes per point)* — the second factor does most of the work.\n")
+    md.append("Mostly not. WPA telescopes inside a point, so the total swing is near-fixed and "
+              "the per-stroke average is identically *(win probability conceded per point) / "
+              "(strokes per point)*, and the second factor does most of the work.\n")
     md.append("| | players | reliability | r with rally length | style CV R² | "
               "reliable non-style |")
     md.append("|---|---|---|---|---|---|")
@@ -227,8 +227,8 @@ def main() -> None:
               "predicts rather than variance it can be fitted to. The last column "
               "is reliability minus that: the most of the metric's spread that could be "
               "skill rather than style or noise.\n")
-    md.append("The residual — the part `class_rel_z` reports — is the only place a skill "
-              "claim can live, and it is much weaker than the raw metric:\n")
+    md.append("The residual (the part `class_rel_z` reports) is the only place a skill claim can "
+              "live, and it is much weaker than the raw metric:\n")
     md.append("| | `class_rel_z` reliability | against a full style fit |")
     md.append("|---|---|---|")
     for g in ("M", "W"):
@@ -236,13 +236,12 @@ def main() -> None:
         md.append(f"| {'Men' if g == 'M' else 'Women'} | {c['z_reliability']:+.2f} | "
                   f"{c['z_reliability_full']:+.2f} |")
     md.append("")
-    md.append("The left column looks strong, and that is the trap: λ is solved to absorb "
-              "only as much variance as the four class means did (see `style_benchmark`), "
-              "a third to a half of the total, so plenty of style is still sitting inside "
-              "the published residual and lending it a stability that is not skill. The "
-              "right column removes every bit of style the fingerprint can reach and is "
-              "the ceiling on the skill claim: a three-band verdict's worth of "
-              "signal, not a score's.\n")
+    md.append("The left column looks strong, but it's misleading: λ is solved to absorb only as "
+              "much variance as the four class means did (see `style_benchmark`), a third to a "
+              "half of the total, so plenty of style is still sitting inside the published "
+              "residual and lending it a stability that is not skill. The right column removes "
+              "every bit of style the fingerprint can reach and is the ceiling on the skill "
+              "claim: a three-band verdict's worth of signal, not a score's.\n")
     md.append("What the raw metric ranks, most to least (accuracy score, with the average "
               "rally length of the points they played):\n")
     for g in ("M", "W"):

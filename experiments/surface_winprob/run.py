@@ -242,9 +242,9 @@ def main():
     md.append(f"Tour anchors: mu = {mu['M']:.3f} (men), {mu['W']:.3f} (women). "
               f"Least-bad `k_s` on the tuning era: **{best_ks}** "
               f"(train log-loss {grid[best_ks]:.4f} vs baseline {ll_base_train:.4f})."
-              + (" Note the tuning curve never dips below the baseline line — the tuned "
-                 "optimum is effectively `k_s → ∞`, i.e. the baseline itself; the test "
-                 "numbers below score the least-bad surface arm for transparency."
+              + (" Note the tuning curve never dips below the baseline line: the tuned optimum is "
+                 "effectively `k_s → ∞`, i.e. the baseline itself; the test numbers below score "
+                 "the least-bad surface arm for transparency."
                  if grid[best_ks] >= ll_base_train else ""))
     md.append("")
     md.append("## Test-era result")
@@ -264,9 +264,9 @@ def main():
         b = by_surface[s]
         md.append(f"| {s} | {b['n']:,} | {b['d']:+.4f} ({b['lo']:+.4f}, {b['hi']:+.4f}) |")
     md.append("")
-    md.append("Even restricted to matchups where **both** players have deep charted "
-              "history on the match's surface — the only regime a selective version "
-              "could target — the story holds:")
+    md.append("Even restricted to matchups where **both** players have deep charted history on "
+              "the match's surface (the only regime a selective version could target), the story "
+              "holds:")
     md.append("")
     md.append("| both players' surface serve pts | matches | Δ log-loss (95% CI) |")
     md.append("|---|---|---|")
@@ -275,7 +275,7 @@ def main():
     md.append("")
     md.append("![surface winprob](figures/surface_winprob.png)")
     md.append("")
-    md.append("## Face validity — the tilt is real even where the payoff is small")
+    md.append("## The tilt is real, even where the payoff is small")
     md.append("")
     md.append("Biggest walk-forward hard-vs-clay serve-rate tilts (men, ≥1,500 serve "
               "points on each):")

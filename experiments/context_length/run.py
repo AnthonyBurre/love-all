@@ -303,29 +303,28 @@ if __name__ == "__main__":
                   "raising the trigger context to K=3 where the thresholds allow, and "
                   "trialing trigram signatures.")
     else:
-        md.append(f"**Two shots of context is where the data runs out — and the third "
-                  f"actively hurts.** Held-out, the first prior shot does most of the "
-                  f"work; the second adds a little for men ({gain2['M']:+.4f}) and "
-                  f"almost nothing for women ({gain2['W']:+.4f}); the third *raises* "
-                  f"log-loss for both (M {gain3['M']:+.4f}, W {gain3['W']:+.4f}) even "
-                  "through shrinkage — pure variance. Stability halves with each added "
-                  "token (0.80 → 0.53 → 0.39) and K=3 display coverage drops by two "
-                  "thirds. Triggers stay at K=2: the second shot is cheap, keeps the "
-                  "setup-and-reply tactical framing, and never hurts.")
+        md.append("**Two shots of context is where the data runs out, and the third actively "
+                  "hurts.** Held-out, the first prior shot does most of the "
+                  f"work; the second adds a little for men ({gain2['M']:+.4f}) and almost nothing "
+                  f"for women ({gain2['W']:+.4f}); the third *raises* log-loss for both (M "
+                  f"{gain3['M']:+.4f}, W {gain3['W']:+.4f}) even "
+                  "through shrinkage: pure variance. Stability halves with each added token (0.80 "
+                  "→ 0.53 → 0.39) and K=3 display coverage drops by two thirds. Triggers stay at "
+                  "K=2: the second shot is cheap, keeps the setup-and-reply tactical framing, and "
+                  "never hurts.")
         md.append("")
-        md.append(f"**The sharper finding is about signatures as currently shipped:** "
-                  f"even at bigram length, a player's top-5 highest-lift list only "
-                  f"overlaps **J≈{sig2:.2f}** between halves of their own data "
-                  f"(trigrams {sig3:.2f}) — much of the *specific* list is sampling "
-                  "luck, because ranking by raw lift favors the thinnest qualifying "
-                  "patterns. Don't lengthen signatures; make them sturdier: raise the "
-                  "support floor and/or rank by a support-penalized lift (e.g. the "
-                  "lower confidence bound) so the displayed sequences replicate.")
+        md.append("**The sharper finding is about signatures:** even at bigram length, a player's "
+                  "top-5 highest-lift list only "
+                  f"overlaps **J≈{sig2:.2f}** between halves of their own data (trigrams "
+                  f"{sig3:.2f}), so much of the *specific* list is sampling "
+                  "luck, because ranking by raw lift favors the thinnest qualifying patterns. "
+                  "Don't lengthen signatures; make them sturdier: raise the support floor and/or "
+                  "rank by a support-penalized lift (e.g. the lower confidence bound) so the "
+                  "displayed sequences replicate.")
         md.append("")
-        md.append("If longer patterns are ever wanted, the route is a *coarser "
-                  "alphabet* (drop the zone digit, keep wing+kind: ~8 symbols), which "
-                  "buys a third shot of history at bigram-level sparsity — a different "
-                  "experiment.")
+        md.append("If longer patterns are ever wanted, the route is a *coarser alphabet* (drop "
+                  "the zone digit, keep wing+kind: ~8 symbols), which buys a third shot of "
+                  "history at bigram-level sparsity. That's a different experiment.")
     (PROJECT_ROOT / "reports" / "context_length.md").write_text("\n".join(md) + "\n")
     for g in ("M", "W"):
         ll, n = results[g]["backoff"]

@@ -32,7 +32,7 @@ Most-evolved long careers (early→late, biggest feature shifts):
 
 ## Threshold sensitivity
 
-How many careers split (and total entities, from 358 tracked) as the noise-ratio cutoff varies — the 1.5–2.0 band is crowded, and a uniform 2.0 erases the women (their sparser charting raises the noise floor):
+How many careers split (and total entities, from 358 tracked) as the noise-ratio cutoff varies. The 1.5–2.0 band is crowded, and a uniform 2.0 erases the women (their sparser charting raises the noise floor):
 
 | cutoff | split (M / W) | entities |
 |---|---|---|
@@ -46,4 +46,4 @@ How many careers split (and total entities, from 358 tracked) as the noise-ratio
 
 ## Verdict: split selectively, not across the board
 
-Even among long careers, the median early-vs-late style gap is only **1.29×** the random-split noise — most players are stylistically *stable*, so a blanket split would dilute data. But a real minority — **33 players** — evolve clearly (>1.5× noise), with face-valid detections (Sabalenka's serve-yips fix, Paire's decline, Chang adding serve). Those are split binary early/late — the only contrast this test validated — and materialized into the **`player_eras`** table (everyone else stays whole), ready for the clustering / WPA / win-prob experiments and the web frontend to join to.
+Even among long careers, the median early-vs-late style gap is only **1.29×** the random-split noise: most players are stylistically *stable*, so a blanket split would dilute data. But a real minority (**33 players**) change clearly (>1.5× noise), matching known changes (Sabalenka's serve-yips fix, Paire's decline, Chang adding serve). Those are split into early and late (the only contrast this test validated) and written into the **`player_eras`** table (everyone else stays whole), for other analyses to join to.

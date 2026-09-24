@@ -28,5 +28,5 @@ Marginal server-win% by side: **ad** 56.5% (n=15,130) · **deuce** 58.1% (n=16,3
 
 ## Verdict
 
-Best side-aware change to held-out log-loss: **-0.02%** — did not help — side is already implicit in the rally state the eval sees.
+Best side-aware change to held-out log-loss: **-0.02%**: no help, since side is already implicit in the rally state the eval sees.
 

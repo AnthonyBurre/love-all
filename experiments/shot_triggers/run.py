@@ -437,14 +437,13 @@ def definition_block(md: list, defs: "pd.DataFrame", pairs: "pd.DataFrame",
     r_agg, r_fin = pairs.agg0.corr(pairs.agg1), pairs.fin0.corr(pairs.fin1)
     md.append("## Why the numerator counts induced forced errors")
     md.append("")
-    md.append("The narrow reading counts only shots that ended the "
-              "point on the player's own racquet — a winner or their own unforced "
-              "error. Call that the **finishing shot frequency**. The wider and "
-              "standard reading also credits a shot that forced the reply into an "
-              "error, which is the **aggressive shot frequency** shipped above. The "
+    md.append("The narrow reading counts only shots that ended the point on the player's own "
+              "racquet: a winner or their own unforced error. Call that the **finishing shot "
+              "frequency**. The wider and standard reading also credits a shot that forced the "
+              "reply into an error, which is the **aggressive shot frequency** shipped above. The "
               "worry about widening it is that the forced/unforced call is the most "
-              "charter-subjective field in the notation, so the extra events might be "
-              "mostly noise. They are not.")
+              "charter-subjective field in the notation, so the extra events might be mostly "
+              "noise. They are not.")
     md.append("")
     md.append("Each player's matches are split at random into halves and every "
               f"well-supported context (≥{MIN_HALF} strokes in *both* halves) is "
@@ -471,14 +470,15 @@ def definition_block(md: list, defs: "pd.DataFrame", pairs: "pd.DataFrame",
               "raises the binomial noise floor by about a fifth, so a numerator made "
               "of noise would have *lost* this test. The extra events carry structure.")
     md.append("")
-    md.append("Two things follow. First, the player ranking barely moves — the two "
-              f"frequencies correlate {defs.base_fin.corr(defs.base_agg):+.3f} across "
-              "players — so this is not a rewrite of who is aggressive. Second, the "
-              "*composition* moves a lot, and not at random: induced forced errors "
-              f"are {defs.fe_share.mean():.0%} of the numerator on average but range "
-              f"from {defs.fe_share.min():.0%} to {defs.fe_share.max():.0%}. The "
-              "narrow definition systematically under-credited players whose "
-              "aggression works by pressure rather than by clean winners.")
+    md.append("Two things follow. First, the player ranking barely moves (the two frequencies "
+              "correlate"
+              f" {defs.base_fin.corr(defs.base_agg):+.3f} across players), so this is not a "
+              "rewrite of who is aggressive. Second, the *composition* moves a lot, and not at "
+              "random: induced forced errors "
+              f"are {defs.fe_share.mean():.0%} of the numerator on average but range from "
+              f"{defs.fe_share.min():.0%} to {defs.fe_share.max():.0%}. The "
+              "narrow definition systematically under-credited players whose aggression works by "
+              "pressure rather than by clean winners.")
     md.append("")
     md.append("| most under-credited by the narrow numerator | induced FE share | "
               "least |  induced FE share |")
@@ -740,13 +740,13 @@ def main() -> None:
     md.append("")
     md.append(f"Across {len(corr)} qualifying players, the correlation between a "
               "context's winner rate and its unforced-error rate is "
-              f"**{corr.r.mean():+.2f} on average** "
-              f"({(corr.r > 0).mean():.0%} of players positive). And that *understates* "
-              "the overlap: a stroke can't be both a winner and an error, so pure "
-              "chance pushes this correlation negative. Sequences that precede winners "
-              "also precede errors because both mark the same decision — going for the "
-              "finish. `shot_patterns`' green/trouble split partly conflates decision "
-              "with execution; frequency + conversion separates them.")
+              f"**{corr.r.mean():+.2f} on average** ({(corr.r > 0).mean():.0%} of players "
+              "positive). And that *understates* "
+              "the overlap: a stroke can't be both a winner and an error, so pure chance pushes "
+              "this correlation negative. Sequences that precede winners also precede errors "
+              "because both mark the same decision: going for the finish. `shot_patterns`' "
+              "green/trouble split partly conflates decision with execution; frequency + "
+              "conversion separates them.")
     md.append("")
 
     # -- which numerator? -----------------------------------------------------
@@ -776,13 +776,13 @@ def main() -> None:
     # -- opening sequences split by serve side --------------------------------
     md.append("## Opening sequences by serve side (deuce vs ad)")
     md.append("")
-    md.append("The pooled tables above average over the court the point was served to, "
-              "but the first four plies mean different things on the two sides: a wide "
-              "serve opens the forehand in the deuce court and the backhand in the ad "
-              "court. Here the opening aggressive shots — the return, the serve+1, and "
-              "the return+1 — are split by side and scored against the player's own norm "
-              "*for that same shot and side*. Everything deeper in the rally stays "
-              "pooled (above). Full rows in `reports/shot_triggers_openings.csv`; "
+    md.append("The pooled tables above average over the court the point was served to, but the "
+              "first four plies mean different things on the two sides: a wide serve opens the "
+              "forehand in the deuce court and the backhand in the ad court. Here the opening "
+              "aggressive shots (the return, the serve+1, and the return+1) are split by side and "
+              "scored against the player's own norm *for that same shot and side*. Everything "
+              "deeper in the rally stays pooled (above). Full rows in "
+              "`reports/shot_triggers_openings.csv`; "
               f"{sum(r['tag'] == 'green' for r in open_rows)} green / "
               f"{sum(r['tag'] == 'trap' for r in open_rows)} trap sequences across "
               f"{len({r['player'] for r in open_rows})} players.")
@@ -791,25 +791,23 @@ def main() -> None:
     _both = [r for r in open_rows if r["folds"] == 2]
     _dl = sum(r["disc_lift"] for r in _one) / len(_one) if _one else 0.0
     _al = sum(r["att_lift"] for r in _one) / len(_one) if _one else 0.0
-    md.append("**These are cross-validated**, on the same footing as the pooled tables "
-              "above. A raw threshold screen — clear the support floor, clear the lift, "
-              "tag on the sign of the conversion gap — would carry no multiplicity "
-              "correction and compute every figure on the data that had just selected the "
-              "row. Instead each "
-              "(player, side, anchor) group splits into the same two match-hash folds: "
-              "one discovers, with an exact binomial tail against that fold's own group "
+    md.append("**These are cross-validated**, on the same footing as the pooled tables above. A "
+              "raw threshold screen (clear the support floor, clear the lift, tag on the sign of "
+              "the conversion gap) would carry no multiplicity correction and compute every "
+              "figure on the data that had just selected the row. Instead each (player, side, "
+              "anchor) group splits into the same two match-hash folds: one discovers, with an "
+              "exact binomial tail against that fold's own group "
               f"baseline and Benjamini-Hochberg at q={Q_FDR:g} across every context it "
               "could test; the other confirms and supplies every number shown.")
     md.append("")
-    md.append(f"That took the table from 484 rows over 171 players to "
-              f"{len(open_rows)} over {len({r['player'] for r in open_rows})}. "
-              f"{len(_both)} rows cleared from both directions and show the two folds "
-              f"pooled; the {len(_one)} that cleared from one show that fold alone, and "
-              f"across those the mean lift falls from {_dl:.2f}x where it was found to "
-              f"**{_al:.2f}x where it was measured — {(_al - 1) / (_dl - 1):.0%} of the "
-              "discovered edge**. `court_response` measured 46% on the same kind of test "
-              "and `rally_patterns` 50%, over different features and different screens, "
-              "which is three independent readings of the same number.")
+    md.append("That took the table from 484 rows over 171 players to "
+              f"{len(open_rows)} over {len({r['player'] for r in open_rows})}. {len(_both)} rows "
+              f"cleared from both directions and show the two folds pooled; the {len(_one)} that "
+              "cleared from one show that fold alone, and across those the mean lift falls from "
+              f"{_dl:.2f}x where it was found to **{_al:.2f}x where it was measured, "
+              f"{(_al - 1) / (_dl - 1):.0%} of the "
+              "discovered edge**. `court_response` and `rally_patterns` both keep about half on "
+              "the same kind of test, over different features and different screens.")
     md.append("")
     for g in ("M", "W"):
         md.append(f"### {GLABEL[g]}\n")
