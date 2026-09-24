@@ -145,15 +145,16 @@ CAL_2026 = _cal(("M", "Washington", "ATP 500", 7), ("W", "Washington DC", "WTA 5
                 ("M", "Dubai", "ATP 500", 2), ("W", "Dubai", "WTA 1000", 2))
 
 
-def test_parse_serves_500s_and_drops_the_rest_of_the_tour():
+def test_parse_serves_500s_and_atp_250s_and_drops_the_rest_of_the_tour():
     got = _tiers(
         _event("888-2026", "Mubadala DC Open", "Washington, USA"),            # ATP 500
         _event("888-2026", "Mubadala DC Open", "Washington, USA", "womens-singles"),
-        _event("424-2026", "Mifel Tennis Open by Telcel Oppo", "Los Cabos, Mexico"),  # 250
+        _event("424-2026", "Mifel Tennis Open by Telcel Oppo", "Los Cabos, Mexico"),  # ATP 250
         _event("1017-2026", "ATV Bancomat Tennis Open", "Rome, Italy", "womens-singles"),
         cal=CAL_2026)
     assert got == {("M", "Mubadala DC Open"): levels.TOUR_500,
-                   ("W", "Mubadala DC Open"): levels.TOUR_500}
+                   ("W", "Mubadala DC Open"): levels.TOUR_500,
+                   ("M", "Mifel Tennis Open by Telcel Oppo"): levels.TOUR_250}
 
 
 def test_a_125_sharing_a_city_with_a_1000_is_not_promoted():

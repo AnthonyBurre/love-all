@@ -39,7 +39,7 @@ _PROBE = timedelta(days=1)
 # before its start so a draw published early is picked up.
 _GRACE = timedelta(days=1)
 _SINGLES = {"mens-singles": "M", "womens-singles": "W"}
-_TARGET_TIERS = (GRAND_SLAM, MASTERS_1000, levels.TOUR_500)
+_TARGET_TIERS = (GRAND_SLAM, MASTERS_1000, levels.TOUR_500, levels.TOUR_250)
 # Round display-name -> sortable rank (main draw only; qualifying excluded).
 _ROUND_NAMED = {"final": 100, "semifinal": 99, "semifinals": 99,
                 "quarterfinal": 98, "quarterfinals": 98,
@@ -171,7 +171,8 @@ def _round_rank(label: str) -> "int | None":
 # a season page not yet refreshed).
 _WIKI_TIERS = {"Grand Slam": GRAND_SLAM,
                "ATP 1000": MASTERS_1000, "WTA 1000": MASTERS_1000,
-               "ATP 500": levels.TOUR_500, "WTA 500": levels.TOUR_500}
+               "ATP 500": levels.TOUR_500, "WTA 500": levels.TOUR_500,
+               "ATP 250": levels.TOUR_250}
 
 
 def _tier(event: dict, gender: str, cal: "dict | None" = None) -> str:

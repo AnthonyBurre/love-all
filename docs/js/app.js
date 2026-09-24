@@ -68,7 +68,7 @@ async function main() {
       hour: "numeric", minute: "2-digit", timeZoneName: "short",
     });
   if (!data.tournaments.length) {
-    $("status").textContent = "No Grand Slam, 1000 or 500 draws are live right now. Check back during an event.";
+    $("status").textContent = "No Grand Slam, 1000, 500 or ATP 250 draws are live right now. Check back during an event.";
     return;
   }
   const first = groups()[0];
