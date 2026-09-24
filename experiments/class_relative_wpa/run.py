@@ -245,7 +245,7 @@ def main() -> None:
     md.append("")
     md.append("Reliability is split-half by match hash, Spearman-Brown corrected. Style "
               "R² is out-of-fold over the 12 fingerprint features, so it is variance style "
-              "genuinely predicts rather than variance it can be fitted to. The last column "
+              "predicts rather than variance it can be fitted to. The last column "
               "is reliability minus that: the most of the metric's spread that could be "
               "skill rather than style or noise.\n")
     md.append("The residual — the part `class_rel_z` reports — is the only place a skill "
@@ -262,7 +262,7 @@ def main() -> None:
               "a third to a half of the total, so plenty of style is still sitting inside "
               "the published residual and lending it a stability that is not skill. The "
               "right column removes every bit of style the fingerprint can reach and is "
-              "the honest ceiling on the skill claim: a three-band verdict's worth of "
+              "the ceiling on the skill claim: a three-band verdict's worth of "
               "signal, not a score's.\n")
     md.append("What the raw metric ranks, most to least (accuracy score, with the average "
               "rally length of the points they played):\n")

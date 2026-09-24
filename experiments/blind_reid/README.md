@@ -42,7 +42,7 @@ graduated `match_charting_project.shots` decoder and the deuce/ad derivation in
   against its own chance rate, which is not 1/n_players since it depends on how many
   other performances each player has, so it is computed per query and averaged.
 
-Three choices do the real work of keeping the number honest.
+Three important things:
 
 **The metric is fit on different players than it is scored on.** Raw z-scored Euclidean
 distance would treat a feature that swings wildly between one player's own matches
@@ -116,8 +116,7 @@ rate over a five-setter is a measurement.
 
 ## Limits
 
-- A high AUC narrows the field, it does not name a human. Two players with genuinely
-  similar games stay confusable no matter how much data is added.
+- A high AUC narrows the field, it does not name a human. Two players with similar games stay confusable no matter how much data is added.
 - What a player hits back is partly the opponent's doing. The different-opponent control
   shows this is not the main driver, but `avg_rally_len` is a property of the match rather
   than of either player, kept because tempo is also a real trait.

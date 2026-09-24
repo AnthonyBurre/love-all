@@ -576,7 +576,7 @@ def opening_rows(openings: dict, gender: str, qualifying: set) -> list:
     is measured against is the group's: a deuce serve+1 cue was only ever screened against
     other deuce serve+1 contexts, and pooling six such families into one player-level
     correction would be correcting across tests that never competed. Groups too thin to
-    define a class mean in a fold produce nothing from that direction, which is honest —
+    define a class mean in a fold produce nothing from that direction:
     it is a group that cannot answer the question rather than one that answers it weakly.
 
     Side stays a grouping key throughout, never pooled: on the deuce side a ``serve wide``

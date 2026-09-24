@@ -112,7 +112,7 @@ Still, the crossings exist. Pairs of **different** players whose performances si
 | Cristian Garin | Jason Kubler | 4.57 | 4.68 | 5.01 |
 | Otto Virtanen | Pedro Cachin | 4.32 | 4.46 | 4.43 |
 
-Note how often one name recurs: **Jason Kubler** appears in 8 of the 10 listed pairs. The bar is the smaller of the two self-distances, so these are genuinely mutual, but a player with a wide own cloud will naturally cross with more of the field. Read it as style fluidity rather than as a resemblance to any one opponent.
+Note how often one name recurs: **Jason Kubler** appears in 8 of the 10 listed pairs. The bar is the smaller of the two self-distances, so these are mutual, but a player with a wide own cloud will naturally cross with more of the field. Read it as style fluidity rather than as a resemblance to any one opponent.
 
 Tightest own clouds relative to the field (men), the most self-identical players:
 
@@ -154,7 +154,7 @@ A rate estimated from a 90-point match is mostly sampling noise; the same rate o
 
 ## Caveats
 
-- **Style, not identity.** A high AUC does not mean these features name a human; it means they narrow the field. Two players with genuinely similar games stay confusable no matter how much data we add.
+- **Style, not identity.** A high AUC does not mean these features name a human; it means they narrow the field. Two players with similar games stay confusable no matter how much data we add.
 - **Opponent reactivity.** What a player hits back is partly the opponent's doing. The different-opponent control shows this is not the main driver, but `avg_rally_len` in particular is a property of the *match* (both players share it), kept because rally tempo is also a real trait and dropped pairs from the same match make it non-circular.
 - **Era mixes with identity.** The field spans 1960–2026 and pre-1990 matches are sparse, differently charted, and stylistically distant. Some players with wide own-spread (Guillermo Vilas is the extreme: own spread far above the field median, on six performances across 1977–1986 and two surfaces) are being measured across an era gap, not caught being inconsistent.
 - **Charting coverage skew.** Inherited from the whole repo: later rounds and bigger names are charted more, so the player mix is not the tour's.

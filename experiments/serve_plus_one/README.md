@@ -85,7 +85,7 @@ per surfaced pattern, carrying `tier`, `serve_side` and `serve_dir` alongside
 This feeds the matchup panel's **off the return** section, in place of
 `court_response`'s `ret` rows. `court_response` still ships the **court patterns**
 section from its `rally` family, and still reports its own `ret` family in
-`reports/court_response.md` — it simply no longer feeds the panel.
+`reports/court_response.md`, but that family isn't shown on the panel.
 
 The card names its own resolution, so a reader can see which one they are looking
 at: "deuce court, T serve · mid-depth drive return into the middle" against the

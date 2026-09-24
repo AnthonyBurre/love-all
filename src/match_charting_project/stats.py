@@ -43,7 +43,7 @@ def binom_tail(k: int, n: int, p: float) -> float:
 
     # Both walks stop once the remaining mass cannot move either figure. The tail gets its
     # own test: cutting off when a term is negligible against `total` alone would flatten a
-    # genuinely tiny tail to zero before its first term was ever reached, which is the
+    # tiny tail to zero before its first term was ever reached, which is the
     # p-value of exactly the patterns a screen most wants to rank.
     def spent(term, tail):
         return term < total * 1e-18 and (tail > 0.0 and term < tail * 1e-16)

@@ -6,7 +6,7 @@ derive one heuristically.
 
 Granularity note: even Jeff Sackmann's authoritative ATP data collapses 250- and
 500-level events into a single code ("A"), because the distinction isn't cleanly
-recoverable. We follow that honest granularity with a single "Tour (250/500)"
+recoverable. We follow that granularity with a single "Tour (250/500)"
 bucket rather than guessing.
 
 The live site does split them, using the Wikipedia calendar feed (``live.feeds``), which
@@ -87,8 +87,8 @@ def classify_tier(tournament: str, gender: str = "") -> str:
         return MASTERS_1000
     if str(gender).upper() == "W" and base in _WTA_1000:
         return MASTERS_1000
-    # Remaining alphabetic names are treated as main-tour stops; the MCP charts
-    # very few sub-tour events, so this is a reasonable floor.
+    # Remaining alphabetic names are treated as main-tour stops; the Match Charting
+    # Project charts very few sub-tour events, so this is a reasonable floor.
     if re.search(r"[a-z]", base):
         return TOUR_500_250
     return OTHER

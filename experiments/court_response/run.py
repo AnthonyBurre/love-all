@@ -264,7 +264,7 @@ def profile(res, name, audit=None):
     Returns ``(ev, lift, state, resp, n, c, disc_lift, folds, conv, fconv, p_field,
     sconv, q, n_cand)``.
 
-    Two things keep this screen honest.
+    Two safeguards apply to this screen.
 
     **A multiplicity correction.** A player is screened on a median of 17 (state, response)
     candidates and up to 208 — 35,979 across the tour — so a fixed lift threshold with no

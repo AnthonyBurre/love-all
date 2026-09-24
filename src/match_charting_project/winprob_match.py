@@ -300,7 +300,7 @@ def current_strength(con) -> "tuple[dict, dict]":
 
     ``walk_forward_strength`` below keeps its own pseudo-count. That one is not display —
     it is the no-leakage estimator the win-probability experiments calibrate against, and
-    there the shrinkage is doing real work on genuinely thin prior histories.
+    there the shrinkage is doing real work on thin prior histories.
     """
     mu = league_mu(con)
     serve = con.execute(

@@ -25,8 +25,8 @@ empirical table, we propagate two numbers up the scoring tree.
   serve-win rate (a plain count — the same quantity the point eval's `base()` converges to).
 - **No leakage.** The rates are estimated **walk-forward**: a match is scored only from
   matches played *strictly earlier*, so neither the match itself nor any later match leaks
-  into its own prediction. That is what lets the calibration below count as genuinely
-  predictive rather than circular. The honest cost: a player with little prior charted
+  into its own prediction. That is what lets the calibration below count as
+  predictive rather than circular. The cost: a player with little prior charted
   history shrinks toward the league mean (an even matchup), so early/sparse matches are
   less sharply discriminated.
 - **Leverage closes the loop back to shot quality.** The point eval scores each shot's WPA
@@ -76,9 +76,9 @@ championship points — then collapses as Djokovic saves them and takes the deci
 peak is a touch under 99% precisely because the model credits Djokovic's elite return, so
 even serving for the title Federer's hold isn't a formality.)
 
-A subtle, correct result falls out of the leverage panel: **the championship points are
+In the leverage panel, **the championship points are
 *low* leverage** (Federer was already ~99% — the match barely swings on them), while the
-highest-leverage points are the *tight* fifth-set break points where the match is genuinely
+highest-leverage points are the *tight* fifth-set break points where the match is
 in the balance. Leverage measures pivotality, not drama. Scaling the point eval's shot-WPA
 by leverage then ranks the match's biggest match-WP swings (the "clutch blunders").
 

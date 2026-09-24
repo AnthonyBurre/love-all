@@ -1119,7 +1119,7 @@ def write_report(raw, per):
                       "season, so a long career's slow drift stops counting as "
                       "match-to-match movement. Across these profiles it keeps a median "
                       f"{float(np.median(keep)):.0%} of the dispersion, so most of the "
-                      "movement is genuinely between matches within a season — though "
+                      "movement is between matches within a season — though "
                       "the individual drops are large enough that any single player's "
                       "restlessness should be read from this column, not the previous "
                       "one.")
@@ -1296,7 +1296,7 @@ def write_report(raw, per):
               "move' rather than 'did the player'. It is an input to that decision, not "
               "a competitor: placement moves in about half of long careers, more often "
               "than overall style does.")
-    md.append("- The genuinely new ground is steps 3, 4 and 6: the sample-size rules, the "
+    md.append("- The new ground is steps 3, 4 and 6: the sample-size rules, the "
               "match-to-match dispersion, and the side-adjusted break-point test. None "
               "of those exist anywhere else in the repo.")
     md.append("")

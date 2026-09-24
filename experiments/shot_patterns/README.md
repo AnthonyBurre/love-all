@@ -39,7 +39,7 @@ qualifying player × context, to slice yourself).
 
 The *green-light* patterns share a tautological core (a weak reply is easy to put away), but
 *how* each player manufactures the weak ball differs — forehand to the corner, a wide serve,
-a net approach — and the *trouble* patterns are genuinely individual (Federer's backhand
+a net approach — and the *trouble* patterns are individual (Federer's backhand
 wing, Sampras's slice exchanges).
 
 ## Where it sits

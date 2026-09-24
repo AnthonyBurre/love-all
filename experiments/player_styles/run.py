@@ -56,7 +56,7 @@ def archetype_name(centroid, features) -> str:
     if z["avg_rally_len"] > 0.4 and z["ace_rate"] < 0:
         return "Baseline grinder / counterpuncher"
     if z["gs_winner_rate"] > 0.4 and z["avg_rally_len"] < 0:
-        return "Big serve / first-strike"          # genuinely winner-heavy
+        return "Big serve / first-strike"          # winner-heavy
     if z["ace_rate"] > 0.2 or z["serve_t"] > 0.3:
         return "Big-serving baseliner"              # big serve, ordinary winner rate
     # The else-branch, and named as one. "All-courter" is a compliment in tennis and it was

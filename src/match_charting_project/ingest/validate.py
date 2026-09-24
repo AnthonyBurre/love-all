@@ -190,7 +190,7 @@ def dedupe_points(points: pd.DataFrame) -> "tuple[pd.DataFrame, dict]":
     ones. So one chart per match goes forward.
 
     Which one: the most complete, not the most recent. Of the four matches here whose
-    two charts genuinely differ, the second is the shorter, abandoned one in two
+    two charts differ, the second is the shorter, abandoned one in two
     cases, so "keep the newer" would throw away a full chart for a partial. Ties —
     which is every verbatim re-append — keep the first, so the choice is stable
     between builds.

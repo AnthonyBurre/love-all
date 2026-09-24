@@ -11,7 +11,7 @@ From that we get:
 - a per-player decision-quality score: the average win-probability *conceded*
   per stroke (the centipawn-loss analogue), plus a 0-100 "accuracy"-style score.
 
-Honest caveat (documented, not hidden): unlike a chess engine, this has no oracle
+Caveat: unlike a chess engine, this has no oracle
 for the best stroke. A negative WPA blends shot *selection*, *execution*, and the
 pressure the opponent applied. We lean on the charted forced/unforced flag to
 isolate the cleanest, most self-inflicted losses (unforced errors).

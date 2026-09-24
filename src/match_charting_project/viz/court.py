@@ -19,7 +19,7 @@ already draws in ``docs/js/court.js`` (a 150×190 field, net at y=95, the
 ``css_classes=True``; the default is self-contained (inline colours) so the same
 call also embeds in a Markdown report or saves as a standalone ``.svg``.
 
-What we can and can't show, honestly:
+What we can and can't show:
 
 - Direction is only charted to lane granularity (three lanes), so bounces sit on
   one of three x positions per end, not a continuous coordinate.

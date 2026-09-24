@@ -10,7 +10,7 @@ import re
 import unicodedata
 from difflib import get_close_matches
 
-# Known ESPN → MCP name fixes (normalized ESPN name -> canonical MCP name). Extend as found.
+# Known ESPN → charting name fixes (normalized ESPN name -> canonical charted name). Extend as found.
 _OVERRIDES: dict = {}
 
 
@@ -53,7 +53,7 @@ def universe_from_rows(rows) -> dict:
 
 
 def player_universe(con) -> dict:
-    """``gender -> {normalized_name: canonical MCP name}`` from the main matches table."""
+    """``gender -> {normalized_name: canonical charted name}`` from the main matches table."""
     return universe_from_rows(con.execute(
         "SELECT DISTINCT gender, player FROM ("
         "  SELECT gender, player1 AS player FROM matches "
@@ -62,7 +62,7 @@ def player_universe(con) -> dict:
 
 
 def match_player(name: str, gender: str, universe: dict, cutoff: float = 0.88) -> "str | None":
-    """Canonical MCP name for an ESPN name, or None if there's no charted history."""
+    """Canonical charted name for an ESPN name, or None if there's no charted history."""
     norm = normalize(name)
     table = universe.get(gender, {})
     if norm in _OVERRIDES:

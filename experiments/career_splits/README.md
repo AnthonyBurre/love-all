@@ -5,7 +5,7 @@ other analysis, which both hides real evolution and wastes data that could be it
 entity. This folder is the **justification** for the optional **`player_eras`** table
 (built by `match-charting-project eras`; production logic lives in
 `match_charting_project.analysis.career_eras`). It answers: **does cutting a long career
-into eras yield genuinely different players, or just two noisier samples of the same one?**
+into eras yield different players, or just two noisier samples of the same one?**
 
 ## The test
 
@@ -17,7 +17,7 @@ whether a split is *meaningful*. For each long career we compare:
 - **random-split noise** — the same distance for the career's points shuffled into two
   random halves (median over many shuffles; seeded per player, so it's deterministic).
 
-If chronological ≫ random, the career genuinely evolved; if they're similar, the "eras" are
+If chronological ≫ random, the career evolved; if they're similar, the "eras" are
 just sampling noise. We also anchor against the distance between two *different* players.
 
 ```bash
@@ -43,7 +43,7 @@ itself is the `player_eras` DB table, not a file here.
 - A median era gap is ~45% of the distance to a *whole different player* — eras are partly,
   not wholly, distinct.
 
-**Verdict:** split only the genuinely-evolved long careers (binary early/late — the only
+**Verdict:** split only the evolved long careers (binary early/late — the only
 contrast the test validated). That expands the tracked set defensibly, **358 → 392**,
 exactly where an era really is a different player. The mapping is the **`player_eras`**
 table (`player, gender, era, year_start, year_end, n_points, evolved, entity`); the

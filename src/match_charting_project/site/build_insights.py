@@ -137,7 +137,7 @@ def _player_facts(con) -> pd.DataFrame:
     read. Naming one of them is a coin toss reported as a fact, and it was not even a stable
     one: with an arbitrary tiebreak he changed hands between rebuilds. Hand is not
     decoration — the groundstroke square puts the forehand on the side the player's is, and
-    the court patterns name their zones by it — so the honest answer is to say nothing,
+    the court patterns name their zones by it — so it says nothing,
     which is the answer the archetype already gives when two styles fit equally well.
 
     Ace rate is over service points across every charted match. The two serve-in rates are

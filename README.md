@@ -29,7 +29,7 @@ answers it, and what it found. They write their output to `reports/`.
 | [`serve_side`](experiments/serve_side/) | Does deuce vs ad court hide structure? | Yes, and nothing else here conditioned on it. The direction codes mean **opposite wings** on the two sides, so serve analysis that ignores side is averaging two different shots together. |
 | [`serve_tendencies`](experiments/serve_tendencies/) | Which serve-placement stats can a player card safely carry? | Where a player serves is a measurement (split-half r = 0.58, ~860 serves for 80% signal); **what the placement earns is not** (r = 0.22, ~11,000 serves). Placement is re-decided per match, so the binomial sample-size rule is optimistic ~4x. |
 | [`player_styles`](experiments/player_styles/) | What style archetypes are there? | Four per tour, matching how fans talk: net-rusher (Sampras, McEnroe), baseline grinder (Djokovic, Nadal), slice & variety (Wawrinka, Federer), big-serving baseliner (Medvedev, Zverev). Style is a continuum, so about a third of entities sit too near a boundary to name and are reported as "between styles" rather than assigned. |
-| [`career_splits`](experiments/career_splits/) | Should a long career split into eras, or is that just two noisier samples of one player? | Split **selectively**. Most careers are stable; 34 genuinely evolved, and those detections are face-valid (Sabalenka's serve yips, Clijsters' comeback). Justifies `player_eras`, 358 → 392 entities. |
+| [`career_splits`](experiments/career_splits/) | Should a long career split into eras, or is that just two noisier samples of one player? | Split **selectively**. Most careers are stable; 34 evolved, and those detections are face-valid (Sabalenka's serve yips, Clijsters' comeback). Justifies `player_eras`, 358 → 392 entities. |
 | [`blind_reid`](experiments/blind_reid/) | Hide every name. Can you tell who is across the net purely from the shots coming back? | Yes, and **the serve is the weakest way to do it**. Response strokes alone reach AUC 0.685 on held-out players against the serve block's 0.643. Identity also fades measurably across years. |
 | [`class_relative_wpa`](experiments/class_relative_wpa/) | Who beats the average for *their own style*, rather than the field's? | **Not at this resolution.** `class_rel_z` was meant to judge a shotmaker against other shotmakers, but the residual correlates −0.99 with the raw score it is taken from and 66% of its variance is rally length: the ridge λ is solved to match the class means' R², which it buys by leaving a scaled copy of the style axis in the residual. It said no male serve-volleyer had ever been ahead of similar players. Does not ship. |
 
@@ -43,7 +43,7 @@ None of these ship to the site — see [The site](#the-site) for why.
 | [`score_aware_eval`](experiments/score_aware_eval/) | Does telling the point eval *where in the match* a point sits improve it? | **No.** Points are nearly independent given the rally state, the classic Klaassen–Magnus result. This negative is what justified handling the score with an analytic tree instead. |
 | [`class_aware_eval`](experiments/class_aware_eval/) | Does telling the eval *who* is playing improve it? | **No.** Style-blind wins on held-out data at both granularities, which is what stopped class-relative WPA from being built on a more complicated eval. |
 | [`surface_winprob`](experiments/surface_winprob/) | Does surface improve match prediction? | **No.** Players do differ by surface, but both players shift together and only the *relative* tilt moves a prediction. Too small and too thinly sampled to pay. |
-| [`form_streakiness`](experiments/form_streakiness/) | Does recent form help, and are some players genuinely streaky? | **No** to both. The form signal is real (~8σ) but tiny in absolute terms, and per-player streakiness is mostly noise at this resolution. |
+| [`form_streakiness`](experiments/form_streakiness/) | Does recent form help, and are some players streaky? | **No** to both. The form signal is real (~8σ) but tiny in absolute terms, and per-player streakiness is mostly noise at this resolution. |
 
 ## The site
 
@@ -285,7 +285,7 @@ docs/                  # the live Love All site (Pages)
   `outcome`, ending wing/kind, `server_won`); built by `match-charting-project shots`.
 - **`player_eras`** *(optional; built by `match-charting-project eras`)* — one row per
   player-era. A long career is split into early/late entities **only** when its style
-  genuinely changed (`evolved` flag), so analyses can treat e.g. early- vs late-career
+  changed (`evolved` flag), so analyses can treat e.g. early- vs late-career
   Agassi as distinct players; join points on `year BETWEEN year_start AND year_end`.
   Methodology & justification live in `experiments/career_splits/`.
 - **`stats_overview`** (+ more with `--what all`) — the project's own

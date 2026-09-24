@@ -118,7 +118,7 @@ adjacent so it reads as a refinement rather than a contradiction.
 
 - **"Aggressive shot" is a proxy.** Not every unforced error is a failed
   finishing shot (some are routine misses), and some winners are gifts. At our
-  token resolution this is the honest available proxy for shot-making risk; the
+  token resolution this is the best available proxy for shot-making risk; the
   README of `shot_patterns` carries the same coarseness caveats.
 - **Split-half doesn't catch shared bias.** The comparison above shows charters
   don't disagree *with each other* enough to drown the induced-forced-error

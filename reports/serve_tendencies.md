@@ -71,7 +71,7 @@ Steadiest and most restless placement among the 182 profiles with 40+ charted ma
 | restless | Rafael Nadal | ad | 421 | 54% | 5.17 | 5.06 |
 | restless | Rafael Nadal | deuce | 423 | 31% | 4.78 | 3.95 |
 
-The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 95% of the dispersion, so most of the movement is genuinely between matches within a season — though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
+The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 95% of the dispersion, so most of the movement is between matches within a season — though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
 
 ### 5. Careers
 
@@ -210,7 +210,7 @@ Steadiest and most restless placement among the 110 profiles with 40+ charted ma
 | restless | Venus Williams | deuce | 90 | 36% | 4.53 | 1.96 |
 | restless | Arantxa Rus | ad | 64 | 51% | 4.39 | 3.68 |
 
-The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 89% of the dispersion, so most of the movement is genuinely between matches within a season — though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
+The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 89% of the dispersion, so most of the movement is between matches within a season — though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
 
 ### 5. Careers
 
@@ -285,7 +285,7 @@ Largest actual movement among careers that clear the null:
 - `serve_side` owns the descriptive split and stays the place to look up what a mix *is*. This experiment owns the error bars: which of those numbers repeat, and from how much data. Nothing here replaces it.
 - `blind_reid` scores the serve as one feature block against the return and rally blocks and finds it the weakest of the three for naming a player. That is discrimination between players, not reliability within one, and the two answers are compatible: placement is stable per player and still separates players less sharply than net play and slice do. Step 3 explains why that can happen — a stable statistic with a narrow true spread carries little identifying information.
 - `career_splits` decides whether a whole career becomes two entities, in a 10-feature style space that already includes serve location. Step 5 is that design narrowed to placement alone, so it answers 'did the serve move' rather than 'did the player'. It is an input to that decision, not a competitor: placement moves in about half of long careers, more often than overall style does.
-- The genuinely new ground is steps 3, 4 and 6: the sample-size rules, the match-to-match dispersion, and the side-adjusted break-point test. None of those exist anywhere else in the repo.
+- The new ground is steps 3, 4 and 6: the sample-size rules, the match-to-match dispersion, and the side-adjusted break-point test. None of those exist anywhere else in the repo.
 
 ![reliability](figures/serve_tendencies_reliability.png)
 

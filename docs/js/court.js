@@ -1,29 +1,18 @@
-// Mini tennis-court ball-path renderer — the client-side twin of the Python
-// `match_charting_project.viz.rally_svg` (src/match_charting_project/viz/court.py).
+// Mini tennis-court ball-path renderer, the client-side twin of
+// `match_charting_project.viz.rally_svg` (src/match_charting_project/viz/court.py). The site is
+// static, so drawings are made in the browser from the pattern text in the DB and none are
+// stored.
 //
-// The Pages site is static, so it can't call the Python renderer at request time; this
-// draws the same picture in the browser, on the fly, from the pattern text already in the
-// DB — so no SVGs are stored and nothing has to be regenerated as players/tournaments grow.
+// It mirrors court.py's token path only (serves and rally placements, no misses or terminal
+// markers), which is all a stored pattern string encodes. Keep the geometry in sync with
+// court.py, the canonical renderer for reports. Styling differs because these draw at ~96px:
+// arrowheads, a dashed neutral line for the opponent's ball, a tinted half for the profiled
+// player, and a ring on one bounce only.
 //
-// It mirrors court.py's TOKEN path only: serves + rally placements, no misses or terminal
-// markers. That's all a stored pattern string ("serve wide · BH slice→3") ever encodes —
-// the lead-up shots of a trigger, never a winner/error. Keep the geometry below in sync
-// with court.py; that module stays the canonical renderer for reports.
-//
-// Presentation has deliberately diverged, though: these draw at ~96px in a panel, where
-// court.py's reports draw at full size. So this file adds arrowheads, a dashed neutral
-// treatment for a ball the opponent hit, and a tinted half marking whose side is whose —
-// cues that earn their place only at thumbnail scale. It also rings one bounce where
-// court.py rings every one it draws past: at 88px a second ring is a smudge. Geometry is
-// shared; styling is not, and nothing here needs porting back.
-//
-// Both renderers use that one vocabulary, so a drawing means the same thing wherever it
-// appears: tint = the profiled player's half, solid and coloured = a ball they hit, dashed
-// and neutral = one the opponent hit. Lines run contact to contact, so every kink is a
-// player meeting the ball, and a ring on a line is where that ball bounced along the way —
-// which leaves a line carrying no ring meaning something definite, that the ball never
-// bounced and was taken out of the air. pairSvg knows the hitters' roles from its shape;
-// rallySvg has to work them out — see the note there.
+// The vocabulary: tint = the profiled player's half, solid and coloured = a ball they hit,
+// dashed and neutral = one the opponent hit. Lines run contact to contact, and a ring marks a
+// bounce, so a line with no ring is a ball taken out of the air. pairSvg knows who hit what
+// from its shape; rallySvg works it out (see the note there).
 
 // --- court geometry (a 150 x 190 field; matches court.py and the notation-key courts) ---
 const LEFT = 20, RIGHT = 130, TOP = 10, BOTTOM = 180, NET = 95, HALF = NET - TOP;
@@ -54,13 +43,8 @@ const RALLY_STANCE = 4;                      // a mid-rally opening is anchored 
 const TOKEN_KIND = { d: "drive", s: "slice", v: "net", p: "drop", l: "lob", o: "other" };
 const tokenKind = (tok) => (tok.startsWith("sv") ? "serve" : (TOKEN_KIND[tok[1]] ?? "other"));
 
-// The court occupies x 20–130, y 10–180 of the 150×190 field the geometry is written in, so
-// a full-field viewBox spends a quarter of a thumbnail's width on blank margin. These draw
-// at ~88px in the panel, where that margin is the difference between a ball path you can
-// follow and a smudge. FRAME crops to the court plus a few units of air — enough for the two
-// player markers and a terminal arrowhead, and nothing else. It is presentation, like the
-// arrowheads and the tinted half: every coordinate below is still court.py's, so the two
-// renderers stay in sync and nothing here needs porting back.
+// Crop the 150×190 field to the court (x 20–130, y 10–180) plus a little air for the player
+// markers and arrowheads. Coordinates are still court.py's.
 const FRAME_PAD = 6;
 const FRAME_FOOT = 3;                        // extra, for a server standing off the court
 const FRAME = [LEFT - FRAME_PAD, TOP - FRAME_PAD,
@@ -108,13 +92,9 @@ function head(x1, y1, x2, y2, cls) {
     `L${f(bx - HEAD_HALF * nx)} ${f(by - HEAD_HALF * ny)}Z" class="${cls}"/>`;
 }
 
-// One drawn ball: the line plus its direction marks. Exported so the notation-key courts
-// in matchup.js draw their example shots the same way as a real ball path.
-// `incoming` marks a ball the opponent hit rather than the profiled player, which the CSS
-// draws dashed and neutral: whose ball it is is the one thing every drawing here encodes
-// the same way, so it never has to be read off weight or position.
-// `arrow` swaps the mid-line chevrons for a single head at the far end; `bare` drops both,
-// for a ball whose direction its own endpoints already give away.
+// One drawn ball: the line plus its direction marks. Exported for the notation-key courts in
+// matchup.js. `incoming` marks the opponent's ball (dashed and neutral in CSS). `arrow` swaps
+// the mid-line chevrons for a head at the far end; `bare` drops both.
 export function shotLine(x1, y1, x2, y2,
   { faint = false, shot = null, arrow = false, incoming = false, bare = false } = {}) {
   const mods = (faint ? " faint" : "") + (incoming ? " incoming" : "");
@@ -180,15 +160,8 @@ function bounces(tokens, court) {
   });
 }
 
-// Where the line through a and b sits at height y, extended past b when y is beyond it.
-//
-// A wide serve really does pull a returner off the court and the extension says so, but the
-// drawing has no room to follow one indefinitely — and depth and width are drawn on
-// different scales here, which exaggerates how far it runs. So an extension that would leave
-// the court is stopped where it crosses the sideline rather than slid back inside at the
-// depth asked for: the contact comes out shallower, which is what being yanked that wide
-// actually does, and it stays *on the ball's line*. Keeping it there is what lets a bounce
-// sit on the drawn segment instead of beside it.
+// Where the line through a and b sits at height y, extended past b if needed. An extension
+// that would leave the court stops at the sideline, so the contact stays on the ball's line.
 function pointAtDepth(a, b, y) {
   const lo = LEFT - CONTACT_PAD, hi = RIGHT + CONTACT_PAD;
   if (Math.abs(b[1] - a[1]) < 1e-9) return [Math.min(Math.max(b[0], lo), hi), y];
@@ -200,17 +173,9 @@ function pointAtDepth(a, b, y) {
   return [edge, a[1] + (edge - a[0]) / (b[0] - a[0]) * (b[1] - a[1])];
 }
 
-// Where each stroke was struck from, and which balls reached the ground.
-//
-// A ball runs straight in plan view, so a player standing to it meets it on that line,
-// past the bounce — which is why a contact is found by extending the incoming ball's own
-// line rather than by stepping straight back from where it landed. How far along depends
-// on the stroke: a groundstroke a step, a return a stride to wherever the returner was
-// standing, and a volley not past the bounce at all but short of it, out of the air.
-//
-// `bounced` is per *incoming* ball, false where a volley answered it — the one fact a
-// stroke can only learn from the stroke after it, and the reason nothing is drawn saying
-// a volleyed ball landed.
+// Where each stroke was struck from, and which balls bounced. A contact lies on the incoming
+// ball's line past the bounce: a step for a groundstroke, a stride for a return, and short of
+// the bounce for a volley. `bounced` is per incoming ball, false where a volley answered it.
 function contactPoints(bs, kinds, start) {
   const contacts = [start];
   const bounced = bs.map(() => true);
@@ -236,20 +201,10 @@ function contactPoints(bs, kinds, start) {
 
 // Render a token list ("svW", "Bs3", ...) as a court SVG string, css-classed for the site.
 //
-// Who hit what isn't fixed here the way it is in pairSvg. A trigger's tokens are the K
-// strokes *before* the player's aggressive shot and hitters alternate, so ownership runs
-// backwards from the end: the last token is always the ball the opponent sent them — the
-// one they attacked, and the reason the sequence is in the panel — and every second token
-// before it is theirs. Every shipped cue is a 2-shot lead-up, so token 1 is the player's
-// own — the odd-K branch is kept because the drawing is written for any K and a deeper
-// tier has shipped here before — and it puts the player's half wherever the last ball
-// lands.
-//
-// Everything else follows from that one fact, in pairSvg's vocabulary: their half tinted,
-// their own balls solid and in their colour, the opponent's dashed and neutral, and a
-// hollow ring where the last one bounced. The ring is the pivot the sequence exists to set
-// up — the aggressive shot played from it is what the numbers beside the drawing measure,
-// and it is deliberately not drawn, because a stored pattern never says where it went.
+// Hitters alternate and the last token is the opponent's ball the player attacked, so
+// ownership runs backwards from the end. Shipped cues are two-shot lead-ups; odd lengths are
+// handled too. The player's half is wherever the last ball lands, with a ring where it
+// bounced. The aggressive shot itself isn't drawn, since the pattern never says where it went.
 export function rallySvg(tokens, court = "deuce") {
   const bs = bounces(tokens, court);
   if (!bs.length) return "";
@@ -312,15 +267,9 @@ function labelToToken(label, mirror = false) {
 
 // A stored pattern string -> its court SVG, or "" if it holds no recognizable shots.
 //
-// `mirror` puts the sequence back on the physical court. Trigger and deep-pattern contexts
-// are both stored hand-relative — mirrored for a left-hander, so that a token names the
-// shot rather than the half of the court it landed in and two players' sequences can be
-// compared — and a drawing has to undo that or it draws a lefty's rally into the wrong
-// third. So it is set from the player's hand alone, not from which family the row is in.
-// `court` matters only when the sequence opens with a serve, and then it matters a lot:
-// a wide serve is a different physical ball on the two sides, which is the whole reason
-// the opening cues are split by court at all. Pooled cues have no side to pass and keep
-// rallySvg's default; an opening cue passes its own.
+// `mirror` undoes the hand-relative storage (mirrored for a left-hander), so it's set from
+// the player's hand alone. `court` matters only when the sequence opens with a serve, since a
+// wide serve is a different ball on each side; pooled cues use rallySvg's default.
 export function patternSvg(pattern, mirror = false, court = "deuce") {
   const labels = String(pattern).match(SHOT_RE);
   if (!labels || !labels.length) return "";
@@ -328,21 +277,14 @@ export function patternSvg(pattern, mirror = false, court = "deuce") {
 }
 
 // --- court-state patterns (player_patterns table) ----------------------------------------
-// One incoming ball, one response. The incoming ball lands on the near half — the profiled
-// player's side, matching the "into the BH corner" wording — and the response lands up top.
-// Return-depth states move the incoming bounce short or deep; every other bounce sits at
-// the default rally depth, like the token drawings.
+// One incoming ball, one response. The incoming ball lands on the near half (the profiled
+// player's side) and the response lands up top. Return-depth states move the incoming bounce
+// short or deep; other bounces sit at the default rally depth.
 //
-// These render at thumbnail size, where a viewer has to know instantly which half is whose
-// and which of the two balls came first. Three cues carry that, so no one of them has to
-// survive alone: the profiled player's half is tinted, the ball they *receive* is dashed
-// and neutral while the one they *hit* is solid and in their colour, and only the response
-// gets an arrowhead. A fourth marks the pivot the answer is played off — see `pivot`.
-//
-// The response leaves from where the player met the ball, a step past where it landed,
-// rather than from the bounce itself. Small shift, and it earns its keep: an answer
-// springing from the exact point the ball hit the ground reads as a shot struck from
-// there, which for a ball down the middle is a shot nobody plays.
+// The player's half is tinted, the ball they receive is dashed and neutral, the one they hit
+// is solid in their colour, and only the response gets an arrowhead. A fourth mark shows the
+// pivot (see `pivot`). The response leaves from where the player met the ball, a step past
+// the bounce.
 const PAIR_DEPTH = { short: 0.33, "mid-depth": DEPTH_DEFAULT, deep: 0.86 };
 
 // How deep each of the two balls landed. A charted return depth is what the ball actually
@@ -387,27 +329,15 @@ export function pairSvg(incCode, respCode, depth = "", incKind = "", respKind = 
 }
 
 // --- serve+1 (the "off the return" family) ------------------------------------------------
-// The same picture with the serve that started the point in front of it, because for this
-// family the serve *is* the state: the serve_plus_one experiment exists on the finding that
-// a wide serve opens the forehand in the deuce court and the backhand in the ad court, and
-// a drawing that begins at the return cannot show that. Here the server is the profiled
-// player, so the near half is theirs in the same way pairSvg's is.
+// The same picture with the serve in front of it, since a wide serve opens opposite wings on
+// the two courts (the serve_plus_one finding). The server is the profiled player. The serve is
+// drawn faint, as context; the third ball keeps the arrowhead. The serve line runs past its
+// bounce to where the returner met it.
 //
-// The serve is drawn faint. It is context — the reason the return arrived where it did —
-// while the ball the numbers beside the drawing actually measure is the third one, which
-// keeps the arrowhead. Without the fade all three balls read as equally the point.
-//
-// The serve line runs past its own bounce to wherever the returner met it, which is what
-// puts them at their baseline rather than standing in the service box: a returner's
-// position is set by their stance, not by how short the serve landed. The bounce itself
-// goes unmarked, but the line passes through it, so wide / body / T still reads off where
-// the serve crosses the box.
-//
-// Three levels, matching the three tiers a pattern can be surfaced at, so the drawing never
-// claims more than the row behind it knows:
-//   both court and direction  a serve, struck from the right side, landing where it landed
-//   court only                no serve line; the two players just stand on the correct sides
-//   neither                   pairSvg, unchanged — there is nothing to add
+// Three levels, matching what the pattern row knows:
+//   both court and direction  a serve from the right side, landing where it landed
+//   court only                no serve line; the players stand on the correct sides
+//   neither                   pairSvg, unchanged
 export function retSvg(court, serveDir, incCode, respCode, depth = "",
   incKind = "", respKind = "") {
   const side = String(court || "").toLowerCase();

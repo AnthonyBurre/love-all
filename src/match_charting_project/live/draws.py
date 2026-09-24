@@ -75,7 +75,7 @@ def _round_day(matches: list) -> str:
     A slot with no match mapped to it still has a date to give: whichever day the round it
     belongs to is being played. ESPN stamps every unscheduled match of a round with the same
     day marker, so the modal value *is* that day; a round split across two sessions takes the
-    busier one, which is the most an empty slot can honestly claim. "" when the feed has
+    busier one, which is the most an empty slot can claim. "" when the feed has
     dated nothing in the round.
     """
     stamps = [m.date for m in matches if getattr(m, "date", "")]

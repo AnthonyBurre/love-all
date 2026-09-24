@@ -7,7 +7,7 @@ import { query } from "./db.js";
 import { ename } from "./feed.js";
 
 let data = null;
-// "G|player" -> charted match count, or null while that is genuinely unknown — which is every
+// "G|player" -> charted match count, or null while that is unknown — which is every
 // load until the insights database answers, and the whole of one where it never does. An empty
 // object would have been a table saying every player is uncharted; see matchTier in bracket.js.
 let cov = null;
@@ -81,12 +81,8 @@ async function main() {
   wireDrawer();
   let raf = null;               // connectors are position-dependent: relayout on resize
   window.addEventListener("resize", () => {
-    // Not while the panel is open. render() replaces every card in the draw, and the draw
-    // is behind a modal and its scrim — so the relayout is work no one can see, and on a
-    // full slam draw it is ~1900 nodes rebuilt and a getBoundingClientRect per card to
-    // re-place the wires, on every resize frame. It is also destructive: one of the cards
-    // it throws away is the one the panel hands focus back to on close.
-    // Held instead, and spent once on close, before the panel goes.
+    // Not while the panel is open: re-rendering the hidden draw is wasted work, and it would
+    // replace the card the panel hands focus back to. Held and run once on close.
     if (!$("matchup").hidden) { resizedBehind = true; return; }
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(render);
@@ -255,12 +251,8 @@ function drawSize(t) {
   return r1.length ? r1.length * 2 - r1.filter((m) => m.bye).length : null;
 }
 
-// The lines under the <h1>: what this draw is, in the order you'd ask. First the
-// sponsor's name for the event, which the <h1> does not carry but the tour publishes and a
-// search turns up, then the level, the surface and the size of the field together, then
-// the host city on its own — three different questions ("what's it called", "what kind of
-// event", "where") rather than one run-on line. Every part is optional — an event the
-// calendar can't place keeps its name alone rather than showing a line of gaps.
+// The lines under the <h1>: the sponsor's event name, then level, surface and field size,
+// then the host city. Every part is optional.
 function billing(t) {
   const e = t.event || {};
   const name = t.name !== ename(t) ? t.name : null;
@@ -272,13 +264,8 @@ function billing(t) {
   return [name, kind.filter(Boolean).join(" · "), where].filter(Boolean);
 }
 
-// A finished draw with charting reads as a plain charted / not-charted split; everything
-// else keeps the four-step coverage scale.
-//
-// Read left to right the chips climb: uncharted, thin, decent, deep. A key is a scale, and a
-// scale that starts at its top end asks the reader to run it backwards against every other
-// left-to-right ramp on the page — the tier colours themselves, the slices view's notch count,
-// and the ordering the CSS ramp is written in.
+// A finished draw with charting shows charted / not charted; otherwise the four-step coverage
+// scale, climbing left to right from uncharted to deep.
 function updateLegend(t) {
   // Per-match charting rides in the draw feed, so this pair is known as soon as the page has
   // a draw to show — it never waits on the database and never has to say it is missing.
@@ -370,13 +357,8 @@ async function loadCoverage() {
 }
 
 function wireDrawer() {
-  // closeMatchup owns the rest of it — the page scroll lock and handing focus back to
-  // the match tile that opened the panel.
-  //
-  // The catch-up render goes first, while the panel is still up. Closing is what hands
-  // focus back to a card, so a render after it would replace the card it had just focused;
-  // before it, the panel is still covering the swap and closeMatchup finds the new card by
-  // the match id the old one carried.
+  // closeMatchup handles the scroll lock and focus. The held render runs first, while the
+  // panel still covers the swap, so closeMatchup finds the new card by match id.
   const dismiss = () => {
     if (resizedBehind) { resizedBehind = false; render(); }
     closeMatchup();

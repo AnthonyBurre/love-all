@@ -12,7 +12,7 @@ Three passes, and each has a rule that is easy to get plausibly wrong:
    thirteen times inside a single honest chart and found 2,174 double-charted matches where
    there are 14. It is "the match's own opening number came round again".
 2. *Which chart to keep.* The most complete, not the most recent: of the four matches whose
-   two charts genuinely differ, the second is the shorter abandoned one in two cases.
+   two charts differ, the second is the shorter abandoned one in two cases.
 3. *What to do with two charts that are interleaved rather than appended.* The whole match,
    not the offending rows — the two have drifted out of step, so the point numbers have
    stopped referring to the same points, and cutting only where that is visible leaves a

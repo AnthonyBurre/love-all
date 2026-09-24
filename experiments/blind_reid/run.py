@@ -553,7 +553,7 @@ def write_report(res: dict, path: Path) -> None:
     if hits >= 3:
         md.append(f"Note how often one name recurs: **{hog}** appears in {hits} of the "
                   f"{len(res['M']['confusable'])} listed pairs. The bar is the smaller of "
-                  "the two self-distances, so these are genuinely mutual, but a player "
+                  "the two self-distances, so these are mutual, but a player "
                   "with a wide own cloud will naturally cross with more of the field. "
                   "Read it as style fluidity rather than as a resemblance to any one "
                   "opponent.")
@@ -605,7 +605,7 @@ def write_report(res: dict, path: Path) -> None:
     md.append("## Caveats")
     md.append("")
     md.append("- **Style, not identity.** A high AUC does not mean these features name a "
-              "human; it means they narrow the field. Two players with genuinely similar "
+              "human; it means they narrow the field. Two players with similar "
               "games stay confusable no matter how much data we add.")
     md.append("- **Opponent reactivity.** What a player hits back is partly the "
               "opponent's doing. The different-opponent control shows this is not the "

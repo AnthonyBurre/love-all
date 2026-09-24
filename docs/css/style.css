@@ -9,25 +9,16 @@
    --head-ink: #ffffff;
    /* header body text */
    --bg: #e4e8f0;
-   /* a step down from the cards' white, so the draw sits on the page rather than merging
-      into it */
+   /* a step darker than the cards, so the draw sits on the page */
 
    --ink: #0d141d;
    --muted: #5c6a7c;
    --line: #d8dee8;
    --card: #ffffff;
    --warn: #c2410c;
-   /* Charting coverage, as one ordered ramp: a hue for the tiers that have data, drained
-     as the data thins, then two neutrals for the tiers that barely do or don't. So a
-     card's fill answers "is this charted at all" before the wedge is read at all.
-     Fixed rather than themed, for the reason --up and --win are: how well charted a
-     pairing is belongs to the data, not to the tournament it happens at. Themed, the top
-     tier was green at Wimbledon and clay-red at Roland Garros — the scale changed meaning
-     between events, and on the clay band it changed places with the tier below it.
-     Gold is the top step, not the second one: a saturated gold beside a desaturated accent
-     is the one being pointed at whatever the legend says.
-     --cov-thin and --cov-none are three steps apart in lightness; one step apart, at
-     #c8cfd9 against #dde2ea, the bottom two tiers are the same mark. */
+   /* Charting coverage as one ordered ramp: gold for deep charting, the same hue drained for
+     decent, then two neutrals for thin and uncharted. Fixed rather than themed, since the
+     tier belongs to the data, not the tournament. */
    --cov-rich: #c8901a;
    /* deep charting — gold */
    --cov-some: #e6c885;
@@ -36,64 +27,39 @@
    /* thin — neutral: too little to read patterns from */
    --cov-none: #dfe4ec;
    /* uncharted — a hairline, and nothing else */
-   /* What the corner notches mix toward. They keep the tier's own colour — the count and
-     the colour say the same thing twice, which is the point of a redundant encoding —
-     but pulled back toward this neutral so the ramp reads as a family of marks rather
-     than four different-coloured ones. It is --cov-thin's grey, where the ramp already
-     turns neutral, so the thin tier mixes to exactly itself and is unchanged.
-     Fixed rather than themed, like --up and --win: how well charted a match is belongs
-     to the data, not to the tournament it was played at. */
+   /* The corner notches mix the tier colour toward this neutral (--cov-thin's grey), so the
+     marks read as one family. */
    --notch-neutral: #93a0b2;
    --notch-mix: 72%;
    /* how much of the tier's own colour survives the pull */
-   /* The tint under a card, in the two tiers that carry one. Named because the legend has
-     to be able to wear exactly the same wash as the thing it is a key for. */
+   /* Card tints for the two charted tiers; the legend uses the same values. */
    --tint-rich: color-mix(in srgb, var(--cov-rich) 15%, var(--card));
    --tint-some: color-mix(in srgb, var(--cov-some) 7%, var(--card));
-   /* Toned down for the slices view, where the notch count carries the ordering and the
-     tint is only a hint behind it. In the full draw the tint is still the only thing that
-     works at a glance, so it keeps its full strength there — see the corner-shape block. */
+   /* Softer tints for the slices view, where the notch count does the ordering. */
    --tint-rich-soft: color-mix(in srgb, var(--cov-rich) 7%, var(--card));
    --tint-some-soft: color-mix(in srgb, var(--cov-some) 4%, var(--card));
-   /* "better than the tour" — a reading of a number, not decoration, so it is fixed like
-     --warn rather than following the event's palette. A ▲ that is brown at Roland Garros
-     and blue in New York is saying something about the tournament, which it isn't. */
+   /* "better than the tour": fixed, not themed, because it reads a number. */
    --up: #0f7a52;
-   /* the winner's caret — gold, and fixed for the same reason --up is. It is also the one
-     mark in the header that is not owned by a side: in each player's own colour it read as
-     part of that name's styling, one more thing violet or red was doing, when what it says
-     is about the match. Deep enough to clear 3:1 on the header band, which a bright gold
-     does not. */
+   /* the winner's caret: gold, fixed, and dark enough for 3:1 on the header band */
    --win: #b8860b;
-   /* the two player colours. Theme-independent: they identify a side of the matchup
-     panel, so they must never be mistaken for a tournament's own colour — which is why
-     player A is violet rather than blue, with two hard-court themes in the palette.
-     Pitched light enough to hold its own edge against the darkest of those header
-     bands, since the split rule that declares it is drawn on one.
-     The one place this pair is still tight is B against the clay accent: crimson on
-     terracotta measures ΔE 0.088 in OKLab, the closest any two "must not be confused"
-     colours come anywhere in the palette. A magenta B opens it to 0.141, and is the
-     change to make if that pairing ever reads wrong on a Roland Garros panel. */
+   /* The two player colours, fixed so they're never mistaken for a tournament's colour (hence
+     violet, not blue, for A). The tightest pair is B on the clay accent (ΔE 0.088 in OKLab);
+     a magenta B would open it to 0.141 if that ever reads wrong. */
    --a: #6a3fd6;
    --b: #e0453e;
 
-   /* Facet geometry. Nothing is rounded: the corner is either square or cut on the
-     diagonal, and the cut is always the same 8px so chrome reads as one family.
-     --chip-clip is the small parallelogram every pill-shaped control now wears. */
+   /* Facet geometry. Nothing is rounded: corners are square or cut at 8px. --chip-clip is the
+     parallelogram the pill-shaped controls use. */
    --radius: 0;
    --chip-clip: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
-   /* The same cut for a chip pinned to an edge of its container: the side against the edge
-     keeps its corners square and only the free side leans. A chip cut on both sides and
-     then pushed flush reads as slipping off the panel — the lean opens a wedge of ground
-     at one corner and hangs the other over the edge. Pinned, it reads as growing out of
-     the edge, which is the only way an edge and a diagonal can meet on this page. The
-     border on the pinned side comes off with it, wherever these are used. */
+   /* The same cut for a chip pinned to one edge: the pinned side stays square and loses its
+     border. */
    --chip-clip-l: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
    /* flush left */
    --chip-clip-r: polygon(8px 0, 100% 0, 100% 100%, 0 100%);
    /* flush right */
    --tier-wedge: 9px;
-   /* the corner triangle that replaced the tier's left rule */
+   /* the corner triangle marking the tier */
    font-family: "Avenir Next", "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -130,27 +96,14 @@ body {
    color: var(--ink);
 }
 
-/* The meta line is a tint of the event's own accent rather than a hand-picked colour per
-   theme — four hand-picked tints is four chances to get one wrong, and one hand-picked
-   aus-hard pair measured 3.27:1 on its band, under the 4.5 small text needs.
-   At 28% it measures 6.19:1 at Roland Garros and 9.04:1 at the US Open, against the
-   colour actually under the text. That last part matters: the band is a 112° gradient, so
-   "on the band" is not one number. This row sits at ~0.60 along the gradient line — past
-   the mid stop, in the dark end — which is why a tint this light is safe here and would
-   not be up beside the title. Anything moved into this band wants re-measuring where it
-   lands, not where the gradient starts.
-   It is declared here and not with the other tokens in :root because a custom property
-   substitutes var() against the element it is *declared* on. app.js puts the theme on
-   <body>, so a --head-meta written in :root would resolve --acc to the grass default and
-   stay green at Roland Garros. Declared on body, it resolves against the themed value. */
+/* The header meta line: a 28% tint of the accent (6.19:1 at Roland Garros, 9.04:1 at the US
+   Open, measured where the text sits on the gradient). Declared on body, not :root, because
+   var() resolves where the property is declared and app.js sets the theme on <body>. */
 body {
    --head-meta: color-mix(in srgb, var(--acc) 28%, #ffffff);
 }
 
-/* --wrap-pad is the page gutter held as a variable rather than a literal: the phone
-   layout's nav zones and its sticky round title both have to pull back out through it to
-   reach the screen's own edge, and a second copy of the number is a second thing to keep
-   in step with this one. */
+/* --wrap-pad is the page gutter, reused by the phone layout's nav zones and sticky title. */
 .wrap {
    --wrap-pad: 20px;
    max-width: 1180px;
@@ -162,9 +115,8 @@ a {
    color: var(--acc-d);
 }
 
-/* The band runs on the diagonal, and a facet of slightly lighter ground cuts across its
-   closing third — the same 102°-ish angle the wedge and the split rule use, so the whole
-   page is lit from one direction. */
+/* A diagonal band with a lighter facet across its last third, at the same angle as the wedge
+   and the split rule. */
 .site-head {
    position: relative;
    overflow: hidden;
@@ -186,10 +138,7 @@ a {
    background: linear-gradient(102deg, transparent 50%, rgba(255, 255, 255, .05) 50%);
 }
 
-/* A short wedge, not a rule the full width of the band. A full-width rule has to hold its
-   own across the whole edge, which the clay one cannot — dark green on terracotta measures
-   1.30:1, which is to say it isn't there. A wedge only has to be seen once, so it can be
-   the bright accent the event actually wants. */
+/* A short wedge rather than a full-width rule, which on clay would measure 1.30:1. */
 .site-head::after {
    content: "";
    position: absolute;
@@ -218,9 +167,7 @@ a {
    letter-spacing: -0.035em;
 }
 
-/* The only prose in the band: it describes the draw you are looking at rather than the
-   site, so it takes the full-strength ink and enough weight to read as part of the title
-   block instead of a footnote to it. */
+/* The band's one line of prose describes the draw, so it gets full ink and weight. */
 .site-head .billing {
    margin: 0;
    max-width: 760px;
@@ -295,9 +242,8 @@ a {
    fill: currentColor;
 }
 
-/* tournament picker: a dropdown (scales as events accumulate, native on mobile) */
-/* the caret is a right-angled corner rather than a symmetric triangle — the same cut the
-   chips and cards take, pointing the same way */
+/* Tournament picker: a native dropdown. The caret is a right-angled corner, the same cut the
+   chips take. */
 .tourselect {
    appearance: none;
    -webkit-appearance: none;
@@ -321,9 +267,7 @@ a {
    outline-offset: 1px;
 }
 
-/* match-tier legend. The tier is the same corner wedge the match cards wear, not a left
-   border, so the legend and the thing it explains are the same shape.
-   The wedge is drawn from currentColor so one rule sets both triangle edges. */
+/* Match-tier legend. Each chip wears the same corner wedge as the cards, drawn from --tier. */
 .legend {
    display: inline-flex;
    gap: 6px;
@@ -345,8 +289,7 @@ a {
    border: 1px solid var(--line);
 }
 
-/* --tier on the chip rather than a colour on its ::before, so the slices view's notches
-   can read the same variable the cards do and the two can't drift apart. */
+/* --tier rather than a colour, so the slices view's notches read the same variable. */
 .legend .chip::before {
    content: "";
    position: absolute;
@@ -373,11 +316,8 @@ a {
    --tier: var(--cov-none);
 }
 
-/* What stands in the legend's place while the depth scale is unknown — the insights database
-   is a separate fetch that lands after the first paint, and on a cold or offline load may not
-   land at all. Deliberately not a chip: a chip is a sample of a mark the draw is wearing, and
-   the point of this line is that the draw is not wearing one yet. Same size and colour as the
-   chips' text so the row doesn't change height when they replace it. */
+/* Stands in for the legend until the insights database loads (or if it never does). Same size
+   as the chips' text so the row keeps its height. */
 .legendwait {
    font-size: 10px;
    font-weight: 700;
@@ -394,11 +334,9 @@ a {
    font-size: 15px;
 }
 
-/* by-quarter view: one 8-column grid read top-down — final over semifinals over
-   quarterfinals over the whole round of 16 (8 across, stacked-name cards, a
-   selector chip under each); the picked sixteenth's rounds finish the stack.
-   Column spans center each match over its feeders; the wires are one SVG
-   overlay, hot along the picked path. */
+/* By-quarter view: one 8-column grid from the final down to the round of 16, with a selector
+   chip under each round-of-16 match; the picked section's earlier rounds follow. The wires are
+   one SVG overlay. */
 .quarters {
    position: relative;
    display: grid;
@@ -427,20 +365,12 @@ a {
    display: flex;
    flex-direction: column;
    align-items: center;
-   /* Every card in a round starts at the same level: the grid stretches the cells of a row
-      to equal height, and the card sits at the top of its cell. A card with fewer sets is
-      shorter, so it ends higher up — and the wire out of its bottom edge into the next
-      round is drawn from that edge, so the short card just gets a longer tail. The chip
-      row is the exception: its selector is pinned back to the cell floor (see .qsel) so the
-      fan-out below it keeps its footing whatever the card above is doing. */
+   /* Cards sit at the top of equal-height cells; the selector chip is pinned to the floor
+      (.qsel). */
    justify-content: flex-start;
    gap: 8px;
    min-width: 0;
-   /* A card's width comes from its grid track, not from the window — the view is offered
-      from 701px up and the track is a width over four — so the steps that keep a surname
-      on one line are keyed to the cell rather than to a media query. The cell and not the
-      card itself, because a container cannot style itself; below the 250px cap the two
-      are the same width anyway (see .qcell .match). */
+   /* Name-size steps key off the cell's width, not the window (see .qcell .match). */
    container: matchcard / inline-size;
 }
 
@@ -460,10 +390,8 @@ a {
    width: min(250px, 100%);
 }
 
-/* 8-across rows (round of 16, round of 128) run narrow and tall: each player gets
-   two lines — name left, sets right beneath — so names keep the full card width
-   as the window narrows */
-/* the tier wedge shrinks with the card — at 13px it would reach into a 12px name */
+/* 8-across rows (round of 16, round of 128): name and sets on separate lines, and a smaller
+   tier wedge. */
 .qcell.span1 .match {
    width: 100%;
    padding: 6px 8px 6px 11px;
@@ -485,12 +413,8 @@ a {
    text-align: right;
 }
 
-/* The match above the open section wears nothing: the filled chip under it and the hot wire
-   running down from it already say which section is unfolded, and a third mark saying the
-   same thing cost the card its own behaviour — an accent border and a ring outrank
-   .match:hover, so the one card you had just clicked was the one card that stopped
-   answering the pointer, which reads as disabled rather than as chosen. It is still a
-   match tile like every other, and opens its own panel. */
+/* The picked path's wires. The match above the open section gets no extra mark, so it keeps
+   its hover like any other card. */
 .quarters .wires .hot {
    stroke: var(--acc);
    stroke-width: 2.25;
@@ -502,9 +426,7 @@ a {
    display: inline-flex;
    align-items: center;
    justify-content: center;
-   /* Held to the bottom of the cell while the card floats to the top: the chip marks the
-      level the rounds below it hang from, and that level should not jump around with the
-      set count of the match above. */
+   /* Pinned to the cell floor so it doesn't move with the set count above. */
    margin-top: auto;
    border: 1px solid var(--line);
    background: var(--card);
@@ -559,21 +481,9 @@ a {
    color: #fff;
 }
 
-/* Slices only. The cards cut all four corners on the same 45° the rest of the chrome does,
-   so a card and the wire arriving at it are the same shape. The cut is small and even — a
-   card is still a rectangle to read, and 9px of corner is width the names and the games
-   were never using. The 8-across row cuts less (6px): its cards are ~135px wide, and a cut
-   sized for a 250px card eats into a 12px name there.
-   corner-shape, not a clip-path. A clip is applied *after* everything the element paints,
-   so it takes the border off the four diagonals and erases the offset hover shadow and the
-   focus ring entirely, leaving three separate things to rebuild inside the box (a
-   hand-drawn evenodd ring for the outline, inset shadows standing in for a lift). A bevel
-   is the box's own geometry instead: border, box-shadow and outline all
-   follow it for free, which is why every rule below this point is simply the full draw's,
-   inherited. Where corner-shape isn't supported the whole block is skipped and the cards
-   come out square — the full draw's corner, which is the right thing to degrade to.
-   border-radius lives inside the @supports for that reason: on its own it would round
-   them, and nothing on this page is round. */
+/* Slices only: cards take a 45° bevel on all four corners (6px on the narrow 8-across row).
+   corner-shape rather than clip-path, so border, shadow and focus ring follow the shape.
+   Browsers without it skip the block and get square cards. */
 @supports (corner-shape: bevel) {
    .quarters .match {
       border-radius: 9px;
@@ -584,26 +494,11 @@ a {
       border-radius: 6px;
    }
 
-   /* --- charting depth, told by the corners ------------------------------------------
-     The tier mark moves into the facets the bevel opens up, and *how many are filled*
-     is the depth: four for deep charting, two for decent, one for thin, none for
-     uncharted. The colour still says it — same ramp as the legend — but it is not the only
-     thing saying it, and a count survives what a shade does not: a greyscale
-     print, a red-green reader, and the corner of the eye halfway down a 32-card draw.
-     Which is the job this mark actually has. Nobody reads a card to learn its tier;
-     they sweep a draw looking for the matches worth opening.
-     It also retires the wedge. That was a triangle laid on a square corner, and it only
-     existed because a rule down the edge was the same shape as the edge — with a bevel
-     there is a facet to fill, so the tier is the card's own geometry and there is one
-     less thing drawn on top of it.
-     Painted as background gradients rather than elements: the bevel already clips the
-     background box, so each triangle shows exactly as much as its corner opens and no
-     more. background-image, not the `background` shorthand — the tint underneath is set
-     by .match.t-rich and a shorthand here would wipe it. */
-   /* One filled facet per corner, differing only in which way the gradient runs. Declared
-     on the card and not in :root, because a custom property substitutes its var()s
-     against the element it is *declared* on — at :root there is no --tier and no --notch
-     and all four resolve to nothing. Same trap as --head-meta further up. */
+   /* --- charting depth, told by the corners ---------------------------------------------
+     The number of filled facets is the tier: four for deep, two for decent, one for thin,
+     none for uncharted. A count survives greyscale and colour blindness where a shade
+     doesn't. Painted as background gradients, which the bevel clips. Declared on the card,
+     not :root, since --tier only exists here. */
    .quarters .match {
       overflow: hidden;
       --notch: 11px;
@@ -622,13 +517,7 @@ a {
       display: none;
    }
 
-   /* With the wedge gone the card's left inset is 4px wider than its right for nothing —
-      the padding was cut to clear a triangle that is no longer drawn. Evened up, which
-      matters most on a wide card: that layout is a mirror about its own centre line, and
-      an off-centre content box put the spine 2px left of where the card looks like it
-      splits. Same 24px in total, so no card gets any narrower — it only moves. Inside the
-      @supports block with the rule that retires the wedge, because where corner-shape
-      isn't supported the wedge is still there and still needs the room. */
+   /* Without the wedge, even up the padding so a wide card's content is centred. */
    .quarters .match.wide {
       padding: 8px 12px;
    }
@@ -643,9 +532,8 @@ a {
       background-position: top left;
    }
 
-   /* background-color, not the `background` shorthand: the shorthand would take the notches
-     off with it. The wash is the softened one — four notches already order this row, and
-     at full strength the tint was competing with them for the same job. */
+   /* background-color, not the shorthand, which would drop the notches. The softer tint, since
+     the notches already order this row. */
    .quarters .match.t-some {
       background-color: var(--tint-some-soft);
       background-image: var(--nw-tl), var(--nw-br);
@@ -658,11 +546,7 @@ a {
       background-position: top left, top right, bottom left, bottom right;
    }
 
-   /* The legend is a key, so it is built out of the same parts as the thing it keys: a
-     bevelled box wearing the same wash and the same number of notches the cards do.
-     Counting them on a chip is how you learn that the count means anything — the ramp
-     alone never said that, and with the notches doing most of the work it is the half of
-     the encoding a reader is least likely to guess. */
+   /* The legend chips wear the same bevel, tint and notch count as the cards. */
    body[data-view="quarters"] .legend .chip {
       clip-path: none;
       border-radius: 7px;
@@ -700,16 +584,8 @@ a {
       background-position: top left, top right, bottom left, bottom right;
    }
 
-   /* The section selector is the only control that lives *inside* the draw rather than in
-     the row above it, so it takes the draw's corner and not the row's: the same bevel the
-     cards around it wear, in place of the parallelogram the tabs, the dropdown and the
-     round chips take. A parallelogram among bevelled octagons was the one shape in this
-     view that belonged to a different picture — and it is the chip sitting closest to the
-     cards, directly under one.
-     6px, not the card's 9: this is the smallest box on the page at ~22px tall, and a cut
-     sized for a 250px card takes most of its height. It is the span1 card's cut, which is
-     the same choice made there for the same reason. Where corner-shape isn't supported
-     the base rule's parallelogram stands, exactly as the cards fall back to square. */
+   /* The section selector sits among the cards, so it takes their bevel (6px, as it is only
+     ~22px tall) rather than the parallelogram. */
    .qsel {
       clip-path: none;
       border-radius: 6px;
@@ -717,20 +593,13 @@ a {
    }
 }
 
-/* The start time (or the live marker) is the one line under a card's two columns of names
-   and games, and left-aligned it hung off the end of a row that is otherwise balanced about
-   its centre. Centred, it reads as belonging to the match rather than to the left player. */
+/* Centred, so the start time belongs to the match rather than the left player. */
 .quarters .match .detail {
    text-align: center;
 }
 
-/* bracket: horizontal columns per round, tree-positioned cards + SVG wires */
-/* overflow-y is hidden, not left to default: `overflow-x: auto` alone makes this a scroll
-   container on *both* axes (a visible overflow-y computes to auto next to a scrolling
-   overflow-x), and the wire overlay is sized from scrollHeight — an integer, against a
-   content height that isn't. The leftover fraction became a couple of pixels of vertical
-   scroll that swallowed the wheel whenever the pointer was over the draw. Nothing is newly
-   clipped: the box was already clipping on both axes. */
+/* Bracket: a column per round, cards positioned as a tree, SVG wires. overflow-y: hidden,
+   since overflow-x: auto alone lets a sub-pixel vertical scroll swallow the wheel. */
 .bracket {
    display: flex;
    gap: 34px;
@@ -783,11 +652,8 @@ a {
    stroke-width: 1.75;
 }
 
-/* Match card, shaded by how charted the *pairing* is (min of both players).
-   The tier reads as a triangle cut into the top-left corner instead of a rule down the
-   left edge. A rule and a card edge are the same shape, so the tier had to carry on
-   colour alone; a wedge is a different shape from everything around it and is found
-   before it is read. The card keeps its 1px frame all the way round. */
+/* Match card, marked by how charted the pairing is (the less charted player) with a triangle
+   in the top-left corner. */
 .match {
    position: relative;
    background: var(--card);
@@ -799,8 +665,7 @@ a {
    z-index: 2;
 }
 
-/* the drop shadow is offset on the same diagonal as the band's facet, and hard-edged —
-   a blurred shadow under a hard-cornered card is two different vocabularies */
+/* A hard shadow on the band's diagonal. */
 .match:hover {
    border-color: var(--acc);
    box-shadow: 6px 6px 0 color-mix(in srgb, var(--acc) 14%, transparent);
@@ -821,22 +686,9 @@ a {
    border-top-color: var(--tier, var(--cov-none));
 }
 
-/* The two charted tiers carry a tint as well as a wedge; the two uncharted ones are left
-   on the plain card. The tint is what orders them at a glance across a whole draw — a
-   wedge is 9px and has to be looked for, a fill does not. */
-/* The two percentages are not the same number because the two colours are not the same
-   strength: the top tier's gold is dark and saturated, the tier below it is that gold
-   already lightened, so an equal mix of each lands on nearly the same tint and the fills
-   stop ordering anything. These are set by where they come out, not by what they are —
-   ~#f7eedd against ~#fdfbf6, which is one clear step and then a second, fainter one. */
-/* background-color, never the `background` shorthand. The shorthand resets every
-   background longhand it doesn't mention — including background-size — and these rules
-   tie with `.quarters .match` on specificity while sitting later in the file, so they
-   won and quietly reset the notch's 11px background box to `auto`. That box is the
-   shape: clipped to 11 square, the gradient's triangle is cut twice and the bevel takes
-   the outer corner, which is the six-sided mark. Unclipped it is a plain triangle with
-   one corner off — a trapezoid. Only t-thin came out right, because its base rule sets
-   a custom property and no background at all. */
+/* The two charted tiers carry a tint as well as a wedge. The percentages differ because the
+   golds differ in strength. background-color, not the shorthand: the shorthand would reset
+   the slices view's notch background-size. */
 .match.t-rich {
    --tier: var(--cov-rich);
    background-color: var(--tint-rich);
@@ -855,10 +707,7 @@ a {
    --tier: var(--cov-none);
 }
 
-/* Not transparent. Nothing sits between a card and var(--bg), so a transparent fill makes
-   an undecided slot and the page itself the same colour, leaving the dashed edge as the
-   only thing marking it as a card. A step of --line off --card does the job the tint does
-   for the charted tiers: the fill itself says "nothing decided here". */
+/* An undecided slot gets a fill so it doesn't match the page background. */
 .match.t-tbd {
    --tier: var(--line);
    border-style: dashed;
@@ -874,10 +723,7 @@ a {
    box-shadow: none;
 }
 
-/* A bye holds a real entrant already through, so it reads solid rather than as a dashed
-   undecided slot — and it opens the same matchup panel a real match would, with that one
-   player's charted history, so it keeps the ordinary card's hover and pointer instead of
-   the ghost's inert ones. */
+/* A bye holds a real entrant, so it's solid and opens the panel like any match. */
 .match.bye {
    border-style: solid;
 }
@@ -902,8 +748,7 @@ a {
    font-size: 11.5px;
    line-height: 1;
    margin-left: 5px;
-   /* the one bit of full-saturation colour in the draw — pulled back a touch so it
-      informs without pulling the eye off the name beside it */
+   /* the only saturated colour in the draw, toned down a little */
    opacity: .9;
 }
 
@@ -922,8 +767,7 @@ a {
    color: var(--muted);
 }
 
-/* A row, not a line of text: the name has to be able to shrink and ellipsise while the flag
-   after it keeps its full width, and two flex items do that where one text run cannot. */
+/* A flex row so the name can ellipsise while the flag keeps its width. */
 .nm {
    flex: 1;
    display: flex;
@@ -952,19 +796,8 @@ a {
    color: var(--ink);
 }
 
-/* set winner's games, bracket + drawer */
-
-/* wide layout (by-quarter view): the card is divided left and right rather than top and
-   bottom — a name down each side and the scoreline between them, running vertically, one
-   row per set. The rule down the middle draws the same split the two names make.
-
-   Two digits and a hairline are ~30px wide, so the games are never in contention with the
-   names for the card's width. That is the point of standing the scoreline up: laid across
-   one row under both names, the two players' games had every bit of the card's slack
-   between them, so the slack was the first thing to go — on a five-set match in a 176px
-   card they ended up 3.7px apart, which is closer than the 5px between one player's own
-   sets, and by 164px they overlapped. Vertically the gap is fixed by the grid and the
-   width stops mattering. What the layout spends instead is height: a line per set. */
+/* Wide layout (by-quarter view): a name down each side and the scoreline between them, one
+   row per set, so the games never compete with the names for width. */
 .match .wsides {
    display: grid;
    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -972,10 +805,7 @@ a {
    align-items: start;
 }
 
-/* flow-root, not flex. The flag is floated (see fillName) so that it shortens only the
-   line it sits on; as a flex item it would reserve its width down every line of a wrapped
-   name, indenting the second and third to the depth of a flag beside only the first.
-   flow-root is what keeps the float inside the name's own box. */
+/* flow-root, so the floated flag (see fillName) shortens only its own line of a wrapped name. */
 .match .wsides>.nm {
    display: flow-root;
    min-width: 0;
@@ -1012,11 +842,8 @@ a {
    color: var(--muted);
 }
 
-/* A wide card's name wraps where a stacked one clips, so: block, to take a second line and
-   to report a real clientWidth to fitNames — an inline span reports zero and the fit
-   cascade never fires. overflow stays visible, because hidden would make this a formatting
-   context of its own and the whole block would sit beside the floated flag instead of
-   wrapping under it. */
+/* A wide card's name wraps, so it's a block (which also gives fitNames a real clientWidth).
+   overflow stays visible so the text wraps under the floated flag. */
 .match.wide .who {
    display: block;
    min-width: 0;
@@ -1076,15 +903,8 @@ a {
    color: var(--ink);
 }
 
-/* Narrow cards, where the wide layout's name columns get tight. Under a 200px card a
-   column is below 70px — narrower than most surnames at 13.5px — so "Djokovic" broke in
-   half instead of wrapping at its space. The type comes down in steps to 12px, which is
-   the size the 8-across cards above already set, and the gutters give a few pixels up
-   with it: in a column this narrow, 4px of gutter is worth more than another step of
-   type. Together they hold Djokovic, Zverev and Sinner on a line of their own down to
-   the narrowest card the view can produce, at a 720px window. Surnames past about ten
-   characters need 65px or more and still wrap; no size that stays readable gets those in,
-   and the full draw is a click away for anyone who wants the names whole. */
+/* Narrow cards: the type steps down to 12px and the gutters shrink, which keeps most surnames
+   on one line down to the narrowest card (at a 720px window). */
 @container matchcard (max-width: 200px) {
    .match .wsides {
       column-gap: 6px;
@@ -1122,10 +942,7 @@ a {
    font-weight: 700;
 }
 
-/* The live mark, on a draw card and in the panel's header alike: a square, because nothing
-   on this site is round — the same reason the close button's chip isn't a circle. Drawn
-   here rather than typed as a ● in front of the text, which arrived at whatever size and
-   weight the typeface felt like and was a different one in each of the two places. */
+/* The live mark: a square drawn in CSS, on draw cards and in the panel header. */
 .match .detail.live::before,
 .mstate .live::before {
    content: "";
@@ -1136,17 +953,9 @@ a {
    background: currentColor;
 }
 
-/* matchup panel: a centered dialog over a blurred scrim (bottom sheet on phones).
-   The panel opts out of the tournament palette the rest of the site wears. Everything
-   inside it is keyed to the two players, and a header in a third colour — a blue one, on
-   the hard-court themes — competed with that key instead of framing it. So the header
-   band is neutral, and the only colours in it are the players' own. */
-/* The band's own metrics, all four on the panel rather than on the band, because the close
-   button is a sibling of the band and reads them too — a custom property substitutes
-   against the element it is *declared* on, so one written on .mtop resolves to nothing up
-   there. --band-t and --band-b are the band's padding, and the chrome pinned to its corners
-   is pulled back out through them by exactly those amounts; --rule-h is the split rule at
-   the foot, which the bottom row stops on rather than crossing. */
+/* Matchup panel: a centred dialog over a blurred scrim (a bottom sheet on phones). Its header
+   is neutral, so the only colours in it are the two players'. The band metrics are declared
+   on the panel because the close button, a sibling of the band, reads them too. */
 .matchup {
    --hd-bg: #f5f7f8;
    --hd-ink: #1b2226;
@@ -1157,8 +966,7 @@ a {
    --band-t: 14px;
    --band-b: 15px;
    --rule-h: 8px;
-   /* one height for every chip in the band, so the two that are sized by their own text
-     and the one that is a pseudo-element with none come out level */
+   /* one height for every chip in the band */
    --chip-h: 20px;
 }
 
@@ -1170,12 +978,7 @@ a {
    z-index: 20;
 }
 
-/* dvh, the same unit the phone sheet takes, and for the same reason: a landscape phone is
-   wider than 700px — 844 on an iPhone, 915 on an Android — so it is this rule it lands on,
-   not the sheet's. vh there is the *large* viewport, the one with the browser's toolbar
-   retracted, and a toolbar out takes about 11% of a 390px-tall screen against the 12% this
-   leaves itself. The foot of the panel sat under it. dvh measures what is actually on
-   screen, so the 12% stays 12% whichever way the toolbar is. */
+/* dvh, not vh, so a landscape phone's toolbar doesn't cover the panel's foot. */
 .matchup {
    position: fixed;
    z-index: 21;
@@ -1210,25 +1013,10 @@ a {
    }
 }
 
-/* A full 44px target — this is the one control on the panel, and on a phone it sits in the
-   corner a thumb reaches worst — around a mark much smaller than that. The hit area is for
-   the thumb; the glyph only has to be found, and at 26px it was the largest thing in a
-   corner whose job is to stay out of the way.
-   The chip under it is now there at rest, not only under the pointer. Every control on the
-   page behind the panel — the quarter selector, the view toggles, the tournament picker —
-   is a hairline chip of card over its ground, and this one was a bare character floating in
-   a corner that grew a shape when touched: the one control on the panel, and the only one
-   on the site that didn't look like one. Same 8px cut as the rest, since a circle here was
-   the last round thing left in the panel.
-   The chip and the target are two boxes now, not one: the button is the 44px target and
-   sits in the panel's top-right corner, and the chip is painted into that corner inside it,
-   --close-chip-w wide and the same --chip-h as the two label chips opposite. So the whole
-   target is on the panel (nothing is clipped away by the sheet's own overflow), the mark
-   is flush in the corner, and the top row of chrome comes out one height across the band.
-   --close-lane, which is what a condensed name keeps clear of, measures off the target and
-   not the chip: what you have to not collide with is the thing you can press.
-   On the phone sheet the lane is not paid at all — the button rises out of the panel there
-   instead, since a phone's name track cannot spare it. See the sheet's own block. */
+/* The close button is a 44px target in the top-right corner, with a smaller chip painted
+   into the corner inside it (the same 8px cut as the site's other chips). --close-lane, which
+   the condensed name keeps clear of, measures off the target. On the phone sheet the button
+   sits above the panel instead. */
 .matchup {
    --close-size: 44px;
    --close-chip-w: 32px;
@@ -1265,9 +1053,7 @@ a {
    transition: background .12s ease, border-color .12s ease, top .18s ease;
 }
 
-/* Centred on the chip, not on the target — the two do not share a centre. Both the
-   ::before and the glyph are positioned, so they stack in source order and the mark stays
-   on top without a z-index. */
+/* Centred on the chip, not the target. */
 .matchup .close svg {
    position: absolute;
    display: block;
@@ -1287,12 +1073,7 @@ a {
    border-color: color-mix(in srgb, var(--hd-mut) 45%, var(--hd-line));
 }
 
-/* The panel traps Tab, so a keyboard arrives here with nothing to show for it. Rectangular
-   against a cut chip, like every other outline on the site — an outline follows the border
-   box, not the clip. */
-/* Drawn on the chip rather than on the 44px target, for the same reason the glyph is —
-   a ring around the target would sit well off the mark on two sides. Inset, because the
-   chip is in the corner and a ring outside it would be half off the panel. */
+/* The focus ring goes on the chip, inset, since the chip sits in the corner. */
 .matchup .close:focus-visible {
    outline: none;
 }
@@ -1302,24 +1083,11 @@ a {
    outline-offset: -2px;
 }
 
-/* scoreboard header (non-scrolling), read top-down: event/draw/round, then the two
-   players either side of the scoreline, then when. It never scrolls away, so it is also
-   the key for the profile below, and nothing down there repeats a name or a flag.
-   The rule closing it is that key: violet under the left player, red under the right,
-   splitting at the same centre line the panel below splits on. It sits on the boundary
-   between the two, which is the one place the colours can be declared without a dot
-   having to be parked next to something. The band itself stays flat and neutral: the rule
-   is the statement, and a surface tinted underneath it only made the same point twice,
-   more weakly. */
-/* --close-lane is how far the close button's box reaches past the content edge, plus a gap:
-   anything sharing the button's row keeps out of it, and nothing else has to know the
-   button's size or inset. */
-/* The padding is the names' padding. Everything else in the band — the two label chips, the
-   close button, the chart button — is pulled back out through it to the panel's own edges,
-   so the four of them are the corners of the band rather than four things standing on it.
-   --close-lane is measured from the grid's right edge, which the grid's negative margin
-   puts at --pad-l: the button reaches --close-size in from the panel, so it crosses that
-   edge by (--close-size - --pad-l), and the 8 is the gap left beyond it. */
+/* Scoreboard header, which never scrolls: event and round, the two players either side of the
+   score, then when. The split rule at its foot (violet left, red right) is the colour key for
+   everything below. The padding is the names'; the chips and buttons are pulled out through
+   it to the panel's edges. --close-lane is how far the close button reaches past the grid's
+   right edge, plus 8px. */
 .mtop {
    flex: none;
    position: relative;
@@ -1330,9 +1098,7 @@ a {
    transition: padding .18s ease;
 }
 
-/* The split is cut on the diagonal rather than butted square, and thickened to carry it.
-   A vertical seam between two colours is the one edge on the page that isn't on the
-   page's diagonal; at 3px there was no room to angle it, so it gets 8. */
+/* The split is cut on the page's diagonal, 8px thick. */
 .mtop::after {
    content: "";
    position: absolute;
@@ -1343,37 +1109,9 @@ a {
    background: linear-gradient(96deg, var(--a) 0 50%, var(--b) 50% 100%);
 }
 
-/* The panel's chrome: which event and round this is, when it was played, and the one thing
-   there is to *do* about the match. None of the three is the header — the two names and the
-   score are — so all three are built from the parts the rest of the site builds chrome from,
-   and none of them invents its own.
-   That family, everywhere else on the page (the coverage legend, the quarter selector, the
-   view toggles, the tournament picker): a chip of card lifted off the ground it sits on, one
-   hairline around it, the 8px cut, and a label in uppercase 700 at .1em. Colour is a signal
-   carried in the stroke and the ink — the only *filled* chips on the site are the on-state
-   of a real toggle, and none of these is one.
-   What they were instead: pastel washes of the event's accent, in three different type
-   treatments (uppercase, sentence case, and sentence case again), which is three voices in
-   the two corners of a band whose own note says it stays neutral so the players' violet and
-   red can own it. The event's colour is on the page behind the panel — the band, the wedge,
-   every chip up in the controls row — and reading it a fourth time in here bought nothing
-   the title above the draw hadn't already said.
-   The two lines share the top-left corner rather than bracketing the score from opposite
-   ends, freeing the lower right for the chart button. */
-/* margin:0 because these are <p>, and a paragraph's default 1em top and bottom does not
-   collapse inside a flex line — it is measured into the line's height. So a 22px pill was
-   claiming 46px of corner, and the padding that shapes the pill was not the number setting
-   the space around it. The condensed state was already zeroing these on its way out, which
-   is the only reason it ever closed all the way. */
-/* One rule for all three, so the corner and the foot can't drift into different chips. The
-   cut sides carry no stroke — a clip-path takes the border off the diagonals — which is
-   exactly what the legend chips up in the controls row look like, and the reason the
-   hairline reads as a pair of rules rather than a box.
-   min-height and not height: the height is what makes all three level with each other and
-   with the close button's chip, but a long event name on a phone still has to be allowed to
-   take a second line rather than be cut off by the number that keeps the row tidy. The 2px
-   of padding does nothing at one line — the min-height is bigger — and is the only thing
-   holding two lines off the chip's own edges. */
+/* The header chrome (event and round, date, chart button) uses the site's chip style: card
+   fill, one hairline, the 8px cut, uppercase 700 at .1em. margin: 0 because these are <p>.
+   min-height rather than height, so a long event name can wrap on a phone. */
 .mevent,
 .mstate,
 .mchartbtn {
@@ -1394,31 +1132,9 @@ a {
    border: 1px solid var(--hd-line);
 }
 
-/* Top left, which is where you start reading — the event and round say which match this is
-   before the names say who is in it. It leaves the top right to the close button alone, so
-   this row does not have to keep out of --close-lane; the lane is what the condensed
-   right-hand name uses, since that one does come up level with the button.
-   The two pills run along the row rather than stacking down it. Stacked, they are two boxes
-   of different widths with nothing to line up on but their outer ends, and the second one
-   costs the header 21px that a scheduled match pays and a finished one doesn't, so the same
-   panel comes out two heights. Side by side they read as one line of chrome and the header
-   is one height. They still wrap when a long event name and a start time won't share a
-   phone's width, left-aligned to the same edge. */
-/* The negative margins take the row out through the band's padding and pin it to the
-   panel's top-left corner; the 14 underneath is the air the names need, which the band's
-   padding would otherwise provide from above. */
-/* The row stops --close-chip-w short of the panel's right edge, plus a gap. Grown to the
-   band's own content edge it would run a long enough event name under the close button's
-   chip. Written off the panel's width rather than the band's, since that is
-   what the chip is pinned to — 100% here is the content box, and the two paddings put it
-   back. Reaching the limit wraps the date to a second line, which is what the row already
-   did on a phone.
-   No row-gap with it: a chip that has wrapped is against the panel's left edge and under
-   the chip it wrapped out of, and butting the two puts one hairline between them instead
-   of leaving the lower one open-topped. The column-gap along the row is zero for the same
-   reason: the round and the date are one fact read in sequence, not two chips with air
-   between them, so they meet edge to edge — the date chip's extra height below is what
-   keeps that seam reading as two chips and not one long one. */
+/* Event, round and date, top left and running along one row (wrapping on a phone). Negative
+   margins pin the row to the panel's corner, and it stops short of the close button's chip.
+   The chips butt edge to edge with no gap. */
 .mcorner {
    display: flex;
    flex-wrap: wrap;
@@ -1432,10 +1148,8 @@ a {
    transition: gap .18s ease, margin .18s ease;
 }
 
-/* Both chips are on the top edge and give up the border there; the first is on the left
-   edge as well, and takes the cut that keeps that side square. Its own free edge — the one
-   the date chip picks up — leans the other way from the rest of the chips in the band, the
-   same reversal the chart button wears: indented at the top instead of the bottom. */
+/* Both chips drop the top border; the first also drops the left one and keeps that side
+   square. Its free edge leans the other way from the band's other chips. */
 .mcorner .mevent,
 .mcorner .mstate {
    border-top-width: 0;
@@ -1446,20 +1160,8 @@ a {
    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 100%, 0 100%);
 }
 
-/* The date chip picks up the round chip's own diagonal rather than butting a square edge
-   against it: its left 8px pull under the round chip (the negative margin), and what shows
-   through there is only the sliver the round chip's cut leaves open — the same line, not
-   a second one.
-   The date chip is a few px taller than the round chip, so the shared cut only has to run
-   for the round chip's own height — that's the middle four points below. Above and below
-   that band the date chip is on its own (nothing from the round chip reaches that high or
-   low), so its edge there just stays flush at the cut's own two ends, no diagonal to hand
-   off to. Its own free edge, on the right, keeps the band's ordinary lean — the reversal is
-   the round chip's alone, and this is only picking up the far end of it.
-   No left border of its own — a border is a stroke along the box's own straight edges, and
-   clipping it to a diagonal leaves nothing wide enough to see, not a diagonal line. The
-   step of tint on the fill is what draws the seam instead, the same "one step of grey" the
-   date's own ink already wears next to the round chip's fuller ink. */
+/* The date chip continues the round chip's diagonal: it tucks 8px under it, and its taller
+   top and bottom stay flush. A one-step tint marks the seam instead of a border. */
 .mcorner .mstate {
    margin-left: -8px;
    border-left-width: 0;
@@ -1469,17 +1171,12 @@ a {
          8px calc(100% - 2px), 0 2px);
 }
 
-/* The event and round lead, so they take the fuller ink; the date follows in the muted one.
-   Both are the same chip and the same type — the ranking is the only difference between
-   them, and one step of grey is enough to say it. */
+/* Event and round in the full ink; the date in the muted one. */
 .mevent {
    color: var(--hd-ink);
 }
 
-/* Condensed header, once the body has scrolled: the four or five screens below it are
-   the panel, and a fixed band naming the two players you just tapped shouldn't hold a
-   quarter of the sheet while you read them. What survives is the pairing and the score —
-   the key to every colour below. The where and the when come back at the top. */
+/* Condensed header, once the body scrolls: only the names and score stay. */
 .mevent,
 .mstate {
    max-height: 3em;
@@ -1492,10 +1189,7 @@ a {
    padding-bottom: 10px;
 }
 
-/* max-height alone can't close a box that has padding and a border — those floor it at
-   8px of tinted sliver — so the box gives those up on the way out too. min-height goes with
-   them, and has to: of the three, min-height is the one that wins, so a chip left holding
-   one simply ignores the max-height sent to close it. */
+/* Padding, border and min-height have to go too, or the chip can't close. */
 .matchup.cond .mevent,
 .matchup.cond .mstate {
    max-height: 0;
@@ -1507,9 +1201,7 @@ a {
    border-width: 0;
 }
 
-/* The gap closes between the pills, and so does every margin around them — the row is
-   pinned to the panel's corner by negative ones now, and a collapsed row still holding
-   those would go on pulling the names up through the band's padding. */
+/* The margins go as well, or the row keeps pulling the names up. */
 .matchup.cond .mcorner {
    gap: 0;
    margin: 0;
@@ -1528,12 +1220,8 @@ a {
    --mrule-step: 7px;
 }
 
-/* condensed, the names come up level with the close button, so the right-hand one keeps
-   clear of it — the event line that does that job in the full header is gone at this size.
-   Same lane the corner keeps, because it is the same button being kept clear of. On a wide
-   panel that lane is affordable: the same collapse takes the names from 24px to 17px, which
-   is ~100px back on a track this one costs 32. The sheet, where it is not affordable, does
-   not pay it — see the max-width: 700px block. */
+/* Condensed, the right-hand name rises level with the close button, so it keeps clear of it.
+   The phone sheet doesn't (see the max-width: 700px block). */
 .matchup.cond .mp.b {
    padding-right: var(--close-lane);
 }
@@ -1556,34 +1244,11 @@ a {
    }
 }
 
-/* Two staggered lines, each a player: their name at their own end and their games run
-   along it, with both scorelines sharing the middle column so a set still reads down a
-   column. The stagger is what ties a scoreline to its name across the gap between them.
-   (Narrow screens have no room for that and use one row — see the 620px block.) */
-/* The outer two tracks are equal fractions of the band, not sized to the names, so the
-   middle column — the score, or "vs" — always lands on the panel's own centre line
-   instead of on the midpoint of two names that are rarely the same width. Each name then
-   pulls in toward that centre line with justify-content, leaving any slack at the panel
-   edges rather than at the score. */
-/* minmax(0, 1fr), not 1fr: a bare 1fr floors at min-content, so a name wider than its
-   share grew its own track and the middle column — the score — came off the panel's
-   centre line by half the difference. The two names are rarely the same width, so that
-   was most matches. Floored at 0 the outer tracks stay equal whatever is in them, the
-   score sits on the centre line, and a long name wraps (overflow-wrap, on .mname)
-   instead of shoving it. */
-/* Equal tracks centre the score in this box, but the box is not the panel: the band's two
-   side paddings differ (the right one is wide to clear the close button), so the content
-   box's centre sits half that difference off the panel's own. The score was 10px left of
-   the middle on a phone, against a rule below it that splits at the true centre. Reaching
-   back across the difference puts the grid on the panel, and the close button is dealt
-   with where it is actually in the way — the condensed right-hand name, via --close-lane.
-   Zero on a wide panel, where the two paddings are equal. */
-/* The gap is the first thing to go. It is there to keep the games off the end of a name,
-   which is worth 40px when there is 40px spare and worth nothing next to a name broken
-   over two lines — so fitHeader() spends it down to --mgap-min before it lets anything
-   wrap, and only then gives up the staggered layout entirely. Both ends of the range live
-   here rather than in the script: they are the look of the band, and the phone overrides
-   them. --mgap is what the script writes; unset, the band runs at its full gap. */
+/* Two staggered lines, one per player: the name at its end and the games running along it,
+   with the scores in the middle column so a set reads down. Equal minmax(0, 1fr) outer tracks
+   keep the score on the centre line, and a long name wraps. The right margin corrects for the
+   band's unequal side paddings. fitHeader() narrows the gap (--mgap) from --mgap-max toward
+   --mgap-min before anything wraps. (Narrow screens use one row; see the 620px block.) */
 .mgrid {
    display: grid;
    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -1593,19 +1258,15 @@ a {
    --mgap-max: 40px;
    --mgap-min: 12px;
    column-gap: var(--mgap, var(--mgap-max));
-   /* the score divider's wings: how far each steps off centre, how far past the outermost
-     games it lands before it does, and the angle its riser leans at — atan(8px / chip
-     height), the same 8px diagonal every button and badge in the band is cut on, so the
-     midline's steps and the chrome around them lean alike. See .mrule. */
+   /* The score divider's wings: step off centre, overhang past the games, and a lean of
+     atan(8px / chip height), matching the band's 8px cuts. See .mrule. */
    --mrule-step: 10px;
    --mrule-pad: 3px;
    --mrule-splay: atan(8px / var(--chip-h));
    margin-right: calc(var(--pad-l) - var(--pad-r));
 }
 
-/* The names are the header. Everything else in the band — the event, the date, the button —
-   is chrome describing the match, and sits a size or two below them so the ranking is read
-   before it is parsed. */
+/* The names are the header; the chrome sits a size or two below them. */
 .mp {
    display: flex;
    align-items: center;
@@ -1616,10 +1277,7 @@ a {
    transition: font-size .18s ease, padding .18s ease;
 }
 
-/* The stagger runs up, not down: the left player takes the lower line and the right player
-   the upper one. Whichever way round it goes, the pairing is the same — what matters is
-   only that each name and its scoreline share a line, and that the score cells follow the
-   names rather than the markup order (see .mscore). */
+/* The left player takes the lower line and the right player the upper one. */
 .mp.a {
    grid-column: 1;
    grid-row: 2;
@@ -1631,9 +1289,7 @@ a {
    flex-direction: row-reverse;
 }
 
-/* the right end */
-/* Nothing played: the stagger has no scorelines to tie to their names, so both players
-   share one row and meet level either side of the "vs". */
+/* Nothing played: both names share one row. */
 .mgrid.noscore {
    grid-template-rows: auto;
 }
@@ -1658,11 +1314,7 @@ a {
    color: var(--hd-mut);
 }
 
-/* Both renderings of the name ship, and fitHeader() picks between them — the full name by
-   default, the first name down to an initial once the gap has been spent and the name would
-   otherwise break over two lines. A straight media-query swap at 700px would abbreviate
-   every name on every phone whether or not it was the one that didn't fit, showing
-   "Q. Halys" where "Quentin Halys" has room to spare. */
+/* Both forms of the name ship, and fitHeader() switches to the initial only when needed. */
 .mabbr {
    display: none;
 }
@@ -1675,20 +1327,9 @@ a {
    display: inline;
 }
 
-/* The winner's caret, pointing into their name from the score side. Dark and 12px it reads
-   as a full stop at the end of the name. It is the only thing in the header saying the match
-   is over — nothing beside the date says so — so it is sized to be found rather than merely
-   noticed. Still short of the 24px names: a caret that matches them competes with the thing
-   it is marking, and this one only has to be seen once. One gold both sides — see --win.
-   ◀ is a fuller glyph than ◂ — solid, and drawn to the em rather than
-   inset — so 18px here would land bigger than the 18px before it. 14px holds the size
-   the mark actually read at.
-   Its outer margin is pulled back the width of the glyph so the flex row sizes the name as
-   though the caret weren't in it — the glyph overhangs the gap toward the score instead. A
-   winner's name already carries the heavier weight (.mp.win .mname) and, on a phone, the
-   narrower of the two tracks; a slot of its own on top of that was turning a short winner
-   name ("N. Djokovic") onto two lines while a longer loser name opposite ("A. de Minaur")
-   stayed on one. */
+/* The winner's caret, pointing into their name from the score side, in gold on both sides
+   (--win). Its outer margin is pulled back by the glyph's width so it takes no room from the
+   name. */
 .mwin {
    flex: none;
    font-size: 14px;
@@ -1704,8 +1345,7 @@ a {
    content: "\25C0";
 }
 
-/* mirrored: the name is on its other side, so the caret turns and both nudges flip with it.
-   The colour does not — it is the same gold whoever won, which is the point of it. */
+/* Mirrored for the right-hand player. */
 .mp.b .mwin {
    margin: 0 -2px 0 -12px;
 }
@@ -1731,17 +1371,9 @@ a {
    padding: 0 7px;
 }
 
-/* the cells flow down columns, so the flat A,B,A,B list becomes a row per player. It
-   stretches over both name rows and splits them evenly, which is what puts each
-   scoreline level with the name it belongs to.
-   A is emitted first but sits on the lower line, so the two are pinned to rows explicitly
-   rather than left to fall in source order — otherwise A's games would ride the row above
-   A's name. Set here rather than by reversing the pair in the markup, because the phone
-   layout flows these same cells across rows into two columns, where source order is
-   left-to-right and A does come first. */
-/* --sgap is the gap between one set's games and the next. fitHeader() closes it up from 11px
-   toward 4px before it spends anything else, so a five-set line — four of these gaps across
-   the middle of the band — hands its width back to the names first. Unset, it runs at 11. */
+/* The flat A,B,A,B cell list flows down columns, one row per player. Rows are pinned
+   explicitly because A is emitted first but sits on the lower line. --sgap, the gap between
+   sets, is narrowed by fitHeader() from 11px toward 4px before anything else. */
 .mscore {
    grid-column: 2;
    grid-row: 1 / span 2;
@@ -1754,20 +1386,15 @@ a {
    font-variant-numeric: tabular-nums;
 }
 
-/* dense, because pinning the rows is only half of it: the sparse cursor never goes back a
-   column, so a pinned cell pushes the next one a column along and a set's two games come
-   out on a diagonal instead of stacked. Dense restarts the search each time, which fills
-   each column with its own set. */
+/* A on the lower line, B on the upper. Grid flow is dense, so each set's two games stack. */
 .mscore .sg:nth-child(odd) {
    grid-row: 2;
 }
 
-/* A — the lower line */
 .mscore .sg:nth-child(even) {
    grid-row: 1;
 }
 
-/* B — the upper line */
 .sg {
    display: flex;
    align-items: center;
@@ -1796,17 +1423,9 @@ a {
    color: var(--hd-mut);
 }
 
-/* The line between the two scorelines: which run of games belongs to which name. It steps —
-   up on the left, where player A's name sits below it, and down on the right, where B's sits
-   above it — so on each side the line pulls back from the name and leaves it room, then lands
-   level across the score itself, where the two scorelines have to stay cleanly apart. Four
-   right angles, two into each step.
-   Built off the score column, not the whole grid. This element is the level middle segment,
-   stretched --mrule-pad past the outermost games; each wing is a pseudo-element pinned to one
-   end of it — a raised (or dropped) horizontal border for the run, a side border for the
-   riser back to centre — carried out to 100vw, where the panel's own overflow clips it flush
-   at the edge. Gone on narrow screens, where both players share one row and the sets read
-   across instead of down: no boundary left to draw. */
+/* The line between the two scorelines. Level across the score, it steps up on the left and
+   down on the right to clear each name. The element is the middle segment; each wing is a
+   pseudo-element carried out to 100vw and clipped by the panel. Not used on narrow screens. */
 .mrule {
    grid-column: 2;
    grid-row: 1 / span 2;
@@ -1828,10 +1447,7 @@ a {
    pointer-events: none;
 }
 
-/* left wing, raised: top border is the horizontal run, right border the riser dropping to the
-   middle segment at the score's left edge. Skewed from that joint — which is the fixed corner,
-   so the riser's foot stays on the segment while its head tips outward toward the panel edge,
-   and the run tips along with it. */
+/* Left wing, raised, skewed from its joint with the middle segment. */
 .mrule::before {
    right: 100%;
    top: calc(50% - var(--mrule-step));
@@ -1841,8 +1457,7 @@ a {
    transform: skewX(var(--mrule-splay));
 }
 
-/* right wing, dropped: mirror — bottom border the run, left border the riser at the score's
-   right edge, skewed from its joint so it leans out the other way. */
+/* Right wing, dropped, the mirror of the left. */
 .mrule::after {
    left: 100%;
    top: 50%;
@@ -1852,10 +1467,7 @@ a {
    transform: skewX(var(--mrule-splay));
 }
 
-/* A live match answers "when" with itself, and it is the one thing in this corner with any
-   urgency to it — so now that the chips are neutral, it is also the only coloured one, and
-   the colour lands instead of being one tint among three. The stroke takes it too: the chip
-   is the mark, not just the words in it. */
+/* A live match is the one coloured chip in the corner. */
 .mstate:has(.live) {
    color: var(--warn);
    border-color: color-mix(in srgb, var(--warn) 42%, var(--hd-line));
@@ -1865,13 +1477,8 @@ a {
    color: inherit;
 }
 
-/* --pad-t is the sticky section headings' business as much as this box's: they pin
-   against the content edge, not the panel edge, so they have to pull back by exactly
-   this much to sit flush under the scoreboard. Kept in one place so the two can't drift. */
-/* The horizontal padding is --pad-l, the same token the band above sets its names by, so
-   the header and the scroll under it share one left edge at every width the panel has. A
-   literal here is a second copy of a number that changes at a breakpoint, and two copies
-   do not have to change at the same one. */
+/* --pad-t is read by the sticky section headings, which pull back by it. Horizontal padding is
+   --pad-l, so the body shares the header's left edge. */
 .mbody {
    --pad-t: 14px;
    overflow-y: auto;
@@ -1879,9 +1486,7 @@ a {
    padding: var(--pad-t) var(--pad-l) 22px;
 }
 
-/* A match with no entrants on either side writes no body at all (see openMatchup), and an
-   empty box still holding its own 14/22 leaves a dead band of card under the split rule —
-   which reads as something that failed to load rather than as nothing to say. */
+/* No padding when there's no body (neither side has an entrant yet). */
 .mbody:empty {
    padding: 0;
 }
@@ -1892,26 +1497,9 @@ a {
    font-size: 13px;
 }
 
-/* Lower right, diagonally opposite the event and date — chrome describing the match starts
-   the band, the one thing there is to *do* about it ends it, and the scoreboard has the
-   width between them to itself. Only a completed match reaches this state, so an
-   in-progress or scheduled one simply leaves the corner empty rather than holding a
-   placeholder. */
-/* flex, not inline-flex: an inline-level box sits on a line box, and a line box is at least
-   one line of leading tall whether or not the box on it has any height. Collapsed to
-   max-height:0 for the condensed header, an inline-level box still leaves ~19px of blank
-   line behind it and the header shrinks around a gap the button is not in. Block-level it
-   takes exactly its own height, which when collapsed is none. width:fit-content still
-   shrink-wraps it. */
-/* The negative margins take the row out through the band's padding to the panel's edges,
-   the way the corner row does at the top. The bottom one stops it on the split rule rather
-   than at the band's floor — the rule is the band's own edge as far as anything inside it
-   is concerned, and a chip crossing it would be sitting on the two players' colours.
-   The 14 above is the same air the corner row leaves below itself. */
-/* Upcoming match only: the when pill moves down here from the top-left corner to sit
-   opposite the chart button on the same row, bottom left. .mchartbtn keeps the same
-   margin-left: auto it already had standing alone — that alone is enough to push it to
-   the row's far end once it shares a flex row instead of being the row's only content. */
+/* The row under the names for an upcoming match: the when chip bottom left and the chart
+   button pushed right. Negative margins take it out to the panel edges, stopping on the split
+   rule. */
 .mfoot {
    display: flex;
    align-items: center;
@@ -1921,8 +1509,7 @@ a {
    transition: margin .18s ease;
 }
 
-/* Pinned to the left edge and to the rule, so it gives up those two borders and takes the
-   cut that keeps its left side square. Its margins are the row's now. */
+/* Pinned to the left edge and the rule, so it drops those two borders. */
 .mfoot .mstate {
    margin: 0;
    border-left-width: 0;
@@ -1938,19 +1525,8 @@ a {
    margin: 0;
 }
 
-/* Chip geometry and type come from the shared rule up with the corner pills; what is left
-   here is the layout, the pinned edges, and the two states. Standing alone — every match
-   but an upcoming one — it carries the same pull to the panel's edges that .mfoot carries
-   for it when they share a row.
-   Only 6 of air above it, not the corner row's 14: for a played or live match the score is
-   the header and this button is chrome hung under it, so it sits close to the scoreline
-   rather than floating a full row's gap below it. .mfoot keeps the 14 — an upcoming match
-   has no score for the button to hug. */
-/* Flush right, same as the rest of the row, but the cut on its free edge leans the other
-   way — inset at the top instead of the bottom. Every other chip in the band leans the
-   same direction because they're read as one row; this one is the thing you leave the row
-   to go and do, and the reversed lean is what marks it apart from them at a glance, before
-   the colour or the words do. */
+/* The chart button, flush right on the split rule. Its free edge leans the opposite way from
+   the other chips, marking it as the thing to do. 6px above, so it sits close to the score. */
 .mchartbtn {
    display: flex;
    align-items: center;
@@ -1973,10 +1549,7 @@ a {
    fill: currentColor;
 }
 
-/* The two states, told apart in the ink and the stroke rather than in a fill. Charted is
-   neutral: the chart exists, and going to look at it is an ordinary control. Uncharted is
-   the invitation, and wears --win — the same gold as the winner's caret, since going to
-   chart the match is the other thing on this panel worth a colour of its own. */
+/* Charted is a neutral control; uncharted is the invitation, in the winner's gold. */
 .mchartbtn.charted {
    color: var(--hd-ink);
 }
@@ -1996,8 +1569,7 @@ a {
    background: color-mix(in srgb, var(--win) 9%, var(--card));
 }
 
-/* inset, like the close button's: the chip is against two panel edges and a ring outside
-   it would be half off the sheet */
+/* Inset, since the chip sits against two panel edges. */
 .mchartbtn:focus-visible {
    outline: 2px solid currentColor;
    outline-offset: -3px;
@@ -2104,8 +1676,8 @@ a {
    text-anchor: middle;
 }
 
-/* the profiled player's contact, so it takes their column colour like their ball paths
-   do; the notation-key courts set no --shot and keep the tournament accent */
+/* The player's contact, in their column colour; the notation-key courts fall back to the
+   accent. */
 .ct-player {
    fill: var(--shot, var(--acc));
 }
@@ -2116,8 +1688,7 @@ a {
    stroke-width: 1.6;
 }
 
-/* --shot is set per player column, so a ball path carries the same colour as that
-   player's bars in the comparison strip; it falls back to the tournament accent. */
+/* --shot is set per player column; it falls back to the tournament accent. */
 .ct-shot {
    stroke: var(--shot, var(--acc));
    stroke-width: 1.5;
@@ -2155,12 +1726,9 @@ a {
    opacity: 0.35;
 }
 
-/* Every ball-path drawing says whose is whose three ways, so none of them has to survive
-   alone at thumbnail size: the player's half washed in their colour, their own balls solid
-   and in that colour, the opponent's dashed and neutral. A fourth mark carries the pivot
-   the drawing turns on — the ball they answered on a court pattern, the ball they attacked
-   at the end of a trigger. A hollow ring is a bounce; a filled ct-player dot in their own
-   colour is a ball met in the air, sitting up near the net where they volleyed it. */
+/* Ball paths mark whose is whose three ways: the player's half tinted, their balls solid in
+   their colour, the opponent's dashed and neutral. A hollow ring is a bounce; a filled dot is
+   a volley. */
 .ct-mine {
    fill: color-mix(in srgb, var(--shot, var(--acc)) 13%, transparent);
 }
@@ -2189,18 +1757,9 @@ a {
    opacity: 0.55;
 }
 
-/* --- the comparison strip: "basic stats" ---------------------------------
-   Both players' game-winning on one axis, bent into a ring: each sweeps out of a shared origin
-   at the foot, so a gap reads as a shape rather than as arithmetic between two distant
-   columns. A spoke across the band carries the other half of the same question, the return
-   games that player broke. See the note over donut() in matchup.js for what the ring encodes
-   and why games rather than points are on it. */
-/* --dn-size is the drawn diameter of the ring, set here because the box it sits in is what
-   there is to divide up, and --dn-pad is the room the figures need outside the drawing.
-   A ring's row is shrink-to-fit inside a centred track (.dn has min-width:0 in a
-   centre-aligned column), so the flanking figures are not squeezed as the ring grows — the row
-   simply widens until it fills its track, and the ring keeps these sizes while the track is
-   widened to whatever the figures beside it need. */
+/* --- basic stats: the games-won ring ----------------------------------------------------
+   See donut() in matchup.js. */
+/* --dn-size is the ring's diameter and --dn-pad the room its figures need outside it. */
 .tape {
    border: 1px solid var(--line);
    padding: 12px 16px 14px;
@@ -2209,13 +1768,8 @@ a {
    --dn-pad: 76px;
 }
 
-/* The first thing in the scroll, right under a header that just named this match — so
-   without a label over them, the numbers below default to reading as this match's. They're
-   the opposite, which is what the "not this one" half says outright rather than trusting
-   "charted: N matches" further down to imply it. It heads every section in the body, so it
-   sits out here rather than inside any of them — see the note in matchup.js. Centred: every
-   section under it keeps a left-aligned label, but this one heads the whole panel rather
-   than a column inside it, and centred is what tells the two apart at a glance. */
+/* "Charted history", centred over the whole body, since the numbers below are the players'
+   charted matches, not this one. */
 .tapetitle {
    margin: 0 0 3px;
    font-size: 11px;
@@ -2226,10 +1780,7 @@ a {
    text-align: center;
 }
 
-/* What "charted" is doing in the title above. Small print, printed once, at the foot of the
-   panel rather than under the title it explains: read there it's read last, after the
-   numbers it caveats rather than before them, and a rule above it separates it from the
-   section it's least about — the last one — instead of looking like a note on that one alone. */
+/* The footnote on "charted", at the foot of the panel under a rule. */
 .covnote {
    margin: 16px 0 0;
    padding-top: 12px;
@@ -2247,8 +1798,7 @@ a {
    opacity: .82;
 }
 
-/* The footnote marker, not a word — it keeps the title's weight so it reads as attached to
-   "history" rather than as the first character of something else, and sits clear of it. */
+/* The footnote asterisk, at the title's weight. */
 .tapestar {
    font-weight: 700;
    opacity: .6;
@@ -2256,17 +1806,9 @@ a {
 }
 
 /* --- the match, as a win-probability curve (wpChart) -----------------------------------
-   What stands where the coverage pyramid stands on an uncharted match. Same full-panel
-   width, same reason: the swing is read along the run, and a capped band would spend the
-   width it needs on margin.
-   Diverging about the halfway line. The fill above it is player A's colour and below it
-   player B's — the two the header rule, the coverage bars and every card cap already use
-   for these two players, so the split carries identity without a legend box. The pair sits
-   32 apart in OKLab under normal vision and 26 under protanopia against this surface, and
-   neither moves with the tournament theme, so the reading holds on all four.
-   The box stretches (preserveAspectRatio="none"): heights are a probability and widths a
-   point index, and neither has a natural aspect to preserve. Every stroke inside carries
-   vector-effect, so the widths below are rendered pixels rather than viewBox units. */
+   Full panel width, in place of the coverage pyramid. B's colour above the halfway line and
+   A's below. The box stretches (preserveAspectRatio="none") and every stroke is non-scaling,
+   so widths below are rendered pixels. */
 .wp {
    margin: 0 0 16px;
 }
@@ -2288,16 +1830,12 @@ a {
    }
 }
 
-/* Flat fills at low alpha: the line carries the shape, and the fill only says which side of
-   the halfway mark it is on. Solid enough to read on a phone in daylight, faint enough that
-   the set rules and the curve stay on top of it. */
+/* Low-alpha fills; the line carries the shape. */
 .wpfill {
    stroke: none;
 }
 
-/* fb is the upper half and fa the lower: the scoreline above stacks player B's row over
-   player A's, and the chart takes its vertical order from that header rather than from the
-   A-then-B order of the underlying data. */
+/* fb above, fa below, matching the scoreboard's B-over-A order. */
 .wpfill.fa {
    fill: color-mix(in srgb, var(--a) 26%, transparent);
 }
@@ -2306,9 +1844,7 @@ a {
    fill: color-mix(in srgb, var(--b) 26%, transparent);
 }
 
-/* One 2px line for the whole curve, in ink rather than in either player's colour — it
-   crosses between the two territories constantly, and a line that changed colour at every
-   crossing would read as a different series each time. */
+/* One 2px ink line, since it crosses between the two colours constantly. */
 .wpline {
    fill: none;
    stroke: var(--ink);
@@ -2317,8 +1853,7 @@ a {
    stroke-linecap: butt;
 }
 
-/* The last step, from the final serve to the result. Dashed, because it is the only part of
-   the run that is not a state the match passed through — it is where the match landed. */
+/* The final step to the result, dashed because the match never passed through it. */
 .wptail {
    stroke-dasharray: 3 3;
    opacity: .55;
@@ -2336,10 +1871,8 @@ a {
    stroke-width: 1;
 }
 
-/* Both pointer marks are off until the wrapper says otherwise. Not the `hidden` attribute:
-   on an SVG element `hidden` is an expando that never reaches the attribute, and the UA's
-   own [hidden] rule does not apply in the SVG namespace, so the crosshair stayed on screen
-   in every state and sat wherever the pointer had last been. */
+/* Pointer marks are hidden until .live. Not the `hidden` attribute, which doesn't work on SVG
+   elements. */
 .wpcross,
 .wpdot {
    display: none;
@@ -2359,8 +1892,7 @@ a {
    opacity: .45;
 }
 
-/* Placed in percent by the script — see the note at its call site. The ring is the surface
-   colour, the 2px spacer every overlapping mark in this panel wears. */
+/* Placed in percent by the script, with a card-coloured ring. */
 .wpdot {
    position: absolute;
    width: 9px;
@@ -2372,8 +1904,7 @@ a {
    pointer-events: none;
 }
 
-/* The two ends of the scale, named by whose end it is. Set against the plot rather than
-   over it: the curve reaches both edges. */
+/* Each end of the scale is named for its player, against the plot's edge. */
 .wpcap {
    position: absolute;
    left: 0;
@@ -2394,10 +1925,8 @@ a {
    color: var(--a);
 }
 
-/* The set axis. A row of its own under the plot rather than labels inside it: the curve
-   reaches both edges of the box and crosses the middle constantly, so there is no band of
-   the drawing a label could sit in without landing on the data at some point in some match.
-   Each label is centred on its own set, placed in percent by the script. */
+/* The set axis, a row under the plot since the curve can cross any part of it. Labels are
+   centred on their sets by the script. */
 .wpaxis {
    position: relative;
    height: 13px;
@@ -2417,8 +1946,7 @@ a {
    opacity: .8;
 }
 
-/* The readout. Holds the pre-match figure at rest and follows the pointer while it is on
-   the plot, so the chart answers "what was it here" without a floating tooltip to place. */
+/* The readout: the pre-match figure at rest, the pointer's point while scrubbing. */
 .wpread {
    margin: 6px 0 0;
    font-size: 11px;
@@ -2448,15 +1976,9 @@ a {
 }
 
 /* --- top-chart view switch (matchBodyHtml) --------------------------------------------
-   A charted match's first slot is either the win-probability curve or the two players'
-   charted-history pyramid, and this picks which. Two wordless glyphs — a curve, a centred
-   stack — with the words in each button's tooltip. Centred, since it heads a full-width
-   chart and not a column, and greyscale rather than the header toggle's accent: it is a
-   quiet control on the panel's own chrome, not a primary tab, and it stays the one mark
-   in the panel that doesn't take the tournament theme's colour. The 16px the curve and
-   the pyramid each carry below themselves moves to the wrapper, so the gap to the ring
-   is the same whichever pane is up; the negative top pulls the row up under the split
-   rule that the body's own top padding would otherwise sit it well below. */
+   Two icon buttons choosing the curve or the pyramid. Centred and greyscale, as a quiet
+   control. The wrapper carries the 16px gap below, and the negative top margin tucks it
+   under the split rule. */
 .mcv {
    margin: -6px 0 16px;
 }
@@ -2512,11 +2034,8 @@ a {
    display: none;
 }
 
-/* The career value under a match figure, and the denominator a match rate was divided by —
-   what gives "67%" its scale and "7.1%" its weight. One per line: the figure rows are wrapping
-   flex containers, so these are flex items and `display: block` alone does not stop two of
-   them sharing a line the moment a figure carries both. A full basis gives each its own row,
-   which is also what keeps the label above them on a line of its own in a ~150px column. */
+/* The career anchor or denominator under a match figure, each on its own line (a full flex
+   basis, since the figure rows are wrapping flex containers). */
 .pbanch {
    display: block;
    flex: 0 0 100%;
@@ -2555,49 +2074,29 @@ a {
    opacity: .8;
 }
 
-/* Only the first and last zone of a three-zone box hang on a court line; the body zone is
-   between them and stays centred, which is where the ball is. */
+/* In a three-zone box the middle (body) zone stays centred. */
 .srvbox:has(.zpc) .srvzone:nth-child(2) {
    align-items: center;
    text-align: center;
 }
 
-/* The pooled second-serve strip, under the two first-serve boxes. Same anatomy, so the
-   two read as one section rather than a chart and its footnote; separated by a gap and by
-   its own label rather than by a different treatment. */
+/* The second-serve strip, under the first-serve boxes, in the same style. */
 .srvcourt.second {
    margin-top: 5px;
 }
 
 /* --- charted history, as a pyramid (profileBand) --------------------------------------
-   One time axis down the centre, each player's seasons running out from it and meeting at
-   it. One drawing on the band's own width rather than a half-width strip per player: two
-   strips spend a column of width apiece on the same axis, and width is the dimension a phone
-   has least of. The axis is two figures — its newest year and its oldest — with every season
-   between them a row in even steps, so a season is found by where its row sits on the run
-   from top to bottom and the exact year rides in the readout.
-   Full width of the panel, the same as every section below it — a capped band left an island
-   of chart adrift in a wide sheet. The comparison is read off the centre line the bars share,
-   not between their far tips, so a wider band only lengthens the run without costing the
-   reading; the rows keep the two players' seasons aligned however long they get.
-   HTML bars rather than SVG, and deliberately. This has to be full-width at every viewport,
-   and an SVG that stretches to its box stretches its own coordinate system with it — bar
-   heights, gaps and hairlines all come out at whatever ratio the band happens to be, and
-   none of them are the length they were drawn as. Flex items sized in percent are laid out
-   in real pixels at whatever width the band resolves to, which is the same arithmetic done
-   by the thing that actually knows the answer. */
+   One time axis down the centre, each player's seasons running out from it, at full panel
+   width. HTML bars rather than SVG, so the stretched width doesn't distort bar heights and
+   gaps. */
 .pband {
    --covrow: 13px;
    --covbar: 8px;
    margin: 0 0 16px;
 }
 
-/* No colour key of its own. The scroll-locked header thirty pixels above ends in the same
-   A-to-B split rule and never scrolls away, so a second one here — narrower, with only the
-   section title between them — would be the same key twice. */
-/* Both totals on one line, each hanging on its own player's edge — mirrored like every
-   other two-player layout in the panel. One line where the strips took two, because there
-   is one chart under it now instead of two. */
+/* Both totals on one line, each at its own player's edge. No colour key: the header's split
+   rule already is one. */
 .covtop {
    display: flex;
    justify-content: space-between;
@@ -2631,9 +2130,7 @@ a {
    position: relative;
 }
 
-/* The centre axis: the line the two players' bars meet at, running the height of the grid.
-   Where both have a season it is hidden under the bars and the A-to-B colour change carries
-   the split; where a season is thin or missing it is what still says which half is whose. */
+/* The centre axis, which still marks the halves where a season is thin or missing. */
 .covgrid::before {
    content: "";
    position: absolute;
@@ -2646,8 +2143,7 @@ a {
    z-index: 0;
 }
 
-/* One season: two equal halves, no column between them, so the bars butt against the centre
-   axis from either side. */
+/* One season: two equal halves meeting at the axis. */
 .covrow {
    position: relative;
    display: grid;
@@ -2656,10 +2152,7 @@ a {
    height: var(--covrow);
 }
 
-/* Each half's track, and the row's hit area — it takes the full row height and the whole
-   width of a column so the readout has something a thumb can land on. The bar inside grows
-   from the centre outward, so A packs to its right edge and B to its left, and the two share
-   the one baseline down the middle. */
+/* Each half is a row-high hit area for the readout. Bars grow outward from the centre. */
 .covbar {
    position: relative;
    display: flex;
@@ -2675,8 +2168,7 @@ a {
    justify-content: flex-start;
 }
 
-/* Above the ruler, which is drawn behind the whole grid, and the positioning context for
-   this row's readout. */
+/* Above the rulers, and the positioning context for the readout. */
 .covbar>i {
    position: relative;
    z-index: 1;
@@ -2684,13 +2176,7 @@ a {
    height: var(--covbar);
 }
 
-/* The floor, in pixels rather than as a share of the row. One charted match against a peak
-   season of nine thousand points is 2% of the length, which rounds to nothing — and "barely
-   charted" reading identically to "not charted" is the one confusion this band exists to
-   prevent. See coverBar().
-   Square ends, like every other mark on the site: --radius is 0, and a corner here is
-   either square or cut on the diagonal. A diagonal on the end of a bar would shorten the
-   one thing whose length is the measurement. */
+/* A pixel floor, so one charted match still shows (see coverBar()). */
 .covbar>i {
    min-width: 3px;
 }
@@ -2703,23 +2189,15 @@ a {
    background: var(--b);
 }
 
-/* A season of more than one charted match is drawn as a block per match, in play order (see
-   coverBar). The floor above still holds the first block to 3px, so a season is never thinner
-   than a single charted match; the rest carry no floor, so the split never lengthens the bar
-   past its points and the pyramid's outline is the same drawing it was before. The cut
-   between blocks is a 1px inset shadow in the line grey, not a border or a gap — it takes
-   up no width, so a season with a dozen sub-pixel matches still ends exactly where its single
-   bar did; the cuts there just wash together, and the readout still carries the match count.
-   Grey rather than the card colour, so a cut reads as a division of the bar and not as the
-   ground showing through it. */
+/* A season with several charted matches is split into blocks, oldest against the axis. Only
+   the first block has the floor, so splitting never lengthens the bar. The cut is a 1px inset
+   shadow, which takes no width. */
 .covbar>i+i {
    min-width: 0;
    box-shadow: inset 1px 0 0 var(--line);
 }
 
-/* The axis, as its two ends: newest season over the midline, oldest under it. Centred on the
-   band, which is centred on the midline the bars meet at. Small, muted, tabular — a scale the
-   bars hang between, not a third thing being said. */
+/* The axis as its two end years, newest above and oldest below. */
 .covend {
    display: block;
    text-align: center;
@@ -2740,12 +2218,8 @@ a {
    margin: 3px 0 0;
 }
 
-/* The ruler: three hairlines down each half, at a quarter, half and three-quarters of the
-   peak (see rulersAt), so a bar has lengths to be read against and not only its neighbour.
-   Each line's left offset is set inline by coverPyramid() — a percentage of the band — and
-   the figure under it is placed off the same number, so type and rule cannot drift apart.
-   Solid and one shade off the ground, behind the bars — a dashed rule would read as a
-   threshold, and this is a tick. */
+/* Rulers at a quarter, half and three-quarters of the peak (see rulersAt), placed inline by
+   coverPyramid() with the same offset as their figures. */
 .covrule {
    position: absolute;
    top: 0;
@@ -2756,9 +2230,7 @@ a {
    pointer-events: none;
 }
 
-/* The tick figures, short (2.4k, 4.7k, …) and under both halves — the total above the band
-   already says these are points, so no unit word here. Each is centred on its own rule by the
-   inline left offset it shares with it. */
+/* Ruler figures (2.4k, 4.7k, …), each centred on its rule. */
 .covfoot {
    position: relative;
    height: 12px;
@@ -2777,13 +2249,8 @@ a {
    white-space: nowrap;
 }
 
-/* The season readout, on hover, on press, and on tap. `title` alone is a mouse affordance and
-   this band is read on a phone, so the year and match count behind a bar — the year is on no
-   row now, and the match count is the number people say out loud — were reachable only by the
-   readers least likely to need them. :active covers a press; .on is set by onCovTap for a
-   plain tap on a coarse pointer, where :hover never fires and :active only flickers.
-   It opens above its row, and below on the top row, which has nothing above it to open into.
-   Each half answers for its own player. */
+/* The season readout: on hover, on press (:active), and on tap for touch (.on, set by
+   onCovTap). It opens above its row, or below on the top row. */
 .covbar[data-lbl] {
    cursor: pointer;
    -webkit-tap-highlight-color: transparent;
@@ -2827,18 +2294,14 @@ a {
    margin: 2px 0 0;
 }
 
-/* Touch devices fire :hover as a sticky pseudo-state after a tap, which would leave the last
-   tapped season's readout pinned open. The tap-toggle (.on) is the affordance there, so hover
-   is dropped wherever the pointer is coarse. */
+/* Touch devices leave :hover stuck after a tap, so hover is dropped there and .on is used. */
 @media (hover: none) {
    .covbar[data-lbl]:hover::after {
       content: none;
    }
 }
 
-/* A veteran drawn against a teenager stretches the shared axis to thirty seasons. Past
-   eighteen the rows step down rather than the chart being cut short or scrolled inside
-   itself: every season the axis spans keeps a row. */
+/* Past eighteen seasons the rows get shorter, so every season keeps a row. */
 .cov.dense {
    --covrow: 10.5px;
    --covbar: 6px;
@@ -2848,9 +2311,7 @@ a {
    font-size: 8.5px;
 }
 
-/* A phone gives the pyramid about 330px to split. The rows tighten a little; nothing else
-   changes shape, which is the point of the form — it is the same drawing at both sizes
-   rather than two layouts. */
+/* Phones: slightly tighter rows, the same drawing. */
 @media (max-width: 760px) {
    .pband {
       --covrow: 12px;
@@ -2868,11 +2329,8 @@ a {
 }
 
 /* --- the two style columns (profileSide) ----------------------------------------------
-   Two halves, each capped by a rule in its player's colour — the same mark the split rule
-   over the pyramid above carries, and the same left-right order as the split under the
-   scoreboard. No name on either: the header above holds those and never scrolls away.
-   Mirrored, like every other two-player layout in the panel: A reads out from the left edge
-   and B in from the right, so each side's text hangs on the edge its own colour is. */
+   Each capped by a rule in its player's colour and mirrored: A hangs on the left edge, B on
+   the right. */
 .pbside {
    min-width: 0;
    padding-top: 9px;
@@ -2888,8 +2346,7 @@ a {
    text-align: right;
 }
 
-/* The style label is the identity, so it takes the size. Two or three words, and on a phone
-   half of them wrap — which is fine, it is the one thing here worth two lines. */
+/* The style label is the column's identity, so it's the largest text. */
 .pbstyle {
    margin: 0;
    font-size: 14px;
@@ -2904,26 +2361,20 @@ a {
    color: var(--muted);
 }
 
-/* The column's headline figure — rally length; see profileSide() for why no shot-quality
-   score stands here instead. The unit is set small and the name smaller still: the figure is
-   what is being read, and "shots" and "per point" are both there to tell you what it is
-   once. */
+/* The column's headline figure (average winning rally length), with a small unit and label. */
 .pbq {
    margin: 9px 0 0;
    line-height: 1.1;
 }
 
-/* Proportional figures, not tabular. Equal-width digits are for numbers that have to line up
-   down a column; on a standalone figure at this size they set every 1 in the width of a 0 and
-   "4.6" comes out visibly loose. The counts further down do align, and keep theirs. */
+/* Proportional digits, since this figure stands alone. */
 .pbq b {
    font-size: 22px;
    font-weight: 700;
    color: var(--ink);
 }
 
-/* The gap is new with the unit: "/100" hung correctly off the figure with none, "shots" is a
-   word and needs one. */
+/* A space before the unit word. */
 .pbq span {
    margin-left: 3px;
    font-size: 11px;
@@ -2942,15 +2393,8 @@ a {
    color: var(--muted);
 }
 
-/* Variety and shot selection, a tier under the headline figure — see profileSide(). They
-   are the same kind of thing, so they get the same furniture at a smaller size rather than a
-   second pattern; set at 22px like their neighbour they would be three headline numbers in one
-   column and no hierarchy at all.
-   Label inline rather than stacked under, unlike .pbq: these run one per line, and half a phone
-   column is not wide enough for "shot selection" to sit under a figure without wrapping. */
-/* Wrapping, since the tour strip joined the row. On a wide flank the whole figure fits on one
-   line; where the column is narrower the strip drops to a line of its own rather than pushing
-   the row past the column's edge. */
+/* The other figures, a size below the headline, with the label inline. The row wraps, so the
+   tour strip drops to its own line when the column is narrow. */
 .pbfig {
    margin: 7px 0 0;
    line-height: 1.2;
@@ -2966,8 +2410,7 @@ a {
    color: var(--ink);
 }
 
-/* The losing side of a figure with a better end — winner stays in ink, this drops to regular
-   weight and the muted grey. Matches .pbcmp-row b.trail on the phone and the ring's lead/trail. */
+/* The losing side of a figure with a better end, in regular weight and muted. */
 .pbfig b.trail {
    font-weight: 400;
    color: var(--muted);
@@ -2987,14 +2430,12 @@ a {
    color: var(--muted);
 }
 
-/* Mirrored with the rest of the column: side B reads in from the right edge, so its figure
-   has to lead from that edge too or it floats off the rule capping the column. */
+/* Side B's figures align right, with its column. */
 .pbside[data-side="b"] .pbfig {
    justify-content: flex-end;
 }
 
-/* The first one carries the gap off whatever sits above it, which is the headline figure on a
-   fully-charted player and the hand line on a player the ratings never reached. */
+/* The first figure after the headline gets extra space. */
 .pbq+.pbfig {
    margin-top: 10px;
 }
@@ -3014,27 +2455,12 @@ a {
    background: var(--b);
 }
 
-/* --- the style band and the ring, sharing one grid (tape()) ---------------------------
-   Narrow: the two style columns sit in a row of their own, the ring in a full-width row under
-   them — the same shape "Charted history" above already uses for its own two-up band, so the
-   panel doesn't grow a second convention for a pair of player columns.
-   Wide: a third, narrow track opens between the style columns and the ring moves into it.
-   Centred on the row (see the media query below), it lands level with the gap a style column
-   already has between its archetype line and its first figure — so on a wide panel the ring
-   reads as rising to fill that gap rather than as a block dropped in beneath it. Named areas
-   rather than source order, because which markup element is "left" changes between the two
-   shapes and an area name says so without a second layout for the JS side. */
-/* One row per figure, shared by both columns, so each player's figure sits level with the
-   other's. Two independent stacks drift apart the moment one column's style label wraps to a
-   second line — every number below it drops by a line while its opposite number does not, and
-   a band whose whole job is reading a row across stops being readable. The same fix .seccols
-   makes for the same reason further down; browsers without subgrid fall back to two
-   independent stacks, which is where this started.
-   --pbrows is the shared row count, written by tape() off the plan both columns render from
-   (profilePlan), plus one row at the end for the ring.
-   row-gap is 0 because the rows are now figure rows: the spacing between figures is the
-   margin each one carries, and an 18px gutter repeated down the column would be four times
-   the space they ask for. The ring takes that gutter back as a margin of its own. */
+/* --- the style columns and the ring on one grid (tape()) -------------------------------
+   Narrow: the two style columns side by side, the ring in a full-width row below. Wide: the
+   ring moves into a narrow middle track (see the media query below). Both columns share one
+   subgrid row per figure, so a wrapped style label doesn't push one column's figures out of
+   line with the other's. --pbrows is the row count from tape(), plus one row for the ring.
+   row-gap is 0; each figure carries its own margin. */
 .tapemain {
    display: grid;
    grid-template-columns: 1fr 1fr;
@@ -3059,9 +2485,7 @@ a {
    grid-column: 2;
 }
 
-/* The em-dash stand-in for a figure this player doesn't have. It holds the row open so the
-   other column's figure stays on its own line, and goes quiet — it is the absence of a
-   number, not a number. */
+/* The em dash for a missing figure, muted. It holds the row open. */
 .pbnone>b {
    font-weight: 400;
    color: var(--muted);
@@ -3075,16 +2499,8 @@ a {
 }
 
 /* --- the groundstrokes, as a square (groundAnatomy) ---------------------------------------
-   The serve plot's shape asked of the other half of the game: width is how often the stroke is
-   played, height is what it did. Two plots either side of a midline, on the same grid the serve
-   pair uses, so the two blocks read as one family rather than two ideas.
-
-   The wings are laid out in the player's own hands — a right-hander's forehand on the right of
-   their plot — which is why there is no row-reverse here as there is on .svcol.a. The serve
-   plot mirrors because its columns are an order (first, second, double fault) and both players
-   read it outward from the midline; these are two named sides of one body, and reflecting them
-   would put a lefty's forehand where their backhand is. */
-/* Its own section now, so the section heading and note are the boundary — no rule of its own. */
+   Width is how often the stroke is played, height what it did. Laid out on the serve pair's
+   grid. The wings follow the player's own hands, so there's no mirroring as on .svcol.a. */
 .gsblock {
    margin-top: 4px;
 }
@@ -3108,20 +2524,13 @@ a {
    --shot: var(--b);
 }
 
-/* The empty half, where one player is under the charting floor: its track stays so the plot
-   opposite still reads as being on that player's own side. */
+/* An empty half keeps its track, so the other plot stays on its own side. */
 .gscol.empty {
    visibility: hidden;
 }
 
-/* A fixed height, not a square. The serve plot is square because its vertical axis runs the
-   whole 0-100% and its fills use most of it; this one is capped at 20%, so a height tied to the
-   width just bought empty margin above and below the bands — and bought more of it on the wide
-   panel, where there was already the most room to spare.
-   Fixed in pixels rather than as a ratio, so the vertical scale is the same object at every
-   panel width: a band of a given height is the same rate on a phone and on a desktop, which is
-   the property the whole block is read on. Only the width flexes, and width is a share, which
-   is a quantity that survives being any size. */
+/* A fixed 150px height rather than a square, since the scale is capped at 20%. Fixed pixels
+   keep a band of a given height the same rate at every width. */
 .gsplot {
    position: relative;
    display: flex;
@@ -3130,8 +2539,7 @@ a {
    height: 150px;
 }
 
-/* A wing spans the full height in the drained tone, so its own extent is the axis the two
-   bands are read against — the same relation .svseg has to .svfill. */
+/* A wing spans the full height in the drained tone, as .svseg does behind .svfill. */
 .gswing {
    flex: 0 0 var(--w);
    min-width: 0;
@@ -3139,11 +2547,7 @@ a {
    background: color-mix(in srgb, var(--shot) 14%, var(--card));
 }
 
-/* Both bands leave the midline, so the two are on one baseline and a winner band taller than
-   the error band under it means the wing paid for itself. Hung from the edges instead they
-   would share no zero and the comparison would be an eye measuring two gaps.
-   Winners upward: it is the direction the ring climbs and the serve plot fills, so the good
-   half of this drawing runs the way the good half of every other one on the panel does. */
+/* Both bands leave the midline: winners up, errors down. */
 .gsb {
    position: absolute;
    left: 0;
@@ -3156,9 +2560,7 @@ a {
    background: var(--shot);
 }
 
-/* The errors carry the 45-degree hatch the double-fault column wears, the one direction this
-   page cuts anything on: it is the half of the drawing that went the other way, and a second
-   solid tone would read as a second kind of good. */
+/* Errors wear the 45° hatch the double-fault column uses. */
 .gsb.e {
    top: 50%;
    background:
@@ -3167,8 +2569,7 @@ a {
       color-mix(in srgb, var(--shot) 20%, var(--card));
 }
 
-/* The zero. Drawn over the bands rather than under them, because both start here and the line
-   is what says so. */
+/* The zero line, drawn over the bands. */
 .gsmid {
    position: absolute;
    left: 0;
@@ -3180,9 +2581,8 @@ a {
    pointer-events: none;
 }
 
-/* The rate, standing at the height it names, centred on its own wing: past the band's outer
-   edge where the band leaves room, on the band itself in the card colour where it does not —
-   the same swap .svwin makes, and the halo is what carries the figure across either ground. */
+/* The rate at the height it names: past the band's end, or on the band in the card colour
+   with a halo when there's no room (the same swap .svwin makes). */
 .gsfig {
    position: absolute;
    left: 50%;
@@ -3218,14 +2618,12 @@ a {
    top: calc(50% + var(--h) - 15px);
 }
 
-/* The better of a drawn pair, in bold — the rule the ring, the serve plot and the style
-   columns all carry, so who is ahead reads off the drawing before the figures do. */
+/* The better figure of each pair, in bold. */
 .gsfig.sup {
    font-weight: 700;
 }
 
-/* The share, under the wing it is the width of. The row repeats the plot's own widths, so each
-   figure is centred on its column without a leader saying which. */
+/* The share, centred under its wing. */
 .gslabs {
    display: flex;
    gap: 2px;
@@ -3265,13 +2663,8 @@ a {
    font-variant-numeric: tabular-nums;
 }
 
-/* The two half-names, down the midline between the plots. The gutter is dead space on both
-   plots — the innermost wing butts against it — so a word set there points at the half it
-   names without a swatch or a sentence. "winners" reads bottom-to-top, the way its bands
-   climb; "unforced errors" reads top-to-bottom, the way its bands fall. Grey, because it
-   names a part of both plots and either player's colour would claim it for that player.
-   Pinned to the plot's own 150px, not the pair's full height, so it stops at the baseline
-   rather than running down past it into the width labels. */
+/* The half names, down the midline between the plots: "winners" reading up, "unforced
+   errors" reading down. Muted, since they belong to both plots. Limited to the plot's 150px. */
 .gsaxis {
    position: absolute;
    left: 50%;
@@ -3281,9 +2674,8 @@ a {
    pointer-events: none;
 }
 
-/* Rotated with a transform, not writing-mode, so the line stays centred on the gutter both
-   ways. "winners" reads up the top half, "unforced errors" down the bottom half. A fixed
-   width keeps the long one to two stacked lines rather than one that runs past the plot. */
+/* Rotated with a transform so the text stays centred on the gutter. The fixed width wraps
+   "unforced errors" onto two lines. */
 .gsaxis b {
    position: absolute;
    left: 50%;
@@ -3309,52 +2701,27 @@ a {
 }
 
 /* --- the serve, on two axes (serveAnatomy) -----------------------------------------------
-   Two plots flanking a midline, A left and B right — the same split the scoreboard, the style
-   columns and the ring all carry, so which side a plot is on is already the key to whose it
-   is and no name is written over either.
-
-   Across is how often a delivery happens and up is what it won, so every column carries two
-   numbers instead of one. The first serve stands against the midline, the second beyond it and
-   the double faults at the far end, and both plots stand on one baseline — so the two players'
-   first serves meet at the centre and any two fill heights can be read against each other.
-
-   Every figure is put where the quantity it names already is. A rate that is a height is set on
-   the fill at that height (.svwin); a rate that is a width stands centred under the column it
-   is the width of, no leader between them — the column is the pointer. The double faults are
-   the exception: their column is a few pixels wide, too narrow to stand a figure on, so theirs
-   drops to a line of its own at the plot's outer edge, under the sliver it names.
-
-   Both sides set a given figure in one weight, and the better of the two in bold.
-
-   A query container: the step below switches on the room this block actually has rather than
-   on the width of the window. The two are not the same question — the panel is a fixed fraction
-   of a wide screen and nearly all of a narrow one. */
-/* It is the whole of the "serve outcome" section, under that heading and note; "serve
-   direction" is the next section along, with its own heading as the boundary between them. */
+   Two plots, A left and B right. Across is how often a delivery happens and up is what it won:
+   first serves against the midline, then seconds, then double faults at the far end. A height
+   rate sits on its fill (.svwin), a width rate is centred under its column, and the
+   double-fault figure gets its own line at the outer edge. A query container, so the layout
+   switches on the block's own width. */
 .svblock {
    container-type: inline-size;
    margin-top: 4px;
 }
 
-/* Two rows: the plots, and the figures under them. Two equal tracks that take what the block
-   has, under a cap. Each plot is square, because both of its axes run nought to one hundred
-   per cent: the width is the share of service points a column takes and the height is the share
-   of them it won, and on a box that is wider than it is tall the same ten points of frequency
-   and ten points of win rate are drawn as two different distances. Square, one per cent is one
-   per cent whichever way it is read, and the shaded area is a true share of the box.
-
-   The cap is what keeps a wide panel from drawing a plot taller than the section around it:
-   square, every pixel of width is a pixel of height as well. */
+/* The plots, and the figures under them. Each plot is square, since both axes run 0-100%, so
+   the shaded area is a true share. Capped in width so a wide panel doesn't draw it too tall. */
 .svpair {
    --plot-w: 240px;
    --gutter: 22px;
-   /* the plot down to the row of figures under it, that row's own height, and the gap after it —
-     on .svpair so both the row (.svdimlabs) and the turned edge label (.svdf) can read them */
+   /* gap below the plot, the figure row's height and the gap after it; on .svpair so .svdimlabs
+     and .svdf can both read them */
    --labgap: 7px;
    --labrow: 40px;
    --rowgap: 4px;
-   /* the width a centred in-rate label is placed by (see .svdimlab); up here because the
-     pooled-ace tines pull in by half of it to clear those labels (see .svacetot) */
+   /* the width an in-rate label is placed by; the pooled-ace tines use half of it (.svacetot) */
    --lab: 90px;
    display: grid;
    grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3364,9 +2731,7 @@ a {
    row-gap: 0;
 }
 
-/* Room under the plot for the dropped pooled-ace figure — the same level the double-fault
-   label drops to, so on a wide block (where the DF label runs up the sliver instead) this is
-   the one thing needing the space. */
+/* Room under the plot for the pooled-ace figure. */
 .svpair.aces {
    padding-bottom: 30px;
 }
@@ -3402,18 +2767,14 @@ a {
    grid-area: 2 / 2;
 }
 
-/* The empty half of the pair, where one player is under the charting floor: its tracks are
-   there whether or not they hold anything, so the plot opposite still reads as being on that
-   player's own side rather than sitting in the middle of the block. */
+/* An empty half keeps its tracks, so the other plot stays on its own side. */
 .svcol.empty,
 .svlabels.empty {
    visibility: hidden;
 }
 
-/* The plot. row-reverse on side A puts the first serve against the midline on its right; side
-   B reads the same order out from its left. The 2px between columns is the container's gap,
-   not a border on each — a border-box box cannot be narrower than its own border, so a column
-   under about 1.2% of the width would be inflated to 2px and the row pushed past the end. */
+/* The plot. The 2px between columns is the flex gap rather than borders, so a very narrow
+   column isn't inflated to 2px. */
 .svplot {
    position: relative;
    display: flex;
@@ -3422,10 +2783,7 @@ a {
    aspect-ratio: 1 / 1;
 }
 
-/* Faint gridlines every 10th of each axis. Across is the share of service points a column takes
-   and up is the share of them it won, and a reader after "about 62%" off either axis had no mark
-   to measure against. Laid over the fills — the drained columns underneath are opaque — and kept
-   pale enough that the figures on the fills still read straight through. */
+/* Faint gridlines every 10% on both axes, over the fills. */
 .svplot::after {
    content: "";
    position: absolute;
@@ -3439,18 +2797,13 @@ a {
          transparent 1px, transparent 10%);
 }
 
-/* Side A reads its columns right to left, so the first serve lands against the midline on its
-   right and the double faults at its left edge; side B reads the same order out from its left.
-   Either way the flex start is the midline end, so where a column is missing its reserved gap
-   the slack falls at the outer edge on both — which is the edge every mark on the drawing is
-   measured from, and why the marks carry it (see serveBar). */
+/* Side A runs right to left, so on both sides the first serve is against the midline and any
+   slack falls at the outer edge (see serveBar). */
 .svcol.a .svplot {
    flex-direction: row-reverse;
 }
 
-/* A column spans the full height in the drained tone, so its own extent is the axis its fill is
-   read against — the ring's vocabulary, where the player's colour is what they won and the
-   same colour drained is what they did not. */
+/* A column spans the full height in the drained tone; the fill is what was won. */
 .svseg {
    flex: 0 0 var(--w);
    min-width: 0;
@@ -3467,10 +2820,7 @@ a {
    background: var(--shot);
 }
 
-/* The part of that fill the serve took outright, rising from the same floor: the fill's own
-   colour deepened. An ace is a point won like every other point in the column — there is no
-   failed half to drain — so the part taken outright deepens instead of the rest draining,
-   which is the mark the ring uses for the same idea and for the same reason. */
+/* Aces: the part of the fill won outright, in a deeper shade of the fill. */
 .svseg>.svace {
    position: absolute;
    left: 0;
@@ -3480,10 +2830,7 @@ a {
    background: color-mix(in srgb, var(--shot) 62%, #000);
 }
 
-/* The double fault: a column of width and no height, because a point given away without a ball
-   being played is one that was never going to be won. It carries the 45° hatch — the one
-   direction the rest of the page cuts its corners on — so it reads as its own kind of column
-   rather than as a second serve that lost every point. */
+/* The double fault: width but no height, hatched at 45°. */
 .svseg.df {
    background:
       repeating-linear-gradient(45deg, transparent 0 3px,
@@ -3491,13 +2838,8 @@ a {
       color-mix(in srgb, var(--shot) 16%, var(--card));
 }
 
-/* The win rate, set on the fill at the fill's own top: the figure stands at the height it
-   names, which is the one place a leader would have taken it anyway. Centred on the column,
-   which is what says whose height it is — and where the column is narrower than the figure,
-   the overhang falls on the column beside it rather than off the plot.
-   The halo is what carries it across those grounds — the same trick the ring's tick uses. On
-   the fill the card-coloured core does the work; over the 2px gap between columns, or over a
-   neighbour that is drained at this height, the shot-coloured halo does. */
+/* The win rate, at the top of its fill and centred on the column, in the card colour with a
+   player-colour halo so it reads over the fill and its neighbours. */
 .svwin {
    position: absolute;
    left: 50%;
@@ -3522,8 +2864,7 @@ a {
    font-weight: 700;
 }
 
-/* Too short a fill to stand in: the figure goes above the top instead, and the two colours
-   swap — ink on the drained tone, haloed in the card colour where it overhangs a fill. */
+/* A fill too short to hold the figure: it goes above, in ink with a card-colour halo. */
 .svwin.over {
    top: auto;
    bottom: calc(var(--f) + 1px);
@@ -3541,12 +2882,8 @@ a {
    opacity: .85;
 }
 
-/* The ace share, against the top of the core it names — the same construction .svwin uses
-   against the top of the fill, a tier smaller because it is a part of that fill rather than
-   the whole of it. Inside the core by default, where it stands on the deepened tone; above it
-   when the core is too short to hold it, where it stands on the fill. Either ground is the
-   player's own colour at some depth, so the card-coloured core and its shot-coloured halo
-   carry it across both and there is no ink variant here. */
+/* The ace share at the top of its core, a size smaller than .svwin. Inside the core, or above
+   it on the fill when the core is too short. */
 .svacefig {
    position: absolute;
    left: 50%;
@@ -3586,9 +2923,7 @@ a {
    opacity: .85;
 }
 
-/* The third place the ace figure can go: inside the win figure, as a line under "won". It is
-   a flex child there rather than a positioned box, so it inherits that element's placement and
-   both of its colour states — see svAce() for when this is the one that renders. */
+/* The ace figure as a line under "won", inside the win figure. See svAce() for when. */
 .svacetuck {
    display: flex;
    flex-direction: column;
@@ -3604,22 +2939,15 @@ a {
 }
 
 /* --- the figures under the plot --------------------------------------------------------------
-   Two shares, sitting directly under the columns they measure: 1st serves in under the first
-   column, 2nd serves in under the second. No leaders — a number centred under a bar is that
-   bar's label, the way any column chart reads — so the only thing the placement has to do is
-   keep each figure over its own column and inside the plot. The win rates are not here: a rate
-   that is a height is written at that height, on the fill itself (.svwin). The double faults
-   are not here either — they label the hatch column at the plot's outer edge and are drawn on
-   it (.svdf). */
+   1st serves in and 2nd serves in, each centred under its column. Win rates are on the fills
+   (.svwin) and double faults at the outer edge (.svdf). */
 .svdimlabs {
    position: relative;
    display: grid;
    justify-items: start;
    align-items: start;
    min-height: var(--labrow);
-   /* --lab (the width a centred figure is placed by: about what the longest label takes, so the
-     figure it carries is centred on its column and the label with it — a wider label overhangs
-     evenly on both sides, which leaves it centred too) is set on .svpair. */
+   /* --lab, the width a centred figure is placed by, is set on .svpair. */
    margin-top: var(--labgap);
 }
 
@@ -3639,9 +2967,8 @@ a {
    white-space: nowrap;
 }
 
-/* Centred on the column: --c is the column's own middle, measured from the plot's outer edge
-   (written by serveLabels); the label box is pulled back half its width from there. Clamped so
-   a column sitting against an edge does not hang its figure off the plot. */
+/* Centred on the column: --c is its middle, measured from the plot's outer edge (written by
+   serveLabels). Clamped so the figure stays within the plot. */
 .svlabels.a .svdimlab {
    justify-self: start;
    margin-left: clamp(0px, calc(var(--c, 0px) - var(--lab) / 2), calc(100% - var(--lab)));
@@ -3665,8 +2992,7 @@ a {
    order: 3;
 }
 
-/* The figure. Both sides set the same quantity in the same weight, and the better of the two
-   is set bold — see serveCmp() for which way each one reads. */
+/* The better of each pair is bold; see serveCmp(). */
 .svdimlab b,
 .svdf {
    font-size: 12.5px;
@@ -3695,9 +3021,7 @@ a {
    display: none;
 }
 
-/* The count behind the rate, where the figures came from a match and there is one to give. It
-   is the quietest thing in the cell: the rate is what the cell is for, and this is the
-   evidence. */
+/* The count behind a match rate, the quietest thing in the cell. */
 .svn {
    font-size: 9px;
    color: var(--muted);
@@ -3707,11 +3031,9 @@ a {
 }
 
 /* --- the double faults, on the plot's outer edge -------------------------------------------
-   The double-fault column is the hatch sliver at the plot's outer edge, so its figure is drawn
-   against that edge rather than in the row of figures below. On a narrow block it drops under
-   the sliver with one straight hairline to the middle of the sliver's edge; on a wide block it
-   turns on its side and runs down the sliver as one line. --dfm is the sliver's midpoint,
-   written by serveBar from the plot's outer edge. */
+   The figure sits against the hatched sliver. Narrow: it drops under the sliver with a
+   hairline. Wide: it turns on its side and runs down it. --dfm is the sliver's midpoint,
+   written by serveBar. */
 .svcol {
    position: relative;
 }
@@ -3762,34 +3084,16 @@ a {
 }
 
 /* --- the pooled ace rate ---------------------------------------------------------------
-   The two ace cores added back to one figure: aces over every service point, the number a
-   scoreboard quotes. The figure hangs below the plot and a pair of hairline tines curve up
-   from it into the two cores, leaving the figure and meeting each core tangent to the
-   vertical — one soft brace, no straight run and no corner.
+   The two ace cores added back to one figure, hung below the plot with two curved hairline
+   tines up into the cores. The box spans the whole column so the % in --acm and --acsp resolve
+   against it. The figure sits at --acfx (--acm, held inside the column). The tines land at:
 
-   The box spans the whole column (left:0 right:0), so the % that --acm and --acsp carry (the
-   plot's own at() expression) resolves against the column the way it does for the in-rate
-   labels and the double-fault mark, not against a zero-width box. The figure sits at --acfx
-   (--acm, held a label-width inside the column) and the two tine tops at:
+     --acin   the first-serve core, pulled in by --acspread to clear the "1st serves in" label
+     --acout  just inside the second-serve core's inner edge (set by serveBar)
 
-     --acin   the first-serve side. Pulled in from the core centre by --acspread to just
-              clear the "1st serves in" label's inner edge — that core is wide and its centre
-              is far under the label, so the tine lands on the near part of it instead.
-     --acout  the second-serve side. Passed in from serveBar: a hair inside that core's
-              midline-facing edge — the furthest out the tine can land and still touch the
-              core, since the core is small and sits wholly under its own label. The tine
-              reads longer than its mate because that core genuinely sits further out.
-
-   Each mark is placed from the near edge — left on side A, right on side B.
-
-   --acstem is how far below the baseline the figure sits. On the wide layout the double-fault
-   label is turned onto the outer edge and the figure can sit close under the in-rate row; on
-   the narrow layout that label drops flat under the plot, so the figure drops past it to a
-   row of its own (see the max-width block below) and the tines lengthen to match.
-
-   When a delivery has no ace core — a charted match often has no second-serve aces — serveBar
-   just leaves that tine out. The figure keeps its midpoint spot, so it never slides under an
-   in-rate label. */
+   Each is placed from the near edge: left on side A, right on side B. --acstem is how far
+   below the baseline the figure sits; it grows on the narrow layout, where the double-fault
+   label drops under the plot. A missing core just drops its tine. */
 .svacetot {
    position: absolute;
    top: 100%;
@@ -3805,8 +3109,7 @@ a {
    --acfx: clamp(var(--achalf), var(--acm), calc(100% - var(--achalf)));
 }
 
-/* each tine: an <svg> box spanning exactly one figure-to-core gap, its ogee stretched to fit
-   by preserveAspectRatio="none" with the stroke held to 1px by vector-effect */
+/* Each tine is an <svg> spanning one figure-to-core gap, stretched to fit, with a 1px stroke. */
 .svacetot>.svtn {
    position: absolute;
    top: 0;
@@ -3879,9 +3182,7 @@ a {
    color: var(--muted);
 }
 
-/* A narrower block. The plots come in on their own — the tracks are 1fr under a cap — so what
-   this step does is the type and the run of words: the counts go, and the two in-rates shorten
-   to the two words that tell them apart. */
+/* A narrower block: smaller type, no counts, and shortened in-rate labels. */
 @container (max-width: 575px) {
    .svpair {
       --gutter: 14px;
@@ -3938,13 +3239,13 @@ a {
       display: inline;
    }
 
-   /* the pooled-ace figure keeps its full wording here now that it has a row of its own */
+   /* the pooled-ace figure keeps its full wording, since it has its own row */
    .svacetot .svlong {
       display: inline;
    }
 
-   /* the double-fault label is flat under the plot here, so the pooled-ace figure drops past
-     it to a row of its own; the tines lengthen with --acstem and the pair reserves the room */
+   /* the double-fault label is flat under the plot here, so the pooled-ace figure drops below
+     it and the pair reserves the room */
    .svacetot {
       --achalf: 30px;
       --acstem: calc(var(--labgap) + var(--labrow) + var(--rowgap) + 30px);
@@ -3955,10 +3256,8 @@ a {
    }
 }
 
-/* A wider block. The double faults turn on their side and run along the sliver they label,
-   centred on the plot's height, their inner edge flush to the plot's — one line, no hairline.
-   Each side reads from the outside in: the right label top-to-bottom, the left one flipped a
-   half-turn so it reads bottom-to-top, the way an axis title on that side would. */
+/* A wider block: the double-fault figure turns on its side and runs along the sliver, reading
+   outside-in (the left one flipped to read bottom to top). */
 @container (min-width: 576px) {
    .svdf {
       top: 0;
@@ -4005,24 +3304,18 @@ a {
    }
 }
 
-/* The phone comparison of the two style columns (profileCompare). The flanking .pbside pair
-   is ~150px wide apiece on a phone and prints every label twice; on the narrow layout this
-   replaces them with one row per figure — A's value, the label once, B's value — so the two
-   numbers sit across a centre line. The wide layout keeps the columns, where the ring runs
-   between them. Both hidden until the media query at the foot of this block turns them on.
-   .pbtops carries the style and handedness lines, which sit above the ring there; .pbcmp
-   carries the figure rows, below it. */
+/* The phone comparison (profileCompare): one row per figure, A's value, the label, B's value.
+   .pbtops holds the style and hand lines above the ring; .pbcmp holds the figure rows below
+   it. Hidden until the phone media query below. */
 .pbcmp,
 .pbtops {
    display: none;
 }
 
 /* --- the tour strip (figBand) ------------------------------------------------------------
-   Where a figure sits on its own tour. Bits and strokes are units nobody arrives knowing, and
-   this is the difference between "3.2" and "unusually varied". The track runs the tour's 5th
-   to 95th percentile; the shaded part is its middle half, painted with a gradient rather than
-   a child element so the whole strip is one box and can be an <i> inside a <p>.
-   --lo/--hi/--at are written per figure by figBand(). */
+   Where a figure sits on its tour: the track runs p5 to p95, and the shaded part is the middle
+   half, painted as a gradient so the strip is a single <i>. --lo/--hi/--at are set by
+   figBand(). */
 .pbband {
    display: block;
    position: relative;
@@ -4035,9 +3328,7 @@ a {
          color-mix(in srgb, var(--line) 60%, var(--card)) var(--hi) 100%);
 }
 
-/* The player's own mark. Ink rather than the player's colour: it lands on a grey track in a
-   column already capped in that player's colour, and against the shaded middle a mid-tone
-   violet or red is the one thing on the strip that could go missing. */
+/* The player's mark, in ink so it shows against the shaded middle. */
 .pbband::after {
    content: "";
    position: absolute;
@@ -4049,9 +3340,7 @@ a {
    background: var(--ink);
 }
 
-/* Past the end of the strip: the mark sits on the end it went past and turns into a wedge
-   pointing off it, so a player the tour band exists to show is unusual is never drawn level
-   with the 95th percentile. */
+/* Past the end: the mark sits at that end as a wedge pointing off it. */
 .pbband.out::after {
    width: 0;
    height: 0;
@@ -4088,9 +3377,7 @@ a {
    margin-left: auto;
 }
 
-/* The player-colour key, same split rule the scoreboard and each .pbside carry, with a gap
-   cut at the centre so it doesn't read as one bar. It caps .pbtops now — the first profile
-   element on the phone — so the style and handedness lines below it read left/right. */
+/* The player-colour key capping .pbtops on the phone, with a gap at the centre. */
 .pbtops::before {
    content: "";
    display: block;
@@ -4127,13 +3414,12 @@ a {
    color: var(--muted);
 }
 
-/* .pbcmp's first row leads the block now that the heads live in .pbtops above the ring. */
+/* No top margin on the first figure row. */
 .pbcmp>.pbcmp-row:first-child {
    margin-top: 0;
 }
 
-/* Tight rows: this list runs seven deep on a phone, and a figure with a one-word label and a
-   short tour strip does not need the air a two-line block would. */
+/* Tight rows, since this list runs seven deep on a phone. */
 .pbcmp-row {
    display: grid;
    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -4150,8 +3436,7 @@ a {
    font-variant-numeric: tabular-nums;
 }
 
-/* The losing side of a figure that has a better end — the winner stays in ink, this drops to
-   regular weight and the muted grey, matching the ring's lead/trail split. */
+/* The losing side of a figure with a better end, in regular weight and muted. */
 .pbcmp-row b.trail {
    font-weight: 400;
    color: var(--muted);
@@ -4171,8 +3456,7 @@ a {
    color: var(--muted);
 }
 
-/* The label, printed once between the pair. Set as the figures' own caption — small caps,
-   muted — so the eye reads across the two numbers and drops to the word only to place them. */
+/* The label, once, between the two values. */
 .pbcmp-row .pbcl {
    text-align: center;
    font-size: 9.5px;
@@ -4184,11 +3468,8 @@ a {
 
 @media (max-width: 760px) {
 
-   /* The columns go; style + handedness, then the ring, then the figure rows take a row each.
-     No subgrid to keep here — the phone layout already puts both players' figures on one row
-     apiece. Style leads because it is what the pairing is about; the ring sits under it as
-     the headline number; the figures follow as its footnotes. The child combinator is what
-     beats the unconditional `grid-row: -2 / -1` further down the sheet. */
+   /* Phone: style and hand, then the ring, then the figure rows, a grid row each. The child
+     combinator beats the `grid-row: -2 / -1` further down. */
    .tapemain {
       grid-template-rows: auto auto auto;
    }
@@ -4216,10 +3497,7 @@ a {
    }
 }
 
-/* The ring, centred in its row. It is a fixed-size drawing with a fixed reserve either side
-   for the figures that hang off it (see .dn), so it reads centred at any track width
-   regardless of how much of the row is actually spare. The column is kept for the case of a
-   panel that draws no ring at all, where it collapses to nothing. */
+/* The ring, centred in its row, with a fixed reserve either side for its figures (see .dn). */
 .dnstack {
    grid-column: 1 / -1;
    grid-row: -2 / -1;
@@ -4233,14 +3511,8 @@ a {
 
 @media (min-width: 761px) {
 
-   /* align-items stays "start": the style columns keep the same top edge as the box and as
-     "Charted history" above, rather than floating to the middle of a row the ring may set the
-     height of. Only the ring itself is asked to centre — align-self on .dnstack alone — so it
-     climbs to the middle of that height while the rule at the top of each style column stays
-     put. */
-   /* The ring track takes what the flanks need and the style columns give it up: they hold
-     three short lines each against a 90px min-content, so the ~22px apiece this costs them is
-     slack rather than a squeeze. */
+   /* Only the ring centres vertically; the style columns stay at the top. The ring track takes
+     what its figures need from the style columns, which have room to spare. */
    .tapemain {
       grid-template-columns: 1fr minmax(270px, 356px) 1fr;
       align-items: start;
@@ -4250,8 +3522,7 @@ a {
       grid-column: 3;
    }
 
-   /* A track of its own between the two columns, spanning every figure row rather than
-     sitting under them. */
+   /* The ring's own track between the columns, spanning every figure row. */
    .dnstack {
       grid-column: 2;
       grid-row: 1 / -1;
@@ -4259,31 +3530,20 @@ a {
       align-self: center;
    }
 
-   /* Room to spend on a wide panel: the wider the ring is drawn, the more its arc can say —
-     and the further apart the two figures land when the values behind them are close, which is
-     what decides whether a label sits beside its own mark or on top of its neighbour. */
+   /* A bigger ring on a wide panel, so close values' figures land further apart. */
    .tape {
       --dn-size: 200px;
       --dn-pad: 76px;
    }
 
-   /* The two style columns' strip rows, mirrored so they read as reflections across the ring:
-     side B hangs the tour strip on its outer (right) edge with the label against it, and side A
-     runs the same row the other way — strip on the outer (left) edge, label against it. The
-     value stays pinned to its inner edge on both sides, so the flexible space falls between the
-     value and the label rather than between the label and its strip, where it used to vary with
-     the label's length. Only strip rows flip; a strip-less row (a match-measured figure, an
-     em-dash placeholder) keeps the layout side B's strip-less rows already have. The phone
-     layout collapses both columns into one shared row (.pbcmp), and .pbq above is left alone —
-     it already hangs value and strip on the outer edge on both sides. */
+   /* Rows with a tour strip are mirrored across the ring: strip on the outer edge, label
+     against it, value on the inner edge, and the free space between value and label. Rows
+     without a strip keep the normal layout, and .pbq is left alone. */
    .pbside[data-side="a"] .pbfig:has(.pbband) {
       flex-direction: row-reverse;
    }
 
-   /* Label hard against the strip on each side — the auto margin opens up between the value and
-     the label instead, so every label starts (side A) or ends (side B) at the same offset from
-     its strip whatever its length. .pbband's own margin is zeroed on side B to override the
-     block-scope rule further down that pushes it off the value with margin-left: auto. */
+   /* The label sits against the strip. Side B zeroes .pbband's own margin-left: auto. */
    .pbside[data-side="a"] .pbfig:has(.pbband)>em {
       margin-right: auto;
    }
@@ -4297,36 +3557,16 @@ a {
    }
 }
 
-/* The room the figures need outside the drawing. A label's anchor sits just past the band, so
-   the one nearest nine or three o'clock starts a twentieth of the ring's width from its edge
-   and the whole line hangs past it — which makes this a function of the longest line the ring
-   carries rather than of the ring's size, and so the same reserve at both sizes.
-   The widest line the data produces is the leader's holds figure — set heavier than the other
-   side's, and so wider — at 71px. It hangs furthest past the band when the value behind it is
-   near half the scale, which puts its anchor at nine or three o'clock, a twentieth of the
-   ring's width in from the edge: 61px of overhang on the 200px ring. Values do land there —
-   47 hold rates and 27 break rates on the charted tour sit within a tenth of half — so the
-   reserve is set against that case rather than against the common one. */
+/* The room the figures need outside the drawing, sized for the widest label (the leader's hold
+   figure, 71px) at nine or three o'clock, where it overhangs the band by 61px on the 200px ring. */
 .dn {
    min-width: 0;
    padding: 0 var(--dn-pad) 20px;
 }
 
-/* The two ends of the ring's scale, at the two ends of the ring: zero at the foot both sweeps
-   leave from, the ceiling at the top they climb toward. Printed on the drawing rather than in
-   a caption above it, because this is where a reader looks to find out what an arc has
-   reached.
-   Set inside the hole, hard against the band's inner edge — the end of the scale each one
-   marks. Outside, in a row above and a row below, they cost the stack two lines of height
-   per ring for twelve characters and leave the ceiling floating a whole label away from the
-   arc climbing toward it.
-   19% is where the hole starts. The band's inner edge is DN_R - DN_W/2 = 31 of the viewBox's
-   100 units from the centre, and the centre is at 50, so the hole's top is at 19 and its foot
-   at 81. Percentages here resolve against .dnring, which is exactly --dn-size square, so the
-   same two numbers hold at every ring size — as they must, since the geometry they come from
-   is written in viewBox units and those scale with the drawing.
-   Nothing is under them: the hole is empty but for the ring's name, which is centred and about
-   25px clear of either cap at the smallest size this renders at. */
+/* The scale's ends, inside the hole against the band's inner edge: zero at the foot, the
+   ceiling at the top. The hole's edge is at 19% of the box (the band's inner edge is 31 of the
+   viewBox's 100 units from the centre), which holds at every ring size. */
 .dncap {
    position: absolute;
    left: 50%;
@@ -4348,17 +3588,15 @@ a {
    bottom: calc(19% + 2px);
 }
 
-/* One box exactly the drawing's size, with everything else laid over it: the two ends of the
-   scale and the ring's name sit in the hole, and the four figures sit outside the band against
-   their own marks. Those reach past this box, which is what .dn's padding holds room for. */
+/* A box the drawing's size, with the scale ends and name in the hole and the figures outside
+   the band (in .dn's padding). */
 .dnring {
    position: relative;
    width: var(--dn-size);
    height: var(--dn-size);
 }
 
-/* overflow visible so the ends of the scale can reach a little past the band without being
-   clipped at the edge of the viewBox. */
+/* overflow visible so the scale ends can reach past the viewBox. */
 .dnring svg {
    display: block;
    width: 100%;
@@ -4366,10 +3604,7 @@ a {
    overflow: visible;
 }
 
-/* The ring's name, in its own hole rather than set as a line of print over the row — see
-   donut(). Shrunk and shortened (tapeRows' `short`) to fit the clear space the ring's stroke
-   leaves at its centre, and centred there, which keeps it clear of the two scale ends tucked
-   against the top and foot of the same hole. */
+/* The ring's short name, centred in the hole. */
 .dnttl {
    position: absolute;
    top: 50%;
@@ -4387,9 +3622,7 @@ a {
    pointer-events: none;
 }
 
-/* The hole is 62% of the ring across — 124px on the desktop drawing against 99 on the phone —
-   so the name can be set at the size it is actually the title of something at, rather than at
-   the size the smaller hole allows. */
+/* The hole is bigger on the desktop ring, so the name can be bigger. */
 @media (min-width: 761px) {
    .dnttl {
       width: 108px;
@@ -4399,14 +3632,9 @@ a {
 }
 
 /* --- the floating figures ----------------------------------------------------------
-   Every number the ring carries is set against the mark it is read off, rather than in a
-   column beside the drawing — see the note over dnLabel() in matchup.js.
-   Absolutely placed inside .dnring, which is exactly the drawing's size, so the percentages
-   the JS writes resolve against the same square the viewBox does and hold at every ring size.
-   The transform is what pushes each label clear of the band: side A's box ends at its anchor
-   and reads back to the left, side B's begins at its anchor and reads right, which is the half
-   of the ring that player's own arc climbs. So position still says whose a figure is, exactly
-   as the two columns used to, and it now says which figure it is as well. */
+   Each figure sits against its mark (see dnLabel() in matchup.js), placed in percent of
+   .dnring. The transform pushes it clear of the band: A's labels end at their anchor and read
+   left, B's start at theirs and read right. */
 .dlab {
    position: absolute;
    white-space: nowrap;
@@ -4425,8 +3653,7 @@ a {
    transform: translate(0, -50%);
 }
 
-/* The holds figure, the largest thing on the ring: it is what the arc is drawn for, and the
-   breaks figure across the band is read against it. */
+/* The hold figure, the largest on the ring. */
 .darc {
    font-size: 14px;
    font-weight: 600;
@@ -4437,9 +3664,7 @@ a {
    font-weight: 800;
 }
 
-/* The word hung off the figure, the way "shots" hangs off rally length in the style column.
-   Its own colour and weight rather than inherited ones: the leader's figure is set in bold
-   ink, and a word that came along would be the loudest thing here. */
+/* The unit word after the figure, with its own colour and weight. */
 .darc .dvu {
    margin-left: 3px;
    font-size: 10px;
@@ -4447,34 +3672,25 @@ a {
    color: var(--muted);
 }
 
-/* Side A sets the word ahead of the number (see labels() in matchup.js), so the gap it
-   carries moves to its trailing edge to keep the same air between word and figure. */
+/* Side A puts the word first (see labels() in matchup.js), so the gap moves to its right. */
 .dlab.a.darc .dvu {
    margin-left: 0;
    margin-right: 3px;
 }
 
-/* The breaks figure, wearing the tick it names. A tier down from the holds figure: they are
-   games won on two denominators, and the ring is drawn for the arc. */
+/* The break figure, a size down from the hold figure. */
 .dtck {
    font-size: 10px;
 }
 
-/* Bolded in ink on the side that breaks more — the same lead mark .darc carries, a tier
-   lighter to match the smaller figure. */
+/* Bold ink on the side that breaks more. */
 .dtck.lead {
    font-weight: 700;
    color: var(--ink);
 }
 
-/* The empty half of a ring, where a player is under the charting floor. It takes a row of its
-   own under the ring, on that player's side of the centre line, so the gap is marked on the
-   drawing and not only in the note under it. There is nothing on that half to place it
-   against, which is why it comes off the circle the two figures are anchored on.
-   Both halves of the placement have to out-specify .dlab.a / .dlab.b, which carry the
-   transform that pushes a circle label clear of the band; a bare .dnone loses that tie and is
-   dragged a full label-width sideways and half a line up. Set in percentages of the ring box,
-   the same square the viewBox resolves against, so the mark holds at every ring size. */
+/* The em dash for an empty half, on its own row under the ring on that player's side. The
+   selectors out-specify .dlab.a / .dlab.b so their transform doesn't apply. */
 .dlab.a.dnone,
 .dlab.b.dnone {
    top: 104%;
@@ -4492,11 +3708,7 @@ a {
    left: 70%;
 }
 
-/* The unreached part of the domain, and the only thing saying how far a sweep could have
-   gone. A full circle, because the two half-turns either side of 12 o'clock are the whole
-   axis between them. */
-/* 10 units of the 100-unit viewBox, matching DN_W in matchup.js — the two have to agree, and
-   this is the only place either is written down besides the geometry constants there. */
+/* The track: the unreached part of the scale. stroke-width must match DN_W in matchup.js. */
 .dtrack {
    fill: none;
    stroke: color-mix(in srgb, var(--line) 70%, var(--card));
@@ -4517,13 +3729,8 @@ a {
    stroke: var(--b);
 }
 
-/* The player's break rate, as a spoke across the ring. It lands inside the arc for a returner
-   and out on open track past its end for a server, and no single colour is legible against
-   both: on a violet or red arc a dark mark is simply not there, and on the near-white track a
-   light one is not. So it is a light core over a dark halo, one of the two carrying it
-   whichever ground it lands on, drawn as two lines because SVG has no box-shadow. The cue bars
-   under the shot-making triggers wear the same mark, in CSS, for the same reason and against
-   the same two grounds. */
+/* The break-rate tick: a light core over a dark halo, so it shows on the arc and the track
+   alike. The cue bars' tick uses the same mark. */
 .dtickhalo {
    stroke: color-mix(in srgb, var(--ink) 50%, transparent);
    stroke-width: 3.6;
@@ -4536,19 +3743,15 @@ a {
    stroke-linecap: butt;
 }
 
-/* zero, cut into the ring — see dnOrigin() for why it is the card's colour and not a mark */
+/* zero, cut into the ring in the card colour (see dnOrigin()) */
 .dorigin {
    stroke: var(--card);
    stroke-width: 2.2;
    stroke-linecap: butt;
 }
 
-/* The two ends of the scale — see dnEnds(). Ink, and the only mark on the band that is laid on
-   rather than drained out of it: the tick and the seam are a reference and a gap, these are the
-   frame the arcs are read against.
-   1.1 units against the seam's 2.2, so at the foot it sits inside that gap with white showing
-   either side rather than filling it. Thin enough to stay a hairline at the sizes this renders
-   at — 1.1 of the viewBox's 100 is about 1.7px on a phone and 1.9px on the desktop ring. */
+/* The scale ends (see dnEnds()), in ink, 1.1 units wide so they sit inside the 2.2-unit origin
+   seam at the foot. */
 .dend {
    stroke: var(--ink);
    stroke-width: 1.1;
@@ -4562,12 +3765,8 @@ a {
    color: var(--muted);
 }
 
-/* The figure definitions, closing the basic-stats box (figureKey). It borrows .notekey's look
-   wholesale, because it is the same object as the notation key at the foot of the panel and a
-   second disclosure style would only make the reader learn the convention twice.
-   Ruled off rather than merely spaced: everything above it in this box is about these two
-   players and this is about the measuring, and inside a bordered box a margin on its own reads
-   as a gap rather than as a change of subject. */
+/* The figure definitions closing the basic-stats box (figureKey), styled like .notekey and
+   ruled off. */
 .figkey {
    margin: 12px 0 0;
    padding-top: 10px;
@@ -4586,8 +3785,7 @@ a {
    opacity: .38;
 }
 
-/* The figure wears the mark it is drawn as, halo and all — hence the margin, which is the
-   room the halo needs to not sit on the words either side of it. */
+/* The tick's key, with its halo; the margin keeps the halo off the neighbouring words. */
 .tickkey {
    display: inline-block;
    width: 2px;
@@ -4599,10 +3797,8 @@ a {
 }
 
 /* --- a topic, one header, two columns -------------------------------------------
-   The topic sticks to the top of the scroll while its own cards pass under it: the
-   panel runs four or five screens, and a column of court drawings halfway down gives
-   no clue which question it is answering. It bleeds to the panel edges so the content
-   passes behind it rather than through the gutters. */
+   The topic sticks to the top of the scroll while its cards pass, and bleeds to the panel
+   edges so content passes behind it. */
 .msec {
    margin-top: 14px;
 }
@@ -4622,7 +3818,7 @@ a {
    color: var(--muted);
 }
 
-/* read once, then out of the way — unlike the topic, it doesn't stick */
+/* read once, so it doesn't stick */
 .secnote {
    margin: 0 0 9px;
    font-size: 11.5px;
@@ -4630,10 +3826,8 @@ a {
    color: var(--muted);
 }
 
-/* Both columns run on the same rows, so each player's first finding sits level with the
-   other's — two independent stacks drift apart the moment one description wraps a line
-   further than its opposite number, and a comparison you have to scroll between isn't
-   one. Browsers without subgrid drop the rule and get two independent stacks. */
+/* Both columns share rows, so each player's findings stay level with the other's. Browsers
+   without subgrid get two independent stacks. */
 .seccols {
    display: grid;
    grid-template-columns: 1fr 1fr;
@@ -4642,10 +3836,7 @@ a {
    grid-template-rows: repeat(var(--rows, 1), auto);
 }
 
-/* The player's colour caps the column instead of running down its left edge. A left rule
-   put two thin verticals in the middle of the panel, competing with the gutter between
-   the columns; a rule across the top states the ownership once, at the point the eye
-   enters the column, and gives the width back. */
+/* The player's colour caps the column. */
 .seccol {
    min-width: 0;
    padding-top: 9px;
@@ -4664,8 +3855,7 @@ a {
    --shot: var(--b);
 }
 
-/* the column's owner: redundant beside the strip on a wide panel, essential once the
-   columns stack on a phone */
+/* the column's owner, shown only once columns stack on a phone */
 .colwho {
    display: none;
    margin: 0 0 6px;
@@ -4690,9 +3880,7 @@ a {
    margin-bottom: 12px;
 }
 
-/* 88px of box, not 96: the drawing is cropped to the court (see FRAME in court.js) rather
-   than carrying 20 units of blank field either side, so a narrower box holds a court an
-   eighth wider. The width it gives back goes to the description beside it. */
+/* 88px, since the drawing is cropped to the court (see FRAME in court.js). */
 .pcourt {
    flex: 0 0 88px;
 }
@@ -4703,8 +3891,7 @@ a {
    display: block;
 }
 
-/* These thumbnails render at ~0.72 scale, so the drawn balls need extra weight in viewBox
-   units to survive the reduction, while the court's own lines thin out and recede. */
+/* Thumbnails render at ~0.72 scale, so ball paths get heavier strokes and court lines lighter. */
 .pcourt .ct-shot {
    stroke-width: 2.3;
 }
@@ -4772,14 +3959,12 @@ a {
    color: var(--ink);
 }
 
-/* the denominator, dimmer than the count it qualifies — "277/970" should read as one
-   figure with a scale, not as two numbers of equal weight */
+/* the denominator, dimmer than the count */
 .pof {
    opacity: .65;
 }
 
-/* the count, on its own line under the payoff: how often this was played and out of how
-   many chances, the provenance behind the numbers above rather than a finding of its own */
+/* the count, on its own line under the payoff */
 .pn {
    margin: 2px 0 0;
    font-size: 10.5px;
@@ -4787,8 +3972,7 @@ a {
    font-variant-numeric: tabular-nums;
 }
 
-/* the payoff comparison is one phrase — a narrow column mustn't break "▲5 vs their
-   other answers" mid-phrase and leave a word sitting alone */
+/* keep the payoff comparison on one line */
 .up,
 .down,
 .lvl {
@@ -4836,9 +4020,7 @@ a {
    font-size: 11px;
 }
 
-/* The service court and which ball of the opening this is, said in the row rather than
-   left to the collapsed drawing — the court is the whole reason the row exists, so it
-   cannot be behind a disclosure triangle. Recessive against the cue string it labels. */
+/* The service court and which ball of the opening, named in the row. */
 .ocourt {
    color: var(--muted);
    font-weight: 600;
@@ -4858,10 +4040,8 @@ a {
    font-size: 10px;
 }
 
-/* The player's own rate, heading their column of cues. It keeps .trig's left inset with no
-   glyph in it, so its bar starts on the same vertical as every cue bar below and the lengths
-   compare directly — which is the whole reason it is here and not on a ring three sections
-   up. The rule under it is what says the rest of the column is measured against this. */
+/* The player's baseline rate, heading the cue column. No glyph, so its bar lines up with the
+   cue bars; the rule under it marks it as the reference. */
 .trig.base {
    margin-bottom: 12px;
    padding-bottom: 9px;
@@ -4895,10 +4075,8 @@ a {
    font-size: 11px;
 }
 
-/* The cue's bar. Same grammar as the comparison strip's split row — a track, a fill that
-   changes colour where the aggressive shots stopped landing, a haloed tick at the reference — but
-   growing from the left rather than from a shared centre, because there is only one player
-   in this column and nothing to mirror it against. */
+/* The cue's bar: a track, a fill that changes colour where the aggressive shots stopped
+   landing, and a haloed tick at the baseline. It grows from the left. */
 .tmeter {
    position: relative;
    height: 7px;
@@ -4939,15 +4117,13 @@ a {
    font-size: 11px;
 }
 
-/* serve direction: the two service boxes as the server sees them, deuce left and ad
-   right, each zone sitting where it does on the court — so the numbers are laid out
-   in court order and the frame only has to suggest the lines. Wide and T only: the
-   body share is partly a charter's opinion, so it is not reported and the two shown
-   do not add to 100. */
+/* Serve direction: the two service boxes as the server sees them, deuce left and ad right,
+   each zone where it is on the court. Wide and T only (body is left out, so they don't sum to
+   100). */
 .srv {
    font-size: 12.5px;
    line-height: 1.45;
-   /* the column's own player colour (--shot), faint enough to sit under text */
+   /* the column's player colour (--shot), faint */
    --srvfill: color-mix(in srgb, var(--shot) 15%, transparent);
 }
 
@@ -4956,19 +4132,17 @@ a {
    grid-auto-flow: column;
    grid-auto-columns: 1fr;
    border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-   /* the near edge is the net, the side the server hits over */
+   /* the near edge is the net */
    border-bottom-width: 2px;
    border-bottom-color: var(--line);
 }
 
-/* The centre service line. Full strength, unlike the outer frame: both inner zones
-   fill toward it, so a faint line here gets swamped by the two bars meeting. */
+/* The centre service line, full strength since both inner zones fill toward it. */
 .srvbox+.srvbox {
    border-left: 1px solid var(--line);
 }
 
-/* No horizontal padding on the box: each zone's backfill has to start at the court line
-   it grows from, so the inset lives on the zones instead. */
+/* No horizontal padding, so each zone's backfill starts at its court line. */
 .srvbox {
    display: grid;
    grid-template-columns: 1fr 1fr;
@@ -4983,20 +4157,12 @@ a {
    min-width: 0;
    padding: 2px 8px 0;
    min-height: 54px;
-   /* The share as a bar. All four rise from the same baseline — the bottom of the row —
-     so heights compare directly; anchoring each one to its own sideline instead would
-     put two of them growing right-to-left, which is unreadable as a magnitude. The
-     min-height is what gives the bars enough range to be told apart at ~10pp. */
+   /* The share as a bar rising from the row's bottom, so heights compare directly. */
    background: linear-gradient(to top, var(--srvfill) 0 var(--p), transparent var(--p));
 }
 
-/* Each box's outer zone sits against its sideline and its inner one against the centre
-   line, so the two T numbers end up either side of the divider — where they are on the
-   court. Both boxes take the same rule: the deuce box reads wide→T, the ad box T→wide.
-   Position is carried by the text alignment; magnitude is carried by the bar height, so
-   the two never fight over the same channel.
-   Sibling selector, not :last-of-type — the label is a span too, so a type selector
-   matches it rather than the second zone. */
+/* Each box's second zone aligns right, so the two T numbers sit either side of the centre
+   line. A sibling selector, since the label is also a span. */
 .srvzone+.srvzone {
    align-items: flex-end;
    text-align: right;
@@ -5034,8 +4200,7 @@ a {
    font-size: 11.5px;
 }
 
-/* break-point shift: starred like a deep pattern, and earned the same way — most
-   players never show one, so the marker says "this is rare", not "this is important" */
+/* Break-point shift, starred because most players never show one. */
 .srvbp {
    margin: 6px 0 0;
    font-size: 11.5px;
@@ -5059,16 +4224,14 @@ a {
    font-variant-numeric: tabular-nums;
 }
 
-/* Which window this one number is measured over. It is the only figure in the section not
-   drawn from the recency window the caption above names, so it has to carry its own — set
-   a step down, because it qualifies the claim rather than being part of it. */
+/* The whole-career window for this one figure, a step down. */
 .srvbpwin {
    display: block;
    font-size: 10.5px;
    opacity: .8;
 }
 
-/* the court glyph's key, stated where the glyph is first used */
+/* the court drawing's key, where the drawing is first used */
 .courtkey {
    margin: 5px 0 0;
    display: flex;
@@ -5077,8 +4240,7 @@ a {
    font-size: 10.5px;
 }
 
-/* What the two figures on every pattern card mean. Its own line under the section note,
-   at the note's own weight — it is a gloss on the cards, not a second caption. */
+/* How to read the pattern cards' two figures, under the section note. */
 .paykey {
    display: block;
    margin: 4px 0 0;
@@ -5086,9 +4248,7 @@ a {
    line-height: 1.45;
 }
 
-/* The cue bar's key. Ordinary inline flow, unlike .courtkey above: that one keys three
-   glyphs with a word each and wants them spaced apart as three items, this one is a
-   sentence with marks in it, and laid out as flex items its own clauses came apart. */
+/* The cue bar's key, in normal inline flow since it's a sentence with marks in it. */
 .meterkey {
    display: block;
    margin: 5px 0 0;
@@ -5115,8 +4275,7 @@ a {
    padding: 0 4px;
 }
 
-/* Expandable ball-path court under a trigger sequence. Collapsed by default; the summary
-   is a small tap target, the SVG reuses the ct-* court styles above. */
+/* A collapsible ball-path court under a trigger, using the ct-* styles. */
 .rally {
    margin: 3px 0 0;
 }
@@ -5187,25 +4346,17 @@ a {
    font-weight: 600;
 }
 
-/* phone layout: one round at a time as a vertical list — no horizontal panning */
-/* overflow-y goes back to visible too, not just -x: the base rule's overflow-y: hidden
-   is what lets the tree view size its wire SVG off scrollHeight (see the comment on
-   .bracket above), but here it has a second, unwanted effect — an ancestor with any
-   overflow other than visible becomes the containing block position: sticky measures
-   against, and this one never scrolls internally (its height always grows to fit its
-   content), so .roundtitle's sticky top:0 had nothing to stick to and just scrolled
-   off with the page. */
+/* Phone layout: one round at a time as a vertical list, with no horizontal panning.
+   overflow-y goes back to visible, or .roundtitle's position: sticky would have nothing to
+   stick to. */
 .bracket.aslist {
    display: block;
    overflow-x: visible;
    overflow-y: visible;
 }
 
-/* Every chip shrinks to share the row rather than holding its own width and running the
-   row past the screen — a phone's width divided by a slam's seven rounds is still enough
-   for "R16", the longest label this ever prints. overflow-x stays as a fallback for a
-   draw with more rounds than that budget covers, but the ordinary case now fits with
-   nothing to scroll. */
+/* The round chips share the row. overflow-x is a fallback for a draw with more rounds than
+   fit. */
 .roundchips {
    display: flex;
    gap: 5px;
@@ -5220,11 +4371,7 @@ a {
    text-align: center;
 }
 
-/* Pinned to the page top on scroll, so the round stays legible while the list under it
-   runs past — a phone's round can be a full screen or more of cards, and past the first
-   one there is nothing left on screen naming which round they're from. Sticky rather than
-   fixed: it needs no JS height offset, and it only overlays once it would otherwise have
-   scrolled off, not before. */
+/* The round title sticks to the top while its list scrolls past. */
 .roundtitle {
    margin: 0 calc(-1 * var(--wrap-pad)) 10px;
    font-size: 12px;
@@ -5244,32 +4391,20 @@ a {
    gap: 16px;
 }
 
-/* relative, not static: the card is out of the tree layout's absolute positioning here,
-   but it still has to be the containing block for its own tier wedge. Static, the wedge
-   resolved against .pair instead — so both cards in a pair drew their wedge on the pair's
-   top-left corner, the second over the first, and half the draw showed the wrong tier
-   while the other half showed none. Relative changes nothing about the flow. */
+/* relative, so each card contains its own tier wedge. */
 .rlist .match {
    position: relative;
 }
 
-/* Tighter gap than the list's own — this is the visual grouping that says these two meet
-   next round. No in-list right-side bracket: the round-nav thread preview already draws that
-   exact first hop on every round that has a right nav zone, which is every round but the
-   final. */
+/* A tighter gap marks the two cards that meet next round. */
 .rlist .pair {
    display: flex;
    flex-direction: column;
    gap: 6px;
 }
 
-/* Tap zones flanking the round: left steps back, right steps forward. A flex row so each
-   zone stretches to the list's own height for free — no JS measuring needed.
-   The row pulls back out through the page gutter so each zone starts at the screen's own
-   edge. Inside the gutter, a zone left 20px of dead page beside it that looks like part of
-   the control and isn't: a thumb aimed at the edge — which is where a thumb goes when the
-   target is an edge — landed on nothing. Flush, the outermost pixel is live, which is also
-   what lets the zones be this narrow: none of their width is spent on a margin now. */
+/* Tap zones either side of the round: left goes back, right goes forward. The row pulls out
+   through the page gutter so the zones reach the screen edge. */
 .roundnavrow {
    --nav-w: 28px;
    --nav-w-back: 22px;
@@ -5283,12 +4418,8 @@ a {
    min-width: 0;
 }
 
-/* The first round has no left zone and the final has no right one, and the content column
-   is what takes up the slack — which, now that the row reaches the screen, would put those
-   two rounds' cards hard against the bezel with no gutter at all. It stands in for the
-   missing zone at exactly the zone's own width rather than at the page gutter, so the card
-   column holds the same two edges from the first round through to the final: paging
-   through the draw moves the cards' contents and nothing else. */
+/* The first round has no left zone and the final no right one, so padding of the same width
+   keeps the cards in place. */
 .roundnavrow>.roundcontent:first-child {
    padding-left: var(--nav-w-back);
 }
@@ -5309,16 +4440,9 @@ a {
    outline-offset: -2px;
 }
 
-/* Both narrow, and the back zone narrower still. They were briefly the same width, on the
-   theory that a pair read down two edges wants to match; but they hold different drawings
-   and equal widths didn't buy equal weight. The forward zone packs two or three hops into
-   its width, and that density reads fine and light. The back zone holds a single hop —
-   one open bracket, the biggest shape either zone draws — and at a matched width it read
-   as the heavier of the two even though the boxes were identical. Taking it in closes that
-   gap; the shape it draws scales with the width (see drawBackThreads), so it comes in
-   proportionally rather than just getting steeper.
-   Neither zone has any static affordance of its own; both are blank until that preview is
-   drawn into them after layout. */
+/* The back zone is narrower, since its single open bracket reads heavier than the forward
+   zone's two or three hops (see drawBackThreads). Both are blank until the preview threads
+   are drawn after layout. */
 .roundnav.left {
    width: var(--nav-w-back);
 }
@@ -5327,10 +4451,7 @@ a {
    width: var(--nav-w);
 }
 
-/* Thinner than the draw's own wires and thinner than these were. At full width these were
-   the same 1.5 as a wire spanning a whole column, which put the heaviest line on the page
-   in its narrowest lane — the preview only has to read as a thread going somewhere, and a
-   hairline does that without competing with the cards it runs off. */
+/* Hairline threads, thinner than the draw's wires. */
 .navthreads path {
    fill: none;
    stroke: color-mix(in srgb, var(--acc) 38%, var(--line));
@@ -5341,9 +4462,7 @@ a {
    fill: color-mix(in srgb, var(--acc) 55%, var(--line));
 }
 
-/* The one moment either zone shows itself: a zone with no resting state and no label needs
-   to answer "did I hit it, or did I hit the page?" while the finger is still down, and the
-   threads are the only thing it owns to answer with. */
+/* The threads darken while a zone is pressed. */
 .roundnav:active .navthreads path {
    stroke: var(--acc);
 }
@@ -5361,9 +4480,7 @@ a {
       font-size: 12.5px;
    }
 
-   /* The updated time now carries a zone, so the two halves of this line no longer share
-      one comfortably: the charting link drops to its own line and the middot between them
-      goes with the break. */
+   /* The charting link drops to its own line, and the middot goes with the break. */
    .meta .metasep {
       display: none;
    }
@@ -5377,12 +4494,8 @@ a {
       font-size: 13px;
    }
 
-   /* the dialog becomes a bottom sheet: full width, rounded top, slides up */
-   /* The sheet stands on the bottom edge, so every pixel it gives up is above it — which is
-     the end the condensed close button rises into. The second term keeps that room a fixed
-     --close-size rather than a share of the screen: 8% is 44px only from 550px of height up,
-     and under that the button went off the top. overflow goes visible with it, since the
-     button is the one thing on this panel that is meant to be outside it. */
+   /* The dialog becomes a bottom sheet. max-height leaves at least --close-size above it for
+     the condensed close button, and overflow is visible so the button can sit outside. */
    .matchup {
       top: auto;
       bottom: 0;
@@ -5394,15 +4507,8 @@ a {
       animation: sheet .2s ease-out;
    }
 
-   /* Condensed, the button leaves the sheet and stands on the scrim above it. In the full
-     header the corner is the button's own — the event and date chips are opposite it and the
-     names are a row below. Condensed that row is gone, the names come up level with it, and
-     the corner becomes the end of the right-hand name.
-     A lane across that name is what the dialog spends and what a phone cannot: 38px off a
-     track already down to ~104px is what broke "F. Auger-Aliassime" over four lines and sent
-     the scoreboard to its stacked fallback on matches whose names fit a single line either
-     side of the score. So here the button is the thing that moves, and the band keeps its
-     full width. */
+   /* Condensed, the close button moves above the sheet onto the scrim, so the right-hand name
+     keeps its full width. */
    .matchup.cond .mp.b {
       padding-right: 0;
    }
@@ -5411,13 +4517,8 @@ a {
       top: calc(-1 * var(--close-size));
    }
 
-   /* Raised, the chip is still against two edges — the screen's on its right and the sheet's
-     underneath — so it keeps those two sides square and gives up their borders, exactly as
-     it does down in the corner. Only the pair of edges changes. It moves to the foot of the
-     target rather than its head so the mark is the part against the sheet, and the rest of
-     the 44px reaches up into the scrim, which has nothing in it to collide with. Written as
-     a top offset in both states, not top in one and bottom in the other, so the move is a
-     length the chip can be animated along rather than a jump between two anchors. */
+   /* Raised, the chip moves to the foot of the target, against the sheet, keeping its two
+     edge sides square. Both states use a top offset so the move animates. */
    .matchup.cond .close::before {
       top: calc(var(--close-size) - var(--chip-h));
       border-width: 1px;
@@ -5430,13 +4531,7 @@ a {
       top: calc(var(--close-size) - var(--chip-h) / 2);
    }
 
-   /* three columns in a phone's width: the first name goes to an initial before any name
-     has to wrap, and the seed badge drops — it is in the draw behind the panel anyway */
-   /* Names back to the outer ends instead of pulled in toward the score. Pulling them in
-     is a wide-panel move — it buys a scoreboard out of width the header was wasting. At
-     this size there is no spare width to buy it with: the names already meet in the
-     middle, and pulling them in only crowds them against the scoreline while the two
-     edges sit empty. */
+   /* Names at the outer ends rather than pulled in toward the score; there's no spare width. */
    .mgrid {
       --mgap-max: 10px;
       --mgap-min: 4px;
@@ -5450,8 +4545,7 @@ a {
       justify-content: flex-start;
    }
 
-   /* the seed badge goes unconditionally — it is in the draw behind the panel anyway, and
-     unlike the name it is not something fitHeader trades away only when it has to */
+   /* No seed badge; it's in the draw behind the panel. */
    .mp .mseed {
       display: none;
    }
@@ -5465,11 +4559,8 @@ a {
       min-width: 13px;
    }
 
-   /* The winner's caret stops overhanging into the name-to-score gap. That gap closes to
-     4-10px on a phone (--mgap tokens above), and a 12px overhang put the gold glyph on top
-     of the first game. It takes its own ~10px in the row instead — fitHeader measures the
-     result — and comes down a size, a phone header having no room for a mark meant to be
-     found from across the band. */
+   /* The caret takes its own space instead of overhanging, since the name-to-score gap is only
+     4-10px here, and comes down a size. */
    .mwin {
       font-size: 12px;
    }
@@ -5487,20 +4578,11 @@ a {
    }
 }
 
-/* phone panel: everything stacks, so each column names its own player rather than relying
-   on a left-right position that stacking removes. */
+/* Phone panel: columns that stack name their own player. */
 @media (max-width: 620px) {
 
-   /* The panel's gutter — the band's names, the body's scroll and the section headings all
-     take --pad-l, so this one number moves the whole panel's left edge at once.
-     It narrows here and not at 700 with the sheet: 620 is where the panel is on a phone,
-     and a sheet 660px across is a narrow window, wider than the desktop panel at the same
-     viewport and comfortable at the 20px edge that panel has.
-     All four ride on the panel, not the band — the close button reads them too, and the
-     band's own padding is the number the pinned chrome pulls back out through, so it has
-     to be the variable and not a literal in the padding shorthand. --band-t has to be that
-     number to the pixel: a 13 here against a 14 there puts the corner row over the panel's
-     top edge, where it is clipped. */
+   /* The panel's gutter. All four live on the panel because the close button reads them, and
+     --band-t must equal the band's top padding or the corner row is clipped. */
    .matchup {
       --pad-l: 12px;
       --pad-r: 22px;
@@ -5517,22 +4599,15 @@ a {
       padding: 11px 12px 12px;
    }
 
-   /* The court sections stay two-up. Stacking them puts a player's three drawings a
-     screen and a half from the three they are meant to be read against, which is the
-     section — so the card gives up its two-column layout instead, and the comparison
-     survives the phone. The sequence sections have no drawing to trade and do stack. */
+   /* The court sections stay two-up so the comparison survives; the card stacks its drawing
+     instead. Text sections stack. */
    .seccols {
       grid-template-columns: 1fr 1fr;
       column-gap: 10px;
    }
 
-   /* stacked, there is nothing left to align across, so the shared rows come off —
-     left on, both columns would claim the same single cell and sit on top of each other.
-     The indent belongs to the stack and is set with it: a column on its own line reads as
-     a block under the player's name it now carries, and 8px is what sets it off the
-     panel's edge. A column still standing beside its opposite number is placed by that,
-     and an indent there only pushes its content off the left end of the colour rule
-     naming it. */
+   /* Stacked, the shared rows come off, and each column is indented 8px under its player's
+     name. */
    .msec.text .seccols {
       grid-template-columns: 1fr;
       grid-template-rows: none;
@@ -5549,13 +4624,8 @@ a {
       display: flex;
    }
 
-   /* Serve direction stays two-up like the court sections above, all the way down: it is
-     the shortest text section in the panel and the boxes read fine at a phone's width, so
-     stacking them would only add a scroll with nothing gained. :has(.srv) is how this one
-     text section is told apart from the others (triggers, deep patterns), which do stack.
-     The stack's indent goes back with the rest of it, and here that is width rather than
-     alignment: this column is split into two boxes of two zones, so 8px off the front of
-     it is 8px off the four numbers the block below is already shrinking to fit. */
+   /* Serve direction stays two-up (:has(.srv) picks it out from the other text sections),
+     with no indent. */
    .msec.text:has(.srv) .seccols {
       grid-template-columns: 1fr 1fr;
       grid-template-rows: repeat(var(--rows, 1), auto);
@@ -5573,9 +4643,7 @@ a {
       display: none;
    }
 
-   /* Doubling up to four boxes across a phone's width leaves each zone ~35px, not the
-     ~70px it was built for — the number was overflowing its own zone at 14px. Shrunk
-     and re-padded so "100%" still clears the zone at the narrowest width this ever runs. */
+   /* Four boxes across a phone leave each zone ~35px, so smaller type and padding. */
    .msec.text:has(.srv) .srvzone {
       padding: 2px 4px 0;
       min-height: 46px;
@@ -5594,12 +4662,8 @@ a {
       font-size: 10px;
    }
 
-   /* The match strip carries three zones per box and a career figure under each of the two
-     outer ones. That will not go into half a phone's width — the career strip's two zones
-     already had to shrink to fit there, and six zones plus their anchors came out at 24px a
-     column with every number clipped. It takes the full row per player instead, which is
-     what .msec.text does by default and what these :has(.srv) rules are overriding; the
-     height it costs is affordable because a charted match runs three sections, not six. */
+   /* The match strip (three zones and career figures) doesn't fit half a phone, so each
+     player gets the full row. */
    .msec.text:has(.zpc) .seccols {
       grid-template-columns: 1fr;
       grid-template-rows: none;
@@ -5639,10 +4703,7 @@ a {
       margin-bottom: 14px;
    }
 
-   /* Stacked, the court has the whole column to itself and was using half of it — 92px of
-     drawing with 70px of nothing beside it, on the screen where the drawing is hardest to
-     read. It takes the width instead; the height it costs is the one thing a phone has
-     plenty of, and this section is the reason to open the panel. */
+   /* Stacked, the court drawing gets a little wider. */
    .msec.cards .pcourt {
       width: 104px;
       margin-bottom: 3px;
@@ -5667,15 +4728,9 @@ a {
    }
 }
 
-/* The scoreboard's last resort, and only reached when the staggered header has actually
-   run out of width — .stacked is put on by fitHeader() in matchup.js, which measures
-   rather than guesses. See the note there for why this isn't a breakpoint.
-   Gated at 620px because the measurement answers "did a name wrap", and on a wide panel
-   that is not a reason to give up the stagger: there is room for a long name to take two
-   lines, and a scoreline out beside the name it belongs to is still worth more. Below
-   620 a wrapped name means the two are colliding, which is what this fixes.
-   The header goes to one row — both names level, the score stacked between them a set per
-   row. Same cells, flowed across rows instead of down columns; no second markup path. */
+/* The scoreboard's last resort, set by fitHeader() only when the staggered header has run out
+   of width, and only below 620px, where a wrapped name means a collision. Both names share one
+   row and the score stacks between them, a set per row. */
 @media (max-width: 620px) {
    .mgrid.stacked {
       grid-template-rows: auto;
@@ -5701,8 +4756,7 @@ a {
       column-gap: 8px;
    }
 
-   /* the wide layout pins each cell to a row so A's games sit under A's name; here there is
-     one row per set and the pair reads left to right in source order, so the pins come off */
+   /* one row per set in source order, so the row pins come off */
    .mgrid.stacked .mscore .sg:nth-child(odd),
    .mgrid.stacked .mscore .sg:nth-child(even) {
       grid-row: auto;
