@@ -319,9 +319,8 @@ def poolability(role: dict, min_arm: int = 60) -> dict:
     """Do serving/returning role and deuce/ad court still matter once the serve is blind?
 
     Every other table here pools them, so this is the assumption the experiment rests on.
-    Rather than cite ``serve_side``'s model evaluation — a different test on different
-    data — this asks it directly of the cells being pooled, calibrated against a
-    coin-flip arm split of the same cells: whatever rejection rate the random split
+    It is tested directly on the cells being pooled, calibrated against a coin-flip arm
+    split of the same cells: whatever rejection rate the random split
     produces is what a real effect has to beat.
     """
     out = {}
@@ -487,8 +486,7 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
     md.append("## Can serving and returning points be pooled?")
     md.append("")
     md.append("Everything here pools a player's serving and returning points, and the deuce and "
-              "ad courts. Rather than lean on `serve_side`'s model evaluation (a different test "
-              "on different data), this asks the cells being pooled directly, against a coin-flip "
+              "ad courts. This tests that directly on the cells being pooled, against a coin-flip "
               "split of the same cells as the calibration.")
     md.append("")
     md.append("| | test | cells | rejected at q=0.10 |")

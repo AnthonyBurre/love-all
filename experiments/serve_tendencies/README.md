@@ -1,16 +1,41 @@
 # Serve placement: which tendencies are measurements
 
-What can be safely said about where a player serves? `serve_side` answered the
-descriptive half of that: deuce and ad are different shots, and it printed the
-wide/body/T mix for the tour and five marquee players per tour. This folder
-answers the measurement half. For each statistic a player card might carry, it
-asks whether players differ on it by more than sampling noise, whether it
-repeats in the other half of the same player's matches, and how much charted
-data it needs before either is true.
+What can be safely said about where a player serves? For each statistic a player
+card might carry, this asks whether players differ on it by more than sampling noise,
+whether it repeats in the other half of the same player's matches, and how much
+charted data it needs before either is true. Every statistic is split by service
+court, for the reasons in [Serve side](#serve-side) below.
 
 The same machinery then answers three questions that follow from it: does a
 player's placement hold match to match, does it move across a career, and does
 it change on big points.
+
+## Serve side
+
+The serve-direction codes mean opposite wings on the two courts: a wide serve in the
+deuce court goes to a right-hander's forehand, and in the ad court to their backhand.
+A direction mix that pools both courts averages two different serves, so everything
+here is split by side.
+
+There is no side column, but the score fixes it. Every game and tiebreak opens on the
+deuce court and the side alternates each point, so it's the parity of the points
+already played (`serve_side()` in `shots/score.py`, materialized on `points_parsed`).
+Across the 1.85M charted points the split is 52.2% deuce / 47.8% ad, the slight deuce
+excess you'd expect, and nothing derives as unknown. The raw mix reproduces the known
+pattern: men serve wide 51% of the time in the ad court against 44% in the deuce
+court, and Nadal, a left-hander, inverts it (54% wide in the ad court, 30% in the
+deuce court).
+
+Two side findings don't belong to any statistic below:
+
+- **The break-point penalty is pressure, not the ad court.** Break points skew to the
+  ad court, but holding the side fixed, the server wins about 3 points per hundred
+  fewer on break points than on normal points in *both* courts (men 61% against 65%
+  and 64%; women about 2 points in both).
+- **Side doesn't improve the point eval.** Added to the score-aware win-probability
+  eval, the best side-aware variant changed held-out log-loss by -0.02%. Side is
+  already implicit in the rally state the eval sees, like the score in
+  `../score_aware_eval`.
 
 ## What it finds
 
@@ -89,8 +114,6 @@ share as the coarser of the two measurements.
 
 ## Related experiments
 
-- **`serve_side`** owns the descriptive split and stays the place to look up what a mix
-  *is*; this adds the error bars.
 - **`blind_reid`** finds the serve the weakest of three feature blocks for naming a
   player. That is discrimination *between* players, where reliability is a statement
   *within* one. A statistic can be perfectly stable per player and still identify nobody
@@ -118,9 +141,9 @@ seeded per player and the match list is sorted before shuffling.
 
 ## Method notes
 
-- **Side** comes from the score parity rule in `shots/score.py`, as in
-  `serve_side`. The `40-40` bucket landing only in the deuce court is a free
-  check that the derivation holds.
+- **Side** comes from the score parity rule in `shots/score.py` (see
+  [Serve side](#serve-side)). The `40-40` bucket landing only in the deuce court is a
+  free check that the derivation holds.
 - **True spread** is the observed variance across players minus the mean
   binomial sampling variance, so it does not reward thinly-charted players for
   scattering.
