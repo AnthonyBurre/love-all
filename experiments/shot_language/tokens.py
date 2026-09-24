@@ -15,18 +15,12 @@ enough for dense n-gram statistics but fine enough to separate real patterns
 ``o`` other (a trick shot, or a stroke the charter did not type); ``dir`` is the charted
 court zone 1/2/3 (``·`` if unknown).
 
-Zones are the codebook's raw thirds by default, which name the court by the
-right-hander convention (1 = a righty's forehand corner). That convention is fine for
-counting where balls land and wrong for describing what shot a player hit — a lefty's
-crosscourt forehand lands in zone 3 where a righty's lands in zone 1, so the same
-stroke gets two different words depending on which hand held the racket. Pass
-``lefties`` to ``point_tokens`` to mirror 1↔3 for left-handed hitters and get tokens
-that name the shot rather than the half of the court.
-
-The mirror is opt-in because the raw zones are load-bearing elsewhere: four other
-experiments read these tokens, and ``docs/js/court.js`` parses ``pretty()`` output back
-into zone digits to draw ball paths, where a mirrored digit would be drawn as a literal
-court third. Only ``shot_language`` asks for it — see its run.py for why.
+Zones are the codebook's raw thirds by default, named by the right-hander convention
+(1 = a righty's forehand corner), so a lefty's crosscourt forehand gets a different token from
+a righty's. Pass ``lefties`` to ``point_tokens`` to mirror 1↔3 for left-handed hitters.
+Mirroring is opt-in because four other experiments read raw zones, and ``docs/js/court.js``
+parses ``pretty()`` output back into zone digits to draw ball paths. Only ``shot_language``
+uses it.
 """
 
 import sys

@@ -1,27 +1,19 @@
-"""Draw sheets and tour calendars from Wikipedia — the structural feed ESPN doesn't have.
+"""Draw sheets and tour calendars from Wikipedia, the structural feed ESPN doesn't have.
 
-ESPN gives scores but no draw: no slot positions, no seeds, nothing (verified against the
-scoreboard, the core API's event/competition/competitor objects, and ``/bracket``,
-``/draws``, ``/rounds``, which all 404). The sources that *do* carry draw structure are
-licensed feeds — Sportradar sells it, Sofascore reverse-engineered it and TLS-fingerprints
-every non-browser client.
-
-Wikipedia's per-event draw pages carry the same thing in the open: ``{{16TeamBracket}}``
-templates whose parameters are *positional*, which is precisely a draw sheet.
+ESPN gives scores but no draw (no slot positions or seeds; its bracket and draws endpoints
+404). Licensed feeds carry draws; Wikipedia's per-event draw pages carry them in the open, as
+``{{16TeamBracket}}`` templates whose parameters are positional:
 
     RD1-seed01=1     RD1-team01='''{{flagicon|AUS}} [[Alex de Minaur|A de Minaur]]'''
     RD1-seed02=WC    RD1-team02={{flagicon|GRE}} [[Stefanos Tsitsipas|S Tsitsipas]]
 
-Blocks appear in draw order under ``==Draw==`` — "Top half"/"Bottom half" for a 32, eight
-"Section N" blocks for a slam's 128 — so concatenating them yields the full round-1 slot
-order, with seeds and entry tags (``1``, ``Q``, ``WC``, ``LL``) already in the shape our
-fixtures use.
+Blocks appear in draw order under ``==Draw==`` ("Top half"/"Bottom half" for a 32, eight
+"Section N" blocks for a slam's 128), so concatenating them gives the round-1 slot order with
+seeds and entry tags (``1``, ``Q``, ``WC``, ``LL``) in the shape the fixtures use.
 
-**This is crowdsourced data.** It is usually right and occasionally stale — the men's
-Washington calendar row claimed a 48-player field when the draw was 32. So nothing here is
-trusted blindly: the consumer validates a parsed draw against the live feed and falls back
-to name inference if it doesn't fit, and the site labels what came from here so a reader who
-spots an error can go fix it at the source.
+This is crowdsourced and occasionally stale (the men's Washington calendar row claimed a
+48-player field for a 32 draw). The consumer checks a parsed draw against the live feed and
+falls back to name inference if it doesn't fit.
 """
 
 import json
@@ -92,14 +84,9 @@ _SEED_TAGS = ("Q", "WC", "LL", "PR", "SE")
 
 
 def clean_player(raw: str) -> str:
-    """A player name out of a bracket cell.
-
-    Cells wrap the name in a flag, bold-for-winner, and a piped link whose *display* text
-    is abbreviated. The link target is the full name, so prefer it: ``[[Alex de
-    Minaur|A de Minaur]]`` -> ``Alex de Minaur``. Wikipedia's disambiguating suffixes are
-    article-title bookkeeping, not part of the name — ``Tommy Paul (tennis)`` and ``Martin
-    Damm (born 2003)`` are "Tommy Paul" and "Martin Damm", which is also what the feed calls
-    them.
+    """A player name out of a bracket cell. Prefers the link target, which is the full name
+    (``[[Alex de Minaur|A de Minaur]]`` -> ``Alex de Minaur``), and drops disambiguating
+    suffixes like ``(tennis)`` or ``(born 2003)``.
     """
     s = _COMMENT.sub("", raw or "")
     link = _LINK.search(s)
@@ -111,12 +98,9 @@ def clean_player(raw: str) -> str:
 
 
 def clean_seed(raw: str) -> "str | None":
-    """A seed or entry tag (``1``, ``Q``, ``WC``, ``LL``), or None when unseeded.
-
-    A cell can carry more than one, slash-separated and sometimes wrapped in markup:
-    ``<small>2/WC</small>`` is a seeded wildcard, ``Alt/LL`` a lucky loser who was also an
-    alternate. A seed number always wins — that's what a bracket badge shows — and
-    otherwise the standard route wins over rarer markers.
+    """A seed or entry tag (``1``, ``Q``, ``WC``, ``LL``), or None when unseeded. A cell can
+    hold several (``<small>2/WC</small>``, ``Alt/LL``); a seed number wins, then the standard
+    route over rarer markers.
     """
     s = _COMMENT.sub("", raw or "").replace("&nbsp;", " ")
     s = _FLAG.sub("", s).replace("'''", "")
@@ -149,12 +133,8 @@ def draw_section(text: str) -> str:
 
 
 def _split_params(body: str) -> "list[str]":
-    """Split a template body on its top-level ``|`` separators.
-
-    Naive splitting breaks immediately: a cell reads
-    ``'''{{flagicon|AUS}} [[Alex de Minaur|A de Minaur]]'''`` and both of those inner pipes
-    belong to nested markup, not to the template. So track ``{{}}`` and ``[[]]`` depth and
-    only cut at depth zero.
+    """Split a template body on its top-level ``|`` separators, ignoring pipes nested inside
+    ``{{}}`` and ``[[]]``.
     """
     depth = {"{{": 0, "[[": 0}
     opens = {"{{": "}}", "[[": "]]"}
@@ -320,8 +300,8 @@ def _month_at(text: str, pos: int) -> "int | None":
 def parse_calendar(text: str) -> "list[dict]":
     """Events from a ``20xx ATP Tour`` / ``20xx WTA Tour`` page's schedule.
 
-    Each schedule cell packs the event on consecutive lines — common name, city, tier,
-    then surface and field sizes — and links its own per-draw pages:
+    Each schedule cell lists the event on consecutive lines (common name, city, tier, then
+    surface and field sizes) and links its per-draw pages:
 
         [[2026 Mubadala Citi DC Open|Washington Open]]
         [[Washington, D.C.]], United States
@@ -330,11 +310,9 @@ def parse_calendar(text: str) -> "list[dict]":
         [[2026 Mubadala Citi DC Open – Men's singles|Singles]] – …
 
     Returns one dict per event with ``tier``, ``surface``, ``indoor``, ``city``, ``month``,
-    ``draw_size`` and ``singles_pages``. Draw size is reported but deliberately advisory —
-    the men's Washington row claims a 48-player field for a draw that is actually 32 — so
-    the caller validates it against the live feed rather than trusting it. ``month`` comes
-    from the enclosing month heading and exists to disambiguate a city that hosts more than
-    one event a year: Rome holds both a 1000 in May and a 125 in July.
+    ``draw_size`` and ``singles_pages``. Draw size is advisory; the caller checks it against
+    the live feed. ``month`` separates cities with two events a year (Rome: a 1000 in May, a
+    125 in July).
     """
     text = text or ""
     out, seen = [], {}
@@ -393,16 +371,12 @@ def is_usable(slots: "list[dict]") -> bool:
 
 
 def feed_agreement(slots: "list[dict]", tournament) -> float:
-    """Fraction of the live feed's first-round *pairings* this draw actually reproduces.
+    """Fraction of the live feed's first-round pairings this draw reproduces.
 
-    The guard that makes a crowdsourced, search-resolved draw safe to use. Structural checks
-    pass happily on a draw for the wrong event — resolving "Cincinnati Open" by search once
-    returned the Australian Open's, a perfectly well-formed 64 slots. Nor is comparing the
-    *set of players* enough: tour fields overlap so heavily that a slam's draw contains ~84%
-    of a 500's entrants, which is far too close to the real thing to threshold against.
-
-    Who plays whom is the discriminator. Two players share a slot in exactly one draw, so a
-    wrong, stale, or vandalised page collapses to near zero while the right one scores 1.0.
+    Structural checks pass on a draw for the wrong event (a search for "Cincinnati Open"
+    once returned the Australian Open's), and player sets overlap too much (a slam's draw
+    holds ~84% of a 500's entrants). Pairings are the test: the right draw scores 1.0, a
+    wrong or stale one near zero.
     """
     from match_charting_project.live.players import normalize
 

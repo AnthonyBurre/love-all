@@ -1,26 +1,15 @@
-"""Row-shape repair: what `repair_matches` rebuilds, what it drops, and what it refuses
-to guess at.
+"""Row-shape repair: what `repair_matches` rebuilds, what it drops, and what it won't guess.
 
-This runs before anything is coerced or derived, so it is the first thing that sees a
-crowdsourced row and the last chance to tell a damaged one from a real one. Every failure
-here is silent by construction: a row that has slipped a column still has a value in every
-cell, and every one of those values is the right *type*. A per-column check reads it as
-several unrelated oddities — an unusual surface, a best-of of 1 — and passes it through.
+A shifted row still has a value of the right type in every cell, so per-column checks pass
+it. Two shapes:
 
-The two shapes it answers for:
+* a short row, missing `Player 1` and `Player 2`, so hand codes sit in the player columns
+  (nobody is called "R");
+* a row missing only `Surface`, where the surface reads as an umpire's name.
 
-* a *short* row, where `Player 1` and `Player 2` are absent rather than empty, so the hand
-  codes sit in the player columns and everything after them is one or two places to the
-  left. A bare "R" in the player column is the tell; nobody is called R.
-* a row missing only `Surface`, which reads as an ordinary match until you notice the
-  surface is an umpire's name.
-
-The repair is deliberately narrow, and the narrowness is the part worth pinning: only the
-five fields the match_id encodes plus the two self-validating hands are restored, and
-everything from `time` on is nulled rather than slid back. A uniform shift assumes the row
-is missing exactly the columns you think it is, and the one row in the corpus that needs
-rebuilding is missing three, not two — shifted uniformly it comes out with an umpire in the
-surface column and every value plausible enough to survive a per-column check.
+Only the five match_id fields and the two hands are restored; everything from `time` on is
+nulled. The one row that needs rebuilding is missing three columns, not two, so a uniform
+shift would put an umpire in the surface column.
 """
 
 import pandas as pd

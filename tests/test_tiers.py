@@ -1,16 +1,9 @@
 """The tour-tier classifier, which reads a tier out of a free-text tournament name.
 
-There is no tier field in the corpus — 637 distinct names across 1960-2026, with drift — so
-this is derived, and it is derived in two places that must not disagree: `ingest.build`
-labels every historical match with it, and `live.espn` falls back to it when the Wikipedia
-calendar does not cover an event.
-
-The ordering inside `classify_tier` is what these pin. Almost every rule below is reachable
-only because an earlier one did not fire, and the checks are not disjoint: "Miami Masters"
-matches both the Masters substring and the WTA-1000 city list, "Tokyo" is a 1000 for the
-women and a tour stop for the men, and the team markers have to be tested before the
-alphabetic floor sweeps them into the tour bucket. Get the order wrong and every answer is
-still a valid tier.
+Used by `ingest.build` for every historical match and by `live.espn` when the Wikipedia
+calendar doesn't cover an event. These pin the rule order in `classify_tier`: the checks
+overlap ("Miami Masters" matches two rules, "Tokyo" is a 1000 for women only, team markers
+must be tested before the alphabetic floor), and a wrong order still returns valid tiers.
 """
 
 import pytest

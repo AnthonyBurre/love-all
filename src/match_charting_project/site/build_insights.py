@@ -33,18 +33,16 @@ from match_charting_project.shots.notation import (
 from match_charting_project.winprob_match import current_strength
 
 REPORTS = PROJECT_ROOT / "reports"
-# The shot-mix rate columns, in the order the panel's figure column prints them. ``_shot_mix``
-# returns exactly these, so the name is a contract rather than a second copy of the list: a
-# rate computed and left off is dropped at that boundary, and a name here with nothing behind
-# it raises on the way out.
+# The shot-mix rate columns, in the order the panel prints them. ``_shot_mix`` returns exactly
+# these.
 MIX_RATES = ("fh_share", "fh_winner_pct", "fh_err_pct",
              "bh_share", "bh_winner_pct", "bh_err_pct",
              "slice_pct",
              "net_pct", "net_winner_pct", "net_err_pct")
 OUT = DATA_DIR / "insights.duckdb"
 _ERA_RE = re.compile(r"^(?P<base>.+) \((?P<y0>\d{4})[–-](?P<y1>\d{4})\)$")
-# Only recent slam/1000 identities ship: the site archives completed events going forward,
-# never older ones, so their per-match charting status is all the fast path can ever need.
+# Only recent slam/1000 identities ship: completed events are archived going forward, so
+# older per-match charting status is never needed.
 _CHARTED_SINCE = date.today().year - 2
 
 
@@ -56,18 +54,9 @@ def _base(entity: str) -> "tuple[str, int]":
 def _collapse(df: pd.DataFrame, mean_over: "dict | None" = None) -> pd.DataFrame:
     """Collapse era entities to base names, keeping the latest era per (gender, player).
 
-    Latest-era is right for the things this is mostly used for — an archetype and its
-    confidence flag are a claim about how someone plays, and for a split career the
-    current answer is the one worth printing.
-
-    It is wrong for a *measurement* the panel prints beside a career-wide denominator.
-    ``mean_over`` names columns to average across a player's eras instead, weighted by
-    the ``weight`` column, so the figure covers the same matches the coverage band
-    above it counts. Rally length needed this: Connors' two eras run 4.90 and 6.16, and
-    the panel printed 6.2 from 2,776 points directly beside a charted-history line
-    reading 7,309 — under a key claiming the figure covers every charted point the
-    player appeared in. Across the 35 split careers the two eras differ by 0.351 on
-    average, which is 44% of the tour's whole interquartile spread, and by up to 1.266.
+    Latest-era suits the archetype and its confidence flag. ``mean_over`` names measurements
+    to average across eras instead, weighted by the named column, so the figure covers the
+    same matches as the coverage band beside it (Connors' two eras run 4.90 and 6.16 shots).
     """
     df = df.copy()
     parsed = [_base(p) for p in df["player"]]
@@ -106,63 +95,24 @@ def _charted_matches(con) -> pd.DataFrame:
     return df[["gender", "year", "tourn_key", "p1_norm", "p2_norm", "match_id", "charted_by"]]
 
 
-# The service points an ace rate needs behind it. Nothing here is shrunk toward anything, so
-# over one short set a couple of aces reads as a 15% rate; 200 points is about two matches.
-#
-# Both ace figures answer to it — the pooled rate below and the delivery split in
-# ``_serve_aces`` — but not to the same count of points, and the difference is not cosmetic.
-# The pooled rate is totalled off ``stats_overview`` and the split off the parsed notation,
-# where about 3% of points do not decode, so a player near the floor can clear it on one and
-# not the other. One did in the current corpus: Marcelo Arevalo, 215 charted service points
-# and 174 that parse, gets the pooled rate and no split, and his serve plot draws no ace core.
-# Naming the floor once is what keeps that a known 41-point gap rather than two loose 200s.
+# The service points an ace rate needs, since nothing is shrunk; 200 is about two matches.
+# The pooled rate counts points from ``stats_overview`` and the split (``_serve_aces``) counts
+# parsed points (~3% don't decode), so a player near the floor can clear one and not the
+# other (Marcelo Arevalo: 215 vs 174).
 MIN_ACE_PTS = 200
 
 
 def _player_facts(con) -> pd.DataFrame:
-    """Handedness, ace rate and the two serve-in rates per ``(gender, player)``, from the DB.
+    """Handedness, ace rate, and serve-in and serve-won rates per ``(gender, player)``.
 
-    All are facts about the player rather than findings about them, so none comes through
-    an experiment: they are read here and shipped beside the rates.
+    Hand is the modal R/L value across charted matches. Column-shifted upstream rows are
+    ignored, and a tie (Marcelo Filippini, charted once each way) comes out null rather than
+    as a coin toss.
 
-    Hand is the modal value across their charted matches, not the first one seen. A
-    handful of rows in the upstream matches CSV are column-shifted (the hand column
-    holding a date or a tie name), so anything that isn't R or L is dropped before the
-    vote rather than allowed to win one — and a player charted only in those rows comes
-    out null, which the panel prints as nothing.
-
-    A tie comes out null for the same reason. Charters disagree about 44 players' hands and
-    the vote settles 43 of them outright — Nadal is charted left-handed 420 times against 3
-    — but Marcelo Filippini is charted twice, once each way, and there is no majority to
-    read. Naming one of them is a coin toss reported as a fact, and it was not even a stable
-    one: with an arbitrary tiebreak he changed hands between rebuilds. Hand is not
-    decoration — the groundstroke square puts the forehand on the side the player's is, and
-    the court patterns name their zones by it — so it says nothing,
-    which is the answer the archetype already gives when two styles fit equally well.
-
-    Ace rate is over service points across every charted match. The two serve-in rates are
-    each over the serves that were actually hit: first serves over every point served,
-    second serves over the points where the first one missed.
-
-    The two serve-won rates sit on those same denominators, so each pairs with the in-rate
-    above it: how often the delivery landed, then how often landing it won the point. A
-    second-serve point is counted lost when the second serve missed, which is why the
-    denominator there is every point that reached a second serve rather than every second
-    serve that landed — a double fault is a service point lost, and excluding it would
-    quote a rate over the subset of second serves the player got away with.
-
-    They are the half of the serve this panel never had. An in-rate alone does not say
-    whether the serve was worth landing: in the 2025 Wimbledon final Alcaraz landed 53%
-    of first serves, which reads as a collapse, and won 75% of them, exactly as many as
-    Sinner did off 62%.
-
-    No double-fault rate ships. The panel still prints one, but it is exactly
-    ``(1 - second_in_pct) * (1 - first_in_pct)`` — the share of points that reach a second
-    serve, times the share of those the second serve misses — so shipping it as well would
-    be shipping the same fact twice and inviting the two copies to disagree. Recovered from
-    the two rounded rates it is out by at most 0.003pp, against a figure printed to a tenth.
-
-    They need the floor because none is shrunk toward anything — see ``MIN_ACE_PTS``.
+    First serves in are over every point served, second serves in over the points where the
+    first missed. The won rates use the same denominators, so second-serve points won counts
+    double faults as losses. No double-fault rate ships: it equals
+    ``(1 - second_in_pct) * (1 - first_in_pct)``. All are floored at ``MIN_ACE_PTS``.
     """
     hands = con.execute(
         "WITH seen AS ("
@@ -173,9 +123,7 @@ def _player_facts(con) -> pd.DataFrame:
         "  SELECT gender, player, hand,"
         "         rank() OVER (PARTITION BY gender, player ORDER BY count(*) DESC) rk"
         "  FROM seen WHERE hand IN ('R', 'L') GROUP BY gender, player, hand) "
-        # rank() rather than row_number(), and the HAVING is what it buys: a tie ranks both
-        # hands 1 and the player drops out with no hand at all, where row_number() picked one
-        # of them arbitrarily. A player absent here comes through the outer join below as null.
+        # rank(), so a tie ranks both hands 1 and the HAVING drops the player (null hand).
         "SELECT gender, player, min(hand) AS hand FROM voted WHERE rk = 1 "
         "GROUP BY gender, player HAVING count(*) = 1").fetchall()
     serves = con.execute(
@@ -203,25 +151,14 @@ def _player_facts(con) -> pd.DataFrame:
         on=["gender", "player"], how="outer")
 
 
-# A hold or a break needs enough games behind it to mean anything. 100 on each side is
-# roughly four matches of serving, and it is a floor on nonsense rather than a claim of
-# precision — the same job RATE_MIN_PTS does for the rates these marks sit on. At the
-# panel's own 2,000-charted-point gate it excludes nobody: the thinnest player who gets a
-# ring has 144 service games and 148 return games.
+# Games needed behind a hold or break rate, about four matches of serving. At the panel's
+# 2,000-point gate it excludes nobody.
 MIN_GAMES = 100
 
-# Every game in the corpus, with who served it and who won it.
-#
-# The winner is the winner of the game's last point. That is true by definition for a game
-# that finished, and checked rather than assumed: against the independent reading — whose
-# game count went up on the first point of the next game — the two agree on 262,191 of
-# 262,193 games played inside a set. The two that disagree are charting errors, and the
-# rule is kept because the score-progression reading cannot score the last game of a match
-# at all, having no next game to read.
-#
-# Tiebreaks are dropped. Both players serve in one, so it is nobody's hold to lose, and
-# the notation records the real server per point — which is also how they are found:
-# more than one server in a game, or a game played at 6-6. That is 4,986 of 292,431 games.
+# Every game in the corpus, with who served it and who won it. The winner is the winner of
+# the last point, which agrees with the score-progression reading on 262,191 of 262,193 games
+# and also works for a match's last game. Tiebreaks are dropped (more than one server in the
+# game, or played at 6-6): 4,986 of 292,431 games.
 _GAMES_SQL = """
 WITH p AS (
   SELECT match_id, CAST(pt AS INT) AS pt, CAST(game_num AS INT) AS gn,
@@ -245,14 +182,10 @@ GROUP BY 1, 2 HAVING count(*) >= {floor}
 
 
 def _game_rates(con) -> pd.DataFrame:
-    """Hold and break rate per ``(gender, player)`` — the panel's two ring marks.
+    """Hold and break rate per ``(gender, player)``, the ring's arc and tick.
 
-    Games rather than points, which is the whole reason they are worth drawing beside the
-    rings: a serve edge measured in points is small and measured in games is not. The
-    charted tour wins 64% of service points and holds 80% of service games (men), 57% and
-    66% (women), and the same lever works the other way on return — 36% of return points
-    becomes 20% of return games broken. The mark on each ring is that conversion, per
-    player, on the ring's own scale.
+    Games rather than points, since a serve edge that is small in points is large in games:
+    the men's tour wins 64% of service points and holds 80% of service games.
     """
     hold = pd.DataFrame(
         con.execute(_GAMES_SQL.format(mine=1, test="=", floor=MIN_GAMES)).fetchall(),
@@ -267,17 +200,12 @@ def _game_rates(con) -> pd.DataFrame:
         on=["gender", "player"], how="outer")
 
 
-# A return-winner rate is a small number over a large denominator, so its floor is set by how
-# many events sit behind it rather than by how many points do: at the modern men's rate of
-# about 1.2%, 1,000 return points is a dozen return winners. Below that the figure is mostly
-# the charter's rounding. It costs 5 of the 363 players who get a ring, and they go without
-# the line and the wedge rather than with a fragile version of both.
+# Return points needed behind a return-winner rate. At about 1.2%, 1,000 points is a dozen
+# winners. Excludes 5 of the 363 players who get a ring.
 MIN_RETURN_PTS = 1000
 
-# Points the returner won on the return itself: the point ended on the second shot, the
-# returner took it, and the notation calls it a winner. That is the whole rally — a serve and
-# one ball back — so there is no forced-error case to add: a forced error on the second shot is
-# the returner's own, and the server wins it.
+# Points won on the return itself: the point ended on the second shot, the returner took it,
+# and it was a winner. (A forced error on the second shot is the returner's own.)
 _RETURN_WINNER_SQL = """
 WITH r AS (
   SELECT m.gender,
@@ -294,19 +222,9 @@ FROM r GROUP BY gender, player HAVING count(*) >= {floor}
 """
 
 
-# The career reading of the charted match's "average length of points won": mean strokes in
-# the points this player actually won, over every charted match of theirs.
-#
-# It ships as the anchor under that match figure and nowhere else. As a figure in its own
-# right it would be the panel saying the same thing twice — across the players who qualify it
-# correlates 0.989 (men) and 0.981 (women) with avg_rally_len, which the column already
-# prints, so a reader comparing two players on it would be comparing their point lengths
-# through a second name for them. Under a match figure it is doing the one job that
-# correlation does not spoil: saying whether 4.4 shots was long or short *for this player*.
-#
-# Counted like the match figure it anchors, so the two are the same measurement over
-# different windows: parsed points only, strokes over the points the player won — see
-# build_match_details._fold_point.
+# The career "average length of points won": mean strokes in the points the player won.
+# Shipped only as the career anchor under the match figure (as a figure of its own it would
+# repeat avg_rally_len, r ≈ 0.98), and counted like build_match_details._fold_point.
 _WON_LEN_SQL = """
 WITH w AS (
   SELECT m.gender,
@@ -319,10 +237,8 @@ SELECT gender, player, avg(rally_len) AS won_rally_len
 FROM w GROUP BY gender, player HAVING count(*) >= {floor}
 """
 
-# Won points behind the career figure. Rally length has a standard deviation near 3.3 strokes,
-# so the standard error of this mean is 3.3/sqrt(n) — at a thousand won points that is 0.10,
-# which is one unit of the single decimal the figure prints at. Below it the anchor would be
-# moving in the digit it is shown in.
+# Won points needed: with a rally-length SD of ~3.3, 1,000 points gives a standard error of
+# 0.10, the figure's printed precision.
 MIN_WON_PTS = 1000
 
 
@@ -332,39 +248,15 @@ def _won_point_len(con) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["gender", "player", "won_rally_len"])
 
 
-# The shot mix needs enough strokes of the kind it is measured over to be a rate rather than
-# a run of luck. 800 is the number variety already uses for the same unit — charted strokes —
-# and at the panel's own 2,000-point ring gate it excludes nobody: the thinnest player who
-# gets a ring has 3,171 rally strokes, 1,243 forehands and 1,360 backhands. It bites below
-# that, where the figure column still prints without the rings, and that is where it is for.
-#
-# It is a floor on obvious nonsense and not a claim of precision. These are career charted
-# rates, never adjusted for the opponents a volunteer chose to chart, exactly like the two
-# rates on the rings.
+# Strokes needed for a shot-mix rate, the same 800 variety uses. At the 2,000-point ring gate
+# it excludes nobody. A floor on nonsense, not a claim of precision.
 MIN_MIX_SHOTS = 800
 
-# The net group gets its own floor, because nobody hits 800 volleys: the median player in this
-# corpus hits 28 net shots in their whole charted record, and the median player who gets a ring
-# hits 336. 200 is where those rates stop being a coin toss — at the tour's ~10% net error rate
-# it is about twenty missed volleys behind the figure, and its standard error is about half the
-# spread the middle of the tour occupies. Roughly three quarters of the players who get a ring
-# clear it.
-#
-# It is the loosest floor on the panel, and the two rates it gates are the least steady figures
-# on it: split-half over alternate matches, the net winner rate reads 0.80 and the net error
-# rate 0.52, against 0.72–0.81 for the wing rates and 0.90+ for the shares. The error rate is
-# the one that pays for its noise — it is uncorrelated with the winner rate beside it (r =
-# -0.00), so what coming forward costs is not recoverable from what it earns, and no other
-# figure on the panel carries it. Raising the floor is the only lever on it and there is
-# nothing to raise it to: 400 leaves 159 players and 800 leaves 79.
-#
-# It also opens the net *share*, which is otherwise on MIN_MIX_SHOTS like the other two shares.
-# A player can clear this floor without clearing that one — it takes hitting better than a
-# quarter of your strokes at the net — and the share is then the one figure held back while the
-# two rates read against it print. That is the group missing the thing its other rows are
-# measured against, which is the rule the two wing shares already answer to. Chris Lewis is the
-# whole of it in this corpus: 559 rally strokes, 214 of them at the net, a 38% net share that
-# is the most distinctive thing about him and was the only one of his three figures withheld.
+# The net rates' own floor, since the median player hits only 28 net shots in their charted
+# record. At 200, a ~10% error rate has about twenty misses behind it. These are the least
+# steady figures on the panel (split-half 0.80 for winners, 0.52 for errors), but the two are
+# uncorrelated, so both print. Clearing it also opens the net share for a player under
+# MIN_MIX_SHOTS (Chris Lewis: 559 strokes, 214 at the net).
 MIN_STROKE_SHOTS = 200
 
 _MIX_SQL = (
@@ -377,21 +269,10 @@ _MIX_SQL = (
 def _shot_mix(con) -> pd.DataFrame:
     """Career shot mix per ``(gender, player)``: what they hit, and what each wing did.
 
-    The career reading of the ten figures the charted-match panel prints from the sidecar —
-    six in the groundstroke square, four in the style column — off the same shared stroke walk
-    (``notation.fold_shot_mix``), so the two are one measurement over two windows: the match's
-    own rate, and this underneath it as the anchor that says whether that rate was ordinary
-    for the player.
-
-    A whole-corpus walk in Python, which sounds worse than it is: 1.85M points decode in about
-    ten seconds, against the minutes the experiment CSVs feeding the rest of this file already
-    cost. There is no SQL shortcut worth having — the counts are per stroke and the notation
-    has to be tokenized to find them, and doing it here rather than in a second decoder is
-    what keeps the career figure and the match figure counting the same strokes.
-
-    Keyed by base player name straight off ``matches``, like the return-winner rate beside it,
-    so no era collapse applies: this is the player's whole charted record, which is the window
-    the coverage band at the top of the panel counts.
+    The career reading of the ten figures the charted-match panel prints, off the same stroke
+    walk (``notation.fold_shot_mix``) so match and career count the same strokes. A Python
+    walk of the whole corpus takes about ten seconds. Keyed by base name straight off
+    ``matches``, so there's no era collapse.
     """
     acc: dict = defaultdict(blank_mix)
     cur = con.execute(_MIX_SQL)
@@ -402,61 +283,35 @@ def _shot_mix(con) -> pd.DataFrame:
                 continue
             names = {1: (gender, p1), 2: (gender, p2)}
             fold_shot_mix(point, lambda h: acc[names[h]])
-    # Columns named even when there are no rows, so a corpus nothing parses walks the same
-    # path as a full one and comes out with every rate column present and empty. A second
-    # hand-kept list of the rate names for that case is the list that drifts from the
-    # assignments below.
+    # Columns named even with no rows, so an empty corpus still yields every rate column.
     df = pd.DataFrame([{"gender": g, "player": p, **c} for (g, p), c in acc.items()],
                       columns=["gender", "player", *MIX_FIELDS])
     gs = df.fh_gs + df.bh_gs
 
     def rate(num, den, floor, also=None):
-        """A share, null under the floor — a rate off too few strokes is not shipped.
-
-        ``also`` is a second way in for a share whose group has cleared a floor of its own:
-        the figure still stands on ``den``, but a group that gets to print its outcome rates
-        gets to print how often it is played too.
-        """
+        """A share, null under the floor. ``also`` lets a share through when its group has
+        cleared a floor of its own."""
         keep = den >= floor if also is None else (den >= floor) | also
         return (df[num] / den).where(keep).round(4)
 
-    # The net group's floor as a mask, because two rows read it: the outcome rates take it as
-    # their own denominator's floor, and the share takes it as `also` — see MIN_STROKE_SHOTS.
+    # The net floor as a mask: the net outcome rates use it, and the net share takes it as
+    # `also`.
     net_ok = df.net_shots >= MIN_STROKE_SHOTS
 
     out = pd.DataFrame({"gender": df.gender, "player": df.player})
-    # Grouped the way the panel draws them: which hand, then what kind of ball. The two
-    # shares are complements by construction, and both ship — each group's outcome rates are
-    # read against how often that stroke is played at all, so a group without its own share
-    # row is a group missing the thing its other two rows are measured against.
+    # Wing shares and outcome rates, grouped the way the panel draws them.
     out["fh_share"] = rate("fh_gs", gs, MIN_MIX_SHOTS)
     out["fh_winner_pct"] = rate("fh_winners", df.fh_gs, MIN_MIX_SHOTS)
     out["fh_err_pct"] = rate("fh_errs", df.fh_gs, MIN_MIX_SHOTS)
     out["bh_share"] = rate("bh_gs", gs, MIN_MIX_SHOTS)
     out["bh_winner_pct"] = rate("bh_winners", df.bh_gs, MIN_MIX_SHOTS)
     out["bh_err_pct"] = rate("bh_errs", df.bh_gs, MIN_MIX_SHOTS)
-    # The slice ships as a share and nothing else — how often the player chooses the ball,
-    # which is the archetype signal and the steadiest figure in the block (0.90 split-half over
-    # alternate matches). Neither outcome rate survived the same test the return-winner rate
-    # answers to.
-    #
-    # The winner rate fails outright: the tour's median is 0.89% and the middle half spans 0.56
-    # points, so at any floor players clear, one or two shots carry the figure and its standard
-    # error is wider than the spread it would be read against.
-    #
-    # The error rate fails on two counts at once. It splits half at 0.52 — about a third of the
-    # spread a reader would see on its strip is sampling noise, against 0.72–0.81 for the wing
-    # rates drawn above it — and it correlates 0.44 with the backhand error rate and 0.43 with
-    # the forehand one, so what it does say is largely the groundstroke square saying it again.
-    # A 400-slice floor would carry it (0.78) at 356 players and an 800 one comfortably (0.90)
-    # at 217, but a rate bought at that price has to be telling the reader something the panel
-    # does not already have, and this one is not.
+    # The slice ships as a share only (0.90 split-half). Its winner rate is too rare to
+    # measure, and its error rate is noisy (0.52 split-half) and mostly repeats the wing error
+    # rates (r ≈ 0.44).
     out["slice_pct"] = rate("slice_shots", df.rally_shots, MIN_MIX_SHOTS)
-    # The share rides the net group's own floor as well as the mix one, so it is never the row
-    # missing from a group that prints the two rates read against it. Where it comes through
-    # that way the denominator is under MIN_MIX_SHOTS — a share off 559 strokes rather than
-    # 800 — which is the looser reading, and the alternative is withholding the frequency of
-    # the one stroke the panel has just spent two rows on.
+    # The net share also clears on the net floor, so it's never missing beside the two net
+    # rates.
     out["net_pct"] = rate("net_shots", df.rally_shots, MIN_MIX_SHOTS, net_ok)
     out["net_winner_pct"] = rate("net_winners", df.net_shots, MIN_STROKE_SHOTS)
     out["net_err_pct"] = rate("net_errs", df.net_shots, MIN_STROKE_SHOTS)
@@ -464,20 +319,12 @@ def _shot_mix(con) -> pd.DataFrame:
 
 
 def _return_winners(con) -> pd.DataFrame:
-    """Return-winner rate per ``(gender, player)`` — the return ring's outright-win core.
+    """Return-winner rate per ``(gender, player)``.
 
-    The return side of the ace: a point the player won without playing a rally for it. It is
-    the one figure on these two rings that says something the arc beside it does not — it
-    correlates 0.03 (men) and -0.01 (women) with return points won, where an ace rate largely
-    explains why a server's arc is long.
-
-    Era matters more here than anywhere else on the panel, and it is real tennis rather than
-    charting drift. The men's rate has halved, 2.8% before 2009 to 1.3% in the 2020s, while
-    the women's has held near 2.5% throughout — which is what serve-and-volley leaving the
-    men's game looks like from the returner's end: a return that has to pass an incoming
-    server is a winner, and a return against a baseliner starts a rally. Both tours are
-    charted by the same volunteers under the same conventions, so a judgment shift would have
-    moved both. These are career charted rates and are not adjusted for it.
+    Nearly uncorrelated with return points won (0.03 men, -0.01 women), so it adds something
+    the ring doesn't. The men's rate halved from 2.8% before 2009 to 1.3% in the 2020s while
+    the women's held near 2.5%, which fits serve-and-volley leaving the men's game. Not
+    adjusted for era.
     """
     rows = con.execute(_RETURN_WINNER_SQL.format(floor=MIN_RETURN_PTS)).fetchall()
     df = pd.DataFrame(rows, columns=["gender", "player", "ret_winner_rate"])
@@ -486,28 +333,17 @@ def _return_winners(con) -> pd.DataFrame:
 
 
 # --- the ace, split by which delivery struck it ------------------------------------------
-# An ace is the one point a serve wins on its own, and which serve won it is most of what the
-# figure means: the first delivery is hit to be unreturnable and the second one is not, so a
-# player's two rates run about an order of magnitude apart and averaging them into one number
-# hides which of the two the player is.
-#
-# Each rate sits on the denominator of the column it is drawn inside on the serve plot, which
-# is what lets it be drawn there at all — the ace share is a part of what that delivery won,
-# so the two have to be shares of the same thing:
+# First- and second-serve ace rates run about an order of magnitude apart, so the pooled rate
+# hides which kind of server a player is. Each rate is on the denominator of its column in the
+# serve plot:
 #
 #   first_ace_pct   over the first serves that landed, beside first_won_pct
 #   second_ace_pct  over every point that reached a second serve, beside second_won_pct
 #
-# The second one is not over the second serves that *landed*, for the same reason
-# second_won_pct is not: a double fault is a point that reached a second serve, and the panel
-# divides both rates back out by second_in_pct to get the landed-serve reading the plot draws
-# (see serveSplit in matchup.js). Keeping the two on one denominator is what makes that one
-# division rather than two conventions.
-#
-# Counted off the parsed notation rather than off stats_overview, which totals aces without
-# saying which delivery struck them. `second_serve` is non-empty exactly when the first one
-# missed, which is the same test build_match_details._fold_point applies point by point — so
-# the career rate and the match rate under it are one measurement over two windows.
+# The panel divides both second-serve rates by second_in_pct (see serveSplit in matchup.js).
+# Counted from the parsed notation, since stats_overview doesn't split aces by delivery.
+# `second_serve` is non-empty when the first missed, the same test as
+# build_match_details._fold_point.
 _SERVE_ACE_SQL = """
 WITH s AS (
   SELECT m.gender,
@@ -528,8 +364,7 @@ SELECT gender, player,
 FROM s GROUP BY gender, player HAVING count(*) >= {floor}
 """
 
-# The split takes no floor of its own — it is the pooled figure cut in two, so it answers to
-# the same MIN_ACE_PTS defined above _player_facts, counted here over the points that parse.
+# No floor of its own: the pooled MIN_ACE_PTS, counted over parsed points.
 def _serve_aces(con) -> pd.DataFrame:
     """First- and second-serve ace rates per ``(gender, player)`` — see ``_SERVE_ACE_SQL``."""
     rows = con.execute(_SERVE_ACE_SQL.format(floor=MIN_ACE_PTS)).fetchall()
@@ -538,29 +373,20 @@ def _serve_aces(con) -> pd.DataFrame:
 
 
 def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
-    """Per-side serve placement for the panel, plus the gates it has to respect.
+    """Per-side first-serve placement for the panel, plus the gates it has to respect.
 
-    The shipped mix is the recency-weighted one (``serve_tendencies`` step 7: a
-    10-match half-life predicts a player's next matches better than their career
-    average, because placement drifts), and ``n_eff`` is its effective sample
-    size — the number the reliability gate applies to, since a decay weighting
-    has no raw denominator. ``reliable`` is that gate already applied.
-
-    ``matches`` is how much history that weighting actually reaches for this
-    player: the matches still carrying a tenth of the newest one's weight. It
-    ships per player because that is what the panel says out loud, and the same
-    figure in the meta rows below is the *largest* window on the tour — printing
-    that one against every player overstates the window for the third of them
-    whose careers are shorter than it.
+    The mix is recency-weighted (``serve_tendencies`` step 7: a 10-match half-life predicts
+    better than the career mix). ``n_eff`` is its effective sample size and ``reliable`` the
+    gate already applied. ``matches`` is the player's own window: matches still carrying a
+    tenth of the newest one's weight.
     """
     path = REPORTS / "serve_tendencies_players.csv"
     if not path.exists():
         return None, []
     df = pd.read_csv(path)
     df = df[(df.serve == "1st") & df.recent_n_eff.notna() & df.recent_wide.notna()]
-    # Built column by column rather than renamed: the CSV carries both the recent
-    # and the career mix, and renaming one onto the other's name silently ships
-    # duplicate columns with the career values winning.
+    # Built column by column: the CSV has both the recent and the career mix, and renaming
+    # one onto the other's name would ship duplicate columns.
     serve = pd.DataFrame({
         "player": df.player, "gender": df.gender, "side": df.side,
         "wide": df.recent_wide, "t": df.recent_t,
@@ -585,10 +411,8 @@ def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
     return serve, rows
 
 
-# state_kind / resp_kind are the two strokes' kinds (drive / slice / net / other). They
-# read as part of the prose, but the panel needs them as data: a volley is met in the air,
-# and a drawing that cannot tell one from a drive draws a bounce under a ball that never
-# landed. Both experiments have always emitted them.
+# state_kind / resp_kind are the two strokes' kinds (drive / slice / net / other). The panel
+# needs them so a volley isn't drawn with a bounce.
 PATTERN_COLS = ["player", "gender", "family", "state", "response", "state_depth",
                 "state_kind", "resp_kind",
                 "inc_code", "resp_code", "lift", "count", "n_state", "evidence",
@@ -600,20 +424,12 @@ PATTERN_SIDE_COLS = ["tier", "serve_side", "serve_dir"]
 
 
 def _patterns() -> pd.DataFrame:
-    """The two pattern families, from the two experiments that own them.
-
-    ``rally`` is court_response's: a player's answer to an incoming ball, sides
-    pooled because a mid-rally ball has no side. ``ret`` is serve_plus_one's: the
-    server's third ball, with the service court and the serve's direction in the
-    state wherever the player's charting funds them.
-
-    serve_plus_one is optional. It is the newer of the two, and a stale checkout or
-    a half-run pipeline should ship the panel with court_response's pooled return
-    rows rather than with no return section at all.
+    """The two pattern families. ``rally`` comes from court_response (sides pooled);
+    ``ret`` from serve_plus_one (the server's third ball, with service court and serve
+    direction where the charting allows). If serve_plus_one hasn't run, court_response's
+    pooled ``ret`` rows are used instead.
     """
-    # The code columns are read as text, never inferred. They are digits, and a column
-    # with any blank in it infers as float — which turns serve direction "6" into "6.0",
-    # matches none of the renderer's cases, and silently drops the serve from the drawing.
+    # Code columns are read as text; a blank makes a column float, and "6" becomes "6.0".
     codes = {c: str for c in ("inc_code", "resp_code", "serve_dir", "serve_side", "tier")}
     cr = pd.read_csv(REPORTS / "court_response_players.csv", dtype=codes)
     sp_path = REPORTS / "serve_plus_one_players.csv"
@@ -656,12 +472,8 @@ def build() -> int:
     mix = _shot_mix(con)
     con.close()
 
-    # `current_strength` is read for the player list this table is keyed on, and for the tour
-    # means in `meta` below — not for its two rates. Those were the rings' serve and return
-    # points won; the rings draw games now, and the serve plot answers what a service point is
-    # made of at a resolution a single rate never had. Nothing on the site has read either
-    # since, so they are not shipped: two doubles a row in a file every visitor downloads
-    # whole, and a column nothing reads is a column the next reader has to rule out by hand.
+    # `current_strength` supplies the player list and the tour means in `meta`; its two rates
+    # aren't shipped because nothing on the site reads them.
     summary = pd.DataFrame([
         {"gender": g, "player": p,
          "matches_charted": cov.get((g, p), {}).get("matches", 0),
@@ -672,125 +484,65 @@ def build() -> int:
     ])
 
     summary = summary.merge(facts, on=["player", "gender"], how="left")
-    # Hold and break rate: what the ring draws, and the game-level reading of the serve and
-    # return the rest of the panel is made of. Left-joined like the rest: below MIN_GAMES they
-    # come through null and the ring goes without its mark.
+    # Left-joined like the rest: players below a floor come through null.
     summary = summary.merge(games, on=["player", "gender"], how="left")
     summary = summary.merge(ret_win, on=["player", "gender"], how="left")
-    # The ace rate the panel already carried, cut by which delivery struck it — the two shares
-    # the serve plot deepens the foot of each column with. Left-joined like the rest.
     summary = summary.merge(serve_aces, on=["player", "gender"], how="left")
-    # The shot mix, ten rates wide. Left-joined like everything else, so a player under a
-    # floor comes through null and the panel drops that row rather than printing a rate off
-    # forty forehands. Ten doubles over ~1,700 rows is a few tens of KB in a file every
-    # visitor downloads whole, which is what these are worth: they are the only figures on the
-    # panel that say what a player actually hits.
+    # The ten shot-mix rates.
     summary = summary.merge(mix, on=["player", "gender"], how="left")
 
-    # The same coverage the summary carries as four numbers, cut by season, for the panel's
-    # charted-history chart. Inner-joined to the summary so the table only holds players the
-    # site can actually open a panel for — the charting corpus reaches a long tail of players
-    # who never appear in a draw, and their year rows would be most of the file.
+    # Coverage by season for the charted-history chart, limited to players in the summary.
     years = cov_years.merge(summary[["gender", "player"]], on=["gender", "player"])
     years = years.astype({"year": "int32", "matches": "int32", "points": "int32"})
 
-    # The same coverage at match resolution: one row per charted match, for the segments the
-    # history chart splits each season bar into. Same inner join as ``years`` — panel-openable
-    # players only — and the two agree by construction, since both come out of the one shared
-    # row set in ``coverage_by_*``. ``seq`` is the play order within the season, for laying the
-    # segments out left to right.
+    # Coverage by match, for splitting each season bar; ``seq`` is play order within the
+    # season.
     matches_by_year = cov_matches.merge(summary[["gender", "player"]], on=["gender", "player"])
     matches_by_year = matches_by_year.astype(
         {"year": "int32", "points": "int32", "seq": "int32"})
 
-    # style_confident travels with the archetype, and the panel is required to respect
-    # it: style is a continuum, the clustering's silhouette sits near 0.12, and for a
-    # third of entities the nearest two archetypes fit about equally well. Those are the
-    # ones whose label flipped wholesale when a fifth of a percent of the corpus moved,
-    # so shipping the name without the flag would be shipping the unstable half as
-    # though it were the stable half.
-    # avg_rally_len travels with the archetype because it is the same measurement pass:
-    # mean strokes in the points the player appeared in, keyed by the same era entity. It
-    # It is the panel's profile-column figure; see the class_relative_wpa note below for why
-    # no shot-quality score stands there instead.
-    # avg_rally_len is point-weighted across a split career; the archetype and its
-    # confidence flag stay latest-era. The two want different things from the same row —
-    # see _collapse — and n_points is the weight because it is the denominator the figure
-    # was computed over in the first place.
+    # style_confident travels with the archetype, and the panel must respect it: for about a
+    # third of players the two nearest archetypes fit equally well. The archetype stays
+    # latest-era; avg_rally_len is point-weighted across eras (see _collapse).
     clusters = _collapse(pd.read_csv(REPORTS / "player_style_clusters.csv")
                          [["player", "gender", "archetype", "style_margin",
                            "style_confident", "avg_rally_len", "n_points"]],
                          mean_over={"avg_rally_len": "n_points"}).drop(columns="n_points")
     summary = summary.merge(clusters, on=["player", "gender"], how="left")
 
-    # Beside avg_rally_len rather than with it: that one is point-weighted across a split
-    # career and collapsed from the clustering's era entities, this one is read straight off
-    # the point corpus by base name. They answer different questions and only one of them is
-    # ever on screen at a time — see _WON_LEN_SQL.
+    # Won point length, read straight off the point corpus by base name (see _WON_LEN_SQL).
     summary = summary.merge(won_len, on=["player", "gender"], how="left")
 
     lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
     summary = summary.merge(lang, on=["player", "gender"], how="left")
 
-    # Court-state response profiles: the player's stable, hand-normalized answers to a given
-    # incoming ball. Preferred over raw signature pairs, which mostly surface generic rally
-    # geometry and handedness artifacts — see experiments/court_response.
-    #
-    # Two experiments feed one table, split by family. The rally family is
-    # court_response's. The return family — the server's third ball — comes from
-    # serve_plus_one instead, which asks the same question with the service court and
-    # the serve's direction in the state, at whatever resolution each player's charting
-    # funds. court_response still computes its own ret family for its report; it just
-    # does not ship it, since the two would describe one shot two ways on one page.
+    # Court-state response profiles: rally family from court_response, return family from
+    # serve_plus_one (see _patterns).
     patterns = _patterns()
 
-    # Nothing from class_relative_wpa is merged here: no shot-quality figure survives its own
-    # validation. WPA telescopes within a point, so avg_wpa_lost is identically (win
-    # probability conceded per point) / (strokes per point) and the second factor dominates —
-    # it correlates -0.87 (men) / -0.83 (women) with rally length. The class-relative residual
-    # is no better: it correlates -0.99 with the score it is taken from and 66% of its variance
-    # is still rally length. reports/class_relative_wpa.{csv,md} keep the full record; this
-    # file ships what the panel renders.
+    # No shot-quality figure from class_relative_wpa ships: avg_wpa_lost is mostly rally
+    # length (r ≈ -0.85), and the class-relative residual is no better. See
+    # reports/class_relative_wpa.md.
 
-    # Shot-making triggers (shot_triggers experiment): green lights by aggressive shot
-    # frequency lift, traps by how far conversion falls below the player's norm. One book,
-    # not separate winner and error books — see experiments/shot_triggers.
+    # Shot-making triggers: green lights by aggressive shot frequency lift, traps by how far
+    # conversion falls below the player's norm. See experiments/shot_triggers.
     tr = pd.read_csv(REPORTS / "shot_triggers.csv")
     greens = (tr[tr.tag == "green"].sort_values("att_lift", ascending=False)
               .groupby(["player", "gender"]).head(3))
     traps = (tr[tr.tag == "trap"].sort_values("conv_delta")
              .groupby(["player", "gender"]).head(3))
-    # ``attempts`` ships alongside ``n`` because they are the denominators of two
-    # different numbers on the card and the panel was printing only the first. ``n`` is
-    # the strokes played from that lead-up, which is what the frequency is over;
-    # ``attempts`` is the aggressive shots among them, which is what the conversion is
-    # over — and it is the smaller and more fragile of the two by roughly a factor of
-    # three, so a card labelled n=93 was resting its conversion claim on 33 shots.
+    # ``attempts`` ships beside ``n``: n is the frequency's denominator, attempts (about a
+    # third of n) the conversion's.
     triggers = pd.concat([greens, traps])[
         ["player", "gender", "tag", "context", "att_rate", "att_lift",
          "conversion", "conv_delta", "n", "attempts"]]
 
-    # No starred 3-4 shot tier ships. Screened with the opening blinded and every figure
-    # read off a fold that had no part in the selection, two of 1,752 three-shot
-    # candidates survive, both for retired players who appear in no draw — see
-    # experiments/rally_patterns. That experiment still runs weekly and still writes
-    # reports/rally_patterns.csv, so this is where the tier would come back if the
-    # charting ever funds one for a current player.
+    # No 3-4 shot tier ships: only two of 1,752 three-shot candidates survive, both for retired
+    # players. See experiments/rally_patterns.
 
-    # Opening cues by service court (shot_triggers' openings section). Same currency as
-    # the pooled triggers above — a lead-up that shifts the player's aggressive shot
-    # frequency — but scored against their own norm *for that shot and that court*, which
-    # the pooled table cannot do: a wide serve opens a right-hander's forehand in the
-    # deuce court and their backhand in the ad court, so the pooled row averages two
-    # different serves and names neither. 310 of the pooled rows above are opening cues
-    # shown that way; these are the same shots told properly.
-    #
-    # This waited until 2026-08-29 for a reason worth recording: the experiment produced
-    # this table from the start, but as a raw threshold screen with no multiplicity
-    # correction and its figures read off the data that selected them, while the pooled
-    # table beside it was FDR-corrected and cross-validated. Shipping it in that state
-    # would have put the panel's least-screened numbers next to its most-screened. It is
-    # now on the same footing as everything else here.
+    # Opening cues by service court: the same measure as the pooled triggers, but against the
+    # player's norm for that shot on that court, since a wide serve opens opposite wings on the
+    # two sides. FDR-corrected and cross-validated like the pooled table.
     openings = pd.DataFrame()
     op_path = REPORTS / "shot_triggers_openings.csv"
     if op_path.exists():
@@ -804,24 +556,15 @@ def build() -> int:
                 ["player", "gender", "side", "role", "anchor", "context", "tag",
                  "att_rate", "att_lift", "conversion", "conv_delta", "n", "attempts"]]
 
-    # ``sigma`` is not taken. It printed as the profile column's "shot selection" figure and
-    # was cut by the test that retired the shot-quality score: it correlates -0.81 (men) /
-    # -0.59 (women) with rally length, two thirds of the men's spread is the player's own
-    # baseline aggressive shot frequency — which ``trig_att_rate`` below already carries in
-    # plain percent — and its leaderboard was a serve-volley leaderboard, with Rafter falling
-    # from the top of the tour to below the median once serve and net lead-ups came out. It
-    # also carried no direction: it was independent of whether the extra aggression converted,
-    # so one number described an adaptive player and a baited one identically.
+    # ``sigma`` isn't shipped: it mostly tracks rally length and a serve-volley artifact, and
+    # says nothing about whether the aggression pays. ``trig_att_rate`` covers the question.
     tp = pd.read_csv(REPORTS / "shot_triggers_players.csv")[
         ["player", "gender", "att_rate", "conversion", "n_traps"]].rename(
         columns={"att_rate": "trig_att_rate", "conversion": "trig_conversion"})
     summary = summary.merge(tp, on=["player", "gender"], how="left")
 
-    # Serve placement (serve_tendencies experiment). Only the two targets that
-    # survived that experiment's checks ship: the body share is partly a charter's
-    # opinion (charters disagree about it by ±4-6% on the same players), so it is
-    # measured there and deliberately not reported here. Shares are of all charted
-    # first serves, so wide + T does not reach 100% — the remainder is the body.
+    # Serve placement (serve_tendencies). Wide and T only: charters disagree on body serves by
+    # ±4-6%, so body is left out and the two don't sum to 100%.
     serve, serve_meta = _serve_placement()
     if serve is not None:
         bp = pd.read_csv(REPORTS / "serve_tendencies_leverage.csv")

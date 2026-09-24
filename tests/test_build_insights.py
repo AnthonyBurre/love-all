@@ -1,19 +1,13 @@
 """Tests for the projections that ship to the site's insights DB.
 
-Two projections here have real failure modes, and both fail *quietly* — the build
-succeeds and the panel renders, just with the wrong picture.
+Both fail quietly: the build succeeds and the panel renders the wrong picture.
 
-The serve-placement CSV carries both a career mix and a recency-weighted one under
-similar names, so a build that renames one onto the other's column ships duplicate
-columns with the wrong values winning; both are plausible percentages, so nothing
-looks wrong. These tests pin which number lands in which column, and that the
-reliability gate the experiment computes survives the trip.
+The serve-placement CSV has a career mix and a recency-weighted one under similar names;
+these tests pin which lands in which column, and that the reliability gate survives.
 
-The pattern projection joins two experiments into one table, and the return family
-carries three columns the rally family has no meaning for. Blanks in those columns
-make pandas infer a float dtype, which turns serve direction "6" into "6.0" —
-matching none of the renderer's cases, so the serve silently vanishes from every
-court drawing. These tests pin the codes as text and the two families as disjoint.
+The pattern projection joins two experiments, and blanks in the return family's extra
+columns make pandas infer floats ("6" becomes "6.0", which the renderer doesn't draw). These
+tests pin the codes as text and the two families as disjoint.
 """
 
 import pandas as pd
@@ -87,12 +81,8 @@ def test_only_first_serves_with_a_recent_window(reports):
 
 
 def test_window_is_the_players_own_not_the_tours(reports):
-    """The caption prints this count, and the meta rows carry a different one.
-
-    ``recent_matches`` in the meta CSV is the largest window on the tour (34 here);
-    the per-player column is how far the decay actually reaches for this player (19).
-    Shipping the meta figure per player overstated the window for about a third of
-    the rows the panel prints."""
+    """The caption uses the per-player window (19 here), not the tour's largest window from
+    the meta CSV (34)."""
     _write(reports)
     serve, meta = build_insights._serve_placement()
     assert set(serve.matches) == {19}
@@ -223,16 +213,10 @@ def test_falls_back_to_court_response_when_serve_plus_one_is_missing(reports):
 
 
 # --- hold and break rates ---------------------------------------------------------------
-# The panel's two ring marks are derived from raw points, and every way of getting the
-# derivation wrong produces a plausible percentage rather than an error. Attributing a game
-# to the returner swaps a hold rate for a break rate — 80% and 20% are both real numbers a
-# server could post. Reading the first point of a game instead of the last scores the game
-# for whoever won the opening rally. Counting tiebreaks as service games credits half of
-# every one of them to a player who did not serve it.
-#
-# One synthetic match with a known answer, built as points: three service games for player 1
-# (two held, one broken), two for player 2 (one held, one broken), and a tiebreak that must
-# not be counted for either.
+# Every wrong derivation still gives a plausible percentage: games credited to the returner,
+# the first point of a game read instead of the last, or tiebreaks counted as service games.
+# One synthetic match with a known answer: three service games for player 1 (two held), two
+# for player 2 (one held), and a tiebreak counted for neither.
 def _points_db(tmp_path):
     import duckdb
     con = duckdb.connect(str(tmp_path / "t.duckdb"))
@@ -268,13 +252,9 @@ def _points_db(tmp_path):
 def test_hold_and_break_are_scored_for_the_right_player(tmp_path, monkeypatch):
     monkeypatch.setattr(build_insights, "MIN_GAMES", 1)
     g = build_insights._game_rates(_points_db(tmp_path)).set_index("player")
-    # Player 1 served games 1, 3 and 5 and held two of them; player 2 served 2 and 4 and
-    # held one. Break rates are the same games read from the other side. The rates ship
-    # rounded to four places, which is the tolerance here.
-    #
-    # Player 1's two holds also pin that a game goes to whoever won its *last* point:
-    # game 3 opens with a point to the returner and still ends as a hold, so reading the
-    # first point of a game instead would score it 1/3 here.
+    # Player 1 held two of games 1, 3 and 5; player 2 held one of 2 and 4. Rates ship
+    # rounded to four places. Game 3 opens with a point to the returner and is still a hold,
+    # which pins that a game goes to whoever won its last point.
     assert g.loc["A Player", "hold_rate"] == pytest.approx(2 / 3, abs=5e-5)
     assert g.loc["B Player", "hold_rate"] == pytest.approx(1 / 2, abs=5e-5)
     assert g.loc["A Player", "break_rate"] == pytest.approx(1 / 2, abs=5e-5)
@@ -347,11 +327,9 @@ def test_return_winners_respect_their_own_floor(tmp_path, monkeypatch):
 
 
 # --- the ace, split by delivery ----------------------------------------------------------
-# The two cores the serve plot deepens. Both failure modes here are quiet: counting a
-# second-serve ace among the first serves draws a core inside a column the point never
-# reached, and putting the second-serve rate on the landed second serves rather than on
-# every point that reached one breaks the division the panel does to recover it — the
-# result is still a percentage, and still wrong.
+# Both mistakes still give a percentage: counting a second-serve ace among first serves, or
+# putting the second-serve rate over landed second serves instead of every point that
+# reached one.
 def _ace_db(tmp_path):
     import duckdb
     con = duckdb.connect(str(tmp_path / "a.duckdb"))
@@ -383,12 +361,8 @@ def test_aces_are_split_by_the_delivery_that_struck_them(tmp_path, monkeypatch):
     r = build_insights._serve_aces(_ace_db(tmp_path)).set_index("player")
     # Four points never reached a second serve and two of them were aced.
     assert r.loc["A Player", "first_ace_pct"] == pytest.approx(2 / 4, abs=5e-5)
-    # Three points did, one of them aced. The denominator is those three and not the two
-    # second serves that landed — it is the one second_won_pct is on, and the panel divides
-    # both by second_in_pct to get the landed reading the plot draws.
-    #
-    # One of those three is the double fault, which is why 1/3 rather than 1/2: a point
-    # where neither delivery landed is in the denominator and never the numerator.
+    # Three points reached a second serve, one aced, so 1/3. The double fault is in the
+    # denominator (the same one as second_won_pct).
     assert r.loc["A Player", "second_ace_pct"] == pytest.approx(1 / 3, abs=5e-5)
 
 
@@ -438,12 +412,9 @@ def test_a_tied_hand_comes_out_null_rather_than_picked(tmp_path):
 
 
 # --- the career shot mix ----------------------------------------------------------------
-# The panel prints a match's shot mix with the career reading directly underneath it as the
-# anchor. That only means anything if the two count the same strokes, so both builds walk the
-# notation through one shared helper (shots.notation.fold_shot_mix) — the test that the two
-# agree lives in tests/test_notation.py, and these pin what this build does around it: which
-# player each stroke lands on, and that a rate under its floor is withheld rather than printed
-# off a handful of shots.
+# Match and career mix share one helper (shots.notation.fold_shot_mix, tested in
+# test_notation.py). These pin which player each stroke lands on, and that a rate under its
+# floor is withheld.
 def _mix_db(tmp_path, points):
     import duckdb
     con = duckdb.connect(str(tmp_path / "mix.duckdb"))
@@ -512,14 +483,9 @@ def test_the_stroke_groups_have_their_own_floor(tmp_path, monkeypatch):
 
 
 def test_the_net_group_prints_all_three_rows_or_none(tmp_path, monkeypatch):
-    """The live direction of the two floors, and the one the shipped numbers take: a player can
-    clear the net floor without clearing the mix one — it takes hitting better than a quarter of
-    your strokes at the net — and the share is the row that would go missing. It is the row the
-    other two are read against, so it comes through with them.
-
-    A serve-volleyer is the case rather than a curiosity: Chris Lewis has 214 net shots in 559
-    rally strokes, and a 38% net share is the most distinctive thing the panel could say
-    about him."""
+    """A player can clear the net floor without clearing the mix floor, and the net share
+    still comes through with the two net rates (Chris Lewis: 214 net shots in 559 rally
+    strokes)."""
     monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1000)
     monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")

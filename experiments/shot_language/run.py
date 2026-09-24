@@ -63,20 +63,11 @@ def load(con, gender, hands):
 
 
 def analyze(con, gender):
-    # Zones are mirrored for left-handed hitters throughout, so a token names the shot
-    # rather than the half of the court it landed in. Without it this experiment does not
-    # measure variety: the direction codes name fixed thirds by the right-hander
-    # convention, an 87%-righty field model scores a lefty's ordinary crosscourt forehand
-    # as a rare shot, and handedness alone came to explain 56% of the variance — every
-    # left-hander in the corpus sat in the top quartile of their tour, and none of them
-    # anywhere else. Connors ranked fifth-most-varied man on tour with no slice game and
-    # no net game, which is the tell.
-    #
-    # Mirroring by the *hitter* rather than the receiver is what makes the token a word
-    # for a stroke: a crosscourt forehand is one shot, and it should not be two words
-    # depending on which hand played it. In a mixed-handed point the two players' zones
-    # are therefore mirrored under different rules, which is the same trade court_response
-    # already makes for the same reason.
+    # Zones are mirrored for left-handed hitters, so a token names the shot rather than the
+    # half of the court. Without it an 87%-righty field model scored a lefty's ordinary
+    # crosscourt forehand as rare, and handedness alone explained 56% of the variance (every
+    # left-hander sat in their tour's top quartile). Mirroring is by the hitter, so a
+    # crosscourt forehand is one word whichever hand plays it.
     hands = hand_map(con)
 
     # Pass 1 — fit the field language model and the point eval on the same sample.

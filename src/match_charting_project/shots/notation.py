@@ -1,9 +1,7 @@
 """Decode a single tennis point's shot notation into a structured rally.
 
-A point string (e.g. ``4b37y1r3n#``) is a tokenized, alternating-turn sequence of
-strokes ending in a terminal result — structurally a PGN move list. This module is
-the pure decoder the rest of the repo lacked; the README calls the notation "the
-basis for derived shot analytics", and this delivers that basis.
+A point string (e.g. ``4b37y1r3n#``) is an alternating-turn sequence of strokes ending in a
+terminal result, much like a PGN move list.
 
 Notation reference (Match Charting Project "Instructions" tab / quick-start guide,
 http://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/):
@@ -20,24 +18,19 @@ http://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-s
   (the rally, if any, is recorded in the second-serve column).
 
 Validated against the project's own ``stats_overview`` totals (see
-``tests/test_notation.py``): aces/double faults near-exact, forehand/backhand
-winner & error splits within a few percent.
+``tests/test_notation.py``): aces and double faults near-exact, forehand/backhand
+winner and error splits within a few percent.
 """
 
 from dataclasses import dataclass, field
 
-# Shot-type letters, split by the wing that produces them (forehand vs backhand).
-# Used both to name the stroke and to credit forehand/backhand winners & errors.
-# The letters are the charting project's own, from the Instructions tab of the contributor
-# spreadsheet (MatchChart 0.3.2.xlsm). Six of them name three pairs that are easy to read
-# for each other, so they are quoted here verbatim:
+# Shot-type letters, split by wing, used to name the stroke and to credit forehand/backhand
+# winners and errors. From the Instructions tab of the contributor spreadsheet
+# (MatchChart 0.3.2.xlsm). Three pairs are easy to confuse:
 #
 #     u = forehand drop shot        y = backhand drop shot
 #     h = forehand half-volley      i = backhand half-volley
 #     j = forehand swinging volley  k = backhand swinging volley
-#
-# Note that each pair shares a wing with the other two, so the forehand/backhand split is
-# blind to which of the three a letter is. The tests check the letters themselves.
 FH_LETTERS = {
     "f": "forehand", "r": "forehand_slice", "v": "forehand_volley",
     "o": "overhead", "u": "forehand_dropshot", "l": "forehand_lob",
@@ -58,15 +51,10 @@ ERROR_LOCS = set("ndwx")
 TERMINALS = set("*#@")
 MODIFIERS = set("+-=^")
 
-# Stroke "kind" groups, the canonical taxonomy shared by the materialized table and any
-# model. Drive vs slice is well charted (~12% slices) and shapes the rally. Volleys,
-# overheads, half-volleys and swinging volleys are all struck at or inside the net.
-#
-# The drop shot and the lob get a group each rather than sharing one. They are opposites —
-# the shortest ball in tennis and the deepest — so a bucket holding both has no depth, no
-# intent and no useful name, and any drawing of it has to pick one of the two to be wrong
-# about. That leaves "other" meaning what it says: trick shots, and strokes whose type the
-# charter did not record.
+# Stroke "kind" groups shared by the materialized table and any model. Drive vs slice is well
+# charted (~12% slices). Volleys, overheads, half-volleys and swinging volleys are net shots.
+# The drop shot and the lob get a group each, since they're opposites. "other" is trick shots
+# and strokes with no recorded type.
 _DRIVE = set("fb")
 _SLICE = set("rs")
 _NET = set("vzophijk")
@@ -93,14 +81,10 @@ def stroke_kind(letter: str, is_serve: bool) -> str:
 def serve_dir(serve_str: "str | None") -> str:
     """Direction of the delivery charted in ``serve_str``: 4 / 5 / 6.
 
-    ``"0"`` where the charter explicitly recorded an unknown target, ``""`` where the
-    string carries no target at all. Leading markers (a net-cord ``c``) are skipped; a
-    stroke letter means the serve went unrecorded, so we stop looking rather than reading
-    a rally direction as a serve one.
-
-    Read straight off the raw column rather than off a parsed point, because the two
-    callers both want the *first* delivery — landed or faulted — and ``parse_point``
-    keeps only the serve that started the point.
+    ``"0"`` where the charter recorded an unknown target, ``""`` where there's no target.
+    Leading markers (a net-cord ``c``) are skipped; a stroke letter ends the search. Read off
+    the raw column because callers want the first delivery, landed or faulted, and
+    ``parse_point`` keeps only the serve that started the point.
     """
     for ch in serve_str or "":
         if ch in "456":
@@ -310,27 +294,15 @@ def iter_parsed_points(con, where: str = "", sample: "int | None" = None):
         yield parse_point(fs, ss, svr, win)
 
 
-# The shot mix, as the eleven tallies both builds keep: what a player hit, and what each wing
-# and the net did with it. Shared for the same reason ``aggressive_shot`` is — the per-match
-# sidecar (``site.build_match_details``) and the career aggregate (``site.build_insights``)
-# print one under the other on the same panel, as a match figure and the career anchor beneath
-# it, and two copies of "which letters are a groundstroke" would eventually disagree about a
-# drop volley and put the disagreement on screen as a career trend.
+# The shot-mix tallies, shared by the per-match sidecar (``site.build_match_details``) and the
+# career aggregate (``site.build_insights``) so the match figure and its career anchor count
+# the same strokes.
 #
-# ``net_shots`` is the stroke played at the net — volley, overhead, half-volley, swinging
-# volley — and not the wider net-forwardness the style fingerprint measures, which also counts
-# an approach struck from the baseline. Both are defensible; only one can wear the words "net
-# shot" on a page whose notation key defines them.
-#
-# Errors are the unforced ones. A forced error is charged to the player who forced it
-# everywhere else on this panel, and a wing that gets picked on should not wear it here.
-#
-# The wings and the stroke types cross-cut rather than partition: a backhand slice is counted
-# in ``bh_gs`` and in ``slice_shots``. They are two readings of the same strokes — which hand,
-# and what kind of ball — and each is a share of its own denominator, so nothing is double
-# counted inside a rate. The slice is tallied as a count only, no outcomes: neither of its
-# rates survived the reliability test that ships a figure here (build_insights._shot_mix),
-# and what its misses cost is the wings' story, told above by the hand that played them.
+# ``net_shots`` are strokes played at the net (volley, overhead, half-volley, swinging volley),
+# not the style fingerprint's broader net-forwardness. Errors are unforced only. Wings and
+# stroke types cross-cut: a backhand slice counts in ``bh_gs`` and in ``slice_shots``, each a
+# share of its own denominator. The slice has a count only, no outcomes (see
+# build_insights._shot_mix).
 MIX_FIELDS = ("rally_shots", "slice_shots",
               "net_shots", "net_winners", "net_errs",
               "fh_gs", "bh_gs", "fh_winners", "fh_errs", "bh_winners", "bh_errs")
@@ -343,14 +315,8 @@ def blank_mix() -> dict:
 def fold_shot_mix(point: ParsedPoint, acc_of) -> None:
     """Add one decoded point's strokes to each hitter's mix tallies.
 
-    ``acc_of(hitter)`` hands back the counter dict for that player — a side of a match for
-    the sidecar, a career row for the insights build — so the walk is shared and only the
-    bookkeeping around it differs.
-
-    Counted per stroke, which is the denominator the rest of the panel reads shot-making on:
-    a forehand winner happened on one forehand, and dividing it by points played would mix in
-    how long the rallies ran. The serve is skipped: it is neither wing, and it has a plot of
-    its own.
+    ``acc_of(hitter)`` returns that player's counter dict (a side of a match for the sidecar,
+    a career row for the insights build). Counted per stroke, and the serve is skipped.
     """
     for s in point.shots:
         if s.is_serve:
@@ -389,17 +355,11 @@ def fold_shot_mix(point: ParsedPoint, acc_of) -> None:
 def aggressive_shot(shots: list, i: int, n_shots: "int | None" = None) -> "tuple[int, int, int]":
     """Read the stroke at ``i`` as (winner, own unforced error, induced forced error).
 
-    An **aggressive shot** is one where the point ended on this stroke's account: the
-    player hit a winner, missed one themselves (``@``), or their shot survived and the
-    reply to it was charted a forced error (``#``), which credits the pressure to this
-    stroke rather than to the opponent who framed the ball. All three sum to the
-    aggressive shot count; the middle one is the only failure, so conversion is
-    ``(winner + induced) / total``.
-
-    Returns all zeros for a rally ball. Shared by every experiment that counts these
-    (``shot_triggers``, ``rally_patterns``, ``context_length``, ``serve_side``) so the
-    numerator cannot drift between them — see ``experiments/shot_triggers/README.md``
-    for why induced forced errors are in it.
+    An **aggressive shot** is one where the point ended on this stroke's account: a winner,
+    the player's own unforced error (``@``), or a reply charted as a forced error (``#``).
+    Conversion is ``(winner + induced) / total``. All zeros for a rally ball. Shared by every
+    experiment that counts these (``shot_triggers``, ``rally_patterns``, ``context_length``,
+    ``serve_side``); see ``experiments/shot_triggers/README.md``.
     """
     if n_shots is None:
         n_shots = len(shots)

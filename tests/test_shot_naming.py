@@ -1,9 +1,7 @@
 """Tests for the plain-language names given to a rally response.
 
-The name of a shot is not a property of the line it travelled. The same line is
-crosscourt or inside-out, down the line or inside-in, depending on where the ball
-was met and which wing met it — so ``resp_name`` needs the incoming zone as well
-as the response. Against the charting project's own definitions:
+A shot's name depends on where the ball was met and which wing met it, not just its line,
+so ``resp_name`` takes the incoming zone. The charting project's definitions:
 
     crosscourt      from the middle or a far corner, to the opposite far corner
     down the line   starting in a corner, ending in that same corner
@@ -11,17 +9,11 @@ as the response. Against the charting project's own definitions:
     inside-in       a run-around hit down the line
     down the middle to the middle third
 
-Net shots opt out of all of it. Every one of those words is anchored on where the ball
-was struck from, and a volley is cut off in the air wherever the player could reach it,
-so its "zone" is where the ball would have landed — a corner they never stood in. They
-are named by destination instead.
+Net shots are named by destination instead. A ball met in the middle third has no down the
+line, only crosscourt and inside-out.
 
-The consequence that is easy to miss: **a ball met in the middle third has no down
-the line.** There is no corner behind it to line up with, so its two options are
-crosscourt and inside-out.
-
-The rule lives in the court_response experiment and is imported by serve_plus_one.
-Loaded the way that experiment loads it — the file is a script, not a package.
+The rule lives in the court_response experiment script and is loaded the way
+serve_plus_one loads it.
 """
 
 import importlib.util

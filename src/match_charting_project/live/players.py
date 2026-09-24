@@ -100,23 +100,10 @@ def coverage(con) -> dict:
 def coverage_by_year(con):
     """The same counts cut by calendar year: one row per ``(gender, player, year)``.
 
-    Charting is not spread evenly over a career — a player picks up volunteers when they
-    start winning and loses them when they stop, and the corpus as a whole has grown — so
-    "61 matches, 2015–2024" can be sixty matches in one season or six a year for ten. The
-    panel draws this so a reader can tell which, and so two players' spans can be compared
-    on one axis rather than as two date ranges to hold in the head.
-
-    Years with no charted match are simply absent; the renderer fills the gaps, since only
-    it knows the axis it is filling them across.
-
-    Matches with no year are dropped rather than bucketed into an "unknown" slot. There are
-    ten of them in a corpus of ~11,600 — the column-shifted rows the ingest report already
-    names, whose date and tournament came through null — and a match that cannot be placed on
-    a calendar cannot be drawn on a time axis. ``coverage`` above already leaves them out of
-    ``year_min``/``year_max`` for the same reason, since ``min``/``max`` skip nulls, so this
-    keeps the breakdown agreeing with the span it is drawn under. It does mean the bars sum to
-    marginally fewer matches than the total beside them; at 0.09% of the corpus that is below
-    the resolution of anything drawn here.
+    Lets the panel show whether "61 matches, 2015–2024" is one busy season or six a year.
+    Years with no charted match are absent (the renderer fills the axis). The ten matches with
+    no year (column-shifted rows named in the ingest report) are dropped, as they are from
+    ``coverage``'s ``year_min``/``year_max``.
     """
     return con.execute(_COVERAGE_ROWS.format(
         cols="gender, player, year, count(*) AS matches, sum(n) AS points",
@@ -126,21 +113,10 @@ def coverage_by_year(con):
 def coverage_by_match(con):
     """The same counts at match resolution: one row per ``(gender, player, year, match)``.
 
-    ``coverage_by_year`` gives the panel's history chart the length of each season's bar;
-    this gives that bar its segments — one per charted match, sized by the points in it —
-    so a season that is one long match reads differently from one that is six short ones.
-    Adding ``match_id`` to the grouping keys leaves one row per player-match while still
-    going through the shared row set, so the segments always sum to the season bar they
-    divide.
-
-    ``seq`` numbers a player's matches within a season in the order they were played, so the
-    renderer can lay the segments out chronologically without shipping a date per row. It is
-    ordered by ``date`` with ``match_id`` (which carries a ``YYYYMMDD`` prefix) as the
-    tiebreaker for the rare match whose date came through null.
-
-    Years with no charted match are absent and matches with no year are dropped, both as in
-    ``coverage_by_year``: a match that cannot be placed on the calendar has no season bar to
-    belong to.
+    Splits each season bar into one segment per charted match, sized by its points. Built
+    from the same row set as ``coverage_by_year``, so segments sum to their bar. ``seq`` is
+    play order within the season (by ``date``, then ``match_id``, which starts ``YYYYMMDD``).
+    Missing years are handled as in ``coverage_by_year``.
     """
     return con.execute(_COVERAGE_ROWS.format(
         cols="gender, player, year, n AS points, "

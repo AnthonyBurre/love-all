@@ -1,22 +1,10 @@
-"""The two ball-path renderers share a geometry, and this is what keeps them sharing it.
+"""Keeps the two ball-path renderers on the same geometry.
 
-`viz/court.py` is the canonical renderer, used for the reports. The Pages site is static and
-cannot call it at request time, so `docs/js/court.js` draws the same picture in the browser
-from the pattern text already in the DB. Both are needed, and the JS says so in its own
-header: "Keep the geometry below in sync with court.py."
-
-A comment cannot enforce that. Drift here is not a crash — both files keep drawing perfectly
-good courts, and the same stored pattern quietly means two different things depending on
-whether you are reading a report or the site. The numbers below are small and stable, which
-is exactly what makes a one-line edit to either side easy to miss in review.
-
-Only geometry is compared. Presentation has deliberately diverged: the browser draws at
-about 96px in a panel, so it adds arrowheads, a tinted half and a cropped frame, and rings
-one bounce where court.py rings every one it draws past. That divergence is the design, and
-nothing here should hold it still.
-
-This is a Python test rather than a JS one so it runs in the existing pytest job with no
-Node — the drift it catches is on the Python side just as often.
+`viz/court.py` renders for the reports; `docs/js/court.js` draws the same picture in the
+browser. Drift doesn't crash anything: both keep drawing courts, and the same pattern means
+different things in the report and on the site. Only geometry is compared; presentation
+(arrowheads, tinted half, cropped frame) is meant to differ. A Python test, so it runs in the
+existing pytest job.
 """
 
 import re

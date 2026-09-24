@@ -2,46 +2,28 @@
 
 Run:  python experiments/court_response/run.py
 
-The site's signature-pattern panel conditions on the opponent's full previous
-token (wing + type + zone). That framing surfaces generic rally pairs, charting
-artifacts (uncharted-direction tokens), and handedness masquerading as style —
-a lefty answering his forehand corner with a forehand posts a huge lift against
-a right-handed field. This experiment reframes the question the way a player
-experiences it: the state is the incoming ball only — the zone it lands in,
-named relative to the receiver's own hands, plus the ball's character — and the
-response is the player's decision: wing, shot type, and the line taken
-(the diagonal, against it, or through the middle). Everything upstream of the
-incoming ball is deliberately ignored.
+The state is the incoming ball only (the zone it lands in, named relative to the receiver's
+own hands, plus its character), and the response is the player's wing, shot type and line
+(the diagonal, against it, or through the middle). Conditioning on the opponent's full
+previous token instead surfaces generic rally pairs, charting artifacts, and handedness
+posing as style.
 
-Zone geometry: direction codes name fixed thirds ("1" = a right-hander's
-forehand corner), and the two ends face each other, so a reply to the *same*
-code travels the diagonal and a reply to the mirrored code goes against it. For
-balls arriving through the middle, the hitter's wing fixes the reference lane.
+Direction codes name fixed thirds ("1" = a right-hander's forehand corner) and the two ends
+face each other, so a reply to the same code travels the diagonal and a reply to the mirrored
+code goes against it. For balls through the middle, the hitter's wing sets the reference
+lane. Line names depend on the zone: from a corner, crosscourt or down the line; from the
+middle, crosscourt or inside-out; run-arounds get inside-out and inside-in.
 
-Naming those two lines needs the zone as well, because the same line has
-different names depending on the corner it started from. A ball met in a corner
-goes crosscourt on the diagonal and down the line against it. A ball met in the
-middle has no down the line available — there is no corner behind it to line up
-with — so it goes crosscourt or inside-out. Run-arounds (a forehand played from
-the backhand corner) get inside-out and inside-in.
+Two state families from one pass. Rally states are (ball character, zone) for every rally
+pair. Return states add the charted return depth and cover only the server's shot 3, where
+depth is charted on ~74% of returns.
 
-Two state families come out of one pass. Rally states are (ball character,
-zone), depth-agnostic, for every rally pair. Return states add the charted
-return depth (short / mid / deep) and cover only the server's shot 3 — the one
-spot where depth is charted often enough (~74% of returns) to condition on:
-what does the server do with a short return versus a deep one?
+Each pattern carries its payoff (the player's point-win rate after that response, against
+the field's with the same response to the same ball), kept separate from the choice (lift).
+Patterns must clear the gates below, including split-half stability.
 
-Each pattern also carries its payoff: how often the point ends up won by the
-player after they play that response, next to how often the field wins it
-playing the same response to the same ball. Choice (lift) and execution
-(payoff) stay separate claims — a pet shot can be overused, underused, or
-simply better in their hands.
-
-A pattern is surfaced only if it clears the gates below, including split-half
-stability: it must show up in both halves of the player's charted matches.
-
-Writes reports/court_response.md, reports/court_response_players.csv, and a
-stability figure.
+Writes reports/court_response.md, reports/court_response_players.csv, and a stability
+figure.
 """
 
 import csv
@@ -264,51 +246,26 @@ def profile(res, name, audit=None):
     Returns ``(ev, lift, state, resp, n, c, disc_lift, folds, conv, fconv, p_field,
     sconv, q, n_cand)``.
 
-    Two safeguards apply to this screen.
+    **Multiplicity.** A player is screened on a median of 17 (state, response) candidates
+    and up to 208. Each fold's candidates get an exact binomial tail against the field's share
+    for that state, Benjamini-Hochberg adjusted across every cell that fold screened for the
+    player. (Responses to one state are multinomial, so each tail is an approximation; the BH
+    family is what the control rests on.)
 
-    **A multiplicity correction.** A player is screened on a median of 17 (state, response)
-    candidates and up to 208 — 35,979 across the tour — so a fixed lift threshold with no
-    test behind it would not account for how many tendencies had been tried on a player
-    before one cleared. Each fold's candidates get an exact binomial
-    tail against the field's share for that state, Benjamini-Hochberg adjusted across every
-    cell that fold screened for that player. Within player is the right family: the panel's
-    claim is "this player answers this ball unusually", so the multiplicity that matters is
-    how many answers were tried on them. (The responses to one state are multinomial rather
-    than independent binomials, so the per-cell tail is an approximation; BH across the
-    family is what the honesty rests on, not the exactness of any one tail.)
+    **Held-out figures.** Each fold takes a turn discovering, and lift, payoff and counts are
+    read off the other fold. A pattern confirmed both ways shows the two held-out halves
+    pooled. ``disc_lift`` is the mean discovery-fold lift, so the shrinkage is visible per row.
 
-    **Held-out figures.** The old screen required a raw lift in *both* halves and then
-    printed the pooled lift — so both halves voted on selection and the number shown was
-    measured on all of it, which is the winner's curse the panel had no defence against.
-    Now each fold takes a turn discovering, and the lift, payoff and counts are read off
-    the fold that had no part in it. A pattern confirmed from both directions shows the two
-    halves pooled, which is the mean of two held-out measurements rather than a return to
-    in-sample figures; one confirmed from a single direction shows that validation fold
-    alone. ``disc_lift`` carries the mean discovery-fold lift beside it, so the shrinkage
-    between finding a pattern and measuring it is visible per row.
+    Ranked by evidence = count x log2(lift), since raw lift favours rare quirks. ``conv`` is
+    the player's point-win rate with that response (shrunk toward the field by K_CONV);
+    ``fconv`` is the field's, excluding the player; ``p_field`` is the share the lift is taken
+    against; ``sconv`` is the player's win rate across every answer to the same ball.
+    ``conv`` vs ``fconv`` mostly measures player strength (r ≈ +0.43 with serve-plus-return
+    rate), so the panel compares ``conv`` with ``sconv``.
 
-    Still ranked by evidence = count x log2(lift), the cell's contribution to the player's
-    divergence from the field — raw lift alone crowns rare quirks (a 5x lift on 60 of
-    29,000 balls) over bread-and-butter tendencies. ``conv`` is the player's point-win rate
-    playing that response (shrunk toward the field's by K_CONV pseudo-counts); ``fconv`` is
-    the field's, same state and response, the player's own points excluded. ``p_field`` is
-    the share the lift is taken against. ``sconv`` is the player's own point-win rate across
-    every answer they give to this same ball.
-
-    ``sconv`` exists because ``conv`` against ``fconv`` is mostly a strength comparison: the
-    gap between the two correlates about +0.43 with a player's overall serve-plus-return
-    rate, so the strongest thirty players beat the tour on nearly every pattern they have
-    and the weakest thirty lose on nearly all of theirs, whatever the tactic is worth. Both
-    sides of ``conv`` vs ``sconv`` are the same player on the same incoming ball, so what is
-    left is the choice.
-
-    **Not done here:** the opening and the rally are still pooled. A (player, state) cell
-    counts the serve+1 ball together with the same-described ball at shot 11, and for 691 of
-    4,218 well-supported cells (16.4%, against 0 of 5,040 on a coin-flip control) the
-    response a player picks differs measurably between the two. The fix is a heterogeneity
-    pass over the survivors below — split the cells that differ, leave the rest pooled with
-    evidence that pooling is justified — which costs no coverage and is a natural third test
-    in the family this function already corrects across. It is not implemented yet.
+    **Not done:** the opening and the rally are pooled. For 691 of 4,218 well-supported cells
+    (16.4%, against 0 of 5,040 on a coin-flip control) the response differs between the two.
+    A heterogeneity pass over the survivors would fix it.
     """
     halves, halvesw = res["per"][name], res["perw"][name]
     h0, h1 = halves
@@ -447,31 +404,15 @@ def state_name(state):
 def resp_name(zone, resp):
     """Plain-language name for a response, given the zone the incoming ball landed in.
 
-    The line a shot takes is only half of its name; the other half is where it was
-    struck from, which is why this needs the zone. Following the charting project's
-    own definitions: crosscourt runs from the middle or a far corner to the opposite
-    far corner, down the line starts in a corner and finishes in that same one, and
-    inside-out is any ball hit against the crosscourt lane its wing opens onto. A ball
-    met in the middle third therefore has no down the line available to it at all —
-    there is no corner behind it to line up with — so the two ways out of the middle
-    are crosscourt and, against it, inside-out.
+    Following the charting project's definitions: crosscourt runs from the middle or a far
+    corner to the opposite corner, down the line stays in the same corner, and inside-out
+    goes against the crosscourt lane its wing opens onto. A ball met in the middle third has
+    no down-the-line. Drives and slices also get the run-around pair (inside-out on the
+    diagonal, inside-in down the line).
 
-    Run-arounds keep their own pair: inside-out on the diagonal, inside-in down the
-    line. Only drives and slices get them, because the words describe a player stepping
-    round the ball to hit a groundstroke, not a volley taken wherever it was reachable.
-
-    Net shots take none of it. The whole vocabulary is anchored on where the ball was
-    struck from, and a volley is cut off in the air wherever the player could reach it —
-    so the zone is where the ball *would have* landed, a corner they never stood in.
-    Naming the line from it describes a shot nobody played. They are named by their
-    destination instead: that is charted, and it makes no claim about the line.
-
-    A lob is named by neither. Its third is not conditioned on at all (see ``resp_line``),
-    so there is one lob per wing and nothing to distinguish with a line word.
-
-    Shared with the serve+1 experiment, which names the same responses from the same
-    zones. It takes the zone rather than a state because the two experiments carry
-    different state shapes over the identical geometry.
+    Net shots are named by destination, since a volley isn't struck from where the ball would
+    have landed. A lob has one name per wing (see ``resp_line``). Shared with the serve+1
+    experiment, which is why it takes a zone rather than a state.
     """
     wing, kind, line = resp
     word = RESP_WORD[kind]

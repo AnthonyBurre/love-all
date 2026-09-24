@@ -1,12 +1,11 @@
-"""Career splitting — does it capture real change? (the justification for `player_eras`)
+"""Career splitting: does it capture real change? (the justification for `player_eras`)
 
 Run:  python experiments/career_splits/run.py
 
-This is the *investigation* behind the optional `player_eras` DB table (built by
+The investigation behind the optional `player_eras` DB table (built by
 `match-charting-project eras`; logic in `match_charting_project.analysis.career_eras`).
-It re-derives the evolve test, shows the chronological-vs-noise evidence and the
-threshold sensitivity, and writes the report + figure. The era mapping itself now
-lives in the DB table, not in this folder.
+Re-derives the evolve test, shows the chronological-vs-noise evidence and the threshold
+sensitivity, and writes the report and figure.
 """
 
 import sys

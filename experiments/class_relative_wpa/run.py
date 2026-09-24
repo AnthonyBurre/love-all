@@ -52,27 +52,15 @@ def _ridge(Z, y, lam):
 
 def style_benchmark(Z, y, target_r2):
     """Expected shot quality for a player's *style*, as a smooth function of their
-    fingerprint rather than the mean of the cluster they were sorted into.
+    fingerprint rather than the mean of their cluster.
 
-    Why not the cluster mean: it is a step function of style, and the step moves. A
-    player near a boundary takes their whole benchmark from whichever side the
-    clustering put them on that run, so re-running on 0.16% less data moved 57 of 388
-    archetype labels and flipped 92 shot-quality verdicts — 51 of them for players
-    whose *own* label never moved and whose measured quality changed in the fourth
-    decimal. Their benchmark moved underneath them. Fitted over the feature space
-    instead, a player between two styles gets a benchmark between them, and nothing
-    lurches when the boundary shifts.
+    A cluster mean is a step function whose steps move: re-running on 0.16% less data
+    flipped 92 verdicts, 51 for players whose own label never moved. A smooth fit gives a
+    player between two styles a benchmark between them.
 
-    How hard the model is allowed to work is the one real choice here, and it is not
-    free: unregularised, this fingerprint explains ~92% of the variance in shot quality
-    and the residual left over is mostly noise — the benchmark would be absorbing the
-    skill it is supposed to be measuring against. So λ is not a constant and not chosen
-    by cross-validation (which optimises prediction, the wrong target — it would pick
-    the model that absorbs the most). It is solved for: the smooth benchmark is
-    calibrated to absorb exactly as much variance as the four class means did, so this
-    controls for style to the same degree as the published metric and changes only the
-    discontinuity. On the current data that lands the two within +0.86 (men) and +0.81
-    (women) correlation of each other.
+    λ is solved for, not cross-validated (which would pick the model that absorbs the most
+    skill): the benchmark absorbs exactly as much variance as the four class means did. On
+    current data the two correlate +0.86 (men) and +0.81 (women).
     """
     lo, hi = 1e-3, 1e6
     for _ in range(60):                      # bisect: R² falls monotonically in λ
@@ -112,28 +100,19 @@ def _cv_style_r2(Z, y, folds, lam=1e-6):
 def validate(con, model, g, df, era_map, seed=0):
     """Is avg_wpa_lost measuring shot quality, or rally length?
 
-    Three numbers decide it, and they are computed here rather than asserted in prose
-    because prose numbers go stale against a rebuild:
+    Three numbers, computed here so they stay current with each rebuild:
 
-    * **Reliability** — split the player's matches in two by hash, score each half,
-      correlate across players, Spearman-Brown back up to full length. This is the
-      share of the spread that is a stable player trait rather than sampling noise.
-    * **The rally-length confound** — WPA telescopes inside a point, so the total swing
-      is near-fixed and dividing by strokes makes the metric identically (concession per
-      point) / (strokes per point). The correlation with ``avg_rally_len`` is how much
-      of the figure that second factor is running.
-    * **Reliable non-style share** — reliability minus the out-of-fold R² of the style
-      fingerprint. Style is predicted, not fitted, so what it explains is real variance;
-      whatever reliability is left over that style cannot reach is the most the metric
-      can be measuring as skill.
+    * **Reliability**: split each player's matches in two by hash, correlate the halves
+      across players, Spearman-Brown up to full length.
+    * **Rally-length confound**: WPA telescopes within a point, so the metric is
+      (concession per point) / (strokes per point); its correlation with ``avg_rally_len``
+      shows how much the second factor drives it.
+    * **Reliable non-style share**: reliability minus the style fingerprint's out-of-fold
+      R², the most the metric can be measuring as skill.
 
-    The residual is then measured two ways, because they answer different questions.
-    Against ``shipped`` — the λ-solved benchmark ``class_rel_z`` is actually computed
-    from — is how much signal the published verdict carries. Against a full fit of the
-    fingerprint is what survives removing every bit of style the features can reach, and
-    it is the lower number: the λ-solved benchmark absorbs only as much variance as the
-    four class means did, so a good deal of style is still sitting in the published
-    residual, inflating its apparent stability.
+    The residual is measured against ``shipped`` (the λ-solved benchmark behind
+    ``class_rel_z``) and against a full fit of the fingerprint. The second is lower, since
+    the shipped benchmark leaves some style in the residual.
     """
     halves = []
     for h in (0, 1):

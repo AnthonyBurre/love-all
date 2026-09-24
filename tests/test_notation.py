@@ -1,9 +1,8 @@
 """Tests for the shot-notation decoder.
 
 Unit cases pin the grammar (who won, outcome type, rally length, ending wing) on
-hand-decoded points. The integration test re-aggregates parsed points and checks
-them against the project's own ``stats_overview`` totals — the same cross-check
-the experiment used, now a guarded test (skips when no database is built).
+hand-decoded points. The integration test re-aggregates parsed points against the project's
+own ``stats_overview`` totals (skips when no database is built).
 """
 
 from collections import defaultdict

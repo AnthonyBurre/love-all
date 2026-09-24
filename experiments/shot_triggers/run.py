@@ -81,32 +81,15 @@ def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     """Pooled per-player context tables (all plies) plus side-split opening tables.
 
     ``acc``: player -> {n, w, e, f, ctx:{context: [n, w, e, f]}, half:{(h, context):
-    [n, w, e, f]}} over every ply, sides pooled. ``half`` buckets the same counts by
-    a random split of the player's matches, which is what the definitions comparison
-    correlates across; matches (not points) are the split unit so a charter's
-    judgment lands wholly on one side.
+    [n, w, e, f]}} over every ply, sides pooled. ``half`` splits the same counts by a random
+    split of the player's matches (matches, so a charter's judgment lands on one side).
     ``openings``: (player, side, anchor) -> {base:[n,w,e,f], ctx:{context:[n,w,e,f]}}
     for the first-four-ply aggressive shots only, split by deuce/ad.
 
-    Cues are keyed in the *profiled player's* frame: for a left-hander every court third
-    in the lead-up is mirrored, so a cue names the shot rather than the half of the court
-    it landed in. The direction codes are the codebook's, which name fixed thirds by the
-    right-hander convention, so without this a lefty's cue string describes the mirror
-    image of what a right-hander's identical string describes — and the panel prints the
-    two as though they were one pattern.
-
-    Mirrored by the striker rather than by each shot's own hitter, because the cue
-    alternates hitters and a player's opponents are a mix of both hands; mirroring per
-    hitter would merge physically different opponent balls into one bucket. The whole
-    lead-up reads from the profiled player's side of the net, matching what
-    ``court_response`` does with hand-relative zones and what ``rally_patterns`` does with
-    the same tokens.
-
-    This changes no statistic. Every figure here — the lift against the player's own
-    own fold's rate, the conversion against that fold's own trigger class, the
-    cross-validation, the FDR family — is computed within one player, so mirroring re-keys a
-    lefty's whole table consistently and every count comes out identical. It is a
-    labelling fix, and only a labelling fix.
+    Cues are keyed in the profiled player's frame: for a left-hander every court third in
+    the lead-up is mirrored, by the striker's hand (not each hitter's), so a cue names the
+    same shot for either hand. Every statistic is within one player, so this changes labels
+    only.
     """
     acc: dict = defaultdict(lambda: {"n": 0, "w": 0, "e": 0, "f": 0,
                                      "ctx": defaultdict(lambda: [0, 0, 0, 0]),
@@ -264,32 +247,14 @@ NUMERATORS = {
 def tag_contexts(df: "pd.DataFrame", a: dict) -> "pd.DataFrame":
     """Label each context green / trap / neutral by two-fold cross-validation.
 
-    A cue makes two claims — this lead-up raises the player's aggressive shot frequency,
-    and what they go for from it converts better or worse than their other cues do — and
-    both have to survive being tested on data that had no say in picking the cue.
+    The player's matches are split in half by hash. Each half takes a turn as the discovery
+    fold (frequency lift, significance test, per-player FDR); the cue is then validated on
+    the other half, where the lift must point the same way and the tag is read off the
+    conversion against that fold's trigger-class mean. A cue ships if either direction
+    survives.
 
-    The player's matches are split in half by hash. Each half takes a turn as the
-    **discovery** fold: the frequency lift, the significance test and the per-player FDR
-    correction all run inside it, and nothing outside it is consulted. The cue is then
-    **validated** on the other half, which was not involved in selecting it: the lift has
-    to still point the same way there, and the tag is read off the conversion sign *in
-    the validation fold*, against that fold's own trigger-class mean. Both directions are
-    run, and a cue ships if either survives.
-
-    This replaced a pooled screen with a both-halves consistency check bolted on, which
-    was circular: the reference and the candidate lift were computed over all the
-    player's matches, and the two halves it then "confirmed" against were subsets of the
-    data that had just selected it. It was also strictly harsher than cross-validation
-    without buying anything for the strictness — it demanded agreement from both halves
-    at once, where running each half as its own experiment asks each of them a question
-    it can actually answer independently.
-
-    The figures reported are the held-out ones. When a single direction confirms, the
-    cue's rate, lift and conversion come from the validation fold alone; when both
-    confirm, the pooled figures are the attempts-weighted mean of two independently clean
-    estimates and are used as-is. Either way the number on the card was measured on data
-    that did not choose the cue, which also removes the selection inflation that a
-    top-of-the-ranking effect size otherwise carries.
+    Reported figures are held out: from the validation fold alone, or, when both directions
+    confirm, the attempts-weighted mean of the two.
     """
     out = df.copy()
     out.attrs = dict(df.attrs)
@@ -554,33 +519,18 @@ def _role_of(anchor: str) -> str:
 
 
 def opening_rows(openings: dict, gender: str, qualifying: set) -> list:
-    """Opening cues, cross-validated exactly the way ``tag_contexts`` does the pooled ones.
+    """Opening cues, cross-validated the way ``tag_contexts`` does the pooled ones.
 
-    A raw threshold screen — clear ``MIN_CTX`` strokes, lift the frequency
-    ``TRIGGER_LIFT``x over the group baseline on ``MIN_ATT``+ aggressive shots, then split
-    green/trap on the sign of the conversion gap — would carry no multiplicity correction
-    and compute every displayed figure on the data that had just selected the row.
+    Each group ``(player, side, anchor)`` (their deuce serve+1, their ad return+1, ...) is
+    split into the same two match-hash folds. Each fold discovers with an exact binomial tail
+    against its own group baseline, Benjamini-Hochberg at q=``Q_FDR`` across that fold's
+    contexts, and a ``TRIGGER_LIFT``x lift. The other fold must still show a lift above 1,
+    and the tag is read off its conversion against that fold's trigger-class mean, as in the
+    pooled screen.
 
-    Instead each group ``(player, side, anchor)`` — their deuce serve+1, their ad return+1, and
-    so on — is split into the same two match-hash folds the pooled screen uses. Each fold
-    takes a turn discovering: an exact binomial tail against **that fold's own** baseline
-    for the group, Benjamini-Hochberg at q=``Q_FDR`` across every context that fold could
-    test, then a lift of ``TRIGGER_LIFT``x to be a candidate. The cue is confirmed on the
-    other fold, which must still show a lift above 1, and the green/trap tag is read off
-    the conversion there against *that fold's* trigger-class mean — the same reference the
-    pooled screen uses, and for the same reason: conditional on a lead-up raising the
-    frequency at all, conversion already sits well above the group's all-strokes rate, so
-    comparing against that rate calls the bottom of a normal spread a trap.
-
-    The group is the unit of correction rather than the player, because the baseline a cue
-    is measured against is the group's: a deuce serve+1 cue was only ever screened against
-    other deuce serve+1 contexts, and pooling six such families into one player-level
-    correction would be correcting across tests that never competed. Groups too thin to
-    define a class mean in a fold produce nothing from that direction:
-    it is a group that cannot answer the question rather than one that answers it weakly.
-
-    Side stays a grouping key throughout, never pooled: on the deuce side a ``serve wide``
-    context is a deuce-wide serve, the disambiguation the pooled tables cannot make.
+    The correction family is the group, since each cue is only screened against its own
+    group. Groups too thin to define a class mean in a fold produce nothing from that
+    direction. Side is always a grouping key, never pooled.
     """
     rows = []
     for (player, side, anchor), rec in openings.items():

@@ -1,11 +1,9 @@
 """Tests for the deuce/ad service-side derivation.
 
-Unit cases pin the parity rule on hand-checked scores (a full game, past deuce,
-a tiebreak, advantage-set long games, and malformed input). The integration
-test re-derives the side over the whole ``points`` table and checks the
-structural invariants the plan calls out — every game/tiebreak opens on the
-deuce court, the split is ~50/50 with a slight deuce excess — guarded to skip
-when no database is built.
+Unit cases pin the parity rule on hand-checked scores (a full game, past deuce, a tiebreak,
+advantage-set long games, malformed input). The integration test re-derives the side over
+the whole ``points`` table: every game and tiebreak opens on the deuce court, and the split
+is about 50/50 with a slight deuce excess (skips when no database is built).
 """
 
 import pytest

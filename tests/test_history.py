@@ -129,13 +129,9 @@ def test_annotate_charted_gate():
 
 
 def test_annotate_flags_a_chart_filed_in_the_other_order():
-    """The draw orders a meeting by bracket slot, the chart by whoever filed it.
-
-    They disagree about half the time (48 of the 121 matches the live feed currently
-    carries), and everything in the per-match sidecar — the win-probability curve, both
-    box-score sides, the serve placement — is written from the chart's player1 forward.
-    Unflagged, the panel lays a match's numbers against the wrong two names and draws the
-    curve upside down, which is wrong in a way that still looks like a plausible match.
+    """The draw orders a meeting by bracket slot, the chart by whoever filed it. They
+    disagree about half the time (48 of 121), and unflagged the panel shows a match's numbers
+    against the wrong names and draws the curve upside down.
     """
     charted = {("M", 2026, "wimbledon", frozenset(("a one", "b two"))): ("MID-1", "b two")}
     t = _tour("188-2026", "M", _final("A One", "B Two"))

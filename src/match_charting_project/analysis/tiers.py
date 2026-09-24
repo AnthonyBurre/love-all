@@ -1,26 +1,15 @@
 """Classify a free-text tournament name into a tour tier.
 
-The Match Charting Project stores only the tournament *name* (637 distinct
-values across 1960-2026, with naming drift). There is no tier field, so we
-derive one heuristically.
+The Match Charting Project stores only the tournament name (637 distinct values across
+1960-2026, with naming drift), so the tier is derived heuristically.
 
-Granularity note: even Jeff Sackmann's authoritative ATP data collapses 250- and
-500-level events into a single code ("A"), because the distinction isn't cleanly
-recoverable. We follow that granularity with a single "Tour (250/500)"
-bucket rather than guessing.
+250 and 500 events share one "Tour (250/500)" bucket, as in Jeff Sackmann's ATP data, since
+the distinction can't be recovered reliably from names. The live site splits them using the
+Wikipedia calendar feed (``live.feeds``), which covers one season at a time; backfilling it to
+1990 would need an era vocabulary ("Championship Series", "Tier I", "Premier Mandatory", ...).
 
-The live site does split them, using the Wikipedia calendar feed (``live.feeds``), which
-reads a season page for every event's level, surface and draw size. That feed is not used
-here, because it covers one season at a time and this classifier has to label 65 years.
-Backfilling it season by season is the nearest route to a tier column that isn't derived
-from a name; the season pages carry the same schedule tables back to 1990, but each era
-names its levels differently ("Championship Series", "ATP Masters Series", "Tier I",
-"Premier Mandatory"), so it needs an era vocabulary rather than a re-run.
-
-Until then, note what the name lists below cannot see: they carry no year, so an event that
-changed level keeps the one it has here. Hamburg reads as a 1000 in every season although
-it has been a 500 since 2009, Charleston and Tokyo likewise, and the WTA events that move
-between 1000 and 500 from year to year are fixed at whichever one the list says.
+The name lists carry no year, so an event that changed level keeps one tier: Hamburg reads
+as a 1000 though it has been a 500 since 2009, and likewise Charleston and Tokyo.
 """
 
 import re

@@ -1,14 +1,13 @@
-"""Assemble the servable site data: the live brackets feed + the insights db.
+"""Assemble the servable site data: the live brackets feed and the insights db.
 
-Writes ``docs/data/brackets.json`` — live Grand Slam / 1000 draws from ESPN plus the
-accumulating archive of completed events (``data/history.json``, see ``live.history``) — and
-copies ``insights.duckdb`` alongside it, so ``docs/`` can serve as-is. Both live under
-gitignored ``docs/data/`` — generated, never committed. The fast CI path runs this; the slow
-path rebuilds ``insights.duckdb`` upstream.
+Writes ``docs/data/brackets.json`` (live Grand Slam and 1000 draws from ESPN, plus the archive
+of completed events in ``data/history.json``; see ``live.history``) and copies
+``insights.duckdb`` beside it, so ``docs/`` serves as-is. Both are gitignored. The fast CI path
+runs this; the slow path rebuilds ``insights.duckdb`` upstream.
 
-Each player side is tagged with its matched Match-Charting name; each match of a *completed*
-draw is tagged ``charted`` / ``chart_id`` (its Tennis Abstract chart) once that event has any
-charting — both re-derived from ``insights.duckdb`` every run, so nothing goes stale.
+Each player side is tagged with its matched charting name, and each match of a completed draw
+with ``charted`` / ``chart_id`` once that event has any charting, re-derived from
+``insights.duckdb`` every run.
 """
 
 import json
@@ -86,13 +85,9 @@ def _chart_of(m: dict, gender: str, year: int, tks: "list[str]",
 
 
 def _backfill_event(t: dict, cal: dict) -> None:
-    """Give an archived payload its ``event`` block if it was frozen before the block existed.
-
-    A live draw gets its labels at serialize time and carries a frozen copy into the archive,
-    so this only ever fires for the draws already sitting in ``history.json``. Reading the
-    current calendar for them is sound as far as it reaches — a slam's common name, level and
-    surface don't move between seasons — and an event the calendar no longer lists simply
-    finds nothing, which is where the payload started.
+    """Give an archived payload an ``event`` block if it lacks one, from the current calendar
+    (a slam's name, level and surface don't change between seasons). An event the calendar
+    doesn't list gets nothing.
     """
     if t.get("event"):
         return
@@ -134,18 +129,10 @@ def _annotate(t: dict, universe: dict, charted: dict) -> None:
 
 
 def payload() -> dict:
-    # Pick up any newly-published draw sheet before serializing, so a draw released since the
-    # last run is scaffolded on this one. The calendar comes first because it is what links
-    # the draw pages — and because it also decides each event's tour level, which
-    # `current_tournaments` reads. Adopted sheets are never re-fetched and the calendar only
-    # re-reads once it has aged out, so the steady-state hourly run costs no Wikipedia calls.
-    #
-    # Both Wikipedia reads degrade rather than fail — the cached calendar still places most
-    # events, and a draw with no sheet falls back to name inference. Both say so on stderr,
-    # as `espn._fetch` does for the same reason: a degraded build otherwise looks exactly
-    # like a clean one, and the unslotted draw it ships is the only evidence. The draw
-    # failure is the louder of the two — an outage here leaves `data/draws.json` unwritten,
-    # which the deploy workflow then has nothing to persist.
+    # Pick up newly published draw sheets first. The calendar comes first, since it links the
+    # draw pages and sets each event's level. Adopted sheets aren't re-fetched and the calendar
+    # only re-reads when stale, so a steady-state hourly run makes no Wikipedia calls. Both
+    # reads degrade rather than fail, and say so on stderr so a degraded build is visible.
     try:
         feeds.refresh_calendar_if_stale()
     except Exception as exc:
@@ -183,17 +170,11 @@ def payload() -> dict:
 
 
 def _copy_match_details(data: dict) -> int:
-    """Copy across the per-match sidecar for every charted match these draws reference.
+    """Copy the per-match sidecar for every charted match these draws reference.
 
-    The upstream set (``site build-match-details``, weekly) covers every charted slam/1000
-    match of the last two years, because that build cannot know which of them a draw
-    assembled days later will hold. This build does know — it has just written the feed —
-    so only the handful the site can actually open a panel for is served, and ``docs/``
-    stays a few hundred KB rather than eight megabytes.
-
-    Rebuilt from scratch each run: the archive prunes as events age out (see
-    ``live.history.prune``), and a sidecar for a draw no longer in the feed is dead weight
-    that would otherwise ship forever.
+    The weekly build writes sidecars for every recent charted slam/1000 match; this serves
+    only the ones the current draws can open, keeping ``docs/`` small. Rebuilt from scratch
+    each run, so sidecars for pruned draws don't linger.
     """
     out = DOCS_DATA / "matches"
     if out.exists():

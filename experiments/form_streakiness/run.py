@@ -233,7 +233,7 @@ def main():
 
     # -- streaky arm (test era only; per-player rho from the training era) ----
     # Same walk as `walk()`, but each player's form is scaled by their own
-    # streakiness multiplier. A second pass keeps the as-of counters honest.
+    # streakiness multiplier. A second pass keeps the as-of counters correct.
     rho, raw = streakiness(S, TEST_FROM.astype("datetime64[us]").item())
     mult = {key: float(np.clip(1 + 4 * v, 0.0, 2.0)) for key, v in rho.items()}
 

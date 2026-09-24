@@ -86,7 +86,6 @@ Writes `reports/rally_patterns.md`, `reports/rally_patterns.csv` (the shipped se
 
 ## On the site
 
-Nothing from here ships. The drawer's starred 3–4 shot tier was retired on this
-experiment's result: two of 1,752 three-shot candidates survive, and both belong to
-retired players who appear in no draw. The experiment still runs weekly and still writes
+Nothing from here ships, and the panel has no 3–4 shot tier because of it: two of 1,752
+three-shot candidates survive, and both belong to retired players who appear in no draw. The experiment still runs weekly and still writes
 `reports/rally_patterns.csv`, so the tier can come back if the charting ever funds it.
