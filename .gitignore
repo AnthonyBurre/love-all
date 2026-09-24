@@ -25,6 +25,7 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 .ruff_cache/
+.coverage
 
 # OS / editors / local tooling
 .DS_Store
