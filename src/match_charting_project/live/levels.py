@@ -14,6 +14,7 @@ the calendar after common names ("Washington Open").
 """
 
 TOUR_500 = "ATP / WTA 500"
+TOUR_250 = "ATP 250"
 
 
 def city(venue_display: str) -> str:

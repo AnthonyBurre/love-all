@@ -1,6 +1,6 @@
 # Tennis match charting — analysis and a live bracket site
 
-> **[→ Visit Tournament Analyzer](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam, ATP/WTA 1000 & 500 draws
+> **[→ Visit Tournament Analyzer](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam, ATP/WTA 1000 & 500, and ATP 250 draws
 
 The [Match Charting Project](https://github.com/JeffSackmann/tennis_MatchChartingProject) is a
 crowdsourced dataset of **shot-by-shot** records for 11,600+ professional tennis
@@ -47,8 +47,9 @@ None of these ship to the site — see [The site](#the-site) for why.
 
 ## The site
 
-`docs/` is a GitHub Pages site showing **Grand Slam, Masters/WTA-1000 and ATP/WTA-500
-brackets**.
+`docs/` is a GitHub Pages site showing **Grand Slam, Masters/WTA-1000, ATP/WTA-500 and ATP-250
+brackets**. WTA 250 stays below the bar — the tour's least-charted tier, and covered on the
+women's side only up through 500.
 
 | feed | source | what it gives | refresh |
 | --- | --- | --- | --- |
