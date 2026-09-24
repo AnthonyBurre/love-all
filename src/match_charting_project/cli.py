@@ -59,13 +59,9 @@ def _live() -> None:
 
 def _feeds_calendar(season: "int | None", if_stale: bool = False) -> None:
     """Re-read the season pages: tour levels, and the per-event draw-page links the draw feed
-    needs. ``--if-stale`` skips the read while the cache is fresh — what CI runs hourly.
-
-    ``--if-stale`` is the CI form, and it never fails the process: it is a step of its own in
-    the hourly deploy, so a raised exception exits non-zero and takes every step after it —
-    including the Pages deploy — with it. A calendar outage is a degradation the site is built
-    to survive on its cached copy, not a reason to stop publishing, so it is reported and
-    stepped over. The bare form is hand-run and keeps its traceback.
+    needs. ``--if-stale`` skips the read while the cache is fresh; it's what CI runs hourly,
+    and it never fails the process, so a calendar outage can't block the Pages deploy (the
+    site runs on its cached copy). The bare form keeps its traceback.
     """
     from collections import Counter
 
@@ -159,11 +155,9 @@ def _history_harvest(event: str, year: int) -> None:
 def _history_merge(path: str) -> None:
     """Fold another archive file into data/history.json, union by (id, gender).
 
-    The backfill job harvests into a copy and merges it back at the end, because the hourly
-    deploy is reading and rewriting the same stored archive the whole time: harvesting
-    straight into it means a deploy that starts mid-harvest uploads the pre-harvest copy over
-    the top. Merging last narrows that window from minutes to seconds, and re-running is
-    harmless either way — an entry already held is left exactly as it is.
+    The backfill job harvests into a copy and merges it at the end, so an hourly deploy
+    running during the harvest doesn't overwrite it. Re-running is harmless; entries already
+    held are left as they are.
     """
     import json
     from pathlib import Path
@@ -225,14 +219,9 @@ def _coverage() -> None:
     figs = coverage_report.render_all(con)
     con.close()
 
-    # What a tier's headline line is made of: what to call it, its coverage and
-    # round-completion frames, the column its best draw is named by, the structural
-    # denominator, and the opening round that denominator covers. The two tiers differ
-    # only in these seven things. The denominator comes from `coverage`, which derives it
-    # from the round structure it is a sum of, so the figure the report divides by and the
-    # figure it prints are the same one.
-    # `short` is the console line's word for the tier, spelled out rather than cut from
-    # `tier`: the console row is fixed-width and its heading has never been the plural.
+    # What each tier's headline line is built from: its name, coverage and round-completion
+    # frames, the column naming its best draw, the structural denominator (from `coverage`),
+    # and the opening round it covers. `short` is the fixed-width console label.
     tiers = [
         ("slams", "slam", slam, slam_rounds, "slam",
          coverage.SLAM_DRAW_MATCHES, "R128"),
@@ -242,12 +231,7 @@ def _coverage() -> None:
 
     def _headline(cov, rounds, gender, opening):
         """``(best draw, opening-round %, final %)`` for one gender, or None where this
-        tier holds nothing for them.
-
-        Every part of it is allowed to be missing, and none of them stops the report. A
-        gender with no charted event at this tier has no best draw to name, and a round
-        nobody charted has no completion figure. Both come back absent and the caller
-        says so in the line, rather than being read off an empty frame.
+        tier holds nothing for them. Any part can be missing; the caller says so in the line.
         """
         c = cov[cov["gender"] == gender]
         if c.empty:

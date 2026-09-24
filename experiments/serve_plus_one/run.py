@@ -1,38 +1,24 @@
-"""Serve+1: what the server does with the ball the return gives back, at the
-finest resolution each player's charting can fund.
+"""Serve+1: what the server does with the ball the return gives back, at the finest
+resolution each player's charting can fund.
 
 Run:  python experiments/serve_plus_one/run.py
 
-`court_response`'s "off the return" family already profiles this shot — the
-server's third ball — keyed by the return's character, landing zone and depth.
-It pools the two service courts, and that pooling is not free. A wide serve opens
-the forehand in the deuce court and the backhand in the ad court, so the same
-return description arrives from a different serve, at a different angle, with the
-server recovering from a different corner. Nadal's pooled reading is "mid-depth
-drive return into the middle -> crosscourt forehand, 1.6x". Split, it is a
-crosscourt forehand on the deuce side and an *inside-out* forehand on the ad
-side. The pooled number is the average of two different shots, and it names
-neither.
-
-The obvious fix — add serve side and serve direction to the state — costs
-coverage: the state space goes six times finer and the tail of the tour can no
-longer fund it. So the resolution is chosen per player rather than for the tour,
-over three tiers:
+`court_response`'s "off the return" family profiles the server's third ball but pools the
+two service courts. A wide serve opens the forehand in the deuce court and the backhand in
+the ad court, so the pooled row averages two different shots (Nadal's pooled "crosscourt
+forehand" is a crosscourt forehand on the deuce side and an inside-out forehand on the
+ad side). Adding side and serve direction to the state makes it six times finer, so the
+resolution is chosen per player:
 
     full    side x serve direction x return kind x zone x depth
     side    side x return kind x zone x depth
     pooled  return kind x zone x depth            (court_response's state)
 
-A player is assigned the finest tier their *coverage* supports, counted before
-any lift is looked at: MIN_TIER_STATES states of MIN_STATE observations each.
-Choosing the tier by which one surfaced the most patterns would be choosing the
-resolution that flattered the player, and no replication gate fully undoes that.
+Each player gets the finest tier their coverage supports (MIN_TIER_STATES states of
+MIN_STATE observations each), decided before any lift is looked at.
 
-Everything else is court_response's method, imported from it rather than copied:
-hand-relative zones, the reference lane a response's line is read against, the
-namer that turns a (zone, line) pair into plain English, shrunk lift against the
-field in the same state, the payoff, and the both-halves replication gate. This
-experiment does not modify or re-run that one.
+Everything else is imported from court_response: hand-relative zones, reference lanes, the
+shot namer, shrunk lift against the field, the payoff and the replication gate.
 
 Writes reports/serve_plus_one.md, reports/serve_plus_one_players.csv, and
 reports/figures/serve_plus_one_tiers.png.
@@ -60,15 +46,10 @@ REPORTS = PROJECT_ROOT / "reports"
 FIG = REPORTS / "figures"
 GLABEL = {"M": "Men", "W": "Women"}
 
-# Surfacing gates. The first five are court_response's, unchanged, so a tier-"pooled"
-# row here is built on the same support as the same row there.
-#
-# The *screens* differ, and a reader comparing the two should know how. court_response
-# discovers in one half of a player's matches and reads its lift off the other, so its
-# figures are held out; this one selects on both halves with the gate below and prints the
-# pooled lift, which is inflated by however much of the lift was the luck that got it
-# selected — 46% of a discovered edge survived that treatment over there, so the gap is not
-# small. The FDR correction below is applied in both.
+# Surfacing gates. The first five are court_response's, so a "pooled" row here has the same
+# support as there. The screens differ: court_response reads its lift off a held-out fold,
+# while this one selects on both halves and prints the pooled lift, which is inflated (only
+# 46% of a discovered edge survived held-out measurement there). Both apply the FDR correction.
 MIN_STATE = 80        # times a player must face a state to be profiled on it
 MIN_CELL = 10         # raw count behind any surfaced response
 MIN_FIELD = 500       # field observations of the state (minus the player's own)
@@ -80,19 +61,11 @@ HALF_MIN = 4          # raw count required in both halves
 TOP_PER_PLAYER = 2    # patterns surfaced per player (the panel shows two)
 Q_FDR = 0.10          # Benjamini-Hochberg false-discovery rate, within player
 
-# The lift gate above is a threshold on a point estimate, and a full-tier player is put
-# through it on the order of fifty to a hundred times — once per state x response cell
-# their charting funds. Without a correction that is a search, not a test: of 770 rows
-# surfaced by the gate alone, 170 sit above an uncorrected p=0.001 against the field share
-# they were measured on, 57 above p=0.01 and 9 above p=0.05.
-#
-# So every cell that has a field baseline gets an exact binomial tail against that
-# baseline, and the tails are Benjamini-Hochberg adjusted across that player's own
-# candidate cells. Within player is the right family: the panel's claim is "this player
-# does this unusually often", so what has to be controlled is how many tendencies were
-# tried on them. This is the same correction rally_patterns applies, and it is applied
-# here for the same reason — the two sections sit one above the other in the panel and a
-# reader has no way to tell that one was screened and the other was not.
+# The lift gate alone is a search, not a test: a full-tier player goes through it 50-100
+# times, and of 770 rows it surfaced, 170 had p above 0.001 against the field share (9 above
+# 0.05). So each cell gets an exact binomial tail against its field baseline,
+# Benjamini-Hochberg adjusted across the player's own candidates, the same correction
+# rally_patterns applies.
 
 # Tier assignment. Deliberately a coverage test, not a results test: a player earns
 # the finer state by having faced enough distinct situations in it, whatever those
@@ -288,18 +261,11 @@ def assign_tier(res, name) -> str:
 def profile(res, name, tier) -> list:
     """A player's surfaced patterns at their assigned tier, best evidence first.
 
-    Every gate is court_response's, applied against the field in the *same* state,
-    so a full-tier pattern is compared to the tour's answers to that same serve,
-    into that same court, off that same return.
-
-    ``p_field`` and ``sconv`` ride along for the same reasons they do there: the card
-    needs to show what share of the field plays a response before "3.4x" means anything
-    (3.4x off a 27% base and 3.4x off a 0.4% base are different claims), and the
-    player's own win rate on this serve-and-return, across every third ball they hit
-    from it, is the only payoff comparison that is not mostly a statement about how
-    good they are. Unlike court_response this field is *not* era-standardized — the
-    serve+1 state already carries the service court and the serve's direction, which
-    thins each cell enough that a per-era baseline would price very few of them.
+    Every gate is court_response's, against the field in the same state (same serve, same
+    court, same return). ``p_field`` shows the base share behind a lift, and ``sconv`` is the
+    player's win rate across every third ball from this state, the payoff comparison that
+    isn't mostly about player strength. Unlike court_response the field isn't
+    era-standardized; the cells are too thin.
     """
     h0, h1 = res["per"][name]
     h0w, h1w = res["perw"][name]
@@ -559,29 +525,27 @@ def main():
         by_player[r["player"]].append(r)
 
     md = ["# Serve+1: the server's third ball, at fundable resolution", ""]
-    md.append(f"*Generated by `experiments/serve_plus_one/run.py`. The shot is the "
-              f"server's third ball. The state is the serve that opened the point — "
-              f"which court, which direction — and the return that came back: its "
-              f"stroke kind, the zone it landed in named relative to the server's own "
-              f"hands, and its charted depth. The response is the server's decision: "
-              f"wing, shot type, and line. Lift compares the player's response rate in "
-              f"that state to the rest of the field in the same state (their own shots "
+    md.append("*Generated by `experiments/serve_plus_one/run.py`. The shot is the server's third "
+              "ball. The state is the serve that opened the point (which court, which direction) "
+              "and the return that came back: its stroke kind, the zone it landed in named "
+              "relative to the server's own hands, and its charted depth. The response is the "
+              "server's decision: wing, shot type, and line. Lift compares the player's response "
+              "rate in that state to the rest of the field in the same state (their own shots "
               f"excluded), shrunk toward 1 by {K_SHRINK} pseudo-counts, and each pattern "
-              f"carries its payoff — the player's point-win rate after playing it, next "
-              f"to the field's playing the same response to the same ball. Gates: "
-              f"n≥{MIN_STATE} in the state, count≥{MIN_CELL}, field n≥{MIN_FIELD}, "
-              f"shrunk lift≥{LIFT_MIN}, and raw lift≥{HALF_LIFT_MIN} in both halves of "
-              f"the player's charted matches. Each player is profiled at the finest of "
-              f"three state tiers their coverage funds — {MIN_TIER_STATES} states of "
-              f"{MIN_STATE}+ observations — decided before any lift is computed.*")
+              "carries its payoff: the player's point-win rate after playing it, next to the "
+              "field's playing the same response to the same ball. Gates: "
+              f"n≥{MIN_STATE} in the state, count≥{MIN_CELL}, field n≥{MIN_FIELD}, shrunk "
+              f"lift≥{LIFT_MIN}, and raw lift≥{HALF_LIFT_MIN} in both halves of "
+              "the player's charted matches. Each player is profiled at the finest of "
+              f"three state tiers their coverage funds ({MIN_TIER_STATES} states of {MIN_STATE}+ "
+              "observations), decided before any lift is computed.*")
     md.append("")
 
     md.append("## Tier assignment")
     md.append("")
-    md.append("Assigned, then — in brackets — how many of those went on to surface a "
-              "pattern. Every entity with a single charted match is assigned the pooled "
-              "tier and clears no gate after it, which is what the third column mostly "
-              "counts.")
+    md.append("Assigned, then (in brackets) how many of those went on to surface a pattern. Every "
+              "entity with a single charted match is assigned the pooled tier and clears no gate "
+              "after it, which is what the third column mostly counts.")
     md.append("")
     md.append("| tour | " + " | ".join(TIER_WORD[t] for t in TIERS) + " |")
     md.append("| --- | " + " | ".join("---" for _ in TIERS) + " |")

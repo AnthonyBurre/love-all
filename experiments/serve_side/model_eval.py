@@ -84,10 +84,10 @@ def main():
 
     con.close()
     verdict = ("helped" if best > 0.1 else
-               "did not help — side is already implicit in the rally state the eval sees")
+               "no help, since side is already implicit in the rally state the eval sees")
     md.append("## Verdict")
     md.append("")
-    md.append(f"Best side-aware change to held-out log-loss: **{best:+.2f}%** — {verdict}.")
+    md.append(f"Best side-aware change to held-out log-loss: **{best:+.2f}%**: {verdict}.")
     md.append("")
     (PROJECT_ROOT / "reports" / "serve_side_model.md").write_text("\n".join(md) + "\n")
     print(f"\nVERDICT: best side-aware Δ log-loss = {best:+.2f}% -> "

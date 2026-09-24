@@ -1,13 +1,8 @@
-// DuckDB-WASM data layer — loads the shipped insights.duckdb once and exposes query().
-// The whole site (coverage badges, matchup insights) reads through this.
+// DuckDB-WASM data layer: loads the shipped insights.duckdb once and exposes query(). The
+// coverage tiers and the matchup panel read through it.
 //
-// The library is the site's one cross-origin dependency, and it is fetched on demand rather
-// than at module scope. A static `import` of a CDN URL is part of the module graph: if that
-// fetch fails — offline, blocked, CDN down — every module that transitively imports this one
-// fails to evaluate along with it. app.js imports this file, so a failure there took down the
-// draw as well, and the page sat on "Loading current draws…" with the whole bracket already
-// on disk in ./data/brackets.json, never asked for. Deferred to the first query, the failure
-// is contained to the parts that genuinely need a database: the tier shading and the panel.
+// The library is fetched from the CDN on first query rather than imported statically, so a
+// failed fetch only affects the parts that need the database, not the draw.
 const DUCKDB_ESM = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
 
 let _conn = null;
@@ -66,55 +61,24 @@ export async function query(sql, params = []) {
 // gate is applied in the build as `reliable`, and the one figure the panel took from here,
 // the recency window, is now per player on player_serve rather than the tour's largest.
 
-// Where the charted tour sits on the figures the profile band prints: the length of the points
-// a player wins, the variety of their shot choices, the four rates of their shot mix, and the
-// return-winner rate. None has a scale a reader arrives knowing, so each is drawn against
-// the tour it belongs to — which is what tells you whether 3.2 bits is ordinary or remarkable.
-// A percentage looks like it needs no scale and needs one most: 4.1% of strokes played at the
-// net is a tour-median baseliner and 6.9% is Federer.
+// Where the charted tour sits on each figure the profile band prints (won point length,
+// variety, the four shot-mix rates, return-winner rate), since none has a scale a reader
+// already knows.
 //
-// Four numbers per metric, not two. The quartiles are the band the middle half of the tour
-// occupies, and they are what the figure is read against; the 5th and 95th percentiles are the
-// axis that band is drawn on, because a strip that ran only from p25 to p75 would have no room
-// left for the half of the tour that falls outside it and every such player would pile up on an
-// end. Ends rather than the true min and max, which are single players and would spend most of
-// the strip on ground nobody else stands on; a player past either end is drawn at it and says
-// so — see figBand() in matchup.js.
+// Four numbers per metric: the quartiles are the band the figure is read against, and p5/p95
+// are the axis it's drawn on (see figBand() in matchup.js). Cut in SQL, each over its own
+// qualifying players (quantile_cont skips nulls per column).
 //
-// Rally length replaced the 0-100 shot-quality score here, and the band is the reason the
-// swap is not a downgrade: that score was an exponential map of conceded win probability that
-// correlated -0.84 with rally length and was 91% predicted by the style fingerprint, so a
-// reader comparing two players on it was mostly comparing their rally lengths through a
-// scale that hid what it was doing. This says the same thing in the unit it is actually in.
-//
-// The quartiles are cut in SQL rather than by shipping the players down and cutting them here.
-// Shipping them would fetch a couple of hundred rows per tour to derive four numbers from.
-//
-// Each metric is measured over its own qualifying players rather than over the players who
-// have both — they are separate experiments with separate thresholds, and intersecting them
-// would quote a band for one metric computed off the other's cut. quantile_cont skips nulls
-// per column, so the two bands are independent by construction.
-//
-// Cached as the promise rather than the value, so two panels opening at once share one
-// query — the panel awaits this on every open.
+// Cached as the promise, so two panels opening at once share one query.
 let _spread = null;
 export function tourSpread() {
   if (!_spread) _spread = loadSpread();
   return _spread;
 }
 
-// The columns a strip is cut over, named once and turned into SQL below. A list rather than
-// seven hand-written quartile pairs: the query is the same four quantiles and a count per
-// column, and written out longhand a column added to the panel meant editing the SELECT, the
-// aliases and the reader in three places that could each be got wrong on their own.
-//
-// Exactly the columns a strip is drawn for — FIGS `band` in matchup.js, plus the rally length
-// profileParts reads directly. The groundstroke square is the reason that is not the same as
-// "every rate the panel prints": it deliberately carries no tour reference inside the plot, so
-// cutting bands for its six wing rates would be four quantiles apiece computed for nobody.
-//
-// The names are this file's own literals, never anything a visitor supplies, so interpolating
-// them into the SQL is safe.
+// The columns a strip is cut over: FIGS `band` in matchup.js plus the rally length
+// profileParts reads directly. The groundstroke square has no tour reference, so its rates
+// aren't here. These are the file's own literals, so interpolating them into SQL is safe.
 const SPREAD_COLS = [
   "bits", "won_rally_len", "ret_winner_rate",
   "slice_pct", "net_pct", "net_winner_pct", "net_err_pct",

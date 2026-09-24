@@ -1,22 +1,13 @@
 """Charted-vs-played coverage: the denominators, and the grid they are drawn on.
 
-Coverage here means charted over *played*, never a raw charted count, so every figure
-rests on a denominator that has to be derived. Two are structural and hold without any
-external results data: a slam singles main draw is 128 players, so 127 matches, and a
-1000-level draw varies in size but always ends R16=8, QF=4, SF=2, F=1.
+A slam main draw is 127 matches; a 1000 draw varies in size but always ends R16=8, QF=4,
+SF=2, F=1. A wrong denominator is still a percentage, so one test each for:
 
-The failure mode is the usual one on this project — a wrong denominator is still a
-percentage. Three specific ways it goes wrong, one test each:
+* qualifying rounds counted against the main draw (coverage above 100%);
+* naming drift splitting one event in two (halving its denominator);
+* an uncharted round dropped instead of shown as 0%.
 
-* counting qualifying rounds into a numerator whose denominator is the main draw, which
-  puts coverage above 100% for a well-charted event;
-* letting the naming drift split one event in two, which halves the per-event denominator
-  and doubles the apparent number of draws behind a round;
-* dropping a round nobody charted, which reads as a gap in the heatmap rather than as the
-  0% it is — and 0% is the finding.
-
-Built on an in-memory DuckDB with a handful of hand-counted matches, the way `_cov_db` in
-test_live.py does, so the arithmetic is checkable by eye.
+Built on an in-memory DuckDB with a few hand-counted matches, like `_cov_db` in test_live.py.
 """
 
 import duckdb

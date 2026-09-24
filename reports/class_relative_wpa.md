@@ -1,26 +1,26 @@
 # Class-relative shot quality
 
-*Decision quality (avg win-prob conceded per stroke, lower = better) measured with one style-blind eval, then compared against what a player's own style predicts. `class_rel_z` < 0 means a player concedes less than their style predicts. Read the validation section first — the raw metric is mostly style, and only the class-relative residual carries any skill claim at all. CSV has every player; below are the highlights.*
+*Decision quality (avg win-prob conceded per stroke, lower = better) measured with one style-blind eval, then compared against what a player's own style predicts. `class_rel_z` < 0 means a player concedes less than their style predicts. Read the validation section first: the raw metric is mostly style, and only the class-relative residual carries any skill claim at all. CSV has every player; below are the highlights.*
 
 ## Is `avg_wpa_lost` measuring shot quality?
 
-Mostly not. WPA telescopes inside a point, so the total swing is near-fixed and the per-stroke average is identically *(win probability conceded per point) / (strokes per point)* — the second factor does most of the work.
+Mostly not. WPA telescopes inside a point, so the total swing is near-fixed and the per-stroke average is identically *(win probability conceded per point) / (strokes per point)*, and the second factor does most of the work.
 
 | | players | reliability | r with rally length | style CV R² | reliable non-style |
 |---|---|---|---|---|---|
 | Men | 239 | 0.94 | -0.86 | 0.90 | **0.04** |
 | Women | 151 | 0.93 | -0.84 | 0.85 | **0.08** |
 
-Reliability is split-half by match hash, Spearman-Brown corrected. Style R² is out-of-fold over the 12 fingerprint features, so it is variance style genuinely predicts rather than variance it can be fitted to. The last column is reliability minus that: the most of the metric's spread that could be skill rather than style or noise.
+Reliability is split-half by match hash, Spearman-Brown corrected. Style R² is out-of-fold over the 12 fingerprint features, so it is variance style predicts rather than variance it can be fitted to. The last column is reliability minus that: the most of the metric's spread that could be skill rather than style or noise.
 
-The residual — the part `class_rel_z` reports — is the only place a skill claim can live, and it is much weaker than the raw metric:
+The residual (the part `class_rel_z` reports) is the only place a skill claim can live, and it is much weaker than the raw metric:
 
 | | `class_rel_z` reliability | against a full style fit |
 |---|---|---|
 | Men | +0.89 | +0.45 |
 | Women | +0.88 | +0.54 |
 
-The left column looks strong, and that is the trap: λ is solved to absorb only as much variance as the four class means did (see `style_benchmark`), a third to a half of the total, so plenty of style is still sitting inside the published residual and lending it a stability that is not skill. The right column removes every bit of style the fingerprint can reach and is the honest ceiling on the skill claim: a three-band verdict's worth of signal, not a score's.
+The left column looks strong, but it's misleading: λ is solved to absorb only as much variance as the four class means did (see `style_benchmark`), a third to a half of the total, so plenty of style is still sitting inside the published residual and lending it a stability that is not skill. The right column removes every bit of style the fingerprint can reach and is the ceiling on the skill claim: a three-band verdict's worth of signal, not a score's.
 
 What the raw metric ranks, most to least (accuracy score, with the average rally length of the points they played):
 

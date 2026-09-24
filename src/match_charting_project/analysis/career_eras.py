@@ -1,4 +1,4 @@
-"""Optional ``player_eras`` layer: split long, *genuinely evolving* careers into eras.
+"""Optional ``player_eras`` layer: split long, *evolving* careers into eras.
 
 A long career (Federer spans 24 charted years) is one blurry "player" to every
 per-player analysis, hiding real evolution. This materializes a mapping that splits

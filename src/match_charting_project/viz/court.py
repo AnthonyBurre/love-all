@@ -1,41 +1,25 @@
 """Draw a single point's ball path on a small tennis-court SVG.
 
-A charted point tells us, per stroke, three spatial things: lateral placement
-(zone 1/2/3 — a right-hander's forehand corner / middle / backhand corner of the
-end it lands in), depth (7/8/9 — shallow / mid / deep) for rally shots, and the
-serve target (4/5/6 — wide / body / T). This turns that into a court diagram: a
-zig-zag crossing the net once per stroke, each segment wearing a pair of small
-chevrons so the direction of travel reads at a glance, and the final stroke drawn
-as a landed winner or a marked miss (into the net / long / wide).
+A charted point gives, per stroke, lateral placement (zone 1/2/3: a right-hander's forehand
+corner / middle / backhand corner), depth for rally shots (7/8/9: shallow / mid / deep), and
+the serve target (4/5/6: wide / body / T). This draws a zig-zag crossing the net once per
+stroke, with chevrons for direction and the last stroke shown as a winner or a marked miss
+(net / long / wide). The path runs contact to contact, and a small ring marks each bounce, so
+a segment with no ring is a ball taken out of the air.
 
-The zig-zag runs contact to contact, so every kink in it is a player meeting the
-ball. Where that ball bounced on the way is marked with a small ring along the
-segment — which leaves a segment carrying no ring meaning something definite: that
-ball never bounced, and was taken out of the air.
+The geometry and CSS class names match ``docs/js/court.js`` (a 150×190 field, net at y=95,
+``ct-*`` classes), so ``css_classes=True`` output drops into the site. The default uses inline
+colours, for Markdown reports and standalone ``.svg`` files.
 
-The court geometry and CSS-class names mirror the mini-courts the Pages site
-already draws in ``docs/js/court.js`` (a 150×190 field, net at y=95, the
-``ct-*`` classes), so an SVG from here drops straight into that theme with
-``css_classes=True``; the default is self-contained (inline colours) so the same
-call also embeds in a Markdown report or saves as a standalone ``.svg``.
+Limits:
 
-What we can and can't show, honestly:
-
-- Direction is only charted to lane granularity (three lanes), so bounces sit on
-  one of three x positions per end, not a continuous coordinate.
-- Only the bounce is charted. Where a player stood to it is inferred, from the one
-  thing that constrains it: a ball runs straight in plan view, so the contact is
-  somewhere on the incoming ball's own line. How far along is a constant per stroke
-  kind (see _STEP_F and its neighbours), not anything the notation records — a step
-  past the bounce for a groundstroke, the baseline for a return, short of the bounce
-  for a volley. The bounce rings are charted; the kinks between them are modelled.
-- Nothing here is a ball-flight arc. Segments are straight and heights are absent, so
-  a lob and a drop shot differ only in where they land.
-- The point string doesn't record whether the server was in the deuce or ad
-  court, so which box the serve crosses into is a caller-supplied argument
-  (``serve_court``), defaulting to the deuce court. It *is* recoverable from the
-  point's game score, though: pass the ``pts`` value to ``point_rally_svg`` and
-  it derives the side via ``shots/score.serve_side``.
+- Direction is charted to three lanes, so bounces sit on one of three x positions per end.
+- Only the bounce is charted. The contact point is modelled on the incoming ball's line, a
+  fixed distance per stroke kind (see _STEP_F and its neighbours).
+- Segments are straight with no heights, so a lob and a drop shot differ only in where they
+  land.
+- The point string doesn't record the serve court. ``serve_court`` defaults to deuce; pass
+  ``pts`` to ``point_rally_svg`` to derive it via ``shots/score.serve_side``.
 """
 
 from dataclasses import dataclass
@@ -217,16 +201,9 @@ def _bounces_from_shots(shots: "list[Shot]", server_at_bottom: bool,
 
 def _point_at_depth(a: "tuple[float, float]", b: "tuple[float, float]",
                     y: float) -> "tuple[float, float]":
-    """Where the line through ``a`` and ``b`` sits at height ``y``, extended past ``b``
-    when ``y`` is beyond it.
-
-    A wide serve really does pull a returner off the court, and the extension says so, but
-    the drawing has no room to follow one indefinitely — and depth and width are drawn on
-    different scales here, which exaggerates how far sideways it runs. So an extension that
-    would leave the court is stopped where it crosses the sideline instead of being slid
-    back inside at the depth asked for: the contact comes out shallower, which is what
-    being yanked that wide actually does, and it stays *on the ball's line*. That last part
-    is what lets the bounce ring sit on the drawn segment rather than beside it.
+    """Where the line through ``a`` and ``b`` sits at height ``y``, extended past ``b`` if
+    needed. An extension that would leave the court stops at the sideline, so the contact
+    stays on the ball's line and the bounce ring sits on the drawn segment.
     """
     (ax, ay), (bx, by) = a, b
     lo, hi = _LEFT - _CONTACT_PAD, _RIGHT + _CONTACT_PAD
@@ -240,12 +217,8 @@ def _point_at_depth(a: "tuple[float, float]", b: "tuple[float, float]",
 
 
 def _opening_contact(shots: "list[Shot]", serve_court: str) -> "tuple[float, float]":
-    """Where the first stroke was struck from, which anchors everything after it.
-
-    A server stands behind their own baseline, to one side of the centre mark. A sequence
-    that opens mid-rally has no origin to know — the token strings the site draws routinely
-    start at shot 2 or 3 — so it is anchored just *inside* the baseline instead, and that
-    difference is what says which of the two a drawing is.
+    """Where the first stroke was struck from. A server stands behind the baseline; a
+    sequence that opens mid-rally is anchored just inside it, which marks the difference.
     """
     served = bool(shots) and shots[0].is_serve
     return (_serve_origin_x(serve_court),
@@ -256,16 +229,9 @@ def _contact_points(bounces: "list[_Bounce]", shots: "list[Shot]",
                     start: "tuple[float, float]") -> "tuple[list, list[bool]]":
     """Where each stroke was struck from, and which balls reached the ground.
 
-    A ball travels in a straight line in plan view, so a player standing to it meets it
-    on that line, past the bounce — which is why the contact is found by extending the
-    incoming ball's own line rather than by stepping back from the bounce. How far past
-    depends on what the stroke was: a groundstroke a step, a return a stride to wherever
-    the returner was standing, and a volley not past the bounce at all but short of it,
-    the ball taken out of the air.
-
-    The second return value is per *incoming* ball: False where the stroke that answered
-    it was a volley, because then it never bounced and nothing should be drawn saying it
-    did. That is the one fact here a stroke can only learn from the stroke after it.
+    A contact lies on the incoming ball's line past the bounce: a step for a groundstroke, a
+    stride for a return, and short of the bounce for a volley. The second return value is
+    per incoming ball, False where a volley answered it (so no bounce is drawn).
     """
     contacts = [start]
     bounced = [not b.out for b in bounces]
@@ -327,12 +293,8 @@ def _f(v: float) -> str:
 
 
 def _tip_elems(x1: float, y1: float, x2: float, y2: float, attrs: str) -> "list[str]":
-    """Small chevrons along a segment, pointing from (x1,y1) toward (x2,y2).
-
-    A zig-zag of bounces is ambiguous on its own — the same shape reads either
-    way round — so each segment carries two wingtips showing which way the ball
-    went. Short segments get one, and a hair-thin one none, rather than a
-    cluttered smear of arrowheads.
+    """Small chevrons along a segment, pointing from (x1,y1) toward (x2,y2). Short segments
+    get one, very short ones none.
     """
     dx, dy = x2 - x1, y2 - y1
     length = (dx * dx + dy * dy) ** 0.5
@@ -369,14 +331,8 @@ def _court_elems(css: bool, th: dict) -> "list[str]":
 
 def _path_elems(contacts: "list[tuple[float, float]]", bounces: "list[_Bounce]",
                 bounced: "list[bool]", css: bool, th: dict, numbered: bool) -> "list[str]":
-    """The ball path: one segment per stroke, faint→bold, wingtipped for direction,
-    with a terminal marker on the last bounce.
-
-    A segment runs from the contact that struck it to the contact that answered it, so
-    every kink in the path is a player meeting the ball. The bounce along the way is
-    marked with a small ring — which makes a segment carrying no ring a ball that never
-    bounced, taken out of the air. The last stroke has nothing after it, so it simply
-    ends where it landed and needs no ring to say so.
+    """The ball path: one segment per stroke, faint to bold, with direction chevrons, bounce
+    rings, and a terminal marker on the last bounce.
     """
     els: list[str] = []
     n = len(bounces)

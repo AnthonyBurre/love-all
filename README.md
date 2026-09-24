@@ -20,22 +20,22 @@ answers it, and what it found. They write their output to `reports/`.
 | --- | --- | --- |
 | [`chess_point_analysis`](experiments/chess_point_analysis/) | Can chess-analysis techniques be ported to a tennis point? | Yes. A point string is a move list, so it gets an engine eval, WPA per shot, and an opening explorer. |
 | [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Rusedski, Moutet, Santoro, Rafter; Navratilova, Maria, Niculescu. Most predictable: Basilashvili, Cilic; Samsonova, Giorgi, Ostapenko. Junkballers and serve-volleyers score high, flat first-strike baseliners low. Zones are mirrored for left-handers, without which handedness alone explained over half the spread. |
-| [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive and face-valid. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, the textbook pressure point. |
-| [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, their conversion rates, and **traps** — cues that raise the frequency but convert worse than the player's other cues. Every figure is held out. Ships to the site. |
-| [`court_response`](experiments/court_response/) | What does a player do with a given incoming ball? | Enough stability to read as a scouting report: split-half r = 0.73 (men) / 0.69 (women) over ~43k state-response cells. Federer's crosscourt backhand slice, Djokovic's backhand down the line. The field is weighted to each player's own era, without which a pre-2000 slicer's lift is mostly the decade. Every figure is **held out**, and 46% of a discovered edge survives that. Known limit: 16.4% of cells answer the same ball differently in the opening than mid-rally. |
-| [`serve_plus_one`](experiments/serve_plus_one/) | The server's third ball, with the service court in the state. | Pooling the courts was averaging two different shots. Nadal answers the same mid-depth return with a crosscourt forehand on the deuce side and a forehand down the line on the ad side — 597 such disagreements across 260 players. 725 patterns over 414 players survive the FDR correction. Ships to the site. |
+| [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive, and they match expectations. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, his well-known pressure point. |
+| [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, their conversion rates, and **traps**: cues that raise the frequency but convert worse than the player's other cues. Every figure is held out. Ships to the site. |
+| [`court_response`](experiments/court_response/) | What does a player do with a given incoming ball? | Enough stability to read as a scouting report: split-half r = 0.73 (men) / 0.69 (women) over ~43k state-response cells. Federer's crosscourt backhand slice, Djokovic's backhand down the line. The field is weighted to each player's own era, without which a pre-2000 slicer's lift is mostly the decade. Every figure is **held out**, and about half of a discovered edge survives that. Known limit: 16.4% of cells answer the same ball differently in the opening than mid-rally. |
+| [`serve_plus_one`](experiments/serve_plus_one/) | The server's third ball, with the service court in the state. | Pooling the courts was averaging two different shots. Nadal answers the same mid-depth return with a crosscourt forehand on the deuce side and an inside-out forehand on the ad side, one of 597 such disagreements across 260 players. 725 patterns over 414 players survive the FDR correction. Ships to the site. |
 | [`context_length`](experiments/context_length/) | How many shots of history does charted data actually support? | **Two. The third actively hurts** held-out log-loss. And a player's top-5 signature list overlaps only J≈0.22 between halves of their own data, so much of any specific list is sampling luck. |
-| [`rally_patterns`](experiments/rally_patterns/) | Blind out the serve, return and both +1 shots. What patterns are left in the rally alone? | **Almost nothing deeper than two shots.** Of 1,752 serve-blind 3-shot candidates, 2 survive; of 362 at four shots, none. Two-shot rally patterns are real: 89 survive, 89% replicate, and one found at lift L posts about 1 + 0.5(L−1) out of sample. Letting the context reach back into the opening returns seven times as many patterns, but they keep only a third of their discovered edge against two thirds for the rally-only pair. Blinding also makes serving/returning and deuce/ad poolable, now measured (2 of 1,441 cells reject) rather than assumed. Retired the site's starred 3–4 shot tier. |
-| [`serve_side`](experiments/serve_side/) | Does deuce vs ad court hide structure? | Yes, and nothing else here conditioned on it. The direction codes mean **opposite wings** on the two sides, so serve analysis that ignores side is averaging two different shots together. |
+| [`rally_patterns`](experiments/rally_patterns/) | Blind out the serve, return and both +1 shots. What patterns are left in the rally alone? | **Almost nothing deeper than two shots.** Of 1,752 serve-blind 3-shot candidates, 2 survive; of 362 at four shots, none. Two-shot rally patterns are real: 89 survive, 89% replicate, and one found at lift L posts about 1 + 0.5(L−1) out of sample. Letting the context reach back into the opening returns seven times as many patterns, but they keep only a third of their discovered edge against two thirds for the rally-only pair. Blinding also makes serving/returning and deuce/ad poolable, which is tested directly (2 of 1,441 cells reject). The site ships no 3–4 shot tier. |
+| [`serve_side`](experiments/serve_side/) | Does deuce vs ad court hide structure? | Yes. The direction codes mean **opposite wings** on the two sides, so serve analysis that ignores side is averaging two different shots together. |
 | [`serve_tendencies`](experiments/serve_tendencies/) | Which serve-placement stats can a player card safely carry? | Where a player serves is a measurement (split-half r = 0.58, ~860 serves for 80% signal); **what the placement earns is not** (r = 0.22, ~11,000 serves). Placement is re-decided per match, so the binomial sample-size rule is optimistic ~4x. |
 | [`player_styles`](experiments/player_styles/) | What style archetypes are there? | Four per tour, matching how fans talk: net-rusher (Sampras, McEnroe), baseline grinder (Djokovic, Nadal), slice & variety (Wawrinka, Federer), big-serving baseliner (Medvedev, Zverev). Style is a continuum, so about a third of entities sit too near a boundary to name and are reported as "between styles" rather than assigned. |
-| [`career_splits`](experiments/career_splits/) | Should a long career split into eras, or is that just two noisier samples of one player? | Split **selectively**. Most careers are stable; 34 genuinely evolved, and those detections are face-valid (Sabalenka's serve yips, Clijsters' comeback). Justifies `player_eras`, 358 → 392 entities. |
+| [`career_splits`](experiments/career_splits/) | Should a long career split into eras, or is that just two noisier samples of one player? | Split **selectively**. Most careers are stable; 34 changed clearly, and they match known changes (Sabalenka's serve yips, Clijsters' comeback). Justifies `player_eras`, 358 → 392 entities. |
 | [`blind_reid`](experiments/blind_reid/) | Hide every name. Can you tell who is across the net purely from the shots coming back? | Yes, and **the serve is the weakest way to do it**. Response strokes alone reach AUC 0.685 on held-out players against the serve block's 0.643. Identity also fades measurably across years. |
 | [`class_relative_wpa`](experiments/class_relative_wpa/) | Who beats the average for *their own style*, rather than the field's? | **Not at this resolution.** `class_rel_z` was meant to judge a shotmaker against other shotmakers, but the residual correlates −0.99 with the raw score it is taken from and 66% of its variance is rally length: the ridge λ is solved to match the class means' R², which it buys by leaving a scaled copy of the style axis in the residual. It said no male serve-volleyer had ever been ahead of similar players. Does not ship. |
 
 ### Win probability
 
-None of these ship to the site — see [The site](#the-site) for why.
+None of these ship to the site. See [The site](#the-site) for why.
 
 | experiment | the question | what it found |
 | --- | --- | --- |
@@ -43,13 +43,12 @@ None of these ship to the site — see [The site](#the-site) for why.
 | [`score_aware_eval`](experiments/score_aware_eval/) | Does telling the point eval *where in the match* a point sits improve it? | **No.** Points are nearly independent given the rally state, the classic Klaassen–Magnus result. This negative is what justified handling the score with an analytic tree instead. |
 | [`class_aware_eval`](experiments/class_aware_eval/) | Does telling the eval *who* is playing improve it? | **No.** Style-blind wins on held-out data at both granularities, which is what stopped class-relative WPA from being built on a more complicated eval. |
 | [`surface_winprob`](experiments/surface_winprob/) | Does surface improve match prediction? | **No.** Players do differ by surface, but both players shift together and only the *relative* tilt moves a prediction. Too small and too thinly sampled to pay. |
-| [`form_streakiness`](experiments/form_streakiness/) | Does recent form help, and are some players genuinely streaky? | **No** to both. The form signal is real (~8σ) but tiny in absolute terms, and per-player streakiness is mostly noise at this resolution. |
+| [`form_streakiness`](experiments/form_streakiness/) | Does recent form help, and are some players streaky? | **No** to both. The form signal is real (~8σ) but tiny in absolute terms, and per-player streakiness is mostly noise at this resolution. |
 
 ## The site
 
 `docs/` is a GitHub Pages site showing **Grand Slam, Masters/WTA-1000, ATP/WTA-500 and ATP-250
-brackets**. WTA 250 stays below the bar — the tour's least-charted tier, and covered on the
-women's side only up through 500.
+brackets**.
 
 | feed | source | what it gives | refresh |
 | --- | --- | --- | --- |
@@ -63,35 +62,39 @@ structure**, so everything structural comes from Wikipedia. Both Wikipedia feeds
 under `data/` (gitignored, carried by CI as Release assets), so **no draw sheet is committed
 to the repo**, and the hourly build normally makes zero Wikipedia requests.
 
-ESPN is polled only while a draw is being played. Between events the build probes once a day, which is enough to notice the next event
-starting. Requests identify themselves as `love-all/0.1` and link back to this repo.
+ESPN is polled only while a draw is being played. Between events the build checks once a
+day, which is enough to notice the next event starting. Requests identify themselves as
+`love-all/0.1` and link back to this repo.
 
-Live draws show while play is on. Once an event finishes its draw is frozen into an archive
-so it stays in the dropdown, keeping the last two years of slams plus the two most recent
-finished events of every other tier. Drill into
-any matchup to view average point
-length, shot variety, shot mix, serve direction, court patterns, shot-making triggers, and more! All of it is queried in the browser with **DuckDB-WASM**, no backend.
+Live draws show while play is on. Once an event finishes, its draw is frozen into an
+archive so it stays in the dropdown; the archive keeps the last two years of slams plus
+the two most recent finished events of every other tier. Open any matchup to see average
+point length, shot variety, shot mix, serve direction, court patterns, shot-making
+triggers, and more! All of it is queried in the browser with **DuckDB-WASM**, with no
+backend.
 
 The panel deliberately does not predict match outcomes, since that is not the strength of this dataset and every other tennis site already does so.
 
 When the match itself is charted we do show a win-probability curve over every point, plus some match summary stats for each player. Those numbers come from a small static file per match, fetched only when such a match
 is opened.
 
-Two important things about the win-probability curve: The anchor comes from `walk_forward_strength`, which scores
-a match only off **older** matches than itself, and the tree is evaluated across the spread of strengths the match could
-have been played at rather than once at the best guess, because it is exact given a point-win
-probability and sharply non-linear in it, while that probability is not a constant a player
-carries between matches. Scored against its own predictions over 23,111 player-match serve
-lines, the model's residuals hold 6.6 points of standard deviation that coin-flipping does not
-explain. Carrying that spread is what stops the tree compounding a certainty nothing supports:
-without it a top seed against a thinly-charted opponent came out at 99.98%, and two comparable
-journeymen at 97% on whichever had the better charted fortnight.
+Two important things about the win-probability curve:
+
+- Its starting point comes from `walk_forward_strength`, which scores a match only from
+  **older** matches.
+- The score tree is averaged across the spread of strengths the match could have been
+  played at, not evaluated once at the best guess. The tree is exact for a given point-win
+  probability but sharply non-linear in it, and that probability isn't constant from match
+  to match: over 23,111 player-match serve lines, the model's residuals hold 6.6 points of
+  standard deviation beyond coin-flip noise. Without that spread, a top seed against a
+  thinly-charted opponent came out at 99.98%, and two comparable journeymen at 97% on
+  whichever had the better charted fortnight.
 
 <details>
 <summary><b>Why neither Wikipedia feed is trusted blindly</b> — draw validation and calendar joining</summary>
 
 - **A draw sheet is adopted only once it agrees with the live feed about who plays whom**
-  (`wiki.feed_agreement`). This matters more than it sounds: a draw for the wrong event, the
+  (`wiki.feed_agreement`). A draw for the wrong event, the
   wrong gender, or last year's edition all parse into perfectly well-formed slots, and
   comparing the *set of players* doesn't separate them either, because tour fields overlap so
   heavily that a slam's draw contains ~84% of a 500's entrants. Pairings do: two players
@@ -160,12 +163,11 @@ Each stroke is one token:
 
 - **Wing and type.** `FH` / `BH` is the forehand or backhand wing the player actually hit
   with. The type is `drive` (flat or topspin), `slice` (slice or chip), `net` (volley,
-  overhead, half-volley, or swinging volley), `drop` or `lob` — the shortest and deepest
-  balls in tennis, which is why they get a group each rather than sharing one — or `shot`
-  when the type was not charted.
+  overhead, half-volley, or swinging volley), `drop` or `lob` (the shortest and deepest
+  balls in tennis, so each gets its own group), or `shot` when the type was not charted.
 - **Direction.** `→1` / `→2` / `→3` is the third of the court the ball was sent to, named
-  relative to the **player's own hands** — mirrored for a left-hander, so one token string
-  means one piece of tennis whoever played it. The raw notation names fixed thirds by the
+  relative to the **player's own hands**: mirrored for a left-hander, so one token string
+  means the same shot whoever played it. The raw notation names fixed thirds by the
   right-hander convention, which would make a lefty's crosscourt forehand and a righty's read
   as different shots and their mirror images read as the same one. `→·` means the direction
   was not charted.
@@ -185,16 +187,19 @@ That numerator matches the one behind
 
 ### The court diagram
 
-The diagram is a **placement map**, not a flight path: it marks where each ball landed and
-joins the points in order, faint first and bold last. It comes in two flavors:
+The diagram is a **placement map**, not a flight path. The player's half of the court is
+tinted, their own balls are solid lines in their colour, and the opponent's are dashed and
+grey. Lines run from one contact to the next, and a ring marks where a ball bounced, so a
+line with no ring is a ball taken out of the air (a volley). It comes in two forms:
 
 - **A pattern** draws the incoming ball landing on the near half, the player's side, so
-  "into the BH corner" points where you'd expect, and the response, bold, landing up top.
-  For return patterns the incoming bounce sits short, mid-court, or deep to match the
-  charted return depth.
-- **A trigger sequence** plays out from the near baseline, bounces alternating ends, with
-  the small dot anchoring the first stroke (the server's contact when it starts with a
-  serve). The notation does not record deuce or ad court, so serves assume the deuce court.
+  "into the BH corner" points where you'd expect, and the response, with an arrowhead,
+  landing up top. For return patterns the incoming bounce sits short, mid-court, or deep to
+  match the charted return depth.
+- **A trigger sequence** plays out the lead-up shots, ending on the ball the player
+  attacked. The attacking shot itself isn't drawn, because the stored pattern doesn't say
+  where it went. Opening cues are drawn on their own service court; pooled triggers have no
+  court, so their serves are drawn in the deuce court.
 
 ### Zones and how fine the charting really is
 
@@ -220,14 +225,12 @@ straight from the notation, so it holds for left-handers and right-handers alike
 
 For **court patterns**, handedness is already folded in. The zones are flipped for
 left-handers before anything is counted or compared, so "drive into the BH corner" means the
-same tennis problem for Nadal as for Federer, and the comparison against the tour is apples
-to apples. Without the flip, a lefty answering his forehand corner with a forehand posts a
-huge, meaningless lift against a mostly right-handed tour.
+same tennis problem for Nadal as for Federer, and the comparison against the tour is like
+for like. Without the flip, a lefty answering his forehand corner with a forehand posts a
+large, meaningless lift against a mostly right-handed tour.
 
-The **trigger tokens** keep the raw convention: `→1` / `→2` / `→3` are fixed thirds named
-by a right-hander's wings (`1` = a righty's forehand corner). The ball is drawn where it
-physically went, so the diagram itself never needs adjusting. Just remember that for a
-left-hander, `→3` is their forehand side.
+The **trigger tokens** are flipped the same way, so `→1` is always the player's own
+forehand side. The diagram flips them back, so the ball is drawn where it physically went.
 
 </details>
 
@@ -280,12 +283,12 @@ docs/                  # the live Love All site (Pages)
   `gender`, `year`, `tier` (Grand Slam / Masters-1000 / etc.), and quality flags
   (`surface_valid`, `surface_clean`, `is_qualifying`, `date_valid`).
 - **`points`** — one row per point. Raw shot notation in `first_serve` /
-  `second_serve` (e.g. `4b37y1r3n#`) — the basis for derived shot analytics.
+  `second_serve` (e.g. `4b37y1r3n#`), the basis for derived shot analytics.
 - **`points_parsed`** — one row per point, decoded from the notation (`rally_len`,
   `outcome`, ending wing/kind, `server_won`); built by `match-charting-project shots`.
 - **`player_eras`** *(optional; built by `match-charting-project eras`)* — one row per
   player-era. A long career is split into early/late entities **only** when its style
-  genuinely changed (`evolved` flag), so analyses can treat e.g. early- vs late-career
+  changed (`evolved` flag), so analyses can treat e.g. early- vs late-career
   Agassi as distinct players; join points on `year BETWEEN year_start AND year_end`.
   Methodology & justification live in `experiments/career_splits/`.
 - **`stats_overview`** (+ more with `--what all`) — the project's own
@@ -317,11 +320,11 @@ Hamburg, Charleston and Tokyo sit in the 1000 bucket for seasons in which they w
 ### Coverage methodology
 
 "Coverage" means **charted ÷ played**, not a raw charted count, so it needs a denominator. Both
-denominators below are structural — true without any external results data — and men and women
+denominators below are structural (true without any external results data), and men and women
 are kept in separate figures throughout (`*_men.png` / `*_women.png` pairs):
 
-- **Grand Slams** — a singles main draw is always 128 players = **127 matches**, so coverage is `charted / 127` per slam-year-gender.
-  Valid for all four slams since 1990.
+- **Grand Slams** — a singles main draw is always 128 players = **127 matches**, so
+  coverage is `charted / 127` per slam-year-gender. Valid for all four slams since 1990.
 - **Masters 1000 / WTA 1000** — draws vary (56 / 96 / 128), so there is no fixed
   full-draw denominator. The late rounds are invariant, though: every draw has
   R16=8, QF=4, SF=2, F=1 = **15 matches**. We report `charted / 15` from the

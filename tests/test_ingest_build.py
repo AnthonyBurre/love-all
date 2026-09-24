@@ -1,4 +1,4 @@
-"""The order the ingest steps run in, which is load-bearing and invisible in the output.
+"""The order the ingest steps run in, which matters and doesn't show in the output.
 
 `build_matches` repairs, then drops out-of-scope rows, then coerces types, then derives the
 tier. Each boundary is there for a reason, and moving a step across one produces a build

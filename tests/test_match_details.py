@@ -1,20 +1,13 @@
 """Tests for the per-match sidecars the panel reads on a charted match.
 
-The failure mode here is quiet in the same way the insights projections are: every
-figure below is a plausible percentage whichever way it is derived, so a wrong
-denominator ships a panel that renders cleanly and lies.
+Every figure is a plausible percentage however it's derived, so these pin three that can
+go wrong:
 
-Three of them have a real chance of going wrong:
-
-- Second serves. The upstream summary table's ``second_in`` column counts second-serve
-  *points*, not second serves that landed, so the obvious reading makes every player
-  100%. These build from the notation instead, and the test pins that a double fault
-  lands outside ``second_in`` while staying inside ``second_pts``.
-- Break rate is the one figure read off the *other* player's games. Off its own it
-  would print the hold rate's complement, which is a real number about the wrong
-  player.
-- Point length is averaged over the points a player *won*, which is the whole reason
-  the two sides differ; averaged over all points it silently prints one number twice.
+- Second serves: the upstream ``second_in`` column counts second-serve points, which would
+  make every player 100%. Built from the notation, a double fault is outside ``second_in``
+  and inside ``second_pts``.
+- Break rate is read off the other player's service games.
+- Point length is averaged over the points each player won, so the two sides differ.
 """
 
 import json
@@ -62,12 +55,9 @@ BREAK = [
 
 
 def test_second_serve_points_are_not_second_serves_in():
-    """A double fault is a second-serve point that did not land.
-
-    ``second_pts`` counts every point that reached a second delivery; the in-rate the
-    panel prints divides by it after removing the faults. Conflating the two is the
-    upstream table's own trap — there ``second_in == serve_pts - first_in`` in all
-    23,256 rows, which would print every server at 100%.
+    """A double fault is a second-serve point that did not land. ``second_pts`` counts every
+    point that reached a second delivery. (Upstream, ``second_in == serve_pts - first_in`` in
+    all 23,256 rows.)
     """
     s = fold(HOLD)[1]
     assert s["serve_pts"] == 5
@@ -86,12 +76,7 @@ def test_ace_and_double_fault_come_off_the_notation():
 
 
 def test_aces_are_split_by_which_delivery_struck_them():
-    """The two cores the serve plot deepens, each on its own column's denominator.
-
-    A second-serve ace counted in with the first serves would draw a core inside a column
-    the point never reached, and the split is the whole point of the figure: the first
-    delivery is hit to be unreturnable and the second is not.
-    """
+    """First- and second-serve aces, each on its own column's denominator."""
     # The held game's ace is a first-serve ace; one more point, aced on the second delivery
     # after the first missed.
     rows = HOLD + [row(6, 1, "40-30", "6d", "4*", 1)]
@@ -204,14 +189,9 @@ def test_a_match_with_no_prior_falls_back_to_the_league_mean():
 
 
 def test_the_curve_carries_the_predictive_spread():
-    """The tree is evaluated across the spread of strengths the match could be played at,
-    not once at the best guess.
-
-    Without it the tree compounds a point probability it treats as exact over a couple of
-    hundred points, and the answer runs away: a 0.742 / 0.515 pairing came out at 99.98%
-    over five sets, and pairs of comparable players came out in the high nineties on which
-    of them had the better charted fortnight. The two numbers below are the same score tree
-    on the same inputs, differing only in whether the strengths are held fixed.
+    """The tree is averaged across the spread of strengths the match could be played at.
+    At a fixed strength, a 0.742 / 0.515 pairing comes out at 99.98% over five sets. The two
+    numbers below are the same tree and inputs, with and without that spread.
     """
     from match_charting_project.winprob_match import MatchWP, blend, predictive_models
     plug_in = MatchWP(0.742, 0.515, 5).pre_match()

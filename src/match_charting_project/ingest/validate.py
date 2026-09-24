@@ -1,19 +1,12 @@
 """Data-quality checks and repairs over the normalized frames.
 
-Philosophy: never *silently* drop crowdsourced rows — but a row whose fields are
-in the wrong columns is not data, it is noise wearing data's shape, and carrying
-it forward costs more than losing it. So this module does three things in order:
-repair what can be repaired deterministically, drop what can't, and account for
-every row it touched in the report. Nothing goes without being counted and named.
+Rows whose fields sit in the wrong columns are noise, not data. This module repairs what
+can be repaired deterministically, drops what can't, and counts and names every row it
+touched in the report.
 
-The distinction that matters is between a *value* being wrong and a *row* being
-wrong. Per-column checks — is this a real surface, does this date parse — only
-ever see the first kind. A row that has slipped two columns to the left trips
-several of them at once and looks like several unrelated problems: a per-column
-report says "invalid surface: {'1': 7, 'Eva Asderaki-Moore': 2}" and leaves the
-reader to notice that an umpire's name in the surface column means the row is
-shifted, not that the surface is unusual. So the shape of a row is checked first
-and on its own terms, and the report names the cause rather than the symptoms.
+Row shape is checked first and on its own terms. A row shifted two columns trips several
+per-column checks at once (an umpire's name in the surface column), and the report should
+name the cause, not the symptoms.
 """
 
 import re
@@ -21,19 +14,11 @@ import re
 import pandas as pd
 
 VALID_SURFACES = {"Hard", "Clay", "Grass", "Carpet"}
-# Events outside professional tennis, dropped from the corpus by name.
-#
-# A scope rule rather than a quality one: these rows are sound, they just describe a
-# different level of the sport, and a career rate that mixes levels is measuring two
-# things at once. Age bracket is what decides it, so "juniors" in a name is not the test.
-#
-# The Nike Junior Tour is a 12-and-under series, and its one charted match is Sinner at
-# 12. The junior slams read as juniors too and are kept: they are the ITF Junior Circuit's
-# 18-and-under events, the top of junior tennis, and this corpus reaches them through
-# Federer, Tsitsipas, De Minaur and Raducanu. The corpus itself separates the two — median
-# years from the event to the player's first charted pro match is 1.1 at Wimbledon Juniors
-# and 1.2 at the AO (Shapovalov 0.1, Andreeva 0.2, Federer 0.3), 0.2 at the NCAA finals,
-# and 5.4 at the Nike Junior Tour.
+# Events outside professional tennis, dropped by name. Sound rows, but a different level of
+# the sport. Age bracket decides it: the Nike Junior Tour is 12-and-under (its one charted
+# match is Sinner at 12), while the junior slams (18-and-under) are kept. Median years from
+# event to first charted pro match: 1.1 at Wimbledon Juniors, 1.2 at the AO, 5.4 at the Nike
+# Junior Tour.
 OUT_OF_SCOPE_TOURNAMENTS = {"nike junior tour"}
 QUALIFYING_ROUNDS = {"Q1", "Q2", "Q3", "Q4"}
 # A hand cell holds one of these or nothing. Their appearing in the *player*
@@ -57,11 +42,8 @@ MATCH_COLS = [
 def _parse_match_id(match_id: str) -> "dict | None":
     """Split a match_id into the five fields it encodes, or None if it's ambiguous.
 
-    ``rest`` is ``Tournament-Round-Player_1-Player_2`` with '-' between fields, so it
-    splits into exactly four. Anything else means one of those fields contains a
-    hyphen of its own — a surname like "Auger-Aliassime" — and there is no way to tell
-    from the string alone which hyphen is a separator. That returns None and the caller
-    drops the row, because guessing is how you invent a player.
+    ``rest`` must split into exactly four '-'-separated fields. More means a field contains
+    a hyphen (e.g. "Auger-Aliassime"), and the caller drops the row rather than guess.
     """
     m = _MATCH_ID_RE.match(str(match_id or "").strip())
     if not m:
@@ -78,33 +60,17 @@ def _parse_match_id(match_id: str) -> "dict | None":
 def repair_matches(matches: pd.DataFrame) -> "tuple[pd.DataFrame, dict]":
     """Repair or drop match rows whose fields have slipped out of their columns.
 
-    A handful of rows in the upstream files are short: ``Player 1`` and ``Player 2``
-    are absent rather than empty, so the fields after them sit to the left of where
-    they belong and the reader pads the row's *end* with nulls. The tell is a bare
-    hand code sitting in the player column — no one is called "R".
+    Some upstream rows lack ``Player 1`` and ``Player 2``, so later fields shift left. The
+    tell is a bare hand code in the player column. In order of preference:
 
-    Three outcomes, in order of preference:
+    * if an intact row has the same match_id, the shifted one is dropped (most cases);
+    * otherwise the row is rebuilt from its match_id;
+    * otherwise (an ambiguous match_id) it is dropped.
 
-    * the same match_id also arrives as an intact row — the shifted one is a partial
-      duplicate and is dropped, losing nothing. This is what happens to most of them;
-    * otherwise the row is rebuilt from its match_id, which is the one field still
-      known to be in the right place;
-    * otherwise — an ambiguous match_id — it is dropped, because a match with no
-      players is not a match.
-
-    What a rebuild restores is deliberately narrow: the five fields the match_id
-    encodes, plus the two hands, which are self-validating (a hand cell holds R, L, U
-    or nothing, so a wrong one cannot masquerade as a right one). *Everything from
-    ``time`` onward is nulled rather than slid back into place.*
-
-    That is not caution for its own sake. The obvious repair — shift every field right
-    by the two missing columns — assumes the row is missing exactly those two, and the
-    one row here that needs rebuilding is also missing ``Surface``, so its tail is
-    displaced by three, not two. Shifted uniformly it comes out with the umpire in the
-    surface column, best-of in the umpire column, and every value plausible enough to
-    survive a per-column check. A repair that can silently produce that is worse than
-    no repair: null says "unknown", which is true, where a positional guess says
-    "Eva Asderaki", which is a surface nobody has ever played on.
+    A rebuild restores only the five match_id fields and the two hands (R, L, U or empty).
+    Everything from ``time`` onward is nulled, not shifted back: the one row that needs
+    rebuilding is also missing ``Surface``, so a uniform shift would put the umpire in the
+    surface column.
     """
     df = matches.copy()
     tail = [c for c in MATCH_COLS[MATCH_COLS.index("time"):] if c in df.columns]
@@ -140,13 +106,9 @@ def repair_matches(matches: pd.DataFrame) -> "tuple[pd.DataFrame, dict]":
     if drop_idx:
         df = df.drop(index=drop_idx).reset_index(drop=True)
 
-    # The other way these rows are damaged, and one the front-shift check cannot see:
-    # a row that has all its players but is missing the `Surface` field, so everything
-    # after it moves up one. Those rows read as an ordinary match until you notice the
-    # surface is an umpire's name and best-of is 1 — and best-of is not decorative, it
-    # feeds the win probability. Anything from the surface on is unusable, and how far
-    # it has moved is unknowable (that depends on how many fields were omitted), so it
-    # is nulled rather than realigned, for the reason given above.
+    # Rows missing only the `Surface` field shift everything after it by one (the surface
+    # reads as an umpire's name, best-of as 1). Best-of feeds win probability, so those
+    # fields are nulled, not realigned.
     if "surface" in df.columns:
         surf = df["surface"].fillna("").astype(str).str.strip()
         bad = surf.ne("") & ~surf.isin(VALID_SURFACES)
@@ -176,53 +138,32 @@ def drop_out_of_scope(matches: pd.DataFrame) -> "tuple[pd.DataFrame, dict]":
 def dedupe_points(points: pd.DataFrame) -> "tuple[pd.DataFrame, dict]":
     """Keep one chart per match where a match has been charted more than once.
 
-    Some matches appear in a points file as two consecutive runs of the same point
-    sequence — the same match charted twice and both submissions appended under one
-    match_id. Sackmann has called this useful in its own right: with few matches
-    charted early on, a duplicate is how you measure how far two charters disagree
-    about a subjective call like an unforced error. That is a real signal, and this
-    project already reasons about it (see the serve-placement experiment's note on
-    charters differing by several points on the same players).
+    Some matches appear as two consecutive runs of the same point sequence under one
+    match_id. Counting both would double-weight them in every career rate, and they tend to
+    be famous matches.
 
-    It is still wrong to *aggregate* over both. A match counted twice is weighted
-    twice in every career rate, in the coverage counts and in the ace share, and the
-    matches this happens to are not a random sample of matches — they are famous
-    ones. So one chart per match goes forward.
+    The most complete chart is kept, not the newest: in two of the four matches whose charts
+    differ, the second is the shorter, abandoned one. Ties keep the first, so the choice is
+    stable between builds.
 
-    Which one: the most complete, not the most recent. Of the four matches here whose
-    two charts genuinely differ, the second is the shorter, abandoned one in two
-    cases, so "keep the newer" would throw away a full chart for a partial. Ties —
-    which is every verbatim re-append — keep the first, so the choice is stable
-    between builds.
+    Three passes, since a few matches are two charts interleaved rather than appended:
 
-    Three passes, because a few matches are not two charts appended but two charts
-    *interleaved*, and taking one run does not separate those:
+    1. keep one run per match;
+    2. drop rows that repeat a point number with identical content;
+    3. drop from the points table any match that still repeats a point number with
+       different content.
 
-    1. keep one run per match, as above;
-    2. drop rows that repeat a point number with byte-identical content — either copy
-       will do, so this is lossless and needs no rule;
-    3. whatever still repeats a point number now disagrees about it, and the match is
-       dropped from the points table entirely.
-
-    Step 3 is the whole match rather than the offending rows. The two charts behind
-    these have drifted out of step — the same point number carries a different score
-    and a different winner in each — so their point numbers have stopped referring to
-    the same points, and cutting the rows where that is *visible* would leave a match
-    whose remaining points are still silently misaligned, now with holes in it. The
-    match row itself stays: the match was played and it was charted, and what is gone
-    is our ability to read the chart, which is what the report says.
+    Step 3 drops the whole match because the two charts have drifted out of step, so the
+    remaining point numbers can't be trusted either. The match row stays, and the report
+    says so.
     """
     mid = points["match_id"]
     pt = pd.to_numeric(points["pt"], errors="coerce")
     new_match = ~mid.eq(mid.shift())
-    # A second chart announces itself by repeating the match's opening point number.
-    #
-    # Not by failing to increase: `pt` is not sorted in the source files. One 1975
-    # semifinal opens 45, 47, 46, 48 — a charter's rows as entered, not as played — so
-    # "the number went down" fires thirteen times inside a single honest chart, and
-    # treating each as a chart boundary found 2,174 double-charted matches where there
-    # are 14. Nor is the opening number always 1, which is why this compares against
-    # each match's own first row rather than a constant.
+    # A second chart repeats the match's opening point number. Not "the number went down":
+    # `pt` isn't sorted in the source (one 1975 semifinal opens 45, 47, 46, 48), and that
+    # test found 2,174 double-charted matches where there are 14. The opening number isn't
+    # always 1, so each match is compared with its own first row.
     first_pt = pt.groupby(mid).transform("first")
     restart = (pt.eq(first_pt) & ~new_match).fillna(False)
     block = (new_match | restart).cumsum()

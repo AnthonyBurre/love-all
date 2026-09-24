@@ -1,26 +1,23 @@
-"""Match win-probability — the score-tree layer on top of the point eval.
+"""Match win probability: the score-tree layer on top of the point eval.
 
-Answers "how is the *match* going?" by propagating a single number — each player's
-probability of winning a point on their own serve — up the scoring tree:
-point -> game -> set -> match. That propagation is exact under the assumption that
-points are independent given the server (validated by the ``score_aware_eval``
-experiment). Graduated from ``experiments/match_winprob/`` so the Pages-site build
-(and the win-probability curve in ``docs/js/matchup.js``) can consume it.
+Propagates each player's probability of winning a point on their own serve up the scoring
+tree (point -> game -> set -> match). This is exact if points are independent given the
+server (checked in the ``score_aware_eval`` experiment). Used by the site build and the
+win-probability curve in ``docs/js/matchup.js``.
 
-Everything is from **player1's** perspective (``wp`` = P(player1 wins the match)).
-Two parameters drive it:
+Everything is from **player1's** perspective (``wp`` = P(player1 wins the match)):
 
     p1 = P(player1 wins a point when player1 serves)
     p2 = P(player2 wins a point when player2 serves)
 
-For an upcoming matchup those come from each player's career serve+return rates
-(``current_strength`` + ``matchup_strength``); for a live/charted match, ``parse_score``
-decodes each point's score columns into a ``Score``.
+``matchup_strength`` combines two players' serve and return rates into these (the site
+passes it the walk-forward rates from ``walk_forward_strength``). For a charted match,
+``parse_score`` decodes each point's score into a ``Score``.
 
 Standard scoring (game to 4 by 2 with deuce; set to 6 by 2; 7-point tiebreak at 6-6;
-best-of-3 or -5). Two documented <0.1% approximations: the first server of each new set
-is the alternation of the previous set's, and non-standard historical final-set rules
-default to the 6-6 tiebreak (``final_tb_games`` overrides for e.g. 2019 Wimbledon 12-12).
+best-of-3 or -5). Two approximations, each under 0.1%: the first server of a new set follows
+the previous set's alternation, and non-standard final-set rules default to the 6-6 tiebreak
+(``final_tb_games`` overrides, e.g. 12-12 for 2019 Wimbledon).
 """
 
 from collections import defaultdict
@@ -189,22 +186,11 @@ class MatchWP:
 
 
 # -- predictive spread ----------------------------------------------------
-# How far a player's actual point-win probability in one match sits from the strength the
-# model predicted for them, over and above coin-flipping. Measured, not chosen: score every
-# player-match serve line in the corpus against its own walk-forward prediction, take the
-# variance of the residuals, and subtract the binomial variance those residuals would have
-# had if the prediction were exactly right. Over 23,111 lines that leaves 6.6 points of
-# standard deviation unexplained — 57% of the dispersion in the residuals.
-#
-# It is not estimation error. Estimation error shrinks as a player accumulates charting and
-# is about 1.5 points for a well-charted one; this does not shrink, because it is the player
-# actually playing differently — opponent, surface, conditions, the day. The score tree is
-# exact given p, and p is not a constant.
-#
-# Left out, the tree compounds a point probability it treats as known over 250 points, and
-# the answer is far too sure of itself: a top seed against a thinly-charted opponent came out
-# at 99.98%, and pairs of journeymen came out at 97% on which of them happened to have the
-# better charted week. Carried, the same numbers land where a reader can use them.
+# How far a player's actual point-win probability in a match sits from their predicted
+# strength, beyond binomial noise: 6.6 points of SD over 23,111 player-match serve lines (57%
+# of the residual dispersion). It doesn't shrink with more charting, so it's the player
+# playing differently match to match, not estimation error. Without it the tree is overconfident
+# (a top seed against a thinly-charted opponent came out at 99.98%).
 FORM_SD = 0.066
 
 # Five-node Gauss-Hermite quadrature for the probabilists' weight, nodes in standard
@@ -217,16 +203,9 @@ _GH_W = (0.011257, 0.222076, 0.533333, 0.222076, 0.011257)
 
 def predictive_models(p1: float, p2: float, best_of: int = 3, sd: float = FORM_SD,
                       lo: float = 0.30, hi: float = 0.92) -> "list[tuple[MatchWP, float]]":
-    """``(model, weight)`` pairs to average a win probability over.
-
-    Turns the plug-in answer — the tree evaluated at one best guess of each player's
-    strength — into a predictive one, by evaluating it across the spread of strengths the
-    match could actually be played at and averaging. The tree is sharply non-linear in those
-    strengths, so this is not the same number: averaging the answers is right and taking the
-    answer at the average is not.
-
-    Clamped to the same band ``matchup_strength`` uses, so a node in the tail cannot ask the
-    tree for a strength the model never claims.
+    """``(model, weight)`` pairs to average a win probability over, across the spread of
+    strengths the match could be played at. The tree is non-linear in strength, so averaging
+    the answers differs from the answer at the average. Clamped to ``matchup_strength``'s band.
     """
     out = []
     for x1, w1 in zip(_GH_X, _GH_W):
@@ -288,19 +267,9 @@ def matchup_strength(serve_a, return_a, serve_b, return_b, mu,
 def current_strength(con) -> "tuple[dict, dict]":
     """``(gender, player) -> (serve_rate, return_rate)`` over their whole charted career.
 
-    These are the plain charted rates, unshrunk. Their only consumer is the panel's two
-    rings, which are withheld below 2,000 charted points, so the thin-history players a
-    pseudo-count would protect are already excluded before it could apply.
-
-    Shrinking them would instead bias a *displayed measurement*: a ring labelled "serve
-    points won" is read as this player's charted rate, not that rate pulled toward a prior
-    the reader cannot see. The effect is small (median 0.07pp, at most 0.83pp across the 363
-    players who get a ring) but it also mismatches the ace wedge, which divides an unshrunk
-    ace rate by this figure.
-
-    ``walk_forward_strength`` below keeps its own pseudo-count. That one is not display —
-    it is the no-leakage estimator the win-probability experiments calibrate against, and
-    there the shrinkage is doing real work on genuinely thin prior histories.
+    Plain charted rates, unshrunk. The site build uses this for its player list and the tour
+    means; the rates themselves aren't shipped. ``walk_forward_strength`` below is the
+    shrunk, no-leakage estimator the win-probability curve and experiments use.
     """
     mu = league_mu(con)
     serve = con.execute(
@@ -329,7 +298,7 @@ def current_strength(con) -> "tuple[dict, dict]":
 def walk_forward_strength(con, k: int = 100) -> "tuple[dict, dict]":
     """``match_id -> (p1, p2)`` from serve+return rates over *strictly earlier* matches.
 
-    The no-leakage estimate used for honest calibration (a match is scored only from
+    The no-leakage estimate used for calibration (a match is scored only from
     matches played before its day). Returns ``(pq, mu)``.
     """
     mu = league_mu(con)

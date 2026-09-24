@@ -22,7 +22,7 @@ Agreement is. Holding the player fixed and varying who charted them (cells of 15
 | body | 20 | ±4.3% | -5.6% to +11.7% |
 | T | 20 | ±2.6% | -4.6% to +5.4% |
 
-- **The body serve is partly a charter's opinion.** Charters disagree about it by ±4.3% on the same players, against a tour body share of 10% — the disagreement is a large fraction of the category. A serve near the middle can be charted body or wide, and different charters draw that line differently.
+- **The body serve is partly a charter's opinion.** Charters disagree about it by ±4.3% on the same players, against a tour body share of 10% , so the disagreement is a large fraction of the category. A serve near the middle can be charted body or wide, and different charters draw that line differently.
 - Wide and T carry a smaller fingerprint (±3.0% for wide), which is why every headline below is stated in wide-versus-T terms. Body shares are reported for completeness and should not be compared across players charted by different people.
 
 ### 2. The tour picture, and how far players spread around it
@@ -71,7 +71,7 @@ Steadiest and most restless placement among the 182 profiles with 40+ charted ma
 | restless | Rafael Nadal | ad | 421 | 54% | 5.17 | 5.06 |
 | restless | Rafael Nadal | deuce | 423 | 31% | 4.78 | 3.95 |
 
-The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 95% of the dispersion, so most of the movement is genuinely between matches within a season — though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
+The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 95% of the dispersion, so most of the movement is between matches within a season, though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
 
 ### 5. Careers
 
@@ -114,9 +114,9 @@ Largest actual movement among careers that clear the null:
 | ad | tiebreak | 24,449 | 51% | 9% | 39% |
 
 - The `deuce` bucket (40-40) has no ad-court row, which is what the parity rule requires: six points played is an even count. It is a free check that the side derivation is right.
-- **T share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is -1.4% across 247 players with 80+ break-point first serves — near nothing. But 49 players move beyond chance at FDR 0.1 (16 toward the T, 33 away), so the tour-wide average is hiding players who cancel out.
+- **T share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is -1.4% across 247 players with 80+ break-point first serves (near nothing). But 49 players move beyond chance at FDR 0.1 (16 toward the T, 33 away), so the tour-wide average is hiding players who cancel out.
   Pete Sampras -13% (n=1,190, z=-8.7); Nick Kyrgios -15% (n=545, z=-7.0); Juan Martin Del Potro -11% (n=865, z=-6.4); Daniil Medvedev -7% (n=1,579, z=-5.8); Frances Tiafoe -14% (n=319, z=-5.1)
-- **wide share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +2.3% across 247 players with 80+ break-point first serves — near nothing. But 58 players move beyond chance at FDR 0.1 (45 toward the wide, 13 away), so the tour-wide average is hiding players who cancel out.
+- **wide share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +2.3% across 247 players with 80+ break-point first serves (near nothing). But 58 players move beyond chance at FDR 0.1 (45 toward the wide, 13 away), so the tour-wide average is hiding players who cancel out.
   Pete Sampras +12% (n=1,190, z=+8.2); Nick Kyrgios +14% (n=545, z=+6.7); Daniil Medvedev +8% (n=1,579, z=+6.7); Frances Tiafoe +16% (n=319, z=+6.0); Andy Murray +7% (n=1,809, z=+5.7)
 
 ### 7. How much history should a card report?
@@ -137,8 +137,8 @@ Largest actual movement among careers that clear the null:
 | all, 80-match half-life | 0.9185 | 7.5% | 6.1% |
 
 - **Best rule: a 10-match half-life**, at 0.9174 against 0.9191 for the whole career. Most of what a card would get wrong is the holdout's own noise; of the part the estimator owns, recency removes 5% (6.2% → 5.9% on the T share).
-- Where the gain comes from, as log-loss saved against the career average: drifted (ratio ≥ 1.5x) — +0.0016 (70 players); stable — +0.0010 (71 players). The rule earns its keep on the careers step 5 flagged and costs almost nothing on the rest, which is the argument for applying it to everyone rather than branching.
-- Twenty matches is worth about 1,561 charted first serves and spans 4 years for the median player — which is the catch. A window short enough to be current is not automatically long enough to clear step 3's bar of 862 serves per side, so a card should print the window's own denominator and stay silent when it is thin.
+- Where the gain comes from, as log-loss saved against the career average: drifted (ratio ≥ 1.5x) — +0.0016 (70 players); stable — +0.0010 (71 players). The rule helps most on the careers step 5 flagged and costs almost nothing on the rest, which is the argument for applying it to everyone rather than branching.
+- Twenty matches is worth about 1,561 charted first serves and spans 4 years for the median player. The catch: a window short enough to be current is not automatically long enough to clear step 3's bar of 862 serves per side, so a card should print the window's own denominator and stay silent when it is thin.
 - Weighting all of a career by a 10-match half-life beats the best hard cutoff (last 20) by 0.0012. Old matches are worth less than recent ones but more than nothing, and a cliff throws that difference away.
 
 ## Women
@@ -161,7 +161,7 @@ Agreement is. Holding the player fixed and varying who charted them (cells of 15
 | body | 16 | ±5.6% | -13.0% to +10.8% |
 | T | 16 | ±4.2% | -6.1% to +9.4% |
 
-- **The body serve is partly a charter's opinion.** Charters disagree about it by ±5.6% on the same players, against a tour body share of 20% — the disagreement is a large fraction of the category. A serve near the middle can be charted body or wide, and different charters draw that line differently.
+- **The body serve is partly a charter's opinion.** Charters disagree about it by ±5.6% on the same players, against a tour body share of 20% , so the disagreement is a large fraction of the category. A serve near the middle can be charted body or wide, and different charters draw that line differently.
 - Wide and T carry a smaller fingerprint (±4.5% for wide), which is why every headline below is stated in wide-versus-T terms. Body shares are reported for completeness and should not be compared across players charted by different people.
 
 ### 2. The tour picture, and how far players spread around it
@@ -210,7 +210,7 @@ Steadiest and most restless placement among the 110 profiles with 40+ charted ma
 | restless | Venus Williams | deuce | 90 | 36% | 4.53 | 1.96 |
 | restless | Arantxa Rus | ad | 64 | 51% | 4.39 | 3.68 |
 
-The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 89% of the dispersion, so most of the movement is genuinely between matches within a season — though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
+The last column expects each match at the player's rate that season, so a long career's slow drift stops counting as match-to-match movement. Across these profiles it keeps a median 89% of the dispersion, so most of the movement is between matches within a season, though the individual drops are large enough that any single player's restlessness should be read from this column, not the previous one.
 
 ### 5. Careers
 
@@ -253,9 +253,9 @@ Largest actual movement among careers that clear the null:
 | ad | tiebreak | 6,142 | 41% | 20% | 39% |
 
 - The `deuce` bucket (40-40) has no ad-court row, which is what the parity rule requires: six points played is an even count. It is a free check that the side derivation is right.
-- **T share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +0.2% across 197 players with 80+ break-point first serves — near nothing. But 16 players move beyond chance at FDR 0.1 (9 toward the T, 7 away), so the tour-wide average is hiding players who cancel out.
+- **T share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +0.2% across 197 players with 80+ break-point first serves (near nothing). But 16 players move beyond chance at FDR 0.1 (9 toward the T, 7 away), so the tour-wide average is hiding players who cancel out.
   Caroline Wozniacki -7% (n=1,037, z=-4.4); Arantxa Rus +7% (n=572, z=+4.3); Ana Ivanovic -10% (n=351, z=-3.7); Samantha Stosur +12% (n=215, z=+3.7); Arantxa Sanchez Vicario +10% (n=228, z=+3.6)
-- **wide share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +1.3% across 197 players with 80+ break-point first serves — near nothing. But 25 players move beyond chance at FDR 0.1 (22 toward the wide, 3 away), so the tour-wide average is hiding players who cancel out.
+- **wide share on break points**, each player against their own normal-point rate with the side held fixed: the pooled shift is +1.3% across 197 players with 80+ break-point first serves (near nothing). But 25 players move beyond chance at FDR 0.1 (22 toward the wide, 3 away), so the tour-wide average is hiding players who cancel out.
   Iga Swiatek -6% (n=1,198, z=-4.1); Beatriz Haddad Maia +15% (n=177, z=+4.0); Taylor Townsend +16% (n=126, z=+3.8); Ana Ivanovic +9% (n=351, z=+3.6); Magda Linette +8% (n=533, z=+3.5)
 
 ### 7. How much history should a card report?
@@ -276,16 +276,16 @@ Largest actual movement among careers that clear the null:
 | all, 80-match half-life | 1.0226 | 8.5% | 7.2% |
 
 - **Best rule: a 10-match half-life**, at 1.0195 against 1.0235 for the whole career. Most of what a card would get wrong is the holdout's own noise; of the part the estimator owns, recency removes 7% (7.3% → 6.8% on the T share).
-- Where the gain comes from, as log-loss saved against the career average: drifted (ratio ≥ 1.5x) — +0.0090 (49 players); stable — +0.0013 (55 players). The rule earns its keep on the careers step 5 flagged and costs almost nothing on the rest, which is the argument for applying it to everyone rather than branching.
-- Twenty matches is worth about 1,298 charted first serves and spans 4 years for the median player — which is the catch. A window short enough to be current is not automatically long enough to clear step 3's bar of 565 serves per side, so a card should print the window's own denominator and stay silent when it is thin.
+- Where the gain comes from, as log-loss saved against the career average: drifted (ratio ≥ 1.5x) — +0.0090 (49 players); stable — +0.0013 (55 players). The rule helps most on the careers step 5 flagged and costs almost nothing on the rest, which is the argument for applying it to everyone rather than branching.
+- Twenty matches is worth about 1,298 charted first serves and spans 4 years for the median player. The catch: a window short enough to be current is not automatically long enough to clear step 3's bar of 565 serves per side, so a card should print the window's own denominator and stay silent when it is thin.
 - Weighting all of a career by a 10-match half-life beats the best hard cutoff (last 20) by 0.0012. Old matches are worth less than recent ones but more than nothing, and a cliff throws that difference away.
 
 ## Where this belongs, and what is already covered
 
 - `serve_side` owns the descriptive split and stays the place to look up what a mix *is*. This experiment owns the error bars: which of those numbers repeat, and from how much data. Nothing here replaces it.
-- `blind_reid` scores the serve as one feature block against the return and rally blocks and finds it the weakest of the three for naming a player. That is discrimination between players, not reliability within one, and the two answers are compatible: placement is stable per player and still separates players less sharply than net play and slice do. Step 3 explains why that can happen — a stable statistic with a narrow true spread carries little identifying information.
+- `blind_reid` scores the serve as one feature block against the return and rally blocks and finds it the weakest of the three for naming a player. That is discrimination between players, not reliability within one, and the two answers are compatible: placement is stable per player and still separates players less sharply than net play and slice do. Step 3 explains why that can happen: a stable statistic with a narrow true spread carries little identifying information.
 - `career_splits` decides whether a whole career becomes two entities, in a 10-feature style space that already includes serve location. Step 5 is that design narrowed to placement alone, so it answers 'did the serve move' rather than 'did the player'. It is an input to that decision, not a competitor: placement moves in about half of long careers, more often than overall style does.
-- The genuinely new ground is steps 3, 4 and 6: the sample-size rules, the match-to-match dispersion, and the side-adjusted break-point test. None of those exist anywhere else in the repo.
+- The new ground is steps 3, 4 and 6: the sample-size rules, the match-to-match dispersion, and the side-adjusted break-point test. None of those exist anywhere else in the repo.
 
 ![reliability](figures/serve_tendencies_reliability.png)
 
@@ -296,13 +296,13 @@ Largest actual movement among careers that clear the null:
 - The notation records a target, not a serve. Speed, spin and the returner's position are invisible, so 'wide' pools a kick and a flat slice out wide.
 - Break points are selected: they arrive more often against good returners and when the server is already in trouble, so a placement shift on them is not purely a choice made under pressure.
 - The step-4 conditioners are estimated from the same data they are tested on, which the degrees-of-freedom correction handles in expectation but which still makes small-sample profiles noisy. Some of the match-to-match movement it measures is the charter changing between matches, not the player.
-- Step 6's break-point test is charter-safe by construction — both buckets come from the same matches — but steps 3 and 5 compare across matches and inherit step 1's fingerprint.
+- Step 6's break-point test is charter-safe, since both buckets come from the same matches, but steps 3 and 5 compare across matches and inherit step 1's fingerprint.
 - Double faults are not separated out of the second-serve mix; a second serve that was missed still carries its target here.
 
 ## Next steps
 
 - Join `player_eras` so the drift step reports against the eras `career_splits` already blessed, instead of a fresh median split.
-- Add the returner's handedness to the target, so 'wide in the ad court' becomes 'into the backhand' — step 4 already builds the join.
+- Add the returner's handedness to the target, so 'wide in the ad court' becomes 'into the backhand'; step 4 already builds the join.
 - Chase the step-4 residual: opponent identity, surface and round are the obvious candidates for the match-to-match movement that handedness and year both fail to explain.
 - Second-serve placement deserves its own reliability pass. The sample is a third the size, the spread across players is wider, and the decision is a different one.
 

@@ -74,7 +74,7 @@ Per player (break−normal on each side, the pressure swing net of side):
 
 ### Step 3 — serve+1 (server's first groundstroke), by side
 
-*FH share = how often the serve+1 is a forehand; aggressive = the aggressive shot frequency — the +1 was a winner, an unforced error, or forced the reply out — and convert = the share of those that paid; claims stay in server-wing / side terms (no returner handedness assumed).*
+*FH share = how often the serve+1 is a forehand; aggressive = the aggressive shot frequency (the +1 was a winner, an unforced error, or forced the reply out), and convert = the share of those that paid; claims stay in server-wing / side terms (no returner handedness assumed).*
 
 | player | side | serve+1 | FH share | aggressive | convert |
 |---|---|--:|--:|--:|--:|
@@ -150,7 +150,7 @@ Per player (break−normal on each side, the pressure swing net of side):
 
 ### Step 3 — serve+1 (server's first groundstroke), by side
 
-*FH share = how often the serve+1 is a forehand; aggressive = the aggressive shot frequency — the +1 was a winner, an unforced error, or forced the reply out — and convert = the share of those that paid; claims stay in server-wing / side terms (no returner handedness assumed).*
+*FH share = how often the serve+1 is a forehand; aggressive = the aggressive shot frequency (the +1 was a winner, an unforced error, or forced the reply out), and convert = the share of those that paid; claims stay in server-wing / side terms (no returner handedness assumed).*
 
 | player | side | serve+1 | FH share | aggressive | convert |
 |---|---|--:|--:|--:|--:|

@@ -1,16 +1,10 @@
-// When a match is due — for the half of a draw that hasn't been scheduled yet.
+// When a match is due, for the part of a draw that isn't scheduled yet.
 //
-// ESPN dates every match, but one without a court and a session assigned carries a *day
-// marker* rather than a start time: midnight at the venue, written in UTC. Cincinnati's
-// final reads "2026-08-23T04:00Z", which is midnight EDT; a Roland Garros round would read
-// "...T22:00Z" on the day *before*, which is midnight CEST. So reading a marker in UTC names
-// the wrong day for every venue east of Greenwich.
-//
-// The day is recoverable from the marker alone, without knowing the venue's offset: local
-// midnight lands in the small hours of the same UTC day when the venue is behind UTC, and in
-// the evening of the day before when it is ahead. Splitting at noon separates the two, which
-// holds for every offset a tour stop has ever sat at (Indian Wells at -7 through Melbourne
-// at +11). Nothing has to be plumbed through from the feed.
+// An unscheduled match carries a day marker, not a start time: midnight at the venue, in UTC
+// (Cincinnati's final reads "2026-08-23T04:00Z"; a Roland Garros round reads "...T22:00Z" on
+// the day before). Local midnight falls early in the same UTC day west of Greenwich and in the
+// evening of the day before east of it, so splitting at noon recovers the day for every tour
+// stop's offset (-7 to +11) without knowing the venue.
 
 export function venueDay(iso) {
   if (!iso) return null;
@@ -36,16 +30,10 @@ export const dayShort = (iso) =>
 export const dayLong = (iso) =>
   fmt(iso, { year: "numeric", month: "short", day: "numeric" });
 
-// A scheduled match's start in the reader's own timezone, self-labeled: "Sun, Aug 31,
-// 12:30 PM EDT". ESPN writes a real UTC start instant into `iso` at the same time it puts a
-// clock time in `detail`, but `detail`'s time is always US Eastern, so a reader anywhere
-// else is left converting it in their head. This reads the instant instead.
-//
-// It trusts `iso` only when the two agree on the wall time in Eastern. Were the feed ever to
-// pair a real `detail` time with a stale day marker in `iso` (midnight at the venue), the
-// marker's Eastern wall time would not match, and this falls back to ESPN's own string —
-// its Eastern zone labelled exactly once, whether or not the feed already spelled it out.
-// Callers pass a real `detail` here (never "TBD"): the day-only cases are theirs to handle.
+// A scheduled match's start in the reader's timezone, labelled: "Sun, Aug 31, 12:30 PM EDT".
+// ESPN's `detail` time is always US Eastern, so this reads the UTC instant in `iso` instead,
+// trusting it only when the two agree on the Eastern wall time; otherwise it falls back to
+// ESPN's string with the zone labelled once. Callers never pass "TBD".
 export function localStart(iso, detail) {
   const raw = (detail || "").replace(/ - /g, " · ");
   const stated = raw.match(/\d{1,2}:\d{2}\s*[AP]M/i);

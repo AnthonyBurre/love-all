@@ -24,17 +24,12 @@ function flagEl(country) {
   return s;
 }
 
-// A match is only as analyzable as its lesser-charted player: tier = min(both).
-// Completed draws that have any charting shade per *match* instead — charted or not —
-// which is the signal that matters once the result is in (`m.charted` is a bool then,
-// null otherwise). A finished draw with nothing charted yet falls back to the coverage view.
+// A match is only as analyzable as its lesser-charted player: tier = min(both). A completed
+// draw with any charting shades per match instead (charted or not, from `m.charted`); one with
+// nothing charted yet falls back to the coverage view.
 //
-// `cov` is null until the insights database answers, and stays null if it never does. Absent
-// coverage is not zero coverage: with the table treated as empty, every named player scored 0
-// and the whole draw painted itself "uncharted", which is a claim about the data made out of
-// not having the data — flashing on every load, and sticking on a load where the database never
-// arrives. The per-match branch above is unaffected: `m.charted` rides in the draw feed, not in
-// the database.
+// `cov` is null until the insights database answers, and may stay null. Missing coverage is
+// not zero coverage, so those cards get no tier rather than "uncharted".
 export function matchTier(m, gender, cov) {
   if (m.bye) return { cls: "t-tbd", note: "bye — through to the next round unplayed" };
   if (m.placeholder) return { cls: "t-tbd", note: "path to this match — not decided yet" };
@@ -55,12 +50,9 @@ export function matchTier(m, gender, cov) {
   return { cls: "t-none", note: `uncharted matchup — ${note}` };
 }
 
-// Did this side take set i?
-//
-// `wins` is the feed's per-set verdict for this side (true won / false lost / null not
-// decided). When it's there, an undecided set is never won — so a suspended match's
-// live fifth set doesn't read as taken by whoever leads it. Older archived draws carry no
-// such list and are all finished, so there we fall back to the higher score.
+// Did this side take set i? `wins` is the feed's per-set verdict (true / false / null for
+// undecided), so a suspended match's live set isn't credited to its leader. Older archived
+// draws have no list and are all finished, so the higher score decides.
 function wonSet(mine, theirs, wins, i) {
   if (Array.isArray(wins) && wins.length > 0) return wins[i] === true;
   const t = theirs && theirs[i];
@@ -83,17 +75,12 @@ function setsEl(mine, theirs, wins) {
 // The feed's two slot markers print, but they never take the winner/loser styling and
 // they're never measured for name abbreviation — see isEntrant in feed.js.
 
-// Seed and name go in an inner span that can be squeezed; the flag is a sibling of it,
-// never nested. Nesting would put it on the wrong side of the ellipsis — the clip happens
-// at the end of the line, so a name too long for its card would drop its flag and keep the
-// letters. Outside, the letters go and the flag stays.
+// Seed and name go in an inner span that can be squeezed; the flag is its sibling, so an
+// overflowing name loses letters rather than its flag.
 //
-// `side` is "lead" or "trail" on a wide card, where the flag brackets the pair of names
-// instead of trailing both of them, and is left unset on a stacked one. It also decides
-// where the flag goes in the markup: a wide card's flag is floated so that it shortens
-// only the line it sits on, and a float affects nothing written before it — a trailing
-// flag placed after the name would be pushed below the whole wrapped block. So on a wide
-// card it goes in front whichever side it belongs on, and CSS puts it back.
+// `side` is "lead" or "trail" on a wide card and unset on a stacked one. A wide card's flag
+// is floated so it shortens only its own line, which means it has to come before the name in
+// the markup; CSS puts it on the right side.
 function fillName(nm, s, named, side) {
   const who = el("span", "who");
   if (s.seed) who.append(el("span", "seed", s.seed));
@@ -131,16 +118,10 @@ const abbrevHard = (name) => {
   while (i < rest.length - 1 && /^[A-Z]/.test(rest[i])) i++;
   return `${parts[0][0]}. ${rest.slice(i).join(" ")}`;
 };
-// Where those two steps land depends on the card the name is on.
-//
-// A stacked card has one line to give, so the name is clipped: abbreviate, drop the seed
-// badge, abbreviate harder, and whatever still overflows meets the CSS ellipsis.
-//
-// A wide card wraps instead, and is never ellipsised. A name that doesn't fit its column
-// takes a second line at its own space, so overflow there means one *word* is wider than
-// the column — which is the only thing shortening can help with, and the seed badge can't,
-// so it stays. A word still too long after both steps is broken mid-way as the last
-// resort: "Starodubtse|va" is not a name anyone would print, but it beats hiding half of it.
+// A stacked card has one line, so the name is clipped: abbreviate, drop the seed badge,
+// abbreviate harder, then the CSS ellipsis. A wide card wraps instead and is never
+// ellipsised, so overflow means a single word is wider than the column; after both
+// abbreviation steps, that word is broken mid-way.
 function fitNames(root) {
   for (const nm of root.querySelectorAll(".nm[data-full]")) {
     const who = nm.querySelector(".who");                      // the part that can be shortened
@@ -198,21 +179,11 @@ function matchCard(m, t, cov, onClick, wide) {
   const tier = matchTier(m, t.gender, cov);
   const card = el("div", "match " + tier.cls + (wide ? " wide" : "") +
                  (m.bye ? " bye" : m.placeholder ? " ghost" : ""));
-  // An undecided slot has nothing to say about charting depth, and a tooltip on a box
-  // reading "TBD" only restates the box. That covers both ways a slot can be undecided —
-  // a placeholder round with no entrants yet, and a real player waiting on an opponent.
-  // A bye keeps its note: it is a t-tbd tier but names a live entrant, so the tooltip is
-  // the only thing saying why there is no match to play. The other tiers keep theirs.
+  // No tooltip on an undecided slot, except a bye, where it explains why there's no match.
   if (m.bye || tier.cls !== "t-tbd") card.title = tier.note;
   if (wide) {
-    // Three columns: a name, the scoreline, a name. The scoreline runs down the middle of
-    // the card, which is the same left/right split the two names make, drawn as a rule
-    // instead of as the empty space between them. Two digits and a hairline are ~30px
-    // wide, so the games are never in contention with the names for the card's width; what
-    // this layout spends instead is height, a line per set.
-    //
-    // A match with no games on the board has no scoreline to build around, so it is just
-    // its two names across the full width.
+    // Three columns: a name, the scoreline running down the middle, a name. A match with no
+    // games yet is just its two names across the full width.
     if (isScored(m)) {
       const body = el("div", "wsides");
       body.append(nameSpan(m.a, "lead"), spine(m), nameSpan(m.b, "trail", "right"));
@@ -229,12 +200,9 @@ function matchCard(m, t, cov, onClick, wide) {
     // the dot in front is drawn in CSS, and square — see .detail.live::before
     card.append(el("div", "detail live", m.detail || "Live"));
   } else if (m.state === "pre") {
-    // ESPN only writes a start time into `detail` once a match has a court and a session;
-    // until then it reads "TBD" while the date beside it already knows the day. Once there
-    // is a time, `localStart` reads it off `m.date` in the viewer's own timezone; its "ET"
-    // fallback covers the feed states where that instant can't be trusted. No time yet
-    // falls back to the day, which is the difference between a draw dated to the final and
-    // one that goes blank after the round currently being played.
+    // ESPN writes a start time into `detail` once a match has a court and session, and "TBD"
+    // before that. With a time, `localStart` shows it in the viewer's timezone (with an "ET"
+    // fallback); without one, the day.
     const scheduled = m.detail && m.detail !== "TBD";
     const when = scheduled ? localStart(m.date, m.detail) : dayShort(m.date);
     if (when) card.append(el("div", "detail", when));
@@ -281,16 +249,9 @@ function placeColumn(matches, cards, centers, gap) {
   return bottom;
 }
 
-// A wire between two cards in the full draw, in the site's mitred idiom: it leaves the
-// feeder square, turns once onto a diagonal, then squares up again to arrive at the target
-// — the flat-topped hexagonal shape a pair of them makes where two feeders converge. The
-// old S-curve was the only curve left on the page once the cards, the chips and the tier
-// marks went angular, and a lone curve reads as a leftover rather than a choice.
-//
-// The straight ends are a fixed length rather than whatever a 45° diagonal leaves over:
-// holding the angle at 45° only works where the two cards are further apart along the axis
-// than across it, and a column of a tall draw is not reliably that. Fixing the stub instead
-// lets the diagonal be whatever the gap leaves.
+// A wire between two cards in the full draw, mitred to match the site's angular style: it
+// leaves the feeder square, turns once onto a diagonal, and squares up again into the target.
+// The straight ends are a fixed length, and the diagonal takes whatever gap is left.
 const WIRE_STUB = 12;
 function mitre(x1, y1, x2, y2) {
   const r = (v) => Math.round(v * 10) / 10;
@@ -301,22 +262,11 @@ function mitre(x1, y1, x2, y2) {
          `L ${r(x2 - dir * stub)} ${r(y2)} L ${r(x2)} ${r(y2)}`;
 }
 
-// The by-quarter view's wires turn square and cut the corner, rather than running one long
-// diagonal between the rounds. Its geometry is the opposite of the full draw's: the rounds
-// stack ~50px apart vertically while a card can sit 290px away across the row, so a single
-// diagonal came out almost flat and the pair converging on a parent read as a wide, shallow
-// hexagon. Squared up — down out of the parent, across on the rail between the two rounds,
-// down into the child — with both right angles cut at 45°, the same pair traces the cut
-// corners the cards and the chips wear, and the shape is the octagon rather than the hex.
-//
-// `ry` is that rail: the y every wire crossing one round gap turns on, one level for the
-// whole row. Cards in a round differ in height — a five-setter beside a love-and-love win
-// ends lower — so the wires leave their parents at different heights; sharing the rail lands
-// their crossbars on one line, and a card that ends higher just drops a longer stub to reach
-// it, the same trade the layout already makes for the set count.
-//
-// The cut is clamped to what each end leaves so a short or nearly-straight wire loses the
-// corner instead of overshooting through it.
+// The by-quarter view's wires: down out of the parent, across on a rail between the rounds,
+// down into the child, with both corners cut at 45° like the cards. `ry` is the rail, shared
+// by every wire across one round gap, so cards of different heights still have their
+// crossbars on one line. The cut is clamped so a short wire loses the corner instead of
+// overshooting it.
 const WIRE_CUT = 9;
 function octagonal(x1, y1, x2, y2, ry) {
   const r = (v) => Math.round(v * 10) / 10;
@@ -394,10 +344,9 @@ const shortLabel = (label) => {
            final: "F" }[label.toLowerCase()] || label;
 };
 
-// Full-height zones flanking the round: right steps forward a round, left steps back
-// (omitted on the first round, where there is nowhere to go back to; the right zone is
-// likewise omitted on the final). Each is a real tap target, not just a decoration —
-// role="button" and Enter/Space keep it reachable without a pointer.
+// Full-height tap zones either side of the round: right goes forward, left goes back (each
+// omitted where there's nowhere to go). role="button" and Enter/Space make them keyboard
+// reachable.
 function navZone(cls, label, onTap) {
   const zone = el("div", "roundnav " + cls);
   zone.title = label;
@@ -419,24 +368,12 @@ function navZone(cls, label, onTap) {
 const NAV_NODE_R = 2;
 
 // The right zone's preview: this round's matches converging into the rounds after it,
-// threaded from each match's real `feeds` id — the same link the full draw's wires follow —
-// rather than assumed pairing, so it's right on the byes and non-power-of-two draws too.
-// Only the current round has cards on screen, so every round past it gets no cards of its
-// own; each node sits at the average y of whatever feeds it, the same rule placeColumn
-// uses to center a card on its feeders.
+// following each match's `feeds` id, so byes and odd-sized draws come out right. Each later
+// node sits at the average y of what feeds it, as in placeColumn.
 //
-// NAV_HOPS is how many of those rounds get drawn at most; a round with less draw left than
-// that draws what it has, which is why the semifinal draws one hop and not three. The zone
-// doesn't grow to fit them — the hops share the width it has.
-//
-// They don't share it evenly, though. Split in three, each hop gets under 9px of run, and
-// mitre() answers a run that short with a stub at each end and almost no diagonal between
-// them: the wire comes out a vertical line with a kink in it, three of them stacked, which
-// is a ladder and not a bracket. Each hop instead takes NAV_HOP_DECAY of the one before,
-// so the first — who they play next, and the only one a tap on this zone actually takes
-// you to — keeps roughly the room it had when two hops split the width evenly, and the
-// ones behind it tighten. That is also the honest shape of the information: the near hop
-// is a fixture, the far ones are only "and it keeps going".
+// At most NAV_HOPS rounds are drawn, sharing the zone's width. Each hop gets NAV_HOP_DECAY of
+// the one before, so the first (the next opponent, and where a tap goes) keeps enough run for
+// a visible diagonal.
 const NAV_HOPS = 3;
 const NAV_HOP_DECAY = 0.7;
 function drawThreads(rounds, selected, cards, zone) {
@@ -498,14 +435,9 @@ function drawThreads(rounds, selected, cards, zone) {
   zone.appendChild(svg);
 }
 
-// The left zone's preview: a one-round mirror of drawThreads above — the previous round's
-// two matches converging into this one, in the same wire grammar (mitred lines, node
-// dots) instead of a mark per card, but never more than the one round a tap on this zone
-// actually goes back. The averaging direction has to flip: forward, a parent's position is
-// the average of its already-known children; here it's the current match's position that's
-// known, and its two children have none of their own to average — only their fixed order
-// within the round (array order is slot order), so they're split a fixed offset above and
-// below the parent instead.
+// The left zone's preview: the previous round's two matches converging into this one, in the
+// same wire style. Here the current match's position is known and its two feeders are placed
+// a fixed offset above and below it, in slot order.
 function drawBackThreads(rounds, selected, cards, zone) {
   const round0 = rounds[selected], round1 = rounds[selected - 1];
   if (!round1) return;
@@ -646,17 +578,14 @@ const CHIP_ICON = `<svg viewBox="0 0 14 10" width="14" height="10" aria-hidden="
   <rect x="1" y="1" width="12" height="2.6"/>
   <rect x="1" y="6.4" width="12" height="2.6"/></svg>`;
 
-// The by-quarter view is one 8-column grid read top-down: the final (1 card, spanning all
-// 8 columns) over the semifinals (2) over the quarterfinals (4), and on a big enough draw
-// the whole round of 16 (8 across — those cards flip to the stacked two-line layout to
-// fit). Rounds deeper than that don't fit whole, so a selector chip under each match of the
-// last full row picks the section of the draw to unfold beneath it: on a slam, a sixteenth
-// (round of 32, then 64, then 128); on a 32-draw, a quarter. Grid column spans center each
-// match over its feeders; one SVG overlay draws all the wires, hot along the picked path.
-// How many rounds to show in full, chips on the last of them. Normally four, down to the
-// quarterfinals when showing four would leave just one round to unfold — a 5-round 32-draw
-// with chips on the round of 16 gives eight chips that each open two matches, where chips on
-// the quarterfinals give four that each open a real sub-tree.
+// The by-quarter view: one 8-column grid read top-down, from the final (spanning all 8
+// columns) through the semifinals and quarterfinals to, on a big enough draw, the round of 16
+// (8 across, in the stacked card layout). A selector chip under each match of the last full
+// row unfolds that section of the draw below it. One SVG overlay draws the wires, hot along
+// the picked path.
+//
+// Rounds shown in full, with chips on the last: four normally, three when four would leave
+// only one round to unfold.
 const HEAD_MAX = 4;
 function headRows(n) {
   const head = Math.min(HEAD_MAX, n);
@@ -670,10 +599,7 @@ export function renderQuarters(t, root, cov, onClick, section) {
   const n = rs.length;
   const head = headRows(n);
 
-  // Round names come from the feed ("Round 1"…"Round 4", "Quarterfinal", "Semifinal",
-  // "Final") — the same ones the full draw prints, rather than a second list naming the early
-  // rounds by size ("Round of 32"), which would have the two views calling one round two
-  // different things.
+  // Round names from the feed, the same ones the full draw prints.
   const rows = rs.slice(n - head).reverse().map((r) => ({
     label: r.label, matches: r.matches,
   }));
@@ -734,29 +660,14 @@ export function renderQuarters(t, root, cov, onClick, section) {
     if (hot) p.setAttribute("class", "hot");
     svg.appendChild(p);
   };
-  // One rail per round gap: midway between the lowest edge any card in the upper row reaches
-  // and the shared top of the row below. Every wire across that gap turns on it, so unequal
-  // card heights don't scatter the crossbars. `parents` is the whole upper row for a tree
-  // step, the one picked chip for a chip step.
+  // One rail per round gap, midway between the upper row's lowest card edge and the top of the
+  // row below. `parents` is the whole upper row for a tree step, or the picked chip's match.
   const railFor = (parents, kids) =>
     (Math.max(...parents.map(yBot)) + yTop(kids[0])) / 2;
-  // The hot line does not stop at the chip row. Stopping there would draw everything below it
-  // at one weight, leaving the half of the picture that answers "how did these two get here"
-  // as the half with no thread through it.
-  //
-  // It runs on once the section's own match has two named players: from there each of them is
-  // followed back down round by round, and the wire into the match they actually played is hot.
-  // Two threads, not one — that is what a match is — and they never cross, since the only place
-  // the two subtrees meet is the match at the top they are being traced from.
-  //
-  // Followed by name rather than by slot arithmetic. Position gives the *pair* of matches that
-  // feed a slot, not which of the pair a given player came through; that is a fact about who won,
-  // and the only place it is written down is the names on the cards.
-  //
-  // Both players named is the gate, not both played. A semifinal with two names in it has two
-  // players who each won their way there, whether or not it has been played — and while either
-  // side is still TBD there is no second thread to draw and the fan-out already says which
-  // section is open.
+  // The hot line continues below the chip row. Once the section's match has two named
+  // players, each is followed back round by round and the wire into each match they played
+  // is hot: two threads that never cross. They're followed by name, since slot position
+  // gives the pair of feeder matches but not which one a player came through.
   const chipMatch = rows[head - 1].matches[selected];
   const tracked = below.length && chipMatch &&
                   isEntrant(chipMatch.a) && isEntrant(chipMatch.b)

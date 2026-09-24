@@ -127,11 +127,11 @@
 
 ## Are the winner book and the error book the same book?
 
-Across 274 qualifying players, the correlation between a context's winner rate and its unforced-error rate is **+0.18 on average** (80% of players positive). And that *understates* the overlap: a stroke can't be both a winner and an error, so pure chance pushes this correlation negative. Sequences that precede winners also precede errors because both mark the same decision — going for the finish. `shot_patterns`' green/trouble split partly conflates decision with execution; frequency + conversion separates them.
+Across 274 qualifying players, the correlation between a context's winner rate and its unforced-error rate is **+0.18 on average** (80% of players positive). And that *understates* the overlap: a stroke can't be both a winner and an error, so pure chance pushes this correlation negative. Sequences that precede winners also precede errors because both mark the same decision: going for the finish. `shot_patterns`' green/trouble split partly conflates decision with execution; frequency + conversion separates them.
 
 ## Why the numerator counts induced forced errors
 
-The narrow reading counts only shots that ended the point on the player's own racquet — a winner or their own unforced error. Call that the **finishing shot frequency**. The wider and standard reading also credits a shot that forced the reply into an error, which is the **aggressive shot frequency** shipped above. The worry about widening it is that the forced/unforced call is the most charter-subjective field in the notation, so the extra events might be mostly noise. They are not.
+The narrow reading counts only shots that ended the point on the player's own racquet: a winner or their own unforced error. Call that the **finishing shot frequency**. The wider and standard reading also credits a shot that forced the reply into an error, which is the **aggressive shot frequency** shipped above. The worry about widening it is that the forced/unforced call is the most charter-subjective field in the notation, so the extra events might be mostly noise. They are not.
 
 Each player's matches are split at random into halves and every well-supported context (≥25 strokes in *both* halves) is measured twice. The correlation between the two measurements is the share of the apparent between-context spread that replicates. Because the split is by match, charters disagreeing with each other lands inside the noise term this is testing.
 
@@ -145,7 +145,7 @@ Each player's matches are split at random into halves and every well-supported c
 
 The wider numerator wins, and it wins against a handicap: a base rate moving from 18.0% to 22.9% raises the binomial noise floor by about a fifth, so a numerator made of noise would have *lost* this test. The extra events carry structure.
 
-Two things follow. First, the player ranking barely moves — the two frequencies correlate +0.991 across players — so this is not a rewrite of who is aggressive. Second, the *composition* moves a lot, and not at random: induced forced errors are 21% of the numerator on average but range from 14% to 34%. The narrow definition systematically under-credited players whose aggression works by pressure rather than by clean winners.
+Two things follow. First, the player ranking barely moves (the two frequencies correlate +0.991 across players), so this is not a rewrite of who is aggressive. Second, the *composition* moves a lot, and not at random: induced forced errors are 21% of the numerator on average but range from 14% to 34%. The narrow definition systematically under-credited players whose aggression works by pressure rather than by clean winners.
 
 | most under-credited by the narrow numerator | induced FE share | least |  induced FE share |
 |---|--:|---|--:|
@@ -177,11 +177,11 @@ The cue lists move more than the leaderboard does. Of the 1,416 contexts either 
 
 ## Opening sequences by serve side (deuce vs ad)
 
-The pooled tables above average over the court the point was served to, but the first four plies mean different things on the two sides: a wide serve opens the forehand in the deuce court and the backhand in the ad court. Here the opening aggressive shots — the return, the serve+1, and the return+1 — are split by side and scored against the player's own norm *for that same shot and side*. Everything deeper in the rally stays pooled (above). Full rows in `reports/shot_triggers_openings.csv`; 127 green / 91 trap sequences across 104 players.
+The pooled tables above average over the court the point was served to, but the first four plies mean different things on the two sides: a wide serve opens the forehand in the deuce court and the backhand in the ad court. Here the opening aggressive shots (the return, the serve+1, and the return+1) are split by side and scored against the player's own norm *for that same shot and side*. Everything deeper in the rally stays pooled (above). Full rows in `reports/shot_triggers_openings.csv`; 127 green / 91 trap sequences across 104 players.
 
-**These are cross-validated**, on the same footing as the pooled tables above. A raw threshold screen — clear the support floor, clear the lift, tag on the sign of the conversion gap — would carry no multiplicity correction and compute every figure on the data that had just selected the row. Instead each (player, side, anchor) group splits into the same two match-hash folds: one discovers, with an exact binomial tail against that fold's own group baseline and Benjamini-Hochberg at q=0.1 across every context it could test; the other confirms and supplies every number shown.
+**These are cross-validated**, on the same footing as the pooled tables above. A raw threshold screen (clear the support floor, clear the lift, tag on the sign of the conversion gap) would carry no multiplicity correction and compute every figure on the data that had just selected the row. Instead each (player, side, anchor) group splits into the same two match-hash folds: one discovers, with an exact binomial tail against that fold's own group baseline and Benjamini-Hochberg at q=0.1 across every context it could test; the other confirms and supplies every number shown.
 
-That took the table from 484 rows over 171 players to 218 over 104. 119 rows cleared from both directions and show the two folds pooled; the 99 that cleared from one show that fold alone, and across those the mean lift falls from 1.69x where it was found to **1.31x where it was measured — 45% of the discovered edge**. `court_response` measured 46% on the same kind of test and `rally_patterns` 50%, over different features and different screens, which is three independent readings of the same number.
+That took the table from 484 rows over 171 players to 218 over 104. 119 rows cleared from both directions and show the two folds pooled; the 99 that cleared from one show that fold alone, and across those the mean lift falls from 1.69x where it was found to **1.31x where it was measured, 45% of the discovered edge**. `court_response` and `rally_patterns` both keep about half on the same kind of test, over different features and different screens.
 
 ### Men
 

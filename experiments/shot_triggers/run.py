@@ -81,32 +81,15 @@ def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     """Pooled per-player context tables (all plies) plus side-split opening tables.
 
     ``acc``: player -> {n, w, e, f, ctx:{context: [n, w, e, f]}, half:{(h, context):
-    [n, w, e, f]}} over every ply, sides pooled. ``half`` buckets the same counts by
-    a random split of the player's matches, which is what the definitions comparison
-    correlates across; matches (not points) are the split unit so a charter's
-    judgment lands wholly on one side.
+    [n, w, e, f]}} over every ply, sides pooled. ``half`` splits the same counts by a random
+    split of the player's matches (matches, so a charter's judgment lands on one side).
     ``openings``: (player, side, anchor) -> {base:[n,w,e,f], ctx:{context:[n,w,e,f]}}
     for the first-four-ply aggressive shots only, split by deuce/ad.
 
-    Cues are keyed in the *profiled player's* frame: for a left-hander every court third
-    in the lead-up is mirrored, so a cue names the shot rather than the half of the court
-    it landed in. The direction codes are the codebook's, which name fixed thirds by the
-    right-hander convention, so without this a lefty's cue string describes the mirror
-    image of what a right-hander's identical string describes — and the panel prints the
-    two as though they were one pattern.
-
-    Mirrored by the striker rather than by each shot's own hitter, because the cue
-    alternates hitters and a player's opponents are a mix of both hands; mirroring per
-    hitter would merge physically different opponent balls into one bucket. The whole
-    lead-up reads from the profiled player's side of the net, matching what
-    ``court_response`` does with hand-relative zones and what ``rally_patterns`` does with
-    the same tokens.
-
-    This changes no statistic. Every figure here — the lift against the player's own
-    own fold's rate, the conversion against that fold's own trigger class, the
-    cross-validation, the FDR family — is computed within one player, so mirroring re-keys a
-    lefty's whole table consistently and every count comes out identical. It is a
-    labelling fix, and only a labelling fix.
+    Cues are keyed in the profiled player's frame: for a left-hander every court third in
+    the lead-up is mirrored, by the striker's hand (not each hitter's), so a cue names the
+    same shot for either hand. Every statistic is within one player, so this changes labels
+    only.
     """
     acc: dict = defaultdict(lambda: {"n": 0, "w": 0, "e": 0, "f": 0,
                                      "ctx": defaultdict(lambda: [0, 0, 0, 0]),
@@ -264,32 +247,14 @@ NUMERATORS = {
 def tag_contexts(df: "pd.DataFrame", a: dict) -> "pd.DataFrame":
     """Label each context green / trap / neutral by two-fold cross-validation.
 
-    A cue makes two claims — this lead-up raises the player's aggressive shot frequency,
-    and what they go for from it converts better or worse than their other cues do — and
-    both have to survive being tested on data that had no say in picking the cue.
+    The player's matches are split in half by hash. Each half takes a turn as the discovery
+    fold (frequency lift, significance test, per-player FDR); the cue is then validated on
+    the other half, where the lift must point the same way and the tag is read off the
+    conversion against that fold's trigger-class mean. A cue ships if either direction
+    survives.
 
-    The player's matches are split in half by hash. Each half takes a turn as the
-    **discovery** fold: the frequency lift, the significance test and the per-player FDR
-    correction all run inside it, and nothing outside it is consulted. The cue is then
-    **validated** on the other half, which was not involved in selecting it: the lift has
-    to still point the same way there, and the tag is read off the conversion sign *in
-    the validation fold*, against that fold's own trigger-class mean. Both directions are
-    run, and a cue ships if either survives.
-
-    This replaced a pooled screen with a both-halves consistency check bolted on, which
-    was circular: the reference and the candidate lift were computed over all the
-    player's matches, and the two halves it then "confirmed" against were subsets of the
-    data that had just selected it. It was also strictly harsher than cross-validation
-    without buying anything for the strictness — it demanded agreement from both halves
-    at once, where running each half as its own experiment asks each of them a question
-    it can actually answer independently.
-
-    The figures reported are the held-out ones. When a single direction confirms, the
-    cue's rate, lift and conversion come from the validation fold alone; when both
-    confirm, the pooled figures are the attempts-weighted mean of two independently clean
-    estimates and are used as-is. Either way the number on the card was measured on data
-    that did not choose the cue, which also removes the selection inflation that a
-    top-of-the-ranking effect size otherwise carries.
+    Reported figures are held out: from the validation fold alone, or, when both directions
+    confirm, the attempts-weighted mean of the two.
     """
     out = df.copy()
     out.attrs = dict(df.attrs)
@@ -472,14 +437,13 @@ def definition_block(md: list, defs: "pd.DataFrame", pairs: "pd.DataFrame",
     r_agg, r_fin = pairs.agg0.corr(pairs.agg1), pairs.fin0.corr(pairs.fin1)
     md.append("## Why the numerator counts induced forced errors")
     md.append("")
-    md.append("The narrow reading counts only shots that ended the "
-              "point on the player's own racquet — a winner or their own unforced "
-              "error. Call that the **finishing shot frequency**. The wider and "
-              "standard reading also credits a shot that forced the reply into an "
-              "error, which is the **aggressive shot frequency** shipped above. The "
+    md.append("The narrow reading counts only shots that ended the point on the player's own "
+              "racquet: a winner or their own unforced error. Call that the **finishing shot "
+              "frequency**. The wider and standard reading also credits a shot that forced the "
+              "reply into an error, which is the **aggressive shot frequency** shipped above. The "
               "worry about widening it is that the forced/unforced call is the most "
-              "charter-subjective field in the notation, so the extra events might be "
-              "mostly noise. They are not.")
+              "charter-subjective field in the notation, so the extra events might be mostly "
+              "noise. They are not.")
     md.append("")
     md.append("Each player's matches are split at random into halves and every "
               f"well-supported context (≥{MIN_HALF} strokes in *both* halves) is "
@@ -506,14 +470,15 @@ def definition_block(md: list, defs: "pd.DataFrame", pairs: "pd.DataFrame",
               "raises the binomial noise floor by about a fifth, so a numerator made "
               "of noise would have *lost* this test. The extra events carry structure.")
     md.append("")
-    md.append("Two things follow. First, the player ranking barely moves — the two "
-              f"frequencies correlate {defs.base_fin.corr(defs.base_agg):+.3f} across "
-              "players — so this is not a rewrite of who is aggressive. Second, the "
-              "*composition* moves a lot, and not at random: induced forced errors "
-              f"are {defs.fe_share.mean():.0%} of the numerator on average but range "
-              f"from {defs.fe_share.min():.0%} to {defs.fe_share.max():.0%}. The "
-              "narrow definition systematically under-credited players whose "
-              "aggression works by pressure rather than by clean winners.")
+    md.append("Two things follow. First, the player ranking barely moves (the two frequencies "
+              "correlate"
+              f" {defs.base_fin.corr(defs.base_agg):+.3f} across players), so this is not a "
+              "rewrite of who is aggressive. Second, the *composition* moves a lot, and not at "
+              "random: induced forced errors "
+              f"are {defs.fe_share.mean():.0%} of the numerator on average but range from "
+              f"{defs.fe_share.min():.0%} to {defs.fe_share.max():.0%}. The "
+              "narrow definition systematically under-credited players whose aggression works by "
+              "pressure rather than by clean winners.")
     md.append("")
     md.append("| most under-credited by the narrow numerator | induced FE share | "
               "least |  induced FE share |")
@@ -554,33 +519,18 @@ def _role_of(anchor: str) -> str:
 
 
 def opening_rows(openings: dict, gender: str, qualifying: set) -> list:
-    """Opening cues, cross-validated exactly the way ``tag_contexts`` does the pooled ones.
+    """Opening cues, cross-validated the way ``tag_contexts`` does the pooled ones.
 
-    A raw threshold screen — clear ``MIN_CTX`` strokes, lift the frequency
-    ``TRIGGER_LIFT``x over the group baseline on ``MIN_ATT``+ aggressive shots, then split
-    green/trap on the sign of the conversion gap — would carry no multiplicity correction
-    and compute every displayed figure on the data that had just selected the row.
+    Each group ``(player, side, anchor)`` (their deuce serve+1, their ad return+1, ...) is
+    split into the same two match-hash folds. Each fold discovers with an exact binomial tail
+    against its own group baseline, Benjamini-Hochberg at q=``Q_FDR`` across that fold's
+    contexts, and a ``TRIGGER_LIFT``x lift. The other fold must still show a lift above 1,
+    and the tag is read off its conversion against that fold's trigger-class mean, as in the
+    pooled screen.
 
-    Instead each group ``(player, side, anchor)`` — their deuce serve+1, their ad return+1, and
-    so on — is split into the same two match-hash folds the pooled screen uses. Each fold
-    takes a turn discovering: an exact binomial tail against **that fold's own** baseline
-    for the group, Benjamini-Hochberg at q=``Q_FDR`` across every context that fold could
-    test, then a lift of ``TRIGGER_LIFT``x to be a candidate. The cue is confirmed on the
-    other fold, which must still show a lift above 1, and the green/trap tag is read off
-    the conversion there against *that fold's* trigger-class mean — the same reference the
-    pooled screen uses, and for the same reason: conditional on a lead-up raising the
-    frequency at all, conversion already sits well above the group's all-strokes rate, so
-    comparing against that rate calls the bottom of a normal spread a trap.
-
-    The group is the unit of correction rather than the player, because the baseline a cue
-    is measured against is the group's: a deuce serve+1 cue was only ever screened against
-    other deuce serve+1 contexts, and pooling six such families into one player-level
-    correction would be correcting across tests that never competed. Groups too thin to
-    define a class mean in a fold produce nothing from that direction, which is honest —
-    it is a group that cannot answer the question rather than one that answers it weakly.
-
-    Side stays a grouping key throughout, never pooled: on the deuce side a ``serve wide``
-    context is a deuce-wide serve, the disambiguation the pooled tables cannot make.
+    The correction family is the group, since each cue is only screened against its own
+    group. Groups too thin to define a class mean in a fold produce nothing from that
+    direction. Side is always a grouping key, never pooled.
     """
     rows = []
     for (player, side, anchor), rec in openings.items():
@@ -790,13 +740,13 @@ def main() -> None:
     md.append("")
     md.append(f"Across {len(corr)} qualifying players, the correlation between a "
               "context's winner rate and its unforced-error rate is "
-              f"**{corr.r.mean():+.2f} on average** "
-              f"({(corr.r > 0).mean():.0%} of players positive). And that *understates* "
-              "the overlap: a stroke can't be both a winner and an error, so pure "
-              "chance pushes this correlation negative. Sequences that precede winners "
-              "also precede errors because both mark the same decision — going for the "
-              "finish. `shot_patterns`' green/trouble split partly conflates decision "
-              "with execution; frequency + conversion separates them.")
+              f"**{corr.r.mean():+.2f} on average** ({(corr.r > 0).mean():.0%} of players "
+              "positive). And that *understates* "
+              "the overlap: a stroke can't be both a winner and an error, so pure chance pushes "
+              "this correlation negative. Sequences that precede winners also precede errors "
+              "because both mark the same decision: going for the finish. `shot_patterns`' "
+              "green/trouble split partly conflates decision with execution; frequency + "
+              "conversion separates them.")
     md.append("")
 
     # -- which numerator? -----------------------------------------------------
@@ -826,13 +776,13 @@ def main() -> None:
     # -- opening sequences split by serve side --------------------------------
     md.append("## Opening sequences by serve side (deuce vs ad)")
     md.append("")
-    md.append("The pooled tables above average over the court the point was served to, "
-              "but the first four plies mean different things on the two sides: a wide "
-              "serve opens the forehand in the deuce court and the backhand in the ad "
-              "court. Here the opening aggressive shots — the return, the serve+1, and "
-              "the return+1 — are split by side and scored against the player's own norm "
-              "*for that same shot and side*. Everything deeper in the rally stays "
-              "pooled (above). Full rows in `reports/shot_triggers_openings.csv`; "
+    md.append("The pooled tables above average over the court the point was served to, but the "
+              "first four plies mean different things on the two sides: a wide serve opens the "
+              "forehand in the deuce court and the backhand in the ad court. Here the opening "
+              "aggressive shots (the return, the serve+1, and the return+1) are split by side and "
+              "scored against the player's own norm *for that same shot and side*. Everything "
+              "deeper in the rally stays pooled (above). Full rows in "
+              "`reports/shot_triggers_openings.csv`; "
               f"{sum(r['tag'] == 'green' for r in open_rows)} green / "
               f"{sum(r['tag'] == 'trap' for r in open_rows)} trap sequences across "
               f"{len({r['player'] for r in open_rows})} players.")
@@ -841,25 +791,23 @@ def main() -> None:
     _both = [r for r in open_rows if r["folds"] == 2]
     _dl = sum(r["disc_lift"] for r in _one) / len(_one) if _one else 0.0
     _al = sum(r["att_lift"] for r in _one) / len(_one) if _one else 0.0
-    md.append("**These are cross-validated**, on the same footing as the pooled tables "
-              "above. A raw threshold screen — clear the support floor, clear the lift, "
-              "tag on the sign of the conversion gap — would carry no multiplicity "
-              "correction and compute every figure on the data that had just selected the "
-              "row. Instead each "
-              "(player, side, anchor) group splits into the same two match-hash folds: "
-              "one discovers, with an exact binomial tail against that fold's own group "
+    md.append("**These are cross-validated**, on the same footing as the pooled tables above. A "
+              "raw threshold screen (clear the support floor, clear the lift, tag on the sign of "
+              "the conversion gap) would carry no multiplicity correction and compute every "
+              "figure on the data that had just selected the row. Instead each (player, side, "
+              "anchor) group splits into the same two match-hash folds: one discovers, with an "
+              "exact binomial tail against that fold's own group "
               f"baseline and Benjamini-Hochberg at q={Q_FDR:g} across every context it "
               "could test; the other confirms and supplies every number shown.")
     md.append("")
-    md.append(f"That took the table from 484 rows over 171 players to "
-              f"{len(open_rows)} over {len({r['player'] for r in open_rows})}. "
-              f"{len(_both)} rows cleared from both directions and show the two folds "
-              f"pooled; the {len(_one)} that cleared from one show that fold alone, and "
-              f"across those the mean lift falls from {_dl:.2f}x where it was found to "
-              f"**{_al:.2f}x where it was measured — {(_al - 1) / (_dl - 1):.0%} of the "
-              "discovered edge**. `court_response` measured 46% on the same kind of test "
-              "and `rally_patterns` 50%, over different features and different screens, "
-              "which is three independent readings of the same number.")
+    md.append("That took the table from 484 rows over 171 players to "
+              f"{len(open_rows)} over {len({r['player'] for r in open_rows})}. {len(_both)} rows "
+              f"cleared from both directions and show the two folds pooled; the {len(_one)} that "
+              "cleared from one show that fold alone, and across those the mean lift falls from "
+              f"{_dl:.2f}x where it was found to **{_al:.2f}x where it was measured, "
+              f"{(_al - 1) / (_dl - 1):.0%} of the "
+              "discovered edge**. `court_response` and `rally_patterns` both keep about half on "
+              "the same kind of test, over different features and different screens.")
     md.append("")
     for g in ("M", "W"):
         md.append(f"### {GLABEL[g]}\n")

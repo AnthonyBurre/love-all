@@ -1,22 +1,14 @@
-"""Double-charted matches: which chart is kept, and what happens to one that cannot be read.
+"""Double-charted matches: which chart is kept, and what happens to one that can't be read.
 
-A match charted twice is weighted twice in every career rate, in the coverage counts and in
-the ace share — and the matches this happens to are not a random sample, they are famous
-ones. So one chart per match goes forward. The failure modes are all silent: every wrong
-answer here is a match that still has points, still joins, and still aggregates.
+Counting a match twice double-weights it everywhere, and it tends to be a famous match. The
+three rules, each easy to get plausibly wrong:
 
-Three passes, and each has a rule that is easy to get plausibly wrong:
-
-1. *Where does the second chart start.* Not "the point number went down" — `pt` is not
-   sorted in the source files, and one 1975 semifinal opens 45, 47, 46, 48. That rule fires
-   thirteen times inside a single honest chart and found 2,174 double-charted matches where
-   there are 14. It is "the match's own opening number came round again".
-2. *Which chart to keep.* The most complete, not the most recent: of the four matches whose
-   two charts genuinely differ, the second is the shorter abandoned one in two cases.
-3. *What to do with two charts that are interleaved rather than appended.* The whole match,
-   not the offending rows — the two have drifted out of step, so the point numbers have
-   stopped referring to the same points, and cutting only where that is visible leaves a
-   chart still silently misaligned, now with holes in it.
+1. *Where the second chart starts:* when the match's opening point number comes round again.
+   Not "the number went down": `pt` isn't sorted in the source (one 1975 semifinal opens 45,
+   47, 46, 48), and that rule found 2,174 double-charted matches where there are 14.
+2. *Which chart to keep:* the most complete, not the most recent.
+3. *Interleaved charts:* the whole match is dropped from points, since the numbering no
+   longer lines up.
 """
 
 import pandas as pd
@@ -40,7 +32,7 @@ def _frame(*rows):
 
 def test_a_chart_whose_point_numbers_go_backwards_is_still_one_chart():
     """The regression the restart rule exists for. A charter's rows as entered, not as
-    played: 45, 47, 46, 48 is one honest chart, and reading a decrease as a chart boundary
+    played: 45, 47, 46, 48 is one chart, and reading a decrease as a chart boundary
     is what turned 14 double-charted matches into 2,174."""
     out, rep = validate.dedupe_points(_frame(_chart("m1", [45, 47, 46, 48])))
     assert len(out) == 4

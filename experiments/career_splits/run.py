@@ -1,12 +1,11 @@
-"""Career splitting — does it capture real change? (the justification for `player_eras`)
+"""Career splitting: does it capture real change? (the justification for `player_eras`)
 
 Run:  python experiments/career_splits/run.py
 
-This is the *investigation* behind the optional `player_eras` DB table (built by
+The investigation behind the optional `player_eras` DB table (built by
 `match-charting-project eras`; logic in `match_charting_project.analysis.career_eras`).
-It re-derives the evolve test, shows the chronological-vs-noise evidence and the
-threshold sensitivity, and writes the report + figure. The era mapping itself now
-lives in the DB table, not in this folder.
+Re-derives the evolve test, shows the chronological-vs-noise evidence and the threshold
+sensitivity, and writes the report and figure.
 """
 
 import sys
@@ -127,8 +126,8 @@ def main():
     md.append("## Threshold sensitivity")
     md.append("")
     md.append(f"How many careers split (and total entities, from {base} tracked) as the "
-              "noise-ratio cutoff varies — the 1.5–2.0 band is crowded, and a uniform 2.0 "
-              "erases the women (their sparser charting raises the noise floor):")
+              "noise-ratio cutoff varies. The 1.5–2.0 band is crowded, and a uniform 2.0 erases "
+              "the women (their sparser charting raises the noise floor):")
     md.append("")
     md.append("| cutoff | split (M / W) | entities |")
     md.append("|---|---|---|")
@@ -144,14 +143,14 @@ def main():
     n_evolved = sum(len({x[0] for x in results[g]["rows"] if x[3] > NOISE_RATIO}) for g in ("M", "W"))
     md.append("## Verdict: split selectively, not across the board")
     md.append("")
-    md.append(f"Even among long careers, the median early-vs-late style gap is only "
-              f"**{pooled:.2f}×** the random-split noise — most players are stylistically "
-              "*stable*, so a blanket split would dilute data. But a real minority — "
-              f"**{n_evolved} players** — evolve clearly (>{NOISE_RATIO}× noise), with face-valid "
-              "detections (Sabalenka's serve-yips fix, Paire's decline, Chang adding serve). "
-              "Those are split binary early/late — the only contrast this test validated — and "
-              "materialized into the **`player_eras`** table (everyone else stays whole), ready "
-              "for the clustering / WPA / win-prob experiments and the web frontend to join to.")
+    md.append("Even among long careers, the median early-vs-late style gap is only "
+              f"**{pooled:.2f}×** the random-split noise: most players are stylistically *stable*"
+              ", so a blanket split would dilute data. But a real minority (**"
+              f"{n_evolved} players**) change clearly (>{NOISE_RATIO}× noise), matching known "
+              "changes (Sabalenka's serve-yips fix, Paire's decline, Chang adding serve). Those "
+              "are split into early and late (the only contrast this test validated) and written "
+              "into the **`player_eras`** table (everyone else stays whole), for other analyses "
+              "to join to.")
     md.append("")
     (PROJECT_ROOT / "reports" / "career_splits.md").write_text("\n".join(md))
 

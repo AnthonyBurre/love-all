@@ -278,11 +278,10 @@ def main():
             press_rows += pressure_block(md, press, player, player)
 
         md.append("### Step 3 — serve+1 (server's first groundstroke), by side\n")
-        md.append("*FH share = how often the serve+1 is a forehand; aggressive = the "
-                  "aggressive shot frequency — the +1 was a winner, an unforced error, or "
-                  "forced the reply out — and convert = the share of those that paid; "
-                  "claims stay in server-wing / side terms (no returner handedness "
-                  "assumed).*\n")
+        md.append("*FH share = how often the serve+1 is a forehand; aggressive = the aggressive "
+                  "shot frequency (the +1 was a winner, an unforced error, or forced the reply "
+                  "out), and convert = the share of those that paid; claims stay in server-wing / "
+                  "side terms (no returner handedness assumed).*\n")
         sp1_rows += sp1_block(md, sp1, g)
 
     con.close()

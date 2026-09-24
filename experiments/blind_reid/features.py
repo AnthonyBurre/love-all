@@ -1,36 +1,24 @@
-"""Per-*performance* feature vectors: one row per (match, player), names stripped.
+"""Per-performance feature vectors: one row per (match, player), names stripped.
 
-Every other analysis in this repo aggregates a player over their whole career (or a
-career era) and asks what they are like. This asks the opposite question: treat a
-single player's showing in a single match as the unit, throw the name away, and see
-whether the vector still points back at the human who produced it.
+Every other analysis aggregates a player over a career. This treats one player's showing in
+one match as the unit, drops the name, and asks whether the vector still points back at the
+player.
 
-Three blocks, kept separate on purpose, because the interesting question is how much
-work each one does:
+Three blocks, kept separate to see how much each contributes:
 
-``SERVE``   the delivery — direction by court side, first-serve rate, ace/DF/unreturned.
-            The obvious tell, and the one to quarantine.
-``RETURN``  the return of serve: slice vs drive, depth, direction, error rate.
-``RALLY``   strokes 3+ — the shot mix that comes back at you once the point is live.
+``SERVE``   direction by court side, first-serve rate, ace/DF/unreturned. The obvious tell.
+``RETURN``  slice vs drive, depth, direction, error rate.
+``RALLY``   strokes 3+: the shot mix once the point is live.
 
-RETURN + RALLY together are ``RESPONSE``: everything you could observe from the far
-baseline without watching the opponent serve.
+RETURN + RALLY together are ``RESPONSE``: everything observable without the serve.
 
-Two conventions matter for the controls to mean anything:
+- **Rates use charted denominators** (depth over returns with depth charted, direction over
+  strokes with direction charted), so charter thoroughness isn't measured as the player.
+- **No feature uses the opponent, score or match context.** Surface, year, charter and
+  opponent are carried as metadata for filtering pairs, never as inputs.
 
-- **Rates are conditioned on charted denominators.** Depth shares are computed over
-  returns whose depth was charted, direction shares over strokes with a charted
-  direction. Charters vary in how much detail they record, so an unconditioned rate
-  would partly measure the charter rather than the player — the exact confound the
-  experiment has to rule out rather than absorb.
-- **No feature uses the opponent's name, the score, or the match context.** Surface,
-  year, charter and opponent are carried alongside as metadata so pairs can be
-  filtered by them later, never as inputs.
-
-Caveat inherited from ``player_styles``: a player's shots are partly reactive, so a
-performance vector is "what they did against this opponent on this day", not an
-intrinsic constant. That is the whole point here — the question is how much of it
-survives the change of opponent.
+A performance is partly a reaction to the opponent; how much identity survives that is the
+question.
 """
 
 import sys

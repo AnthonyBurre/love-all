@@ -76,20 +76,14 @@ MARQUEE = {"M": ["Roger Federer", "Novak Djokovic", "Rafael Nadal", "Daniil Medv
 
 # --------------------------------------------------------------------------- pool
 def pool(con, gender: str) -> "tuple[set, dict]":
-    """Players with >=MIN_STROKES strokes they actually hit past the opening.
+    """Players with >= MIN_STROKES strokes past the opening.
 
-    Gating on *charted points* would be the wrong denominator here: a point
-    contributes strokes to this experiment only if it
-    survives the blind, and how often that happens is exactly the thing that varies
-    most between players. A big server's 10k points fund far less rally than a
-    grinder's. So the gate counts the strokes the experiment will actually see, and it
-    runs before any lift is computed — picking the pool by who surfaced patterns would
-    be picking the players the screen flattered.
+    Gated on strokes the experiment actually sees, not charted points: a big server's
+    points fund far less rally than a grinder's. The gate runs before any lift is computed.
 
-    Returned alongside is each player's **exposure**: the share of their charted points
-    that reach the fifth shot at all. Everything downstream is conditional on that, and
-    it runs from 0.17 to 0.53, so it ships next to every profile rather than sitting in
-    a limitations paragraph. See the README.
+    Also returns each player's **exposure**, the share of their charted points that reach
+    the fifth shot (0.17 to 0.53). Everything downstream is conditional on it, so it ships
+    with every profile. See the README.
     """
     rows = con.execute("""
         WITH pp AS (
@@ -115,22 +109,13 @@ def pool(con, gender: str) -> "tuple[set, dict]":
 def collect(con, gender: str, keep: set, hands: dict):
     """One pass: per (rule, depth) context tables, plus the poolability tallies.
 
-    A stroke at ply index ``i`` is eligible under ``target`` when ``i >= BLIND`` and
-    under ``window`` when ``i - K >= BLIND``, so the whole K-shot context sits past the
-    opening too. Both are tallied from the same pass.
+    A stroke at ply ``i`` is eligible under ``target`` when ``i >= BLIND`` and under
+    ``window`` when ``i - K >= BLIND``. Contexts are keyed in the profiled player's frame,
+    mirrored for a left-hander by the striker's hand, as in ``shot_triggers`` and
+    ``court_response``; every gate is within one player, so this changes labels only.
 
-    Contexts are keyed in the *profiled player's* frame — for a left-hander every court
-    third in the sequence is mirrored, so a token names the shot rather than the half of
-    the court it landed in. Mirrored by the striker's hand rather than each shot's own
-    hitter, because the context alternates hitters and a player's opponents are a mix of
-    both hands. This is the same convention ``shot_triggers`` and ``court_response`` use
-    and it changes no statistic: every gate compares a context to its own parent within
-    one player, so mirroring re-keys a lefty's whole table consistently.
-
-    ``role`` tallies the K=2 window cells split by serving/returning role and by deuce/ad
-    court, which is what ``poolability()`` tests. They are collected here rather than in a
-    second pass because the claim they support — that these may be pooled — is the reason
-    every other table in this function is pooled.
+    ``role`` tallies the K=2 window cells by serving/returning role and deuce/ad court, for
+    ``poolability()``.
     """
     tabs = {(rule, k): defaultdict(lambda: [0] * (2 * W)) for rule in RULES for k in DEPTHS}
     role = defaultdict(lambda: [0] * 8)   # n_srv,a_srv,n_ret,a_ret,n_deuce,a_d,n_ad,a_a
@@ -190,15 +175,8 @@ def collect(con, gender: str, keep: set, hands: dict):
 
 
 def parents(tab: dict) -> dict:
-    """The (K-1)-shot suffix table, summed over exactly the K-eligible strokes.
-
-    Looking the parent up in a table built over *all* of its own occurrences would
-    compare differently-distributed sets of strokes: the child can only occur where a
-    K-shot window is legal, the parent anywhere a (K-1)-shot one is, so part of every
-    parent lift would be the two contexts being measured on different populations rather
-    than the extra shot doing anything. Deriving the parent from the child cells by
-    dropping the leading token fixes that by construction — both sides of the ratio are
-    the same strokes, and the only difference is the token the gate is asking about.
+    """The (K-1)-shot parent table, summed over exactly the K-eligible strokes, so the child
+    and parent in each lift ratio are measured on the same strokes.
     """
     par = defaultdict(lambda: [0] * (2 * W))
     for (pl, ctx), v in tab.items():
@@ -261,19 +239,11 @@ def validate(cell, pcell, disc: int) -> "dict | None":
 def screen(tabs: dict, pars: dict, rule: str, gender: str) -> "tuple[list, list, dict]":
     """Two-fold symmetric screen. Returns (shipped rows, discovery record, gate counts).
 
-    The gate counts are the third return because a screen this strict can come back
-    nearly empty, and an empty result is only readable next to how many candidates it
-    started from. Without them "two patterns" and "a bug" look the same.
-
-    The second list is the calibration record and it is deliberately unfiltered: it holds
-    every pattern that cleared discovery and could be measured out of sample, including
-    the ones whose held-out lift came back below 1. Conditioning that record on
-    replicating would be selecting on the outcome it exists to measure.
-
-    Dedup across the two directions follows ``shot_triggers``: a pattern confirmed from
-    both sides shows the two clean folds pooled, one confirmed from a single side shows
-    that validation fold alone, and a pattern whose two directions disagree about the tag
-    is not a finding and is dropped.
+    Gate counts make a near-empty result readable. The discovery record is unfiltered: every
+    pattern that cleared discovery and could be measured out of sample, including those
+    whose held-out lift fell below 1. Across the two directions: confirmed both ways shows
+    the two folds pooled, confirmed once shows that validation fold, and a tag disagreement
+    is dropped (as in ``shot_triggers``).
     """
     cands, shipped, record = candidates(tabs, pars, rule), [], []
     gates = defaultdict(lambda: dict.fromkeys(
@@ -369,14 +339,9 @@ def poolability(role: dict, min_arm: int = 60) -> dict:
 def ply_gap(rows: "pd.DataFrame") -> "pd.DataFrame":
     """Mean ply of a pattern against its parent's, on the same eligible strokes.
 
-    Aggressive shot frequency drifts with how deep into the point a stroke sits, so a
-    context that tends to arise early can read as aggressive for that reason alone.
-    Blinding removes most of the drift — past ply 7 the tour rate is flat to within a
-    point or so — and deriving the parent from the child cells removes the rest of the
-    *set* difference, but not the difference in where inside that set the two sit. This
-    measures what is left rather than correcting for it, which at this size is the
-    honest option: a correction estimated from the same cells would be doing more
-    inference than the residual is worth.
+    Aggressive shot frequency drifts with depth into the point. Blinding removes most of it
+    (past ply 7 the tour rate is flat to within about a point), so the remainder is measured
+    rather than corrected for.
     """
     if not len(rows):
         return rows
@@ -389,16 +354,9 @@ def ply_gap(rows: "pd.DataFrame") -> "pd.DataFrame":
 def calibration(record: "pd.DataFrame") -> "pd.DataFrame":
     """Discovered lift against the lift the same pattern posts out of sample.
 
-    This is the experiment's headline and the reason the split exists. Every screen of
-    this shape returns patterns whose measured edge is part real and part the luck that
-    got them selected, and the only way to say which is to measure the same pattern on
-    data that had no vote. The record is unfiltered on purpose — patterns that came back
-    below 1 are in here, and dropping them would make the curve say what it was built
-    to test.
-
-    ``edge_kept`` is the share of the discovered edge that survives: mean(held − 1) over
-    mean(discovered − 1). 1.0 would mean the screen is perfectly calibrated, 0.0 that it
-    is selecting noise.
+    The experiment's headline. The record is unfiltered, including patterns that came back
+    below 1. ``edge_kept`` is mean(held − 1) / mean(discovered − 1): 1.0 is a perfectly
+    calibrated screen, 0.0 one selecting noise.
     """
     out = []
     for (rule, depth), sub in record.groupby(["rule", "depth"]):
@@ -497,11 +455,10 @@ def _ctx_str(ctx) -> str:
 def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
     md = ["# Rally patterns — shot sequences with the opening blinded out", ""]
     md.append("*Generated by `experiments/rally_patterns/run.py`. The first "
-              f"{BLIND} plies — serve, return, serve+1, return+1 — are blinded out, "
-              "because the opening is where the pooling assumption below breaks and "
-              "where a rally claim stops being a rally claim. Every rate, lift, "
-              "conversion and tag is read off a fold of the player's matches that had "
-              "no part in selecting the pattern.*")
+              f"{BLIND} plies (serve, return, serve+1, return+1) are blinded out, "
+              "because the opening is where the pooling assumption below breaks and where a rally "
+              "claim stops being a rally claim. Every rate, lift, conversion and tag is read off "
+              "a fold of the player's matches that had no part in selecting the pattern.*")
     md.append("")
 
     md.append("## The pool")
@@ -519,22 +476,20 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
         md.append(f"| {GLABEL[g]} | {m['players']} | {m['strokes']:,} | "
                   f"{e[0]:.2f} / {e[1]:.2f} / {e[2]:.2f} |")
     md.append("")
-    md.append("**Exposure** is the share of a player's charted points that reach the "
-              "fifth shot at all, and it is the deepest limitation here. Blinding the "
-              "opening does not remove the serve from these profiles — it *conditions "
-              "on* it. Karlovic's rally book is built from the one point in five his "
-              "serve failed to settle; Ferrer's from half of his. Every claim below is "
-              "conditional on the point having got this far, and the exposure column "
-              "ships next to it so that reading is available rather than buried.")
+    md.append("**Exposure** is the share of a player's charted points that reach the fifth shot "
+              "at all, and it is the deepest limitation here. Blinding the opening does not "
+              "remove the serve from these profiles; it *conditions on* it. Karlovic's rally book "
+              "is built from the one point in five his serve didn't end; Ferrer's from half of "
+              "his. Every claim below is conditional on the point having got this far, and the "
+              "exposure column ships next to it so that caveat is always visible.")
     md.append("")
 
     md.append("## Can serving and returning points be pooled?")
     md.append("")
-    md.append("Everything here pools a player's serving and returning points, and the "
-              "deuce and ad courts. Rather than lean on `serve_side`'s model "
-              "evaluation — a different test on different data — this asks the cells "
-              "being pooled directly, against a coin-flip split of the same cells as "
-              "the calibration.")
+    md.append("Everything here pools a player's serving and returning points, and the deuce and "
+              "ad courts. Rather than lean on `serve_side`'s model evaluation (a different test "
+              "on different data), this asks the cells being pooled directly, against a coin-flip "
+              "split of the same cells as the calibration.")
     md.append("")
     md.append("| | test | cells | rejected at q=0.10 |")
     md.append("|---|---|--:|--:|")
@@ -606,9 +561,9 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
                   "the `target` row above, that is the finding: deep patterns were the "
                   "serve.")
     else:
-        md.append(f"{len(shipped)} patterns across {shipped.player.nunique()} players "
-                  f"at K≥{SHIP_MIN_DEPTH} under the `{SHIP_RULE}` rule — the set that "
-                  "ships to the site's starred tier.")
+        md.append(f"{len(shipped)} patterns across {shipped.player.nunique()} players at "
+                  f"K≥{SHIP_MIN_DEPTH} under the `{SHIP_RULE}` rule — the set a 3–4 shot "
+                  "tier on the site would draw from (none ships).")
         md.append("")
         for g in ("M", "W"):
             sub = shipped[shipped.gender == g]
@@ -647,12 +602,11 @@ def report(ship, record, cal, gates, pool_res, meta, open_share) -> str:
 
     md.append("## Limitations")
     md.append("")
-    md.append("- **Conditional on survival.** See exposure above. This is selection, "
-              "not noise, and no amount of data fixes it — blinding deeper makes it "
-              "worse. The per-context framing is the defence: both sides of every "
-              "comparison inherit the same selection, so it largely cancels for the "
-              "lift over the parent. It does not cancel for anything read across "
-              "players.")
+    md.append("- **Conditional on survival.** See exposure above. This is selection, not noise, "
+              "and no amount of data fixes it; blinding deeper makes it worse. The per-context "
+              "framing is the defence: both sides of every comparison inherit the same selection, "
+              "so it largely cancels for the lift over the parent. It does not cancel for "
+              "anything read across players.")
     md.append(f"- **The screen is strict.** A pattern needs {MIN_CTX} strokes in the "
               f"discovery fold alone and a further {MIN_VAL_CTX} in the validation "
               "fold, and its displayed lift is never measured on a stroke that helped "

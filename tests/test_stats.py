@@ -1,16 +1,9 @@
 """The screening statistics behind the pattern cards.
 
-Three experiments screen thousands of candidate patterns per player and keep the ones that
-beat a baseline, so what these two functions do decides what the site prints as a finding.
-Both fail quietly: a wrong tail is still a number in [0, 1] that sorts, and a wrong
-correction still shrinks a list.
-
-`binom_tail` is not the textbook sum. That one is exact and fine on a handful of
-pre-filtered candidates, but `comb` on a few thousand strokes is an integer far too large to
-convert to a float, so it overflows on the full screen. This walks outward from the mode
-instead, where the largest term cannot underflow and each neighbour follows from the last by
-a ratio. Its docstring claims agreement with the exact sum to about 1e-12 — this file is
-what checks that claim, on the small `n` where the exact sum can still be computed.
+Both fail quietly: a wrong tail is still a number in [0, 1], and a wrong correction still
+shrinks a list. `binom_tail` walks outward from the mode instead of summing `comb` terms
+(which overflow on thousands of strokes); this checks its claimed ~1e-12 agreement with the
+exact sum on small `n`.
 """
 
 from math import comb, isfinite
@@ -93,12 +86,9 @@ def test_bh_on_an_empty_family():
 
 
 def test_bh_keeps_more_than_holm_at_a_screens_family_size():
-    """The reason these screens use one and not the other, at the size where it matters.
-
-    The two agree on a handful of candidates and diverge over a family of hundreds, which
-    is what a per-player screen actually produces: Holm controls the chance of *any* false
-    positive and leaves almost nothing, where BH controls the share of the shown set that is
-    spurious — the claim the panel actually makes.
+    """Holm and BH agree on a few candidates and diverge over hundreds. Holm controls the
+    chance of any false positive; BH controls the share of shown patterns that are spurious,
+    which is the claim the panel makes.
     """
     # Five real effects buried in 195 nulls spread across the rest of the range.
     family = [0.00002, 0.0001, 0.0004, 0.0008, 0.001]

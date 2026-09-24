@@ -1,6 +1,4 @@
-"""The data feeds behind the site, and the caches that keep them off the git index.
-
-Four feeds, each with its own cadence and its own source:
+"""The data feeds behind the site, and the caches that keep them out of git.
 
 ===========  ======================================  ==========================
 feed         source                                  refresh
@@ -12,17 +10,11 @@ insights     Match Charting Project DB               weekly
 ===========  ======================================  ==========================
 
 This module owns the first two. Both land in gitignored caches under ``data/`` that CI
-carries as build assets — the same treatment ``history.json`` and ``insights.duckdb``
-already get — so no draw sheet is ever committed to, or deleted from, the repository.
+carries as build assets, like ``history.json`` and ``insights.duckdb``.
 
-Two feeds come from Wikipedia, which is crowdsourced and so never trusted blindly:
-
-* A parsed draw is only adopted once it *agrees with the live feed about who plays whom*
-  (``wiki.feed_agreement``). A draw for the wrong event, the wrong gender, or last year's
-  edition all parse perfectly well and all score near zero, so they're rejected and the
-  bracket falls back to name inference — degraded, never wrong.
-* The calendar decides which events the site serves at all. It replaced a hand-kept roster
-  that, checked against it, had three events at the wrong level and was missing three more.
+Wikipedia is crowdsourced, so a parsed draw is adopted only if it agrees with the live feed
+about who plays whom (``wiki.feed_agreement``); otherwise the bracket falls back to name
+inference. The calendar decides which events the site serves.
 """
 
 import json
@@ -107,13 +99,8 @@ def refresh_calendar_if_stale(season: "int | None" = None) -> "tuple[dict, bool]
 def refresh_calendar(season: "int | None" = None) -> dict:
     """Re-read both tours' season pages into the calendar cache. Returns the cache.
 
-    A read that comes back with nothing for a tour is not written. A network failure
-    already can't reach the write — ``wiki._api`` lets the exception out — but a
-    *successful* fetch that parses to nothing can: rename the "Schedule" heading on a
-    season page and ``find_section`` returns None, ``parse_calendar("")`` yields no
-    events, and a good cache is overwritten with an empty one. The site then can't tell
-    a 500 from a 250 until the next refresh. Both tours have to contribute, because one
-    empty half is the same failure for the gender it covers.
+    A read that parses to nothing for either tour (e.g. a renamed "Schedule" heading) is not
+    written, so a good cache isn't replaced with an empty one.
     """
     season = season or date.today().year
     doc = {"season": season, "fetched": _stamp(), "events": []}
@@ -136,16 +123,10 @@ def _candidates(cal: dict, gender: str, city: str, name: str,
                 month: "int | None" = None) -> list:
     """Calendar events plausibly matching a live one, best first.
 
-    The feed names events after sponsors ("Mubadala DC Open") and the calendar after their
-    common name ("Washington Open"), so the venue city is the join. Cities are compared with
-    containment either way because the two sides disagree on detail — "Washington" vs
-    "Washington DC".
-
-    The month is a *filter*, not a tie-breaker, and that matters more than it looks. The
-    calendar covers 250 and up, so a WTA 125 is absent from it entirely — and the 125 played
-    in Rome matches the Rome 1000 on city perfectly, which would put a 125 on the site as a
-    1000. Requiring the weeks to line up separates them (May vs July). When either side has
-    no month there is nothing to check, so the caller treats a multi-way result as unresolved.
+    Joined on venue city (containment either way, "Washington" vs "Washington DC"), since
+    the feed uses sponsor names. The month is a filter: without it, Rome's WTA 125 (absent
+    from the calendar) would match the Rome 1000. With no month, the caller treats a
+    multi-way result as unresolved.
     """
     ck, nk = tourn_key(city or ""), tourn_key(name or "")
     hits = []
@@ -164,12 +145,8 @@ def _candidates(cal: dict, gender: str, city: str, name: str,
 
 def lookup(city: str, name: str, gender: str, month: "int | None" = None,
            cal: "dict | None" = None) -> "dict | None":
-    """The calendar entry for a live event, or None.
-
-    ``month`` disambiguates a city hosting more than one event a season — Rome has a 1000 in
-    May and a 125 in July. When several entries remain plausible the answer is *None*, not a
-    guess: picking one would happily read the 125 as a 1000 and put it on the site. An
-    unresolved event falls back to the name heuristics, which is a smaller error.
+    """The calendar entry for a live event, or None. When several remain plausible the answer
+    is None rather than a guess; the event falls back to the name heuristics.
     """
     hits = _candidates(cal if cal is not None else load_calendar(),
                        gender, city, name, month)
@@ -240,19 +217,10 @@ def event_meta(tournament, cal: "dict | None" = None) -> dict:
     """What to call this event and what it is: ``{common_name, level, surface, indoor,
     venue}``, or ``{}`` when the calendar can't place it.
 
-    The live feed names an event after its title sponsor — "National Bank Open presented by
-    Rogers" — which is nobody's name for it. The calendar carries the name people use
-    ("Canadian Open") next to the tour level and surface, and it does so per tour, which is
-    also how it knows the two halves of a combined event can sit in different cities: the
-    2026 men's draw is in Montreal and the women's in Toronto, both of which the feed
-    reports as Toronto.
-
-    ``level`` is the tour's own label ("ATP 1000"), narrower than the ``tier`` the payload
-    already carries — that one collapses both tours into "Masters / WTA 1000" because the
-    charted database does, which is right for grouping draws and wrong for describing one.
-
-    Empty for an event the calendar doesn't cover, or a past season it no longer lists; the
-    site then shows the feed's name on its own.
+    The feed uses the title sponsor's name ("National Bank Open presented by Rogers"); the
+    calendar has the common name ("Canadian Open"), per tour, so it also knows the 2026 men's
+    draw is in Montreal and the women's in Toronto (the feed says Toronto for both). ``level``
+    is the tour's own label ("ATP 1000"), finer than the payload's merged ``tier``.
     """
     return _meta(_entry_for(tournament, cal))
 

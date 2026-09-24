@@ -1,26 +1,15 @@
 """Per-match sidecars: the JSON the panel reads when the match in front of it is charted.
 
 One file per charted match under ``docs/data/matches/<match_id>.json``, holding a
-win-probability curve and a two-sided box score. The panel fetches exactly one of them,
-on open, and only for a match that already carries a ``chart_id``.
+win-probability curve and a two-sided box score. The panel fetches one, on open, only for a
+match with a ``chart_id``. Separate files rather than tables in ``insights.duckdb``, which
+every visitor downloads whole; this way only the open that needs it pays (~6 KB).
 
-Sidecars rather than tables in ``insights.duckdb``, because ``docs/js/db.js`` pulls that
-file down whole into an ArrayBuffer before the first query: every byte in it is paid by
-every visitor on load, and this data is read by roughly one panel open in ten. As
-separate files the cost falls only on the open that wants them — about 6 KB, once.
+Written for every row of ``charted_matches``, the same table ``chart_id`` comes from (see
+``build_brackets._insights``), so a chart link always has a sidecar behind it.
 
-Written for every row of ``charted_matches``, not for the subset a current
-``brackets.json`` happens to reference. The two are produced by different jobs: this one
-runs in the weekly insights build, which is where ``tennis.duckdb`` exists, and the
-brackets are assembled hourly from the insights release alone. Since ``chart_id`` is read
-out of the same ``charted_matches`` table (see ``build_brackets._insights``), generating
-from that table is what guarantees the two can never disagree — a match cannot show a
-chart link with no sidecar behind it. The surplus files are never fetched.
-
-None of these figures is gated on sample size, which is the opposite of every rate the
-career panel prints. A career rate is an estimator of a latent skill and needs enough
-points behind it to mean anything; a match rate is a measurement of what happened in the
-match, and 70 service points is the whole population, not a sample of it.
+No figure here is gated on sample size: a match rate is a measurement of what happened, not
+an estimate of a skill.
 
 Run: ``match-charting-project site build-match-details``.
 """
@@ -49,21 +38,12 @@ OUT_DIR = DATA_DIR / "match_details"
 SIDES = ("deuce", "ad")
 DIRS = ("4", "5", "6")          # wide / body / T, in the order the panel draws them
 
-# The game scores at which the returner is one point from the break, in the server-first
-# notation the ``pts`` column is written in. Same reading as the score-aware eval's
-# ``_BREAK`` (``experiments/score_aware_eval/model.py``); keep the two in step.
-#
-# A point is a break point every time it is played at one of these scores, so a deuce game
-# that reaches advantage-returner three times supplies three of them. That is the
-# convention every scoreboard quotes, and it is the one the source's own ``bk_pts`` column
-# uses: derived this way the two agree on 3,081 of the 3,098 player-matches in the charted
-# corpus (99.4%), and on ``bp_saved`` for 3,087 of them. The seventeen that disagree are
-# all cases where a game supplied a second break point that the source did not count; the
-# rule here is applied identically to every match rather than inherited match by match,
-# which is what makes the number comparable between the two players of a panel.
-#
-# Tiebreaks are excluded for free: their scores are integer counts, so none of them can
-# match a game token, and a set is not broken inside one anyway.
+# Game scores (server-first, as in ``pts``) at which the returner is one point from the break.
+# Same set as the score-aware eval's ``_BREAK`` (``experiments/score_aware_eval/model.py``);
+# keep them in step. Every point played at one counts, so a deuce game can supply several.
+# This matches the source's ``bk_pts`` on 3,081 of 3,098 player-matches (99.4%); the rest are
+# games where the source missed a repeat break point. Tiebreak scores are integers, so they
+# never match.
 _BREAK = frozenset({"0-40", "15-40", "30-40", "40-AD"})
 
 _POINTS_SQL = (
@@ -193,26 +173,12 @@ def _match_payload(mid: str, meta: dict, rows: list, pq: dict, mu: dict) -> "dic
         sides[n]["sv_games"] = served[n]
         sides[n]["held"] = held[n]
 
-    # The prior is ``walk_forward_strength``: each player's serve and return rates over the
-    # matches charted *strictly before this one's day*, shrunk toward the tour mean by 100
-    # pseudo-counts, then combined into a point-win probability apiece.
-    #
-    # Not ``current_strength``, which is the whole-career rate and the wrong tool twice over.
-    # It has no pseudo-count, so a player charted once opens with a rate read off a single
-    # afternoon — and it is computed over every charted match including *this* one, so the
-    # match sits in its own prior and the curve knows a little of how it ends before it
-    # starts. That function says as much in its own docstring: its stated consumer is the
-    # panel's two rings, which are withheld below 2,000 charted points, so the thin players
-    # a pseudo-count would protect never reach it. Nothing gates this path, so it needs the
-    # estimator built for it.
+    # The prior is ``walk_forward_strength``: each player's serve and return rates over
+    # matches charted strictly before this one's day, shrunk toward the tour mean by 100
+    # pseudo-counts. Not ``current_strength``, which is unshrunk and includes this match.
     pa, pb = pq.get(mid, (mu[gender], mu[gender]))
-    # Averaged over the spread of strengths the match could have been played at, rather than
-    # evaluated once at the best guess — see winprob_match.predictive_models. The tree is
-    # exact given a point-win probability and sharply non-linear in it, and that probability
-    # is not a constant a player carries between matches: measured against its own
-    # prediction it moves 6.6 points either way beyond coin-flipping. Read at a single value
-    # the answer compounds a certainty nothing supports, and the panel drew flat lines along
-    # the top of the box for matches that were not remotely settled.
+    # Averaged over the spread of strengths the match could be played at (see
+    # winprob_match.predictive_models), since the tree is sharply non-linear in them.
     models = predictive_models(pa, pb, best_of)
 
     curve, sets, prev = [], [], None

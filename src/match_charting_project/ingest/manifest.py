@@ -3,7 +3,8 @@
 Answers "when did this data land?" at two granularities:
 
 1. Per-file upstream freshness — the latest commit date that touched each source
-   file in the MCP repo (the big files refresh in batches a few times a year).
+   file in the Match Charting Project repo (the big files refresh in batches a few
+   times a year).
 2. Local ingestion runs — an append-only log of when *we* ingested and what the
    totals were, so charting cadence accrues over time.
 
