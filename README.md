@@ -1,6 +1,6 @@
-# Tennis match charting — analysis and a live bracket site
+# Love All
 
-> **[→ Visit Tournament Analyzer](https://anthonyburre.github.io/love-all/)** — explore live Grand Slam, ATP/WTA 1000 & 500, and ATP 250 draws
+> **[→ Visit Live Site](https://anthonyburre.github.io/love-all/)** to explore live Grand Slam, ATP, and WTA draws
 
 The [Match Charting Project](https://github.com/JeffSackmann/tennis_MatchChartingProject) is a
 crowdsourced dataset of **shot-by-shot** records for 11,600+ professional tennis
@@ -12,13 +12,17 @@ site to GitHub Pages.
 ## The experiments
 
 Every folder under `experiments/` has a `README.md` stating its question, the code that
-answers it, and what it found. They write their output to `reports/`.
+answers it, and what it found. They write their full output to `reports/`.
+
+Some build on a point-level win-probability eval and per-shot WPA (win
+probability added), which began as a
+port of chess engine analysis to tennis points. See
+[`chess_point_analysis`](experiments/chess_point_analysis/).
 
 ### Player / Rally Analysis
 
 | experiment | the question | what it found |
 | --- | --- | --- |
-| [`chess_point_analysis`](experiments/chess_point_analysis/) | Can chess-analysis techniques be ported to a tennis point? | Yes. A point string is a move list, so it gets an engine eval, WPA per shot, and an opening explorer. |
 | [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Rusedski, Moutet, Santoro, Rafter; Navratilova, Maria, Niculescu. Most predictable: Basilashvili, Cilic; Samsonova, Giorgi, Ostapenko. Junkballers and serve-volleyers score high, flat first-strike baseliners low. Zones are mirrored for left-handers, without which handedness alone explained over half the spread. |
 | [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive, and they match expectations. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, his well-known pressure point. |
 | [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, their conversion rates, and **traps**: cues that raise the frequency but convert worse than the player's other cues. Every figure is held out. Ships to the site. |
@@ -26,7 +30,6 @@ answers it, and what it found. They write their output to `reports/`.
 | [`serve_plus_one`](experiments/serve_plus_one/) | The server's third ball, with the service court in the state. | Pooling the courts was averaging two different shots. Nadal answers the same mid-depth return with a crosscourt forehand on the deuce side and an inside-out forehand on the ad side, one of 597 such disagreements across 260 players. 725 patterns over 414 players survive the FDR correction. Ships to the site. |
 | [`context_length`](experiments/context_length/) | How many shots of history does charted data actually support? | **Two. The third actively hurts** held-out log-loss. And a player's top-5 signature list overlaps only J≈0.22 between halves of their own data, so much of any specific list is sampling luck. |
 | [`rally_patterns`](experiments/rally_patterns/) | Blind out the serve, return and both +1 shots. What patterns are left in the rally alone? | **Almost nothing deeper than two shots.** Of 1,752 serve-blind 3-shot candidates, 2 survive; of 362 at four shots, none. Two-shot rally patterns are real: 89 survive, 89% replicate, and one found at lift L posts about 1 + 0.5(L−1) out of sample. Letting the context reach back into the opening returns seven times as many patterns, but they keep only a third of their discovered edge against two thirds for the rally-only pair. Blinding also makes serving/returning and deuce/ad poolable, which is tested directly (2 of 1,441 cells reject). The site ships no 3–4 shot tier. |
-| [`serve_side`](experiments/serve_side/) | Does deuce vs ad court hide structure? | Yes. The direction codes mean **opposite wings** on the two sides, so serve analysis that ignores side is averaging two different shots together. |
 | [`serve_tendencies`](experiments/serve_tendencies/) | Which serve-placement stats can a player card safely carry? | Where a player serves is a measurement (split-half r = 0.58, ~860 serves for 80% signal); **what the placement earns is not** (r = 0.22, ~11,000 serves). Placement is re-decided per match, so the binomial sample-size rule is optimistic ~4x. |
 | [`player_styles`](experiments/player_styles/) | What style archetypes are there? | Four per tour, matching how fans talk: net-rusher (Sampras, McEnroe), baseline grinder (Djokovic, Nadal), slice & variety (Wawrinka, Federer), big-serving baseliner (Medvedev, Zverev). Style is a continuum, so about a third of entities sit too near a boundary to name and are reported as "between styles" rather than assigned. |
 | [`career_splits`](experiments/career_splits/) | Should a long career split into eras, or is that just two noisier samples of one player? | Split **selectively**. Most careers are stable; 34 changed clearly, and they match known changes (Sabalenka's serve yips, Clijsters' comeback). Justifies `player_eras`, 358 → 392 entities. |
@@ -48,191 +51,33 @@ None of these ship to the site. See [The site](#the-site) for why.
 ## The site
 
 `docs/` is a GitHub Pages site showing **Grand Slam, Masters/WTA-1000, ATP/WTA-500 and ATP-250
-brackets**.
+brackets**. Open any matchup to see average point length, shot variety, shot mix, serve
+direction, court patterns, shot-making triggers, and more! All of it is queried in the browser
+with **DuckDB-WASM**, with no backend. [`docs/README.md`](docs/README.md) explains how to read
+the patterns, trigger tokens and court diagrams.
+
+The panel deliberately does not predict match outcomes, since that is not the strength of this
+dataset and every other tennis site already does so. When the match itself is charted it shows
+a win-probability curve over every point, plus match summary stats for each player. The curve
+starts from strengths estimated only from **older** matches (`walk_forward_strength` in
+`winprob_match.py`).
 
 | feed | source | what it gives | refresh |
 | --- | --- | --- | --- |
 | scores | ESPN scoreboard | matches, rounds, live scores | hourly while a draw is on, daily between |
-| calendar | Wikipedia season pages | which events exist, tour level, surface | once a season |
+| calendar | Wikipedia season pages | which events exist, tour level, surface | daily |
 | draws | Wikipedia per-event draw pages | round-1 slot order, seeds, byes | once per event |
 | insights | Match Charting Project | per-player charted history | weekly |
 
 ESPN is the only free source for scores, and it carries **no tour level and no draw
-structure**, so everything structural comes from Wikipedia. Both Wikipedia feeds are cached
-under `data/` (gitignored, carried by CI as Release assets), so **no draw sheet is committed
-to the repo**, and the hourly build normally makes zero Wikipedia requests.
+structure**, so everything structural comes from Wikipedia. A Wikipedia draw sheet is used only
+once it agrees with ESPN about who plays whom (`live/feeds.py`). Both Wikipedia feeds are cached
+under `data/` (gitignored, carried by CI as Release assets), so **no draw sheet is committed to
+the repo**. Requests identify themselves as `love-all/0.1` and link back to this repo.
 
-ESPN is polled only while a draw is being played. Between events the build checks once a
-day, which is enough to notice the next event starting. Requests identify themselves as
-`love-all/0.1` and link back to this repo.
-
-Live draws show while play is on. Once an event finishes, its draw is frozen into an
-archive so it stays in the dropdown; the archive keeps the last two years of slams plus
-the two most recent finished events of every other tier. Open any matchup to see average
-point length, shot variety, shot mix, serve direction, court patterns, shot-making
-triggers, and more! All of it is queried in the browser with **DuckDB-WASM**, with no
-backend.
-
-The panel deliberately does not predict match outcomes, since that is not the strength of this dataset and every other tennis site already does so.
-
-When the match itself is charted we do show a win-probability curve over every point, plus some match summary stats for each player. Those numbers come from a small static file per match, fetched only when such a match
-is opened.
-
-Two important things about the win-probability curve:
-
-- Its starting point comes from `walk_forward_strength`, which scores a match only from
-  **older** matches.
-- The score tree is averaged across the spread of strengths the match could have been
-  played at, not evaluated once at the best guess. The tree is exact for a given point-win
-  probability but sharply non-linear in it, and that probability isn't constant from match
-  to match: over 23,111 player-match serve lines, the model's residuals hold 6.6 points of
-  standard deviation beyond coin-flip noise. Without that spread, a top seed against a
-  thinly-charted opponent came out at 99.98%, and two comparable journeymen at 97% on
-  whichever had the better charted fortnight.
-
-<details>
-<summary><b>Why neither Wikipedia feed is trusted blindly</b> — draw validation and calendar joining</summary>
-
-- **A draw sheet is adopted only once it agrees with the live feed about who plays whom**
-  (`wiki.feed_agreement`). A draw for the wrong event, the
-  wrong gender, or last year's edition all parse into perfectly well-formed slots, and
-  comparing the *set of players* doesn't separate them either, because tour fields overlap so
-  heavily that a slam's draw contains ~84% of a 500's entrants. Pairings do: two players
-  share a slot in exactly one draw, so the right sheet scores 1.0 and the nearest wrong
-  answers score ≤0.06. A rejected sheet falls back to name inference, degraded but not wrong.
-- **The calendar joins to ESPN on venue city *and* week.** City alone is too loose: the WTA
-  125 played in Rome matches the Rome 1000 exactly, and the calendar doesn't cover 125s, so
-  city-only matching would put a 125 on the site as a 1000. Different week, different
-  tournament.
-
-ESPN's structural gap: `major` flags the four slams and nothing else, so a 500 and a 125 arrive
-looking identical, and there are no draw slots, seeds, or bracket endpoints anywhere in its
-API. The Wikipedia season pages state each event's level
-and surface, and the per-event draw pages hold real draw sheets as positional
-`{{TeamBracket}}` templates, giving slot order, seeds with entry tags, and byes.
-
-The footer names Wikipedia as the source, so a reader who spots an error can fix it there.
-
-</details>
-
-<details>
-<summary><b>Running the site locally</b>, and the two workflows that keep it current</summary>
-
-Nothing either workflow generates is committed:
-
-- **`.github/workflows/insights.yml`** (weekly, or manual) rebuilds the compact
-  `insights.duckdb`, one row per charted player plus the recent charted-match index the site
-  flags finished matches against, and publishes it as a Release asset. It also writes the
-  per-match sidecars the drawer reads on a charted match, one small JSON each, and ships them
-  alongside. They are built here because they come from the point notation in `tennis.duckdb`,
-  which only this job has.
-- **`.github/workflows/live.yml`** (hourly) fetches current scores while a draw is on, picks up any
-  newly-published draw sheet, refreshes the tour calendar when the season turns, folds any
-  newly-finished event into the draw-history asset, reuses the insights DB, and deploys
-  `docs/` to Pages. It copies across only the sidecars the draws it just built actually
-  reference, so `docs/` carries a few hundred KB of them rather than the whole set. The
-  calendar and draw caches persist as a `feeds-cache` Release asset.
-
-```bash
-match-charting-project feeds calendar        # once; without it the site can't tell a 500 from a 250
-match-charting-project site build-insights
-match-charting-project site build-match-details   # per-match sidecars; needs tennis.duckdb
-match-charting-project site build-brackets        # then serve docs/
-```
-
-`... feeds draws` fetches draw sheets by hand if you want to check them; the site build does
-it anyway. To seed a past event that finished before the site was watching it,
-`... history harvest --event Wimbledon --year 2025`. Future events are captured automatically
-as they finish. The win-prob model, ESPN adapter, history archive and insights builder live
-under `src/match_charting_project/{winprob_match,live,site}`.
-
-</details>
-
-<details>
-<summary><b>Reading the site's patterns and diagrams</b></summary>
-
-Zones in a pattern are named by the **player's own hands**: "the BH corner" is that
-player's backhand corner whether they are left- or right-handed. Run-around shots get their
-tennis names, so a forehand played from the backhand corner is `inside-out` on the diagonal
-and `inside-in` down the line. Every pattern shown repeated in both halves of the player's
-charted matches.
-
-### The trigger tokens
-
-Each stroke is one token:
-
-- **Wing and type.** `FH` / `BH` is the forehand or backhand wing the player actually hit
-  with. The type is `drive` (flat or topspin), `slice` (slice or chip), `net` (volley,
-  overhead, half-volley, or swinging volley), `drop` or `lob` (the shortest and deepest
-  balls in tennis, so each gets its own group), or `shot` when the type was not charted.
-- **Direction.** `→1` / `→2` / `→3` is the third of the court the ball was sent to, named
-  relative to the **player's own hands**: mirrored for a left-hander, so one token string
-  means the same shot whoever played it. The raw notation names fixed thirds by the
-  right-hander convention, which would make a lefty's crosscourt forehand and a righty's read
-  as different shots and their mirror images read as the same one. `→·` means the direction
-  was not charted.
-- **Serves.** A serve is written as its target: `serve wide`, `serve body`, or `serve T`.
-
-A trigger reads as a lead-up, the player's shot then the opponent's reply, and asks what that
-cue provokes. The framework groups a player's point-ending shots as one behavioral unit, the
-**aggressive shot**: a winner, their own unforced error, or a shot that forced the reply into an
-error. All three mean they went for the finish and only the execution differed. "Aggressive" is
-the **aggressive shot frequency** the cue provokes, and
-"converts" is the share that paid, winners and forced errors together. A cue that raises the
-frequency but sinks conversion is a **trap**.
-
-That numerator matches the one behind
-[Aggression Score](https://www.tennisabstract.com/blog/2015/08/31/measuring-wta-tactics-with-aggression-score/);
-[`shot_triggers`](experiments/shot_triggers/) carries the split-half test that settled it.
-
-### The court diagram
-
-The diagram is a **placement map**, not a flight path. The player's half of the court is
-tinted, their own balls are solid lines in their colour, and the opponent's are dashed and
-grey. Lines run from one contact to the next, and a ring marks where a ball bounced, so a
-line with no ring is a ball taken out of the air (a volley). It comes in two forms:
-
-- **A pattern** draws the incoming ball landing on the near half, the player's side, so
-  "into the BH corner" points where you'd expect, and the response, with an arrowhead,
-  landing up top. For return patterns the incoming bounce sits short, mid-court, or deep to
-  match the charted return depth.
-- **A trigger sequence** plays out the lead-up shots, ending on the ball the player
-  attacked. The attacking shot itself isn't drawn, because the stored pattern doesn't say
-  where it went. Opening cues are drawn on their own service court; pooled triggers have no
-  court, so their serves are drawn in the deuce court.
-
-### Zones and how fine the charting really is
-
-The placement is **coarse on purpose**, and the diagram shows only what was charted:
-
-- **Three lateral zones.** Direction is recorded as one of three thirds, not a continuous
-  spot, so two shots into different parts of the same third are the same zone. Within a
-  third the diagram cannot separate a sharp crosscourt from a safer one.
-- **Lines come from zone pairs.** A single zone code never says crosscourt or down the
-  line, but a pattern knows both ends: the zone the ball arrived in fixes where the player
-  stood, so zone-to-zone geometry names the line. The two ends face each other, which is why
-  a reply into the *same-numbered* third travels the diagonal.
-- **Depth is thin.** The raw notation carries a coarse depth (shallow / mid / deep) on
-  about three-quarters of returns but few later balls, so only the off-the-return patterns
-  use it. Trigger drawings put every rally bounce at one mid-court depth.
-- **Three serve targets.** Wide, body, or T, placed in the service box the serve crosses
-  into.
-
-### Does handedness matter?
-
-The **wing** is always right: `FH` / `BH` is the stroke the player actually made, taken
-straight from the notation, so it holds for left-handers and right-handers alike.
-
-For **court patterns**, handedness is already folded in. The zones are flipped for
-left-handers before anything is counted or compared, so "drive into the BH corner" means the
-same tennis problem for Nadal as for Federer, and the comparison against the tour is like
-for like. Without the flip, a lefty answering his forehand corner with a forehand posts a
-large, meaningless lift against a mostly right-handed tour.
-
-The **trigger tokens** are flipped the same way, so `→1` is always the player's own
-forehand side. The diagram flips them back, so the ball is drawn where it physically went.
-
-</details>
+Once an event finishes, its draw is frozen into an archive so it stays in the dropdown; the
+archive keeps the last two years of slams plus the two most recent finished events of every
+other tier.
 
 ## Quickstart
 
@@ -262,6 +107,28 @@ uv run match-charting-project info       # list tables and row counts
 `core` = matches + points + Overview stats (~200 MB). `all` adds every
 pre-aggregated `-stats-` table (~550 MB).
 
+### Building the site
+
+```bash
+match-charting-project feeds calendar        # once; without it the site can't tell a 500 from a 250
+match-charting-project site build-insights
+match-charting-project site build-match-details   # per-match sidecars; needs tennis.duckdb
+match-charting-project site build-brackets        # then serve docs/
+```
+
+`... feeds draws` fetches draw sheets by hand if you want to check them; the site build does
+it anyway. To seed a past event that finished before the site was watching it,
+`... history harvest --event Wimbledon --year 2025`.
+
+Two workflows keep the live site current, and nothing either generates is committed:
+
+- **`.github/workflows/insights.yml`** (weekly) rebuilds `insights.duckdb` and the per-match
+  sidecars the drawer reads on a charted match, and publishes both as Release assets. They
+  are built here because they need the point notation in `tennis.duckdb`.
+- **`.github/workflows/live.yml`** (hourly) fetches scores, picks up new draw sheets, folds
+  finished events into the archive, copies in only the sidecars the current draws reference,
+  and deploys `docs/` to Pages.
+
 ## Repository layout
 
 ```
@@ -274,14 +141,16 @@ tests/                 # pytest suite (e.g. notation decoder vs charted stats)
 data/                  # raw/ + processed/ parquet + tennis.duckdb   (gitignored)
 experiments/           # self-contained idea spikes; they graduate into src/ if they earn it
 reports/               # generated outputs, never committed by hand
-docs/                  # the live Love All site (Pages)
+docs/                  # the live Love All site (Pages); README.md explains how to read it
 ```
 
 ## Data model (after ingestion)
 
 - **`matches`** — one row per match. Normalized columns plus derived ones:
-  `gender`, `year`, `tier` (Grand Slam / Masters-1000 / etc.), and quality flags
-  (`surface_valid`, `surface_clean`, `is_qualifying`, `date_valid`).
+  `gender`, `year`, `tier`, and quality flags (`surface_valid`, `surface_clean`,
+  `is_qualifying`, `date_valid`). The raw data has no tier field, so `analysis/tiers.py`
+  derives one from the tournament name; 250s and 500s share one bucket, as in Sackmann's
+  ATP data.
 - **`points`** — one row per point. Raw shot notation in `first_serve` /
   `second_serve` (e.g. `4b37y1r3n#`), the basis for derived shot analytics.
 - **`points_parsed`** — one row per point, decoded from the notation (`rally_len`,
@@ -297,50 +166,10 @@ docs/                  # the live Love All site (Pages)
   (freshness / provenance).
 - **`ingestion_runs`** — append-only log of each local ingest (cadence over time).
 
-<details>
-<summary><b>Tournament tiering and coverage methodology</b> — where the tier column comes from, and why "coverage" needs a denominator</summary>
-
-### Tournament tiering
-
-The raw data has no tier field, so `analysis/tiers.py` derives one from the
-free-text tournament name (Grand Slam / Masters-WTA 1000 / Tour Finals / Tour
-250-500 / Team event / Other). ~99.8% of matches classify. Note: 250 vs 500 is
-deliberately **not** split, because even Sackmann's authoritative ATP data collapses
-them into one level.
-
-The live site does need the split, to know which events to serve, so it takes levels from the
-Wikipedia calendar feed (`live/feeds.py`) instead. That feed covers the current season only and
-is deliberately kept out of `tiers.py`, so the tier column over 65 years of charted matches
-stays as stable as the source data allows.
-
-The name lists carry no year, so an event that changed level keeps the one the list gives it.
-Hamburg, Charleston and Tokyo sit in the 1000 bucket for seasons in which they were 500s, about
-90 matches between them, and the WTA events that move between 1000 and 500 add more.
-
-### Coverage methodology
-
-"Coverage" means **charted ÷ played**, not a raw charted count, so it needs a denominator. Both
-denominators below are structural (true without any external results data), and men and women
-are kept in separate figures throughout (`*_men.png` / `*_women.png` pairs):
-
-- **Grand Slams** — a singles main draw is always 128 players = **127 matches**, so
-  coverage is `charted / 127` per slam-year-gender. Valid for all four slams since 1990.
-- **Masters 1000 / WTA 1000** — draws vary (56 / 96 / 128), so there is no fixed
-  full-draw denominator. The late rounds are invariant, though: every draw has
-  R16=8, QF=4, SF=2, F=1 = **15 matches**. We report `charted / 15` from the
-  round of 16 onward.
-
-Two findings fall straight out: nothing is fully charted (best slam draw ≈ 50%),
-and charting skews hard to the later rounds (slam finals 74–91% vs. R128 ~5%).
-
-Two things to know when reading the figures. Denominators count only the events *present in the
-charted data*, so a 1000-level event nobody charted is missing from the grid rather than showing
-as 0%. And the tier column is name-derived and year-blind, as above.
-
-The 250/500 tiers get no coverage figure at all, because nothing here carries a played-match
-count for them.
-
-</details>
+Coverage is reported as charted ÷ played, per slam draw and per 1000-level late rounds, in
+[`reports/coverage_summary.md`](reports/coverage_summary.md). Nothing is fully charted (the
+best slam draw is about 50%), and charting skews hard to the later rounds. The denominators
+and their limits are explained in `analysis/coverage.py`.
 
 ## Attribution & license
 

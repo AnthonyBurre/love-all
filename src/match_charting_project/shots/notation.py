@@ -358,8 +358,8 @@ def aggressive_shot(shots: list, i: int, n_shots: "int | None" = None) -> "tuple
     An **aggressive shot** is one where the point ended on this stroke's account: a winner,
     the player's own unforced error (``@``), or a reply charted as a forced error (``#``).
     Conversion is ``(winner + induced) / total``. All zeros for a rally ball. Shared by every
-    experiment that counts these (``shot_triggers``, ``rally_patterns``, ``context_length``,
-    ``serve_side``); see ``experiments/shot_triggers/README.md``.
+    experiment that counts these (``shot_triggers``, ``rally_patterns``, ``context_length``);
+    see ``experiments/shot_triggers/README.md``.
     """
     if n_shots is None:
         n_shots = len(shots)

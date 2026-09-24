@@ -15,7 +15,7 @@ A player enters on **strokes they actually hit past the opening** (≥1,500), no
 
 ## Can serving and returning points be pooled?
 
-Everything here pools a player's serving and returning points, and the deuce and ad courts. Rather than lean on `serve_side`'s model evaluation (a different test on different data), this asks the cells being pooled directly, against a coin-flip split of the same cells as the calibration.
+Everything here pools a player's serving and returning points, and the deuce and ad courts. This tests that directly on the cells being pooled, against a coin-flip split of the same cells as the calibration.
 
 | | test | cells | rejected at q=0.10 |
 |---|---|--:|--:|
