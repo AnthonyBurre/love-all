@@ -5,14 +5,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Love All</title>
-  <!-- One line on purpose: a wrapped attribute keeps its newlines and indentation in the raw
-       markup, which is what a crawler or a link preview reads. -->
+  <!-- One line: a wrapped attribute keeps its newlines, which link previews show. -->
   <meta name="description" content="Live Grand Slam, ATP/WTA 1000 and 500, and ATP 250 draws. Open any matchup to see what the Match Charting Project has on both players: serve placement, shot mix, court patterns, and the cues behind their winners and errors." />
-  <!-- Inline, so there is nothing to fetch and nothing to 404. A browser with no rel="icon"
-       to go on asks for /favicon.ico on every load, which is a request this site has never
-       served — and on GitHub Pages that is a 404 on the critical path of a cold load. The mark
-       is the site's own: the header band's field, closed by the corner wedge every tier chip
-       and match card wears. -->
+  <!-- Inline, so the browser doesn't request a /favicon.ico that 404s on GitHub Pages.
+       The mark is the header band with its corner wedge. -->
   <link rel="icon"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231c6b45'/%3E%3Cpath d='M0 0h15L0 15Z' fill='%23cdf24a'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./css/style.css" />
@@ -53,11 +49,8 @@
   </main>
 
   <aside id="matchup" class="matchup" hidden role="dialog" aria-modal="true" tabindex="-1">
-    <!-- The X is drawn, not typed. Every other control on the site wears an SVG glyph built
-         from rects and 45° cuts (the view toggles, the quarter selector, the picker's
-         caret); a font's × among them is a different hand, and it arrives at whatever
-         weight the typeface feels like rather than the one the mark wants. Two bars on the
-         same 45° the chrome is cut on. -->
+    <!-- An SVG X (two bars at 45°), matching the site's other drawn glyphs rather than a
+         font's ×. -->
     <button class="close" id="matchupClose" aria-label="Close" title="Close">
       <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
         <rect x="-1.2" y="4.95" width="14.4" height="2.1" transform="rotate(45 6 6)"/>

@@ -7,31 +7,31 @@ decision: wing, shot type, and the line taken (crosscourt, down the line,
 through the middle, with run-around shots named inside-out / inside-in).
 Everything upstream of the incoming ball is ignored on purpose: the reaction to
 a slice into the backhand corner should mostly not depend on how that ball got
-there. How far "mostly" stretches is measured, not assumed — see [where the
-state is still too coarse](#where-the-state-is-still-too-coarse).
+there. How far "mostly" stretches is measured (see [where the state is still too
+coarse](#where-the-state-is-still-too-coarse)).
 
 Two state families come from one pass. **Rally** states are depth-agnostic and
 cover every rally pair. **Return** states add the charted return depth (short /
-mid / deep) and cover only the server's shot 3 — the one spot where depth is
+mid / deep) and cover only the server's shot 3, the one spot where depth is
 charted often enough (~74% of returns, ~19% of later balls) to condition on.
-That family catches the serve-and-volleyers cold: Edberg's crosscourt backhand
+That family picks out the serve-and-volleyers clearly: Edberg's crosscourt backhand
 volley behind a mid-depth return runs at 25x the field, Navratilova's at 75x.
 
 Each pattern also carries its **payoff**: the player's point-win rate after
 playing that response (shrunk toward the field's), next to the field's rate
 playing the same response to the same ball. Choice and execution stay separate
-claims — Djokovic picks the backhand down the line 1.4x as often *and* wins
+claims: Djokovic picks the backhand down the line 1.4x as often *and* wins
 52% with it vs the tour's 46%, while an overused pet shot shows up as a lift
 with a negative payoff gap.
 
 ## Why
 
-The site's signature panel conditions on the opponent's full previous token
-and ranks by raw lift. That surfaces three kinds of junk:
+Conditioning on the opponent's full previous token and ranking by raw lift
+surfaces three kinds of junk:
 
 - generic rally geometry (the same crosscourt pair headlines 22% of the 313
   player cards),
-- uncharted-direction artifacts (Djokovic's old top signature was
+- uncharted-direction artifacts (Djokovic's top signature comes out as
   `FH drive→· → FH drive→·`),
 - handedness posing as style (a lefty answering his forehand corner with a
   forehand posts a 20x lift against a right-handed field).
@@ -58,7 +58,7 @@ forehand.
 uv run python experiments/court_response/run.py
 ```
 
-Reads `data/tennis.duckdb` (all charted points, no sampling — the split-half
+Reads `data/tennis.duckdb` (all charted points, no sampling, since the split-half
 gate needs the volume). Writes `reports/court_response.md`,
 `reports/court_response_players.csv` (one row per surfaced pattern, with
 `inc_code`/`resp_code` mapping each pattern back to physical zones so the
@@ -78,37 +78,36 @@ that state, Benjamini-Hochberg at q=0.10 across every cell that fold screened fo
 that player, then a shrunk lift ≥1.4 to be a candidate. The lift, payoff and
 counts are read off the other fold, which needs to still show ≥1.15 to confirm.
 Without the correction the screen would test a median of 17 candidates per player
-and up to 208, 87,080 across the tour.
+and up to 208, about 85,000 across the tour.
 
-The correction is cheap here, which is itself the finding: 2,804 patterns over 805
-players become **2,434 over 746**. These cells were already stable (see the r
-below), so it mostly trims the thin tail. On the 817 patterns confirmed from a
-single direction, where the shown lift comes from a fold with no vote, **46% of the
-discovered edge survives out of sample** — within a few points of what
-`rally_patterns` measures on a completely different screen (50%), which suggests
-that number is a property of this kind of search rather than of either experiment.
+The correction costs little here: it removes roughly one pattern in eight, leaving
+about 2,400 across some 750 players. These cells were already stable (see the r
+below), so it mostly trims the thin tail. On the ~800 patterns confirmed from a
+single direction, where the shown lift comes from a fold with no vote, **about half
+of the discovered edge survives out of sample**, close to what `rally_patterns`
+measures on a different screen. That suggests the figure belongs to this kind of
+search rather than to either experiment. `reports/court_response.md` has the exact
+counts from the latest run.
 
 ## Where the state is still too coarse
 
 A cell pools the serve+1 ball with the same-described ball at shot 11. For **691
-of 4,218** well-supported cells — 16.4%, against 0 of 5,040 on a coin-flip control
-— the response a player picks differs measurably between the two, so those cells
-average two situations and name neither. The likely mechanism is the ceiling
+of 4,218** well-supported cells (16.4%, against 0 of 5,040 on a coin-flip control),
+the response a player picks differs measurably between the two, so those cells
+average two situations. The likely mechanism is the ceiling
 described at the end of this README: "a drive into the BH corner" arriving off a
 return, with the server still recovering, is not the same ball as one at shot 11.
-Splitting those cells is not implemented; the 16.4% is measured so the profiles
-can be read knowing it.
+Splitting those cells isn't implemented.
 
 ## Result
 
-Split-half stability r = +0.73 (men) / +0.69 (women) across ~43k
-player-state-response cells (rally and return families). The most-shared headline pattern covers 12% of
-men's profiles (vs 22% for the old signatures), and it is a genuine style
-trait (choosing the crosscourt slice from the backhand corner) rather than
-forced geometry. The high-volume profiles read as scouting reports, and all of
-them survive the corrected screen: Federer's crosscourt backhand slice (1.67x),
-Djokovic's backhand down the line (1.44x), Nadal's run-around forehand from the
-middle (1.49x).
+Split-half stability r = +0.73 (men) / +0.69 (women) across ~43k player-state-response
+cells (rally and return families). The most-shared headline pattern covers 12% of men's
+profiles (against 22% when conditioning on the full previous token), and it is a style
+choice (the crosscourt slice from the backhand corner) rather than forced geometry. The
+high-volume profiles read as scouting reports, and all of them survive the corrected
+screen: Federer's crosscourt backhand slice (1.67x), Djokovic's backhand down the line
+(1.44x), Nadal's run-around forehand from the middle (1.49x).
 
 Lifts are taken against a field weighted to the player's own era (see `ERAS` and
 `era_baseline` in run.py). Graf's crosscourt backhand slice reads 7.3x against the pooled
@@ -120,18 +119,15 @@ most of the pooled lift was the decade rather than the player.
 
 **The state is coarser than the tactic it names.** It carries the incoming ball's
 character (drive / slice / net / drop-lob) and the third of the court it lands in, and
-nothing else — no height, no spin, no speed, and no record of where the striker was
-standing. The charting does not record those, so this is a ceiling rather than a
-shortcut.
+nothing else: no height, spin or speed, and no record of where the striker was
+standing. The charting doesn't record those.
 
-What that costs is specific: "a drive into the BH corner" pools a deep heavy topspin ball
-that forces a defensive slice with a short floaty one that invites a step-around forehand.
-Those are opposite situations demanding opposite answers, and the card reports the mix as
-though it were one choice. So a response that is largely a *necessity* reads as a
-*preference*, and the lift over the field is partly a statement about which of the two
-balls that player tends to receive — which is a fact about their opponents.
+"A drive into the BH corner" pools a deep heavy topspin ball that forces a defensive
+slice with a short one that invites a step-around forehand. Those call for opposite
+answers, and the card reports the mix as one choice. So a response that's largely forced
+reads as a preference, and the lift is partly about which of the two balls the player
+tends to receive, i.e. about their opponents.
 
-The payoff column is the place this bites hardest, and is why it is baselined against the
-player's own rate answering that same ball rather than against the tour's: both sides of
-that comparison inherit the same mix, so the mix largely cancels. It does not cancel for
-the lift, which has no such shelter.
+That's why the payoff is baselined against the player's own rate on the same ball rather
+than the tour's: both sides inherit the same mix, so it largely cancels. It doesn't cancel
+for the lift.

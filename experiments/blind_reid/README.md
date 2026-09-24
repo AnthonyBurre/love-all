@@ -8,14 +8,14 @@ The unit here is a single **performance**: one player, in one match. Strip the i
 turn the performance into a vector of shot tendencies, and ask whether the vector still
 points back at the human who produced it. If it does, players have signatures that
 survive a change of opponent, surface and decade. If it doesn't, "playing style" is
-mostly a career-average artifact that dissolves the moment you look at one afternoon. Put
-the other way: do some players' performances resemble *each other* more than they resemble
-their own showing from a few years earlier? That asks whether identity or era dominates.
+mostly a career average that disappears when you look at one match. It also asks whether
+identity or era dominates: do some players' performances resemble *each other* more than
+their own from a few years earlier?
 
-## The serve is quarantined on purpose
+## The serve is kept separate
 
-The obvious way to name an opponent is from their delivery. So the features come in
-blocks that are scored separately, and the serve is kept out of the one that matters:
+The obvious way to name an opponent is from their delivery, so the features come in blocks
+scored separately, and the serve is kept out of the main one:
 
 | block | what it sees |
 |---|---|
@@ -25,8 +25,8 @@ blocks that are scored separately, and the serve is kept out of the one that mat
 | `response` | `return` + `rally`, so everything you could observe from the far baseline |
 | `all` | every feature |
 
-`response` is the interesting one. It is what comes back at you once the point is live,
-with nothing about how the point started.
+`response` is the main one: what comes back at you once the point is live, with nothing
+about how the point started.
 
 ## Method
 
@@ -42,13 +42,13 @@ graduated `match_charting_project.shots` decoder and the deuce/ad derivation in
   against its own chance rate, which is not 1/n_players since it depends on how many
   other performances each player has, so it is computed per query and averaged.
 
-Three important things:
+Three safeguards:
 
 **The metric is fit on different players than it is scored on.** Raw z-scored Euclidean
 distance would treat a feature that swings wildly between one player's own matches
 (unforced-error rate) as equal evidence to one that barely moves. So distances are
 whitened by the pooled *within-player* covariance, which shrinks the directions a single
-player rattles around in and stretches the ones that separate people. That covariance is
+player varies along and stretches the ones that separate players. That covariance is
 estimated on one half of the players and every score is computed on the other half, so no
 performance is ever identified by a metric that was shown that player's own scatter.
 
@@ -72,30 +72,29 @@ separately, since cross-gender pairs would be trivially separable.
 Full write-up with tables and figures: [`reports/blind_reid.md`](../../reports/blind_reid.md).
 Regenerate with `python experiments/blind_reid/run.py`.
 
-**You can tell, and the serve is not how.** The `response` block reaches AUC 0.685 (men)
+**You can tell, and not from the serve.** The `response` block reaches AUC 0.685 (men)
 and 0.672 (women) on held-out players, beating the `serve` block's 0.643 outright. The
 rally strokes alone (11 features, no serve, no return) reach 0.677. Rank-1 accuracy on
 `response` is 0.109 against a 0.0055 chance rate, about 20x chance, from one match, with
-the serve withheld and against a gallery of every other held-out performance. The hunch
-that the serve would be the primary tell is backwards: of the three views it is the
-weakest. Read that as a statement about *charted* serve data, though. The notation records
+the serve withheld and against every other held-out performance. The serve, expected to
+be the main tell, is the weakest of the three views. That's a statement about *charted*
+serve data, though. The notation records
 direction, in-rate and outcome, not speed or spin or toss.
 
 **The fingerprint is net play and slice, not placement.** Ranked by single-feature AUC,
 the top six are all response features: net-stroke rate, return slice, rally slice,
 net-approach rate, forehand share, rally tempo. Court-zone directions come last, barely
-above chance. Where the ball went says much less about who chose to hit it there than how
-they chose to hit it.
+above chance. How a player hits the ball says more about who they are than where it
+goes.
 
 **A player is their own nearest kind, but the signature does fade.** Only about 1% of
 held-out men (5% of women) sit further from their own other performances than from the
-field's, so on the direct comparison identity wins easily. Time is a different story.
-Scored inside each year-gap band, men's AUC falls from 0.670 for pairs in the same season
-to 0.620 at six to nine years apart, giving up roughly a third of the lift above chance.
-Still clearly recognisable, measurably less reliably. That agrees with `career_splits`
-rather than cutting against it, and puts a rate on the drift.
+field's, so identity wins easily. Over time it fades: scored inside each year-gap band,
+men's AUC falls from 0.670 for pairs in the same season to 0.620 at six to nine years
+apart, about a third of the lift above chance. That agrees with `career_splits` and puts
+a rate on the drift.
 
-Two traps, both spelled out in the report. The ten-plus band rebounds, which is
+Two traps, both covered in the report. The ten-plus band rebounds, which is
 survivorship rather than recovery: only decade-spanning careers are in it, and era
 separation spreads the different-player pairs too. And a *cumulative* "6+ years apart" cut
 reads much flatter (0.678) than the six-to-nine band, because pooling gap bands mixes
@@ -104,9 +103,8 @@ distance scales and inflates the pooled AUC. Per-band is the number to trust.
 **The crossings are real but rare, and concentrated.** A handful of different-player pairs
 do sit closer to each other than to either player's own other showings. The report lists
 them, and one name (Jason Kubler) takes 9 of the 10 men's slots, so read the list as a few
-stylistically fluid players rather than as many mutual look-alikes. The criterion uses the
-*smaller* of the two self-distances, deliberately: taking the larger lets one erratic
-player pair "confusably" with half the tour, which says nothing about mutual similarity.
+variable players rather than many mutual look-alikes. The criterion uses the *smaller* of
+the two self-distances; the larger would let one erratic player pair with half the tour.
 
 **What limits accuracy is sample size, not the strength of the signal.** Split held-out
 performances into quartiles by charted points and men's rank-1 rises from 0.050 to 0.125.
@@ -116,7 +114,8 @@ rate over a five-setter is a measurement.
 
 ## Limits
 
-- A high AUC narrows the field, it does not name a human. Two players with similar games stay confusable no matter how much data is added.
+- A high AUC narrows the field; it doesn't name a player. Two players with similar games
+  stay confusable however much data is added.
 - What a player hits back is partly the opponent's doing. The different-opponent control
   shows this is not the main driver, but `avg_rally_len` is a property of the match rather
   than of either player, kept because tempo is also a real trait.

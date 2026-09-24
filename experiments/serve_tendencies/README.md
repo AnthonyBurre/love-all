@@ -1,4 +1,4 @@
-# Serve placement — which tendencies are measurements
+# Serve placement: which tendencies are measurements
 
 What can be safely said about where a player serves? `serve_side` answered the
 descriptive half of that: deuce and ad are different shots, and it printed the
@@ -17,8 +17,8 @@ it change on big points.
 **Placement choice is a measurement; what the placement earns is not.** On the
 deuce court's first serves, players' true spread in wide share is ±6.5% (men)
 after sampling noise is removed, and the two halves of a player's matches agree
-at r = +0.58. The payoff version of the same statistic — points won behind the T
-minus behind the wide serve — has a true spread of only ±3.1% and split halves
+at r = +0.58. The payoff version of the same statistic, points won behind the T
+minus behind the wide serve, has a true spread of only ±3.1% and split halves
 that agree at r = +0.22. Reaching 80% signal takes about 860 charted first
 serves on a side for the choice and about 11,000 for the payoff. "Serves wide on
 the deuce court more than anyone" is printable; "wins more behind the T" is the
@@ -46,19 +46,19 @@ heavily-charted career detects a tiny move because its null is tiny. Federer's
 gap is 0.024 at 3.4x; Tim Henman's is 0.135, an ad-court T share falling from
 46% to 31%.
 
-**Break points move the tour barely and some players a lot.** Side-adjusted —
-break points skew to the ad court, and the court matters far more than the score
-— the pooled shift is +2.3% toward wide. But 58 of 247 men move beyond chance at
+**Break points barely move the tour but move some players a lot.** Side-adjusted
+(break points skew to the ad court, and the court matters far more than the score),
+the pooled shift is +2.3% toward wide. But 58 of 247 men move beyond chance at
 FDR 0.10, in both directions, so the tour average is players cancelling out.
 Sampras goes 12 points wider on break points, Kyrgios 14.
 
-**Recency is worth having, and it is worth less than it sounds.** Since careers
+**Recency helps, but less than it sounds.** Since careers
 move, a card should arguably print recent matches rather than a career average.
 How recent is a prediction question, so it is settled by prediction: hold out
 each player's most recent 200+ charted first serves and score every windowing
 rule on them. Most of what any rule gets wrong is the holdout's own sampling
 noise (±4.4%); of the part the rule owns, the best one removes 5% for the men
-and 7% for the women — the T-share error falls from 6.2% to 5.9% (men) and 7.3%
+and 7% for the women: the T-share error falls from 6.2% to 5.9% (men) and 7.3%
 to 6.9% (women). The winner is not a cutoff but a **10-match half-life** over
 the whole career, narrowly ahead of a hard "last 20 matches", and every rule
 tested beats the flat career average. The gain concentrates exactly where step 5
@@ -76,19 +76,16 @@ counts against the statistic rather than for it — leaves the wide share
 repeating at r = +0.56 against +0.58, so the stability is the player, not the
 person typing.
 
-**That disagreement is not symmetric between the tours, and the site treats them as
-though it were.** The women's *wide* share carries a charter fingerprint of ±4.5% —
-about the size of the men's *body* fingerprint, which is the disagreement that
-disqualified the body share from being reported at all — against a true between-player
-spread of ±7.9%. So roughly a third of the visible spread in a women's wide share is
-who typed it, where for the men it is closer to a sixth. Nothing downstream accounts
-for this: the panel applies one reliability gate, derived from the men's numbers, to
-both tours, and prints the two identically.
+**The disagreement isn't symmetric between the tours, and the site treats it as if it
+were.** The women's *wide* share carries a charter fingerprint of ±4.5% (about the size
+of the men's *body* fingerprint, which kept the body share off the card) against a true
+between-player spread of ±7.9%. So roughly a third of the visible spread in a women's
+wide share is who charted it, against about a sixth for the men. The panel applies one
+reliability gate, derived from the men's numbers, to both tours and prints them the same.
 
-This is a stated caveat rather than a per-tour gate. It is not a reason to withhold the
-women's numbers — a third of the spread being charter noise still leaves two thirds that
-is the player, which is why the split-half stability holds up — but a women's wide share
-should be read as the coarser of the two measurements.
+That's a caveat, not a reason to withhold the women's numbers: two thirds of the spread
+is still the player, which is why split-half stability holds up. Read a women's wide
+share as the coarser of the two measurements.
 
 ## Related experiments
 
@@ -108,16 +105,16 @@ should be read as the coarser of the two measurements.
 uv run python experiments/serve_tendencies/run.py
 ```
 
-Reads `data/tennis.duckdb` — all charted points, no sampling — in one pass per
+Reads `data/tennis.duckdb` (all charted points, no sampling) in one pass per
 tour, about 8 seconds. Placement is read straight off the notation string rather
 than through the full point decoder, since only the serve token is needed.
 Writes `reports/serve_tendencies.md`, `reports/serve_tendencies_players.csv`
 (one row per player, side and serve number, with the halves, dispersion and
-drift columns, plus the `recent_*` block — the decay-weighted mix a card should
-print, its effective sample size, its year span, and a `reliable` flag for
-whether that sample clears the step-3 bar), `reports/serve_tendencies_leverage.csv`
-(per-player break-point shifts), and two figures. Deterministic: the shuffled null is seeded per player
-and the match list is sorted before shuffling.
+drift columns, plus the `recent_*` block: the decay-weighted mix a card should
+print, its effective sample size, its year span, and a `reliable` flag for whether
+that sample clears the step-3 bar), `reports/serve_tendencies_leverage.csv`
+(per-player break-point shifts), and two figures. Deterministic: the shuffled null is
+seeded per player and the match list is sorted before shuffling.
 
 ## Method notes
 
@@ -145,8 +142,8 @@ and the match list is sorted before shuffling.
   scoring rule, so the holdout's own noise adds the same constant to every rule
   and cannot tilt the ranking. The picturable T-share column has that constant
   subtracted out. A decay rule has no clean denominator, so what ships with it is
-  Kish's effective sample size, `(Σwn)² / Σw²n` — the number a coverage gate has
-  to be applied to, not the raw serve count.
+  Kish's effective sample size, `(Σwn)² / Σw²n`, which is what a coverage gate
+  applies to rather than the raw serve count.
 - No scipy in this project, so the chi-square tail is a Wilson-Hilferty normal
   approximation and multiplicity is handled with Benjamini-Hochberg at q = 0.10.
 
@@ -154,9 +151,8 @@ and the match list is sorted before shuffling.
 
 - The notation records a target, not a serve: no speed, no spin, no returner
   position. "Wide" pools a kick and a flat slice out wide.
-- Break points are selected — they arrive against good returners and when the
-  server is already in trouble — so a shift on them is not purely a choice made
-  under pressure.
+- Break points are selected (they arrive against good returners and when the server
+  is already in trouble), so a shift on them isn't purely a choice under pressure.
 - Steps 3 and 5 compare across matches and inherit the charter fingerprint;
   step 6 does not, since both buckets come from the same matches.
 - Double faults are not separated out of the second-serve mix; a missed second

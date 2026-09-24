@@ -6,7 +6,7 @@ Run:  python experiments/serve_plus_one/run.py
 `court_response`'s "off the return" family profiles the server's third ball but pools the
 two service courts. A wide serve opens the forehand in the deuce court and the backhand in
 the ad court, so the pooled row averages two different shots (Nadal's pooled "crosscourt
-forehand, 1.6x" is a crosscourt forehand on the deuce side and an inside-out forehand on the
+forehand" is a crosscourt forehand on the deuce side and an inside-out forehand on the
 ad side). Adding side and serve direction to the state makes it six times finer, so the
 resolution is chosen per player:
 

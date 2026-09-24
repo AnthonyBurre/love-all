@@ -190,7 +190,7 @@ def fig_heatmap(clusters, path, title):
     plt.close(fig)
 
 
-# The per-entity silhouette above which an archetype is named. With 0.2% of the corpus
+# The per-entity silhouette above which an archetype is named. With 0.16% of the corpus
 # removed, the 57 entities whose label changed had a median margin of 0.02, against 0.14 for
 # the 331 that held. At 0.08, 31% of entities go unnamed, and among named ones about 2% change
 # under that perturbation (15% with no threshold). Higher thresholds cost much more silence

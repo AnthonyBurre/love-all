@@ -1,12 +1,11 @@
 # Context length: how much shot history does charted data support?
 
-Two site features hard-code a sequence length nobody ever tested. **Signature
-sequences** (`shot_language`) are bigrams — one incoming shot, one response.
-**Shot-making triggers** (`shot_triggers`) condition on exactly two prior
-shots. Longer contexts are strictly more specific ("serve wide → short slice →
-FH drive to 3" is a real tactic; "FH drive to 3" is a shot), but every added
-token multiplies sparsity by the ~35-token alphabet. Three tests find where that
-tradeoff lands:
+**Signature sequences** (`shot_language`) are bigrams: one incoming shot, one
+response. **Shot-making triggers** (`shot_triggers`) condition on exactly two prior
+shots. This tests whether those lengths are right. Longer contexts are more specific
+("serve wide → short slice → FH drive to 3" is a tactic; "FH drive to 3" is a shot),
+but every added token multiplies sparsity by the ~35-token alphabet. Three tests find
+where that tradeoff lands:
 
 1. **Held-out information** (triggers) — split every player's strokes by match
    into two halves; train per-context aggressive shot tables on one half, predict the
@@ -14,8 +13,7 @@ tradeoff lands:
    … down to the player's base rate, then the tour's). If adding a third shot
    of history carries real signal, held-out log-loss drops at K=3; if it's
    noise, the backoff flattens and the gain is ~0. All models are scored on
-   the *same strokes* (those with three prior shots), so the comparison is
-   apples to apples.
+   the *same strokes* (those with three prior shots).
 2. **Stability** — would the displayed lists replicate? For triggers: the
    correlation between a context's aggressive shot frequency in one half of a player's
    charted matches and the same context's rate in the other half, per K. For
@@ -29,11 +27,11 @@ tradeoff lands:
 ## Limitations
 
 - The split is by match (hash), not time, so "stability" means sampling
-  stability, not stability of a player's tactics across their career — era
-  drift makes real lists slightly less stable than measured here.
+  stability, not stability of a player's tactics across their career. Era drift
+  makes real lists slightly less stable than measured here.
 - The backoff evaluation predicts *aggressive shots* (the shot-making decision).
-  Conversion tables are ~5× sparser; if aggressive shots don't support K=3, conversion
-  certainly doesn't.
+  Conversion tables are ~5× sparser, so if aggressive shots don't support K=3,
+  conversion doesn't either.
 - Sequence length interacts with the token alphabet (~35 symbols). A coarser
   alphabet could afford longer contexts; that's a different experiment.
 
