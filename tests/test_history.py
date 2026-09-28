@@ -33,6 +33,30 @@ def test_is_complete():
     assert not history.is_complete([])
 
 
+def _draw(sizes, unplayed=0):
+    """A played draw with these round sizes, first round first; ``unplayed`` of the first
+    round's matches left without a result."""
+    rounds = []
+    for i, n in enumerate(sizes):
+        ms = [_match(f"{i}-{j}", f"P{i}{j}a", f"P{i}{j}b", wa=True) for j in range(n)]
+        if i == 0:
+            for m in ms[:unplayed]:
+                m["state"], m["a"]["winner"] = "pre", False
+        rounds.append({"rank": i + 1, "label": f"Round {i + 1}", "matches": ms})
+    return rounds
+
+
+def test_is_whole_rejects_a_harvest_with_a_missing_day():
+    """A failed day leaves an earlier round short while the final is still there, which
+    ``is_complete`` alone reads as done."""
+    assert history.is_whole(_draw([4, 2, 1]))
+    short = _draw([3, 2, 1])
+    assert history.is_complete(short) and not history.is_whole(short)
+    assert not history.is_whole(_draw([4, 2, 1], unplayed=1))
+    assert not history.is_whole(_draw([4, 2]))                    # no lone final
+    assert not history.is_whole([])
+
+
 def test_archive_adds_completed_once_and_skips_unfinished():
     store = []
     done = _tour("100", "M", _final("A", "B"))
@@ -50,8 +74,8 @@ def test_prune_keeps_recent_slams_plus_newest_event():
     store = [
         {"id": "recent", "gender": "M", "tier": "Grand Slam", "year": 2025,
          "archived_at": "2025-07-13T00:00+00:00"},
-        {"id": "old-slam", "gender": "M", "tier": "Grand Slam", "year": 2020,
-         "archived_at": "2020-09-13T00:00+00:00"},
+        {"id": "old-slam", "gender": "M", "tier": "Grand Slam", "year": 2024,
+         "archived_at": "2024-09-08T00:00+00:00"},
         {"id": "newest-1000", "gender": "W", "tier": "Masters / WTA 1000", "year": 2026,
          "archived_at": "2026-07-14T00:00+00:00"},
     ]

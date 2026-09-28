@@ -11,12 +11,13 @@ Two ways in, one store:
 The store (``data/history.json``) holds serialized tournament payloads (``brackets.serialize``
 shape) plus ``year``/``season``/``completed``/``archived_at``. It is structural only — the
 DB-derived ``matched``/``charted`` annotation is re-applied fresh by ``build_brackets`` each
-run, so charting that lands after archival still shows up. Retention (``prune``) keeps the
-last two years of slams, plus the two most recent finished events of every other tier.
+run, so charting that lands after archival still shows up. Retention (``prune``) keeps this
+season's and last season's slams, plus the two most recent finished events of every other tier.
 """
 
 import copy
 import json
+import sys
 import urllib.request
 from datetime import date, datetime, timedelta, timezone
 
@@ -58,6 +59,21 @@ def is_complete(rounds: list) -> bool:
     return m.get("state") == "post" and bool(m["a"].get("winner") or m["b"].get("winner"))
 
 
+def is_whole(rounds: list) -> bool:
+    """A harvested draw with nothing missing: every match played to a winner, and each round
+    exactly twice the size of the next. ``is_complete`` only reads the final, which a harvest
+    can reach with a failed day's matches missing from an earlier round. Holds for the slams,
+    the only events harvest reaches (no byes, so no short first round).
+    """
+    if not is_complete(rounds):
+        return False
+    sizes = [len(r.get("matches") or []) for r in rounds]
+    if sizes != [2 ** i for i in range(len(rounds) - 1, -1, -1)]:
+        return False
+    return all(m.get("state") == "post" and (m["a"].get("winner") or m["b"].get("winner"))
+               for r in rounds for m in r["matches"])
+
+
 def _stamp(payload: dict, year: int) -> dict:
     frozen = copy.deepcopy(payload)
     frozen["completed"] = True
@@ -90,8 +106,8 @@ _KEEP_PER_TIER = 2
 
 
 def prune(store: list, today: "date | None" = None) -> list:
-    """Keep slams from the last two years, the ``_KEEP_PER_TIER`` most recently archived
-    events of every other tier, and the single most-recent archive whatever its tier.
+    """Keep this season's and last season's slams, the ``_KEEP_PER_TIER`` most recently
+    archived events of every other tier, and the single most-recent archive whatever its tier.
 
     Retention counts *events*, not entries: a combined event like Washington archives one
     row per gender, and both are kept or dropped together. Mutates and returns ``store``.
@@ -103,7 +119,7 @@ def prune(store: list, today: "date | None" = None) -> list:
     for e in store:
         tier = (e.get("tier") or "").lower()
         if "grand slam" in tier:
-            if e.get("year", 0) >= today.year - 2:
+            if e.get("year", 0) >= today.year - 1:
                 keep.add((e["id"], e["gender"]))
             continue
         stamps = by_tier.setdefault(tier, {})
@@ -161,18 +177,24 @@ def _window(event: str, year: int) -> "list[str]":
 
 
 def harvest(event: str, year: int) -> "list[dict]":
-    """Seed one past event: merge ESPN's dated scoreboards across its window into complete
-    per-gender draws. Returns stamped ``serialize`` payloads (one per gender present)."""
+    """Seed one past event: merge ESPN's dated scoreboards across its window into
+    per-gender draws. Returns stamped ``serialize`` payloads (one per gender present).
+
+    A day that fails to fetch is skipped and counted on stderr, so a draw can come back with
+    holes in it. Callers archive only what ``is_whole`` accepts.
+    """
     # (event_id, slug) -> {competition_id: raw competition}, plus each event's meta.
     buckets: dict = {}
     meta: dict = {}
     from match_charting_project.live.players import tourn_key
     want = tourn_key(event)
+    failed = []
     for day in _window(event, year):
         for league in ("atp", "wta"):
             try:
                 raw = _fetch(league, day)
-            except Exception:
+            except Exception as exc:
+                failed.append(f"{league} {day} ({type(exc).__name__})")
                 continue
             for ev in raw.get("events", []):
                 if want not in tourn_key(ev.get("name", "")):
@@ -186,6 +208,10 @@ def harvest(event: str, year: int) -> "list[dict]":
                     b = buckets.setdefault((eid, slug), {})
                     for c in g.get("competitions", []):
                         b[str(c.get("id"))] = c        # later day wins → final states
+
+    if failed:
+        print(f"warning: {len(failed)} ESPN scoreboard fetches failed for {event} {year}: "
+              + ", ".join(failed), file=sys.stderr)
 
     # Re-wrap the merged competitions as a synthetic scoreboard and reuse espn.parse.
     events = []

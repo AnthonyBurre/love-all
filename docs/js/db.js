@@ -24,7 +24,11 @@ async function _init() {
   const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   URL.revokeObjectURL(workerUrl);
-  const buf = new Uint8Array(await (await fetch("./data/insights.duckdb")).arrayBuffer());
+  // Checked, because Pages answers a missing file with an HTML 404 page, and registered as
+  // the database that page only fails later, at ATTACH, with an error that doesn't say why.
+  const res = await fetch("./data/insights.duckdb");
+  if (!res.ok) throw new Error(`insights.duckdb: HTTP ${res.status}`);
+  const buf = new Uint8Array(await res.arrayBuffer());
   await db.registerFileBuffer("insights.duckdb", buf);
   const conn = await db.connect();
   await conn.query("ATTACH 'insights.duckdb' AS ins (READ_ONLY)");

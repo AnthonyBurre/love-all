@@ -5,7 +5,7 @@ feed         source                                  refresh
 ===========  ======================================  ==========================
 calendar     Wikipedia season pages (tier, surface)  daily, when stale
 draws        Wikipedia per-event draw pages          when a draw is published
-scores       ESPN scoreboard (``live.espn``)         hourly
+scores       ESPN scoreboard (``live.espn``)         hourly in play, else daily
 insights     Match Charting Project DB               weekly
 ===========  ======================================  ==========================
 
@@ -155,15 +155,31 @@ def lookup(city: str, name: str, gender: str, month: "int | None" = None,
 
 # --- draws -----------------------------------------------------------------------------
 
-def _draw_key(tournament) -> str:
-    return f"{tourn_key(tournament.city or tournament.name)}|{tournament.gender}"
+def _first_date(tournament) -> str:
+    """The earliest scheduled match of a live event (ISO), or "" when the feed dates none."""
+    stamps = [m.date for m in (getattr(tournament, "matches", None) or [])
+              if getattr(m, "date", "")]
+    return min(stamps) if stamps else ""
 
 
 def _month_of(tournament) -> "int | None":
     """The month a live event starts in, from its earliest scheduled match."""
-    stamps = [m.date for m in (getattr(tournament, "matches", None) or [])
-              if getattr(m, "date", "")]
-    return int(min(stamps)[5:7]) if stamps else None
+    first = _first_date(tournament)
+    return int(first[5:7]) if first else None
+
+
+def _season_of(tournament) -> int:
+    """The season a live event belongs to: the year of its earliest scheduled match, or this
+    year when the feed dates none."""
+    first = _first_date(tournament)
+    return int(first[:4]) if first else date.today().year
+
+
+def _draw_key(tournament) -> str:
+    # The season is part of the key because the same event comes back every year with a new
+    # draw, and an adopted sheet is never re-fetched.
+    return (f"{_season_of(tournament)}|{tourn_key(tournament.city or tournament.name)}"
+            f"|{tournament.gender}")
 
 
 def _entry_for(tournament, cal: "dict | None" = None) -> "dict | None":
@@ -183,9 +199,14 @@ def refresh_draws(tournaments: list, store: "dict | None" = None) -> dict:
     A draw is written to the cache only once it agrees with the live feed about first-round
     pairings, and an adopted draw is never re-fetched — a published draw doesn't change, and
     this keeps the hourly build to zero Wikipedia calls in the steady state.
+
+    Sheets from before last season are dropped. Last season's are kept so an event that runs
+    over New Year isn't dropped and re-fetched while it is still being played.
     """
     store = load_draws() if store is None else store
-    store.setdefault("draws", {})
+    oldest = date.today().year - 1
+    store["draws"] = {k: rec for k, rec in (store.get("draws") or {}).items()
+                      if (rec.get("season") or 0) >= oldest}
     cal = load_calendar()
     for t in tournaments:
         key = _draw_key(t)
@@ -203,6 +224,7 @@ def refresh_draws(tournaments: list, store: "dict | None" = None) -> dict:
                 continue
             store["draws"][key] = {
                 "tournament": t.name, "gender": t.gender, "city": t.city,
+                "season": _season_of(t),
                 "source_page": page, "source_url": wiki.page_url(page),
                 "agreement": round(agreement, 3), "fetched": _stamp(),
                 "r1": slots,

@@ -12,9 +12,11 @@ permissions:
   pages: write
   id-token: write
 
+# Queue rather than cancel: a run cut off mid-way through its Release uploads or its Pages
+# deploy leaves the job half-done, and the next run is at most an hour behind anyway.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -31,11 +33,10 @@ jobs:
         with:
           python-version: ${{ steps.py.outputs.version }}
 
-      - name: Install dependencies (core + dev for the test gate)
-        run: uv sync --extra dev
-
-      - name: Test gate (unit suite; DB-integration tests self-skip)
-        run: uv run pytest -q
+      # No test step: ci.yml gates every push and branch protection requires it on main, which
+      # is the only branch the schedule runs, so an hourly re-run would test the same commit.
+      - name: Install dependencies
+        run: uv sync
 
       - name: Fetch latest insights.duckdb (from the Release)
         env:
@@ -61,66 +62,66 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p data
-          if gh release download brackets-history --pattern history.json --dir data --clobber; then
-            echo "history: $(ls -l data/history.json)"
-            echo "seed_needed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "no history release yet — will seed the most recent finished slam once"
-            echo "seed_needed=true" >> "$GITHUB_OUTPUT"
-          fi
+          rc=0
+          .github/scripts/history-archive.sh fetch || rc=$?
+          case $rc in
+            0) echo "seed_needed=false" >> "$GITHUB_OUTPUT" ;;
+            3) echo "will seed the most recent finished slam once"
+               echo "seed_needed=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit 1 ;;
+          esac
 
       # Runs at most once, ever: on the first deploy (before the history Release exists) it
       # archives the most recent finished slam so the site opens with a past draw. Every run
       # after finds the Release and skips this, so ESPN's dated feed isn't hit repeatedly.
+      # A failed download fails the step above rather than landing here, since a seeded
+      # archive would replace the real one on upload.
       - name: Seed the first past draw (one-time)
         if: ${{ steps.history.outputs.seed_needed == 'true' }}
         run: uv run match-charting-project history seed
 
       # The Wikipedia-sourced feeds: the tour calendar (which events exist, at what level,
       # and where each one's draw page lives) and the draw sheets themselves (slot order,
-      # seeds, byes). Both are caches, not committed data.
+      # seeds, byes). Plus the last ESPN scoreboards, which let an off-week run skip the
+      # request and give a failed fetch something to fall back to. All caches, not committed
+      # data, and all safe to lose: a missing one is simply fetched again.
       - name: Fetch feed caches (from the Release)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p data
+          mkdir -p data/live
           gh release download feeds-cache --pattern calendar.json --dir data --clobber || true
           gh release download feeds-cache --pattern draws.json --dir data --clobber || true
+          gh release download feeds-cache --pattern '*_scoreboard.json' --dir data/live \
+            --clobber || true
 
-      # Without the calendar the site can't tell a 500 from a 250 and serves only slams and
-      # 1000s. It also carries the per-event draw-page links, which a season page grows all
-      # year as each draw is made — so this is an age check rather than a season check, which
-      # would pin a July cache until January and leave every event drawn after it with no
-      # draw sheet. --if-stale no-ops while the cache is under a day old, keeping the hourly
-      # run at two Wikipedia calls a day (an adopted draw sheet is never re-fetched).
-      - name: Refresh the tour calendar (daily)
-        run: uv run match-charting-project feeds calendar --if-stale
-
+      # Also refreshes the tour calendar once it is a day old, and fetches any newly published
+      # draw sheet (see feeds.CALENDAR_MAX_AGE). Both degrade to their caches on failure and
+      # warn on stderr, so a Wikipedia outage can't block the deploy.
       - name: Build brackets + assemble docs/data
         run: |
           uv run match-charting-project site build-brackets
           echo "--- docs/data contents ---" && ls -la docs/data/
 
+      # Merges into the archive as it stands now, so a backfill that landed during this run
+      # is kept rather than overwritten.
       - name: Persist updated draw history (to the Release)
         if: ${{ hashFiles('data/history.json') != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create brackets-history --title "Draw history" \
-            --notes "Completed draws, accumulated as events finish" 2>/dev/null || true
-          gh release upload brackets-history data/history.json --clobber
+        run: .github/scripts/history-archive.sh persist
 
       - name: Persist feed caches (to the Release)
-        if: ${{ hashFiles('data/calendar.json', 'data/draws.json') != '' }}
+        if: ${{ hashFiles('data/calendar.json', 'data/draws.json', 'data/live/*_scoreboard.json') != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create feeds-cache --title "Feed caches" \
-            --notes "Tour calendar and draw sheets, read from Wikipedia" 2>/dev/null || true
-          for f in calendar.json draws.json; do
-            if [ -f "data/$f" ]; then
-              gh release upload feeds-cache "data/$f" --clobber
+            --notes "Tour calendar and draw sheets from Wikipedia, last ESPN scoreboards" \
+            2>/dev/null || true
+          for f in data/calendar.json data/draws.json data/live/*_scoreboard.json; do
+            if [ -f "$f" ]; then
+              gh release upload feeds-cache "$f" --clobber
             fi
           done
 

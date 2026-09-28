@@ -55,7 +55,9 @@ function themeFor(t) {
 
 async function main() {
   try {
-    data = await (await fetch("./data/brackets.json")).json();
+    const res = await fetch("./data/brackets.json");
+    if (!res.ok) throw new Error(`brackets.json: HTTP ${res.status}`);
+    data = await res.json();
   } catch (e) {
     $("status").textContent = "Could not load the current draws.";
     return;

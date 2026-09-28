@@ -76,8 +76,8 @@ under `data/` (gitignored, carried by CI as Release assets), so **no draw sheet 
 the repo**. Requests identify themselves as `love-all/0.1` and link back to this repo.
 
 Once an event finishes, its draw is frozen into an archive so it stays in the dropdown; the
-archive keeps the last two years of slams plus the two most recent finished events of every
-other tier.
+archive keeps this season's and last season's slams plus the two most recent finished events
+of every other tier.
 
 ## Quickstart
 

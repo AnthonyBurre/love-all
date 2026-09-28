@@ -185,13 +185,43 @@ def test_cached_draw_sheet_feeds_the_scaffold():
     so check the handoff shape rather than a fixture on disk."""
     from match_charting_project.live import feeds
 
-    store = {"draws": {"test open|M": {"tournament": "Test Open", "gender": "M",
-                                       "source_page": "2026 Test Open – Men's singles",
-                                       "r1": FX_BYES["r1"]}}}
-    t = _tour([])
+    store = {"draws": {"2026|test open|M": {"tournament": "Test Open", "gender": "M",
+                                            "source_page": "2026 Test Open – Men's singles",
+                                            "r1": FX_BYES["r1"]}}}
+    t = _tour([_m("r1", 1, "Round 1", "Ann Alpha", "Bye", date="2026-08-14T04:00Z")])
     t.city = "Test Open"
     fx = feeds.fixture_for(t, store)
     assert fx and len(fx["r1"]) == 4
     assert len(draws._bye_slots(fx)) == 2          # the sheet's byes survive the handoff
     t.city = "Somewhere Else"
     assert feeds.fixture_for(t, store) is None
+
+
+def test_last_seasons_draw_sheet_is_not_served_for_this_seasons_event():
+    """The same event comes back every year. Its new draw has to be fetched rather than
+    last year's sheet laid over it."""
+    from match_charting_project.live import feeds
+
+    store = {"draws": {"2026|test open|M": {"tournament": "Test Open", "gender": "M",
+                                            "season": 2026, "r1": FX["r1"]}}}
+    t = _tour([_m("r1", 1, "Round 1", "Ann Alpha", "Bea Beta", date="2027-08-13T04:00Z")])
+    t.city = "Test Open"
+    assert feeds.fixture_for(t, store) is None
+
+
+def test_refresh_draws_drops_sheets_older_than_last_season(monkeypatch, tmp_path):
+    from datetime import date
+
+    from match_charting_project.live import feeds
+
+    monkeypatch.setattr(feeds, "DRAWS", tmp_path / "draws.json")
+    monkeypatch.setattr(feeds, "load_calendar", lambda: {})
+    this = date.today().year
+    store = {"draws": {
+        f"{this}|a|M": {"season": this, "r1": FX["r1"]},
+        f"{this - 1}|b|M": {"season": this - 1, "r1": FX["r1"]},   # may still be in play
+        f"{this - 2}|c|M": {"season": this - 2, "r1": FX["r1"]},
+        "d|M": {"r1": FX["r1"]},                                    # undated: unkeyable
+    }}
+    kept = feeds.refresh_draws([], store)["draws"]
+    assert set(kept) == {f"{this}|a|M", f"{this - 1}|b|M"}
