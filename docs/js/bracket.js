@@ -591,7 +591,7 @@ const CHIP_ICON = `<svg viewBox="0 0 14 10" width="14" height="10" aria-hidden="
 // Rounds shown in full, with chips on the last: four normally, three when four would leave
 // only one round to unfold.
 const HEAD_MAX = 4;
-function headRows(n) {
+export function headRows(n) {
   const head = Math.min(HEAD_MAX, n);
   return n - head === 1 ? head - 1 : head;
 }

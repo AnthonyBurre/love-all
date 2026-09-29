@@ -1,7 +1,7 @@
 // Orchestration: load the brackets feed, build tabs, theme the page to the
-// selected tournament, render the bracket into #bracket (quarter view by default,
-// full draw on demand, round list on phones), and wire the matchup drawer.
-import { renderTree, renderQuarters, renderRoundList, currentRound } from "./bracket.js";
+// selected tournament, render the bracket into #bracket (full draw or the slices view,
+// see viewFor; round list on phones), and wire the matchup drawer.
+import { renderTree, renderQuarters, renderRoundList, currentRound, headRows } from "./bracket.js";
 import { openMatchup, closeMatchup } from "./matchup.js";
 import { query } from "./db.js";
 import { ename } from "./feed.js";
@@ -12,7 +12,7 @@ let data = null;
 // object would have been a table saying every player is uncharted; see matchTier in bracket.js.
 let cov = null;
 let covState = "loading";       // "loading" | "ready" | "down"
-// view: null = auto — full draw early in an event, by-quarter from the round of 16 on.
+// view: null = auto — see viewFor.
 // section: which slice of the draw is unfolded below the quarter view's chip row. How many
 // there are depends on the draw — eight sixteenths on a slam, four quarters on a 32 — so it
 // resets when you change event or tour rather than carrying an out-of-range index across.
@@ -174,13 +174,19 @@ function barsIcon(vertical) {
   return s;
 }
 
-// Which view to show: an explicit toggle click wins; otherwise the full draw while
-// an event is in its early rounds (the quarter view is mostly undecided ghosts
-// then), switching to by-quarter once the round of 16 is the current round — which
-// also covers finished draws.
+// Which view to show: an explicit toggle click wins. Otherwise slams and 1000s open on the
+// slices once every matchup in the chip row (the last round shown in full, above the
+// slices) has both players, which also covers finished draws. Before then the slices are
+// mostly undecided ghosts, so it is the full draw. Smaller events always open on the
+// full draw.
+const BIG = /grand slam|1000/i;
+const decided = (s) => s.name && s.name !== "TBD";
 function viewFor(t) {
   if (sel.view) return sel.view;
-  return currentRound(t.rounds) >= t.rounds.length - 4 ? "quarters" : "full";
+  if (!BIG.test(t.tier || "")) return "full";
+  const chipRow = t.rounds[t.rounds.length - headRows(t.rounds.length)];
+  const set = chipRow.matches.every((m) => !m.placeholder && decided(m.a) && decided(m.b));
+  return set ? "quarters" : "full";
 }
 
 function buildTabs() {
