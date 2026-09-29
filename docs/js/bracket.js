@@ -24,9 +24,11 @@ function flagEl(country) {
   return s;
 }
 
-// A match is only as analyzable as its lesser-charted player: tier = min(both). A completed
-// draw with any charting shades per match instead (charted or not, from `m.charted`); one with
-// nothing charted yet falls back to the coverage view.
+// A match is only as analyzable as its lesser-charted player: tier = min(both). A player's
+// depth is what their panel shows: thin (charted, but short of the hold rate's floor), decent
+// (the ring and most figures), deep (the triggers too, the last section to clear its floor).
+// A completed draw with any charting shades per match instead (charted or not, from
+// `m.charted`); one with nothing charted yet falls back to the coverage view.
 //
 // `cov` is null until the insights database answers, and may stay null. Missing coverage is
 // not zero coverage, so those cards get no tier rather than "uncharted".
@@ -39,14 +41,16 @@ export function matchTier(m, gender, cov) {
       : { cls: "t-none", note: "not charted yet — open to help chart it" };
   }
   if (!cov) return { cls: "t-tbd", note: "" };
-  const n = (s) => (s.matched ? cov[gender + "|" + s.matched] || 0 : s.name && s.name !== "TBD" ? 0 : null);
+  const NONE = { matches: 0, depth: 0 };
+  const n = (s) => (s.matched ? cov[gender + "|" + s.matched] || NONE
+    : s.name && s.name !== "TBD" ? NONE : null);
   const [na, nb] = [n(m.a), n(m.b)];
   if (na == null || nb == null) return { cls: "t-tbd", note: "opponent not decided yet" };
-  const min = Math.min(na, nb);
-  const note = `${na} + ${nb} charted matches`;
-  if (min >= 30) return { cls: "t-rich", note: `deep charting on both — ${note}` };
-  if (min >= 8) return { cls: "t-some", note: `decent charting on both — ${note}` };
-  if (min >= 1) return { cls: "t-thin", note: `thin charting — ${note}` };
+  const depth = Math.min(na.depth, nb.depth);
+  const note = `${na.matches} + ${nb.matches} charted matches`;
+  if (depth >= 3) return { cls: "t-rich", note: `deep charting on both — ${note}` };
+  if (depth === 2) return { cls: "t-some", note: `decent charting on both — ${note}` };
+  if (depth === 1) return { cls: "t-thin", note: `thin charting — ${note}` };
   return { cls: "t-none", note: `uncharted matchup — ${note}` };
 }
 

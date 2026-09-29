@@ -7,7 +7,7 @@ import { query } from "./db.js";
 import { ename } from "./feed.js";
 
 let data = null;
-// "G|player" -> charted match count, or null while that is unknown — which is every
+// "G|player" -> { matches, depth } (see loadCoverage), or null while that is unknown — which is every
 // load until the insights database answers, and the whole of one where it never does. An empty
 // object would have been a table saying every player is uncharted; see matchTier in bracket.js.
 let cov = null;
@@ -55,7 +55,9 @@ function themeFor(t) {
 
 async function main() {
   try {
-    data = await (await fetch("./data/brackets.json")).json();
+    const res = await fetch("./data/brackets.json");
+    if (!res.ok) throw new Error(`brackets.json: HTTP ${res.status}`);
+    data = await res.json();
   } catch (e) {
     $("status").textContent = "Could not load the current draws.";
     return;
@@ -344,9 +346,18 @@ function render() {
 // promising a scale the cards are not wearing.
 async function loadCoverage() {
   try {
-    const rows = await query("SELECT gender, player, matches_charted FROM player_summary");
+    // Each player's depth is what their panel will show (see matchTier): the ring once the
+    // hold rate clears its floor, and everything once the triggers do, the last section to
+    // open.
+    const rows = await query(
+      `SELECT gender, player, matches_charted,
+              CASE WHEN trig_att_rate IS NOT NULL THEN 3
+                   WHEN hold_rate IS NOT NULL THEN 2 ELSE 1 END AS depth
+       FROM player_summary`);
     const next = {};
-    for (const r of rows) next[r.gender + "|" + r.player] = Number(r.matches_charted);
+    for (const r of rows) {
+      next[r.gender + "|" + r.player] = { matches: Number(r.matches_charted), depth: Number(r.depth) };
+    }
     cov = next;
     covState = "ready";
   } catch (e) {

@@ -23,7 +23,7 @@ port of chess engine analysis to tennis points. See
 
 | experiment | the question | what it found |
 | --- | --- | --- |
-| [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Rusedski, Moutet, Santoro, Rafter; Navratilova, Maria, Niculescu. Most predictable: Basilashvili, Cilic; Samsonova, Giorgi, Ostapenko. Junkballers and serve-volleyers score high, flat first-strike baseliners low. Zones are mirrored for left-handers, without which handedness alone explained over half the spread. |
+| [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Llodra, Dent, Rosewall, Nastase; Navratilova, Maria, Niculescu. Most predictable: Hrbaty, Basilashvili; Kleybanova, Hartono, Samsonova. Junkballers and serve-volleyers score high, flat first-strike baseliners low. Zones are mirrored for left-handers, without which handedness alone explained over half the spread. |
 | [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive, and they match expectations. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, his well-known pressure point. |
 | [`shot_triggers`](experiments/shot_triggers/) | Are a player's winners and errors really two separate books? | No, they share one decision: the **aggressive shot**. That yields cues that raise **aggressive shot frequency**, their conversion rates, and **traps**: cues that raise the frequency but convert worse than the player's other cues. Every figure is held out. Ships to the site. |
 | [`court_response`](experiments/court_response/) | What does a player do with a given incoming ball? | Enough stability to read as a scouting report: split-half r = 0.73 (men) / 0.69 (women) over ~43k state-response cells. Federer's crosscourt backhand slice, Djokovic's backhand down the line. The field is weighted to each player's own era, without which a pre-2000 slicer's lift is mostly the decade. Every figure is **held out**, and about half of a discovered edge survives that. Known limit: 16.4% of cells answer the same ball differently in the opening than mid-rally. |
@@ -76,8 +76,8 @@ under `data/` (gitignored, carried by CI as Release assets), so **no draw sheet 
 the repo**. Requests identify themselves as `love-all/0.1` and link back to this repo.
 
 Once an event finishes, its draw is frozen into an archive so it stays in the dropdown; the
-archive keeps the last two years of slams plus the two most recent finished events of every
-other tier.
+archive keeps this season's and last season's slams plus the two most recent finished events
+of every other tier.
 
 ## Quickstart
 

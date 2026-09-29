@@ -59,9 +59,9 @@ def _live() -> None:
 
 def _feeds_calendar(season: "int | None", if_stale: bool = False) -> None:
     """Re-read the season pages: tour levels, and the per-event draw-page links the draw feed
-    needs. ``--if-stale`` skips the read while the cache is fresh; it's what CI runs hourly,
-    and it never fails the process, so a calendar outage can't block the Pages deploy (the
-    site runs on its cached copy). The bare form keeps its traceback.
+    needs. ``--if-stale`` skips the read while the cache is fresh, the same check the site
+    build makes before every run, and warns rather than failing when the read does. The bare
+    form keeps its traceback.
     """
     from collections import Counter
 
@@ -94,12 +94,12 @@ def _feeds_draws() -> None:
     if not tours:
         print("  no live draws to look up.")
         return
-    before = len((feeds.load_draws().get("draws") or {}))
+    before = set(feeds.load_draws().get("draws") or {})
     store = feeds.refresh_draws(tours)
     got = store.get("draws") or {}
-    print(f"  draws cached: {len(got)} ({len(got) - before} new) -> {feeds.DRAWS}")
+    print(f"  draws cached: {len(got)} ({len(set(got) - before)} new) -> {feeds.DRAWS}")
     for key, rec in got.items():
-        print(f"    {key:<18} {len(rec['r1']):>3} slots  "
+        print(f"    {key:<23} {len(rec['r1']):>3} slots  "
               f"agreement {rec['agreement']:.0%}  {rec['source_page']}")
 
 
@@ -116,7 +116,7 @@ def _history_seed() -> None:
     # Newest first; skip any still-ongoing or not-yet-in-ESPN slam. Runs once ever, so
     # walking back through ~two years of slams is cheap insurance if the newest is missing.
     for event, year in history.recent_slams()[:8]:
-        tours = [t for t in history.harvest(event, year) if history.is_complete(t["rounds"])]
+        tours = [t for t in history.harvest(event, year) if history.is_whole(t["rounds"])]
         if tours:
             store.extend(tours)
             history.prune(store)
@@ -136,6 +136,16 @@ def _history_harvest(event: str, year: int) -> None:
     tours = history.harvest(event, year)
     if not tours:
         print(f"No {event} {year} draw found in ESPN's feed for that window.")
+        return
+    # An archived draw is never replaced, so one with holes in it (a failed day, or an event
+    # still being played) would stay that way. Leave it out and let a re-run pick it up.
+    for t in tours:
+        if not history.is_whole(t["rounds"]):
+            sizes = [len(r["matches"]) for r in t["rounds"]]
+            print(f"  {t['name']} {t['gender']}: incomplete {sizes}, not archived "
+                  "(re-run once it has finished, or if fetches failed)")
+    tours = [t for t in tours if history.is_whole(t["rounds"])]
+    if not tours:
         return
     store = history.load()
     have = {(e["id"], e["gender"]) for e in store}

@@ -81,7 +81,7 @@ def _side_dict(s) -> dict:
     applied fresh at emit time, so an archived snapshot never carries stale annotation)."""
     return {"name": s.name, "country": s.country, "winner": s.winner,
             "sets": s.sets, "set_wins": getattr(s, "set_wins", []),
-            "seed": getattr(s, "seed", None)}
+            "seed": getattr(s, "seed", None), "short": getattr(s, "short", "")}
 
 
 def serialize(tournament, use_fixture: bool = True) -> dict:

@@ -45,10 +45,7 @@ jobs:
       - name: Fetch the current archive (from the Release)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p data
-          gh release download brackets-history --pattern history.json --dir data --clobber \
-            || echo "no history release yet — starting from an empty archive"
+        run: .github/scripts/history-archive.sh fetch || [ $? -eq 3 ]
 
       - name: Harvest each requested draw
         run: |
@@ -61,22 +58,11 @@ jobs:
             echo "::endgroup::"
           done
 
-      # The hourly deploy rewrites this same asset, and a harvest takes minutes. Re-reading
-      # the Release now and merging into it means an upload that landed while we worked is
+      # The hourly deploy rewrites this same asset, and a harvest takes minutes. Persisting
+      # re-reads the Release and merges into it, so an upload that landed while we worked is
       # kept rather than overwritten.
-      - name: Merge into the archive as it stands now
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mv data/history.json /tmp/backfilled.json
-          gh release download brackets-history --pattern history.json --dir data --clobber \
-            || echo "no history release — the harvest stands alone"
-          uv run match-charting-project history merge --from /tmp/backfilled.json
-
       - name: Persist the archive (to the Release)
+        if: ${{ hashFiles('data/history.json') != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create brackets-history --title "Draw history" \
-            --notes "Completed draws, accumulated as events finish" 2>/dev/null || true
-          gh release upload brackets-history data/history.json --clobber
+        run: .github/scripts/history-archive.sh persist

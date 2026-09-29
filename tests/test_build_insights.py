@@ -15,6 +15,12 @@ import pytest
 
 from match_charting_project.site import build_insights
 
+
+def _floors(monkeypatch, value, **over):
+    """Set every floor in ``build_insights.FLOORS`` to ``value``, bar the named overrides."""
+    for k in build_insights.FLOORS:
+        monkeypatch.setitem(build_insights.FLOORS, k, over.get(k, value))
+
 # One player, both sides: career mix deliberately far from the recent mix so a
 # mix-up cannot pass. Only the columns _serve_placement reads are included.
 ROWS = [
@@ -250,7 +256,7 @@ def _points_db(tmp_path):
 
 
 def test_hold_and_break_are_scored_for_the_right_player(tmp_path, monkeypatch):
-    monkeypatch.setattr(build_insights, "MIN_GAMES", 1)
+    _floors(monkeypatch, 1)
     g = build_insights._game_rates(_points_db(tmp_path)).set_index("player")
     # Player 1 held two of games 1, 3 and 5; player 2 held one of 2 and 4. Rates ship
     # rounded to four places. Game 3 opens with a point to the returner and is still a hold,
@@ -262,7 +268,7 @@ def test_hold_and_break_are_scored_for_the_right_player(tmp_path, monkeypatch):
 
 
 def test_tiebreaks_are_not_service_games(tmp_path, monkeypatch):
-    monkeypatch.setattr(build_insights, "MIN_GAMES", 1)
+    _floors(monkeypatch, 1)
     g = build_insights._game_rates(_points_db(tmp_path)).set_index("player")
     assert g.loc["A Player", "serve_games"] == 3
     assert g.loc["B Player", "serve_games"] == 2
@@ -271,7 +277,7 @@ def test_tiebreaks_are_not_service_games(tmp_path, monkeypatch):
 
 def test_thin_players_come_through_null_rather_than_wrong(tmp_path, monkeypatch):
     """Below the floor there is no rate, so the ring draws without its mark."""
-    monkeypatch.setattr(build_insights, "MIN_GAMES", 100)
+    _floors(monkeypatch, 100)
     assert build_insights._game_rates(_points_db(tmp_path)).empty
 
 
@@ -309,7 +315,7 @@ def _parsed_db(tmp_path):
 
 
 def test_return_winners_are_credited_to_the_returner(tmp_path, monkeypatch):
-    monkeypatch.setattr(build_insights, "MIN_RETURN_PTS", 1)
+    _floors(monkeypatch, 1)
     r = build_insights._return_winners(_parsed_db(tmp_path)).set_index("player")
     # B returned the five points A served and struck two winners off the return; A returned
     # the three points B served and struck one.
@@ -322,7 +328,7 @@ def test_return_winners_are_credited_to_the_returner(tmp_path, monkeypatch):
 
 def test_return_winners_respect_their_own_floor(tmp_path, monkeypatch):
     """Below the floor there is no rate, so the arc draws in one colour and the line is absent."""
-    monkeypatch.setattr(build_insights, "MIN_RETURN_PTS", 100)
+    _floors(monkeypatch, 100)
     assert build_insights._return_winners(_parsed_db(tmp_path)).empty
 
 
@@ -357,7 +363,7 @@ def _ace_db(tmp_path):
 
 
 def test_aces_are_split_by_the_delivery_that_struck_them(tmp_path, monkeypatch):
-    monkeypatch.setattr(build_insights, "MIN_ACE_PTS", 1)
+    _floors(monkeypatch, 1)
     r = build_insights._serve_aces(_ace_db(tmp_path)).set_index("player")
     # Four points never reached a second serve and two of them were aced.
     assert r.loc["A Player", "first_ace_pct"] == pytest.approx(2 / 4, abs=5e-5)
@@ -368,8 +374,18 @@ def test_aces_are_split_by_the_delivery_that_struck_them(tmp_path, monkeypatch):
 
 def test_serve_aces_respect_their_own_floor(tmp_path, monkeypatch):
     """Below the floor there is no rate, and the plot's columns draw without their cores."""
-    monkeypatch.setattr(build_insights, "MIN_ACE_PTS", 100)
-    assert build_insights._serve_aces(_ace_db(tmp_path)).empty
+    _floors(monkeypatch, 100)
+    r = build_insights._serve_aces(_ace_db(tmp_path))
+    assert r.first_ace_pct.isna().all() and r.second_ace_pct.isna().all()
+
+
+def test_each_delivery_has_its_own_ace_floor(tmp_path, monkeypatch):
+    """Second-serve aces are rare enough to need far more serves than first-serve aces, so
+    a player can have the first core without the second."""
+    _floors(monkeypatch, 1, second_ace_pct=100)
+    r = build_insights._serve_aces(_ace_db(tmp_path)).set_index("player")
+    assert r.loc["A Player", "first_ace_pct"] == pytest.approx(2 / 4, abs=5e-5)
+    assert pd.isna(r.loc["A Player", "second_ace_pct"])
 
 
 # --- which hand a player holds the racket in ---------------------------------------------
@@ -411,6 +427,21 @@ def test_a_tied_hand_comes_out_null_rather_than_picked(tmp_path):
     assert facts.set_index("player").loc["Opponent", "hand"] == "R"
 
 
+def test_each_serve_rate_has_its_own_floor(tmp_path, monkeypatch):
+    """Second-serve points won needs several times the sample the in-rates do, so a thinly
+    charted player's plot keeps its shape and loses only that fill. Each rate is floored on
+    its own denominator: 20 points reached a second serve here, against 100 served."""
+    con = _hand_db(tmp_path, [("Server", "R")])
+    con.execute("INSERT INTO stats_overview VALUES ('M', 'Server', 'Total', '5', '100', "
+                "'80', '4', '60', '9')")
+    _floors(monkeypatch, 50)
+    s = build_insights._player_facts(con).set_index("player").loc["Server"]
+    assert s.first_in_pct == pytest.approx(0.8)
+    assert s.first_won_pct == pytest.approx(60 / 80)
+    assert s.ace_rate == pytest.approx(0.05)
+    assert pd.isna(s.second_in_pct) and pd.isna(s.second_won_pct)
+
+
 # --- the career shot mix ----------------------------------------------------------------
 # Match and career mix share one helper (shots.notation.fold_shot_mix, tested in
 # test_notation.py). These pin which player each stroke lands on, and that a rate under its
@@ -434,8 +465,7 @@ RALLY = [(1, "4f3b1@", 2)] * 10 + [(1, "4r3z1*", 1)] * 10
 
 
 def test_shot_mix_lands_each_stroke_on_its_hitter(tmp_path, monkeypatch):
-    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
-    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    _floors(monkeypatch, 1)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
     a, b = mix.loc["A Player"], mix.loc["B Player"]
     # A hit ten backhand errors and ten backhand volley winners: every groundstroke of
@@ -453,8 +483,7 @@ def test_a_volley_winner_is_not_a_backhand_winner(tmp_path, monkeypatch):
     """The net game and the wing rates are separate denominators, and a put-away belongs
     to the first. Counted into both, a serve-volleyer's backhand would read as the best
     on tour."""
-    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
-    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    _floors(monkeypatch, 1)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
     assert mix.loc["A Player", "bh_winner_pct"] == 0.0
     # It is the net game's instead, on the net's own denominator.
@@ -464,50 +493,38 @@ def test_a_volley_winner_is_not_a_backhand_winner(tmp_path, monkeypatch):
 def test_rates_under_their_floor_are_withheld(tmp_path, monkeypatch):
     """A career rate is an estimate of how a player plays, so it can be withheld; the
     match figure it anchors is a count of what happened, and is not."""
-    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1000)
-    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1000)
+    _floors(monkeypatch, 1000)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY))
     for col in build_insights.MIX_RATES:
         assert mix[col].isna().all(), col
 
 
 def test_the_stroke_groups_have_their_own_floor(tmp_path, monkeypatch):
-    """Nobody hits 800 volleys, so the two floors cannot be one number: at the stroke
-    floor the mix prints and the slice and net groups are what get held back."""
-    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
-    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1000)
+    """The net rates rest on net shots, which even serve-volleyers hit far fewer of than
+    rally strokes, so they have floors of their own: the net share prints and its two rates
+    are held back."""
+    _floors(monkeypatch, 1, net_winner_pct=1000, net_err_pct=1000)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
     assert mix.loc["A Player", "net_pct"] == pytest.approx(0.5)
     assert pd.isna(mix.loc["A Player", "net_err_pct"])
     assert pd.isna(mix.loc["A Player", "net_winner_pct"])
 
 
-def test_the_net_group_prints_all_three_rows_or_none(tmp_path, monkeypatch):
-    """A player can clear the net floor without clearing the mix floor, and the net share
-    still comes through with the two net rates (Chris Lewis: 214 net shots in 559 rally
-    strokes)."""
-    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1000)
-    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+def test_each_net_rate_has_its_own_floor(tmp_path, monkeypatch):
+    """The net error rate needs about three times the net shots the winner rate does
+    (build_insights.FLOORS), so between the two floors a player shows one and not the
+    other rather than losing both."""
+    _floors(monkeypatch, 1, net_err_pct=1000)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
-    net = ["net_pct", "net_winner_pct", "net_err_pct"]
-    for who in ("A Player", "B Player"):
-        present = [c for c in net if pd.notna(mix.loc[who, c])]
-        assert present in ([], net), (who, present)
-    # A hits half its strokes at the net, and gets the share off a denominator under the mix
-    # floor. B never comes in, so the group is absent for them rather than a run of zeroes.
-    assert mix.loc["A Player", "net_pct"] == pytest.approx(0.5)
-    assert pd.isna(mix.loc["B Player", "net_pct"])
-    # The share is the only figure the net floor opens. The slice sits on the mix floor alone
-    # and stays withheld, which is what keeps this a rule about a group and not a way in.
-    assert pd.isna(mix.loc["A Player", "slice_pct"])
+    assert mix.loc["A Player", "net_winner_pct"] == 1.0
+    assert pd.isna(mix.loc["A Player", "net_err_pct"])
 
 
 def test_the_two_shares_are_complements_and_both_ship(tmp_path, monkeypatch):
     """Each group's outcome rates are read against how often that stroke is played, so a
     group without its own share row is missing what its other rows are measured against.
     The redundancy is the point: printed side by side the two sum to the whole."""
-    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
-    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    _floors(monkeypatch, 1)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
     for who in ("A Player", "B Player"):
         assert mix.loc[who, "fh_share"] + mix.loc[who, "bh_share"] == pytest.approx(1.0)
@@ -516,8 +533,7 @@ def test_the_two_shares_are_complements_and_both_ship(tmp_path, monkeypatch):
 def test_a_slice_miss_is_charged_to_the_wing_that_played_it(tmp_path, monkeypatch):
     """A backhand slice is a backhand and a slice. The groups cross-cut rather than partition,
     and the slice ships as a share only, so its miss is counted once — by the hand."""
-    monkeypatch.setattr(build_insights, "MIN_MIX_SHOTS", 1)
-    monkeypatch.setattr(build_insights, "MIN_STROKE_SHOTS", 1)
+    _floors(monkeypatch, 1)
     # Server's second stroke is a backhand slice missed unforced.
     mix = build_insights._shot_mix(
         _mix_db(tmp_path, [(1, "4f3s1@", 2)] * 4)).set_index("player")
@@ -527,7 +543,7 @@ def test_a_slice_miss_is_charged_to_the_wing_that_played_it(tmp_path, monkeypatc
 
 
 def test_the_slice_ships_as_a_share_and_no_outcome_rates(tmp_path, monkeypatch):
-    """Neither survives the test that holds the return-winner rate above 1,000 return points:
-    the winner rate rests on one or two shots at any floor players clear, and the error rate
+    """Neither is worth a row: the winner rate rests on one or two shots at any floor players
+    clear, and the error rate
     splits half at 0.52 while restating the wing error rates it cross-cuts."""
     assert [c for c in build_insights.MIX_RATES if c.startswith("slice")] == ["slice_pct"]

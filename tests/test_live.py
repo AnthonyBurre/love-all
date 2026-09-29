@@ -81,6 +81,22 @@ def test_parse_seats_sides_by_espn_bracket_order_not_array_order():
     assert (ms["m2"].a.name, ms["m2"].b.name) == ("First Listed", "Second Listed")  # no order: as-is
 
 
+def test_parse_carries_the_feeds_short_name_through_to_the_payload():
+    # Only the feed knows where a compound surname starts: splitting "Alejandro Davidovich
+    # Fokina" on spaces gives "Fokina". A side without one ships an empty string, and the
+    # site falls back to the full name.
+    raw = {"events": [{"id": "189-2026", "name": "US Open", "major": True, "groupings": [
+        {"grouping": {"slug": "mens-singles"}, "competitions": [
+            {"id": "m1", "round": {"displayName": "Round 1"},
+             "status": {"type": {"state": "pre"}}, "competitors": [
+                 {"athlete": {"displayName": "Alejandro Davidovich Fokina",
+                              "shortName": "A. Davidovich Fokina"}, "order": 1},
+                 {"athlete": {"displayName": "No Short"}, "order": 2}]}]}]}]}
+    m = espn.parse(raw)[0].matches[0]
+    assert brackets._side_dict(m.a)["short"] == "A. Davidovich Fokina"
+    assert brackets._side_dict(m.b)["short"] == ""
+
+
 def test_parse_carries_the_per_set_winner_and_leaves_a_live_set_undecided():
     # A suspended five-setter, resumed as a fresh "Scheduled" slot: four decided sets
     # each carry a winner flag, the fifth (4-3, still on court) carries none on either
