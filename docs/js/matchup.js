@@ -467,12 +467,21 @@ function trigSets(d) {
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const num = (v) => (v == null ? null : Number(v));
 
+// Whether two career rates differ by more than their sampling noise: a two-proportion test at
+// 95%. Only then is one marked the better. A rate without a denominator (a match's own count,
+// or an older build) is taken at face value.
+function realGap(pa, na, pb, nb) {
+  if (!na || !nb) return true;
+  const se = Math.sqrt(pa * (1 - pa) / na + pb * (1 - pb) / nb);
+  return se ? Math.abs(pa - pb) > 1.96 * se : pa !== pb;
+}
+
 function tapeRows() {
   return [
     {
-      k: "hold_rate", label: "service games held", short: ["games", "won"],
+      k: "hold_rate", n: "serve_games", label: "service games held", short: ["games", "won"],
       hi: 1, top: "100", better: "hi", fmt: pct, unit: "serve",
-      mark: { k: "break_rate", label: "return" },
+      mark: { k: "break_rate", n: "return_games", label: "return" },
     },
   ];
 }
@@ -550,15 +559,17 @@ function donut(r, sa, sb) {
   const va = sa ? num(sa[r.k]) : null;
   const vb = sb ? num(sb[r.k]) : null;
   if (va == null && vb == null) return "";
-  // Which side has the better figure: "" when either is missing, they tie, or there's no
-  // better end.
-  const leadOf = (xa, xb) => r.better && xa != null && xb != null && xa !== xb
+  // Which side has the better figure: "" when either is missing, they tie, the gap is within
+  // the noise (realGap; `nk` names the denominator), or there's no better end.
+  const nOf = (s, nk) => (s && nk ? num(s[nk]) : null);
+  const leadOf = (xa, xb, nk) => r.better && xa != null && xb != null && xa !== xb
+    && realGap(xa, nOf(sa, nk), xb, nOf(sb, nk))
     ? ((xa > xb) === (r.better === "hi") ? "a" : "b") : "";
-  const lead = leadOf(va, vb);
+  const lead = leadOf(va, vb, r.n);
   const at = (v) => clamp01(v / r.hi) * 180;
   // The break rate, read once for both the tick and its label.
   const markOf = (s) => (!r.mark || !s ? null : num(s[r.mark.k]));
-  const markLead = leadOf(markOf(sa), markOf(sb));
+  const markLead = leadOf(markOf(sa), markOf(sb), r.mark && r.mark.n);
   const anchor = (deg, side) => {
     const [x, y] = dnPoint(dnAt(deg, side), DN_LR);
     return { x, y };
@@ -883,18 +894,19 @@ const FIGS = [
     fmt: pct, den: "shots",
   },
   // Net winner and error rates are uncorrelated (r = -0.00), so both print.
+  // `cn` names a career reading's denominator, shipped beside it.
   {
     k: "net_winner_pct", label: "net winner rate", unit: "", band: "net_winner_pct",
-    fmt: pct, better: "hi", den: "net_shots",
+    fmt: pct, better: "hi", den: "net_shots", cn: "net_shots",
   },
   {
     k: "net_err_pct", label: "net error rate", unit: "", band: "net_err_pct",
-    fmt: pct, better: "lo", den: "net_shots",
+    fmt: pct, better: "lo", den: "net_shots", cn: "net_shots",
   },
   // Return winners over points returned. The ace rate is on the serve plot.
   {
     k: "ret_winner_rate", label: "return winners", unit: "", band: "ret_winner_rate",
-    fmt: pct, better: "hi",
+    fmt: pct, better: "hi", cn: "ret_pts",
   },
   // No "shot selection" (sigma) figure: it mostly tracks rally length and a serve-volley
   // artifact. The triggers section covers the same question.
@@ -914,15 +926,14 @@ const FIGS = [
 // The second-serve column is serves that landed, so its rate is over those; the rate over every
 // second-serve point is printed separately. Ace cores are clamped to their fill.
 //
-// A career plot draws what its rates support, since each has its own floor. First serves in
-// and first-serve points won draw the plot (without a fill it is an empty grid); second serves
-// in split the remainder into its two columns, and second-serve points won fills its column.
-// A missing second-serve won rate leaves that column unfilled (r null), and a missing
-// second-serve-in rate leaves the remainder as one undivided column (`split` false).
+// A career plot draws whole or not at all: its rates share one floor in the build, since a
+// column without its fill reads as a rate of zero. `samp` carries a career's denominators, for
+// telling a real gap between two players from noise (see serveCmp); a match is a count of
+// what happened and has none.
 function serveSplit(s) {
   if (!s) return null;
-  // `aKnown` tells a core withheld under its floor from a player who served no aces, so the
-  // comparison doesn't bold the other side for it.
+  // `aKnown` tells a core the build couldn't split (a player whose serves didn't parse) from a
+  // player who served no aces, so the comparison doesn't bold the other side for it.
   const band = (h, r, a, hn, hd, rn, rd, an) => ({
     h, r, a: r == null || a == null ? 0 : Math.min(a, r), aKnown: r != null && a != null,
     hn, hd, rn, rd, an,
@@ -942,7 +953,7 @@ function serveSplit(s) {
       band(df / n, 0, 0, df, n, 0, df, 0)],
       // The scoreboard's second-serve-in rate, printed beside the band.
       second_in: si + df ? si / (si + df) : null,
-      split: true,
+      samp: null,
       // Exact on a match: the cores are the aces.
       aceTot: a1 || a2 ? ((a1 || 0) + (a2 || 0)) / n : null,
     };
@@ -951,33 +962,28 @@ function serveSplit(s) {
   // divided back out, since the shipped rate is over every point that reached a second serve.
   const fi = num(s.first_in_pct), fwp = num(s.first_won_pct);
   const si = num(s.second_in_pct), swp = num(s.second_won_pct);
-  if (fi == null || fwp == null) return null;
+  if ([fi, fwp, si, swp].some((x) => x == null)) return null;
   // Ace shares are divided back out the same way (build_insights._SERVE_ACE_SQL).
   const fap = num(s.first_ace_pct), sap = num(s.second_ace_pct);
   const second = 1 - fi;
-  const first = band(fi, fwp, fap);
-  // The pooled ace rate is shipped on its own floor, so the total prints even where a core
-  // is withheld.
-  const aceTot = num(s.ace_rate);
-  if (si == null) {
-    return { n: null, counts: false, split: false, second_in: null, aceTot,
-      bands: [first, band(second, null, 0), band(0, null, 0)] };
-  }
+  const pts = num(s.serve_pts), sec = num(s.second_pts);
   return {
-    n: null, counts: false, split: true, second_in: si, aceTot,
-    bands: [first,
-    band(second * si, swp == null ? null : si ? Math.min(1, swp / si) : 0,
-      si && sap != null ? Math.min(1, sap / si) : 0),
+    n: null, counts: false,
+    bands: [band(fi, fwp, fap),
+    band(second * si, si ? Math.min(1, swp / si) : 0,
+      sap == null ? null : si ? Math.min(1, sap / si) : 0),
     band(second * (1 - si), 0, 0)],
+    second_in: si,
+    // The shipped pooled rate, exact where the cores are within a few hundredths.
+    aceTot: num(s.ace_rate),
+    samp: pts && sec ? { pts, fin: pts * fi, sec, sin: sec * si } : null,
   };
 }
 
 // Column order, out from the midline.
 const SVBAND = ["first", "second", "df"];
-// What each column is, for the tooltip that carries its counts. The second column reads as
-// every missed first serve when the plot can't split it.
+// What each column is, for the tooltip that carries its counts.
 const SVSAY = ["1st serves in", "2nd serves in", "double faults"];
-const svSay = (sp, i) => (i === 1 && !sp.split ? "first serves missed" : SVSAY[i]);
 // Width reserved for the gaps between all three columns, drawn or not, so both players share
 // one scale.
 const SV_GAPS = 4;
@@ -1013,20 +1019,19 @@ function serveBar(sp, tag, cmp) {
       ? `, ${x.an} of those aces` : `, ${pct(x.a)} of them aces`;
     const say = (sp.counts
       ? `${x.hn} of ${x.hd} service points — ${SVSAY[i]}, ${x.rn} of ${x.rd} won`
-      : `${pct(x.h)} of service points — ${svSay(sp, i)}`
-        + (x.r == null ? "" : `, ${pct(x.r)} won`)) + aces;
+      : `${pct(x.h)} of service points — ${SVSAY[i]}, ${pct(x.r)} won`) + aces;
     // The win rate sits at the top of its fill, or above it when the fill is too short. When
     // the ace figure tucks in as a third line (see svAce), the stack always goes above.
     const ace = svAce(x, i, tag, cmp);
-    const won = i < 2 && x.r != null
+    const won = i < 2
       ? `<b class="svwin${x.r < SV_FIG_H || ace.tucked ? " over" : ""}${sup(cmp, `w${i}`, tag)}">${pct(x.r)}<em>won</em>${ace.tucked}</b>` : "";
     return `<span class="svseg ${SVBAND[i]}"
-      style="--w:calc((100% - ${SV_GAPS}px) * ${x.h.toFixed(5)});--f:${((x.r || 0) * 100).toFixed(2)}%;--ace:${(x.a * 100).toFixed(2)}%"
+      style="--w:calc((100% - ${SV_GAPS}px) * ${x.h.toFixed(5)});--f:${(x.r * 100).toFixed(2)}%;--ace:${(x.a * 100).toFixed(2)}%"
       title="${esc(say)}"><i class="svfill"></i>${ace.core}${won}${ace.fig}</span>`;
   }).join("");
   // The double-fault figure runs along the outer column; --dfm is its midpoint.
   const df = sp.bands[2];
-  const dfLab = !sp.split ? "" : `<b class="svdf${sup(cmp, "df", tag)}" style="--dfm:${at(df.h / 2, 0)}"
+  const dfLab = `<b class="svdf${sup(cmp, "df", tag)}" style="--dfm:${at(df.h / 2, 0)}"
     >${pct(df.h)}<em>${DF_KEY}</em></b>`;
   // The pooled ace figure hangs below the plot at --acm, the midpoint of the two core centres,
   // with curved tines up to each core. --acsp and --acout set the tines so they clear the in-rate
@@ -1080,25 +1085,28 @@ const SVDIM = [
 ];
 
 // --- which of the two is the better figure -------------------------------------------------
-// The better of each pair of serve figures is set bold. Fewer is better for double faults. Ties
-// and missing sides bold neither.
+// The better of each pair of serve figures is set bold. Fewer is better for double faults. Ties,
+// missing sides and career gaps within the noise (see realGap) bold neither. The last entry is
+// the rate's denominator on a career; a match has none, since it is a count of what happened.
 const SVCMP = [
-  ["w0", (x) => x.bands[0].h && x.bands[0].r, false],
-  ["w1", (x) => x.bands[1].h && x.bands[1].r, false],
-  ["a0", (x) => (x.bands[0].aKnown ? x.bands[0].h && x.bands[0].a : null), false],
-  ["a1", (x) => (x.bands[1].aKnown ? x.bands[1].h && x.bands[1].a : null), false],
-  ["atot", (x) => x.aceTot, false],
-  ["h0", (x) => x.bands[0].h, false],
-  ["h1", (x) => x.second_in, false],
-  ["df", (x) => (x.split ? x.bands[2].h : null), true],
+  ["w0", (x) => x.bands[0].h && x.bands[0].r, false, (m) => m.fin],
+  ["w1", (x) => x.bands[1].h && x.bands[1].r, false, (m) => m.sin],
+  ["a0", (x) => (x.bands[0].aKnown ? x.bands[0].h && x.bands[0].a : null), false, (m) => m.fin],
+  ["a1", (x) => (x.bands[1].aKnown ? x.bands[1].h && x.bands[1].a : null), false, (m) => m.sin],
+  ["atot", (x) => x.aceTot, false, (m) => m.pts],
+  ["h0", (x) => x.bands[0].h, false, (m) => m.pts],
+  ["h1", (x) => x.second_in, false, (m) => m.sec],
+  ["df", (x) => x.bands[2].h, true, (m) => m.pts],
 ];
 
 function serveCmp(sa, sb) {
   const out = {};
   if (!sa || !sb) return out;
-  for (const [k, get, lower] of SVCMP) {
+  for (const [k, get, lower, nOf] of SVCMP) {
     const va = get(sa), vb = get(sb);
     if (va == null || vb == null || va === vb) continue;
+    const na = sa.samp ? nOf(sa.samp) : null, nb = sb.samp ? nOf(sb.samp) : null;
+    if (!realGap(va, na, vb, nb)) continue;
     out[k] = (lower ? va < vb : va > vb) ? "a" : "b";
   }
   return out;
@@ -1137,8 +1145,8 @@ function serveAnatomy(da, db, ma, mb, sides) {
   const sa = serveSplit(ma || (da && da.s)), sb = serveSplit(mb || (db && db.s));
   if (!sa && !sb) return "";
   const note = ma || mb || !sides ? ""
-    : shortNote([[da, sa, sides[0]], [db, sb, sides[1]]], "serve plot", FLOOR.first_won_pct,
-      "first serves in");
+    : shortNote([[da, sa, sides[0]], [db, sb, sides[1]]], "serve plot", FLOOR.serve_plot,
+      "second-serve points");
   const cmp = serveCmp(sa, sb);
   // Room under the plots for the pooled-ace figure (.svpair.aces).
   const aces = [sa, sb].some((s) => s && s.aceTot != null) ? " aces" : "";
@@ -1201,7 +1209,9 @@ function profileParts(d, md, spread) {
       band: mv != null ? null : (f.band ? sp[f.band] : null),
       note: den != null ? `of ${den}` : null,
       anchor: mv != null && career != null ? f.fmt(career) : null,
-      careerOnly: !!(md && mv == null)
+      careerOnly: !!(md && mv == null),
+      // A career reading's denominator, for figWinner's noise test.
+      n: mv != null || !f.cn ? null : num(s[f.cn]),
     };
   }).filter(Boolean);
   const bp = bpFig(md);
@@ -1245,6 +1255,8 @@ function gsSplit(s, md) {
     w, name, share: shared ? share : 0.5,
     err: read(`${w}_err_pct`), win: read(`${w}_winner_pct`),
     n: md ? num(md[`${w}_gs`]) : null,
+    // A career wing's strokes, for gsCmp's noise test.
+    cn: md ? null : num(s && s[`${w}_gs`]),
   });
   const fh = wing("fh", "FH", fhs), bh = wing("bh", "BH", bhs);
   if (![fh, bh].some((x) => x.err != null || x.win != null)) return null;
@@ -1264,8 +1276,8 @@ function gsCmp(ga, gb) {
   if (!ga || !gb) return out;
   const of = (g, w) => g.wings.find((x) => x.w === w);
   for (const [w, k, lower] of GSCMP) {
-    const va = of(ga, w)[k], vb = of(gb, w)[k];
-    if (va == null || vb == null || va === vb) continue;
+    const xa = of(ga, w), xb = of(gb, w), va = xa[k], vb = xb[k];
+    if (va == null || vb == null || va === vb || !realGap(va, xa.cn, vb, xb.cn)) continue;
     out[`${w}_${k}`] = (lower ? va < vb : va > vb) ? "a" : "b";
   }
   return out;
@@ -1318,11 +1330,12 @@ function groundAnatomy(da, db, ma, mb, sides) {
 }
 
 // Which of two paired figures carries the win — "a" is the first argument, "b" the second, ""
-// when neither: no better end, a value missing, a tie, or two values that print the same.
+// when neither: no better end, a value missing, a tie, two values that print the same, or a
+// career gap within the noise (realGap).
 // Shared by the wide columns and the phone comparison so the bolding matches.
 function figWinner(xa, xb) {
   const bd = (xa || xb || {}).better;
-  if (!xa || !xb || !bd || xa.v === xb.v) return "";
+  if (!xa || !xb || !bd || xa.v === xb.v || !realGap(xa.raw, xa.n, xb.raw, xb.n)) return "";
   return (xa.raw > xb.raw) === (bd === "hi") ? "a" : "b";
 }
 
@@ -1490,10 +1503,11 @@ function figureKey(sa, sb, spread, match) {
       serve-volleyers score high.${match ? ` It stays a career figure on a charted match: one match moves it by 0.18 bits
       against a tour whose middle half spans 0.26, mostly noise.` : ""}</div>`,
     // Why a figure is missing, for career readings: each waits for its own sample.
-    match ? "" : `<div>A career figure prints once a player has enough charting for two halves
-      of their matches to agree on it (a split-half correlation of 0.5). That takes one match
-      for the slice and net shares and variety, and thousands of points for the rarest
-      events, such as net errors. A dash means that player hasn't reached it yet.</div>`,
+    match ? "" : `<div>A career rate prints once the player's charting pins it down: within
+      10 points either way, and within half the rate itself, 95% of the time. A common figure
+      such as first serves in gets there within a match or two; a rare one such as return
+      winners takes many more. A dash means that player hasn't reached it yet. The better of
+      two figures is set in bold only when the gap is larger than the sampling noise.</div>`,
     // The strip entry closes the key, after the figures it is drawn under.
     !bands.length ? "" : `<div>The <b>strip</b> under a figure is where that player sits on the
       charted tour${FLOOR.band_points ? ` of players with ${FLOOR.band_points.toLocaleString()} or
@@ -2125,7 +2139,7 @@ export async function openMatchup(m, t) {
     // side order belongs to the draw slot that opened it.
     det = orientDetail(det, m.chart_flip);
     spread = (await tourSpread())[t.gender] || {};
-    FLOOR = await panelFloors();
+    FLOOR = await panelFloors(t.gender);
   } catch (e) {
     console.warn("insights db unavailable:", e);
     if (mine !== openSeq) return;
