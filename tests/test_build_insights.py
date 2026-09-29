@@ -15,12 +15,6 @@ import pytest
 
 from match_charting_project.site import build_insights
 
-
-def _floors(monkeypatch, value, **over):
-    """Set every floor in ``build_insights.FLOORS`` to ``value``, bar the named overrides."""
-    for k in build_insights.FLOORS:
-        monkeypatch.setitem(build_insights.FLOORS, k, over.get(k, value))
-
 # One player, both sides: career mix deliberately far from the recent mix so a
 # mix-up cannot pass. Only the columns _serve_placement reads are included.
 ROWS = [
@@ -256,7 +250,6 @@ def _points_db(tmp_path):
 
 
 def test_hold_and_break_are_scored_for_the_right_player(tmp_path, monkeypatch):
-    _floors(monkeypatch, 1)
     g = build_insights._game_rates(_points_db(tmp_path)).set_index("player")
     # Player 1 held two of games 1, 3 and 5; player 2 held one of 2 and 4. Rates ship
     # rounded to four places. Game 3 opens with a point to the returner and is still a hold,
@@ -268,17 +261,10 @@ def test_hold_and_break_are_scored_for_the_right_player(tmp_path, monkeypatch):
 
 
 def test_tiebreaks_are_not_service_games(tmp_path, monkeypatch):
-    _floors(monkeypatch, 1)
     g = build_insights._game_rates(_points_db(tmp_path)).set_index("player")
     assert g.loc["A Player", "serve_games"] == 3
     assert g.loc["B Player", "serve_games"] == 2
     assert g.loc["A Player", "return_games"] == 2
-
-
-def test_thin_players_come_through_null_rather_than_wrong(tmp_path, monkeypatch):
-    """Below the floor there is no rate, so the ring draws without its mark."""
-    _floors(monkeypatch, 100)
-    assert build_insights._game_rates(_points_db(tmp_path)).empty
 
 
 # --- return winners ---------------------------------------------------------------------
@@ -315,7 +301,6 @@ def _parsed_db(tmp_path):
 
 
 def test_return_winners_are_credited_to_the_returner(tmp_path, monkeypatch):
-    _floors(monkeypatch, 1)
     r = build_insights._return_winners(_parsed_db(tmp_path)).set_index("player")
     # B returned the five points A served and struck two winners off the return; A returned
     # the three points B served and struck one.
@@ -324,12 +309,6 @@ def test_return_winners_are_credited_to_the_returner(tmp_path, monkeypatch):
     # guard in place: a winner four shots in is not a return winner, and neither is an ace.
     assert r.loc["B Player", "ret_winner_rate"] == pytest.approx(2 / 5, abs=5e-5)
     assert r.loc["A Player", "ret_winner_rate"] == pytest.approx(1 / 3, abs=5e-5)
-
-
-def test_return_winners_respect_their_own_floor(tmp_path, monkeypatch):
-    """Below the floor there is no rate, so the arc draws in one colour and the line is absent."""
-    _floors(monkeypatch, 100)
-    assert build_insights._return_winners(_parsed_db(tmp_path)).empty
 
 
 # --- the ace, split by delivery ----------------------------------------------------------
@@ -363,29 +342,12 @@ def _ace_db(tmp_path):
 
 
 def test_aces_are_split_by_the_delivery_that_struck_them(tmp_path, monkeypatch):
-    _floors(monkeypatch, 1)
     r = build_insights._serve_aces(_ace_db(tmp_path)).set_index("player")
     # Four points never reached a second serve and two of them were aced.
     assert r.loc["A Player", "first_ace_pct"] == pytest.approx(2 / 4, abs=5e-5)
     # Three points reached a second serve, one aced, so 1/3. The double fault is in the
     # denominator (the same one as second_won_pct).
     assert r.loc["A Player", "second_ace_pct"] == pytest.approx(1 / 3, abs=5e-5)
-
-
-def test_serve_aces_respect_their_own_floor(tmp_path, monkeypatch):
-    """Below the floor there is no rate, and the plot's columns draw without their cores."""
-    _floors(monkeypatch, 100)
-    r = build_insights._serve_aces(_ace_db(tmp_path))
-    assert r.first_ace_pct.isna().all() and r.second_ace_pct.isna().all()
-
-
-def test_each_delivery_has_its_own_ace_floor(tmp_path, monkeypatch):
-    """Second-serve aces are rare enough to need far more serves than first-serve aces, so
-    a player can have the first core without the second."""
-    _floors(monkeypatch, 1, second_ace_pct=100)
-    r = build_insights._serve_aces(_ace_db(tmp_path)).set_index("player")
-    assert r.loc["A Player", "first_ace_pct"] == pytest.approx(2 / 4, abs=5e-5)
-    assert pd.isna(r.loc["A Player", "second_ace_pct"])
 
 
 # --- which hand a player holds the racket in ---------------------------------------------
@@ -427,21 +389,6 @@ def test_a_tied_hand_comes_out_null_rather_than_picked(tmp_path):
     assert facts.set_index("player").loc["Opponent", "hand"] == "R"
 
 
-def test_each_serve_rate_has_its_own_floor(tmp_path, monkeypatch):
-    """Second-serve points won needs several times the sample the in-rates do, so a thinly
-    charted player's plot keeps its shape and loses only that fill. Each rate is floored on
-    its own denominator: 20 points reached a second serve here, against 100 served."""
-    con = _hand_db(tmp_path, [("Server", "R")])
-    con.execute("INSERT INTO stats_overview VALUES ('M', 'Server', 'Total', '5', '100', "
-                "'80', '4', '60', '9')")
-    _floors(monkeypatch, 50)
-    s = build_insights._player_facts(con).set_index("player").loc["Server"]
-    assert s.first_in_pct == pytest.approx(0.8)
-    assert s.first_won_pct == pytest.approx(60 / 80)
-    assert s.ace_rate == pytest.approx(0.05)
-    assert pd.isna(s.second_in_pct) and pd.isna(s.second_won_pct)
-
-
 # --- the career shot mix ----------------------------------------------------------------
 # Match and career mix share one helper (shots.notation.fold_shot_mix, tested in
 # test_notation.py). These pin which player each stroke lands on, and that a rate under its
@@ -465,7 +412,6 @@ RALLY = [(1, "4f3b1@", 2)] * 10 + [(1, "4r3z1*", 1)] * 10
 
 
 def test_shot_mix_lands_each_stroke_on_its_hitter(tmp_path, monkeypatch):
-    _floors(monkeypatch, 1)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
     a, b = mix.loc["A Player"], mix.loc["B Player"]
     # A hit ten backhand errors and ten backhand volley winners: every groundstroke of
@@ -483,48 +429,16 @@ def test_a_volley_winner_is_not_a_backhand_winner(tmp_path, monkeypatch):
     """The net game and the wing rates are separate denominators, and a put-away belongs
     to the first. Counted into both, a serve-volleyer's backhand would read as the best
     on tour."""
-    _floors(monkeypatch, 1)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
     assert mix.loc["A Player", "bh_winner_pct"] == 0.0
     # It is the net game's instead, on the net's own denominator.
     assert mix.loc["A Player", "net_winner_pct"] == 1.0
 
 
-def test_rates_under_their_floor_are_withheld(tmp_path, monkeypatch):
-    """A career rate is an estimate of how a player plays, so it can be withheld; the
-    match figure it anchors is a count of what happened, and is not."""
-    _floors(monkeypatch, 1000)
-    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY))
-    for col in build_insights.MIX_RATES:
-        assert mix[col].isna().all(), col
-
-
-def test_the_stroke_groups_have_their_own_floor(tmp_path, monkeypatch):
-    """The net rates rest on net shots, which even serve-volleyers hit far fewer of than
-    rally strokes, so they have floors of their own: the net share prints and its two rates
-    are held back."""
-    _floors(monkeypatch, 1, net_winner_pct=1000, net_err_pct=1000)
-    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
-    assert mix.loc["A Player", "net_pct"] == pytest.approx(0.5)
-    assert pd.isna(mix.loc["A Player", "net_err_pct"])
-    assert pd.isna(mix.loc["A Player", "net_winner_pct"])
-
-
-def test_each_net_rate_has_its_own_floor(tmp_path, monkeypatch):
-    """The net error rate needs about three times the net shots the winner rate does
-    (build_insights.FLOORS), so between the two floors a player shows one and not the
-    other rather than losing both."""
-    _floors(monkeypatch, 1, net_err_pct=1000)
-    mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
-    assert mix.loc["A Player", "net_winner_pct"] == 1.0
-    assert pd.isna(mix.loc["A Player", "net_err_pct"])
-
-
 def test_the_two_shares_are_complements_and_both_ship(tmp_path, monkeypatch):
     """Each group's outcome rates are read against how often that stroke is played, so a
     group without its own share row is missing what its other rows are measured against.
     The redundancy is the point: printed side by side the two sum to the whole."""
-    _floors(monkeypatch, 1)
     mix = build_insights._shot_mix(_mix_db(tmp_path, RALLY)).set_index("player")
     for who in ("A Player", "B Player"):
         assert mix.loc[who, "fh_share"] + mix.loc[who, "bh_share"] == pytest.approx(1.0)
@@ -533,7 +447,6 @@ def test_the_two_shares_are_complements_and_both_ship(tmp_path, monkeypatch):
 def test_a_slice_miss_is_charged_to_the_wing_that_played_it(tmp_path, monkeypatch):
     """A backhand slice is a backhand and a slice. The groups cross-cut rather than partition,
     and the slice ships as a share only, so its miss is counted once — by the hand."""
-    _floors(monkeypatch, 1)
     # Server's second stroke is a backhand slice missed unforced.
     mix = build_insights._shot_mix(
         _mix_db(tmp_path, [(1, "4f3s1@", 2)] * 4)).set_index("player")
@@ -547,3 +460,60 @@ def test_the_slice_ships_as_a_share_and_no_outcome_rates(tmp_path, monkeypatch):
     clear, and the error rate
     splits half at 0.52 while restating the wing error rates it cross-cuts."""
     assert [c for c in build_insights.MIX_RATES if c.startswith("slice")] == ["slice_pct"]
+
+
+# --- when a career rate prints -----------------------------------------------------------
+# One rule for every rate: the 95% margin within ±10 points and within half the rate. The
+# failure these guard against is quiet: a floor read off the wrong tour, or a serve plot
+# shipped with one rate missing, still builds and still draws.
+def test_the_precision_floor_is_one_rule_for_common_and_rare_rates():
+    assert build_insights.precision_floor(0.5) == 97       # the ±10-point clause binds
+    assert build_insights.precision_floor(0.1) == 139      # half the rate binds
+    assert build_insights.precision_floor(0.02) == 753
+    # Symmetric: a 90% rate is as precise as a 10% one, judged on its complement.
+    assert build_insights.precision_floor(0.9) == build_insights.precision_floor(0.1)
+    assert build_insights.precision_floor(0.0) == float("inf")
+
+
+def _summary(rows):
+    """A player_summary with every rate at 50% over 10,000, bar the overrides in ``rows``."""
+    base = {r: 0.5 for r, _ in build_insights.RATES}
+    base.update({d: 10_000 for _, d in build_insights.RATES})
+    return pd.DataFrame([{**base, "points_charted": 10_000, **r} for r in rows])
+
+
+def test_each_tour_reads_its_floor_off_its_own_typical_rate():
+    """A 2% rate needs far more than a 50% one, so a tour where it is rare withholds a
+    sample the other prints."""
+    est = [{"gender": g, "player": f"{g}{i}", "net_err_pct": v}
+           for g, v in (("M", 0.02), ("W", 0.5)) for i in range(3)]
+    thin = [{"gender": g, "player": f"thin {g}", "net_err_pct": 0.1, "net_shots": 200,
+             "points_charted": 500} for g in ("M", "W")]
+    df, meta = build_insights._apply_floors(_summary(est + thin))
+    s = df.set_index("player")
+    assert pd.isna(s.loc["thin M", "net_err_pct"])            # 200 < 753
+    assert s.loc["thin W", "net_err_pct"] == pytest.approx(0.1)  # 200 >= 97
+    keys = {r["key"]: r["value"] for r in meta}
+    assert (keys["floor_net_err_pct_M"], keys["floor_net_err_pct_W"]) == (753, 97)
+
+
+def test_thin_players_do_not_set_the_floor():
+    """The typical rate is read off established players only; a tour of one-match readings
+    would drag it wherever their noise went."""
+    est = [{"gender": "M", "player": f"e{i}", "ret_winner_rate": 0.5} for i in range(3)]
+    thin = [{"gender": "M", "player": f"t{i}", "ret_winner_rate": 0.01,
+             "points_charted": 100} for i in range(10)]
+    _, meta = build_insights._apply_floors(_summary(est + thin))
+    assert {r["key"]: r["value"] for r in meta}["floor_ret_winner_rate_M"] == 97
+
+
+def test_the_serve_plot_prints_whole_or_not_at_all():
+    """A plot missing one rate draws a column that reads as a rate of zero, so a player short
+    on second serves loses all four, and the note quotes the second-serve floor."""
+    est = [{"gender": "M", "player": f"e{i}"} for i in range(3)]
+    short = {"gender": "M", "player": "Short", "second_pts": 50, "points_charted": 500}
+    df, meta = build_insights._apply_floors(_summary(est + [short]))
+    s = df.set_index("player").loc["Short"]
+    assert all(pd.isna(s[c]) for c in build_insights.SERVE_PLOT)
+    assert s.ace_rate == pytest.approx(0.5)      # on service points, which it clears
+    assert {r["key"]: r["value"] for r in meta}["floor_serve_plot_M"] == 97
