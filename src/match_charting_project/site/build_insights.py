@@ -95,11 +95,47 @@ def _charted_matches(con) -> pd.DataFrame:
     return df[["gender", "year", "tourn_key", "p1_norm", "p2_norm", "match_id", "charted_by"]]
 
 
-# The service points an ace rate needs, since nothing is shrunk; 200 is about two matches.
-# The pooled rate counts points from ``stats_overview`` and the split (``_serve_aces``) counts
-# parsed points (~3% don't decode), so a player near the floor can clear one and not the
-# other (Marcelo Arevalo: 215 vs 174).
-MIN_ACE_PTS = 200
+# The sample each career figure needs before it prints, in that figure's own unit. A figure
+# below its floor ships null. Shipped in ``meta`` as ``floor_<key>`` so the panel's notes quote
+# the floors rather than repeat them.
+#
+# Each is the smallest sample at which the figure's split-half reliability reaches 0.5 in both
+# tours and stays there: a player's matches are dealt at random into two halves of about that
+# size, and the two half-rates are correlated across players (averaged over 20 deals). 0.5 is
+# the usual stabilization point in sports analytics: half the spread between players is real.
+# Splitting by match keeps opponent, surface and charter in the noise. The largest sizes rest
+# on the most-charted players, whose narrower spread reads as lower reliability, so the high
+# floors are conservative. The halves are whole matches, so no floor is smaller than one
+# match's worth. The reliability at each floor (men / women) and the median player's charted
+# points to reach it are in the comments.
+FLOORS = {
+    "hold_rate": 100,        # service games           0.50 / 0.55   ~1,300 pts
+    "break_rate": 250,       # return games            0.67 / 0.56   ~3,200 pts
+    "first_in_pct": 250,     # service points          0.50 / 0.58     ~490 pts
+    "second_in_pct": 125,    # second-serve points     0.50 / 0.57     ~640 pts
+    "first_won_pct": 200,    # first serves in         0.53 / 0.51     ~640 pts
+    "second_won_pct": 800,   # second-serve points     0.56 / 0.55   ~4,100 pts
+    "ace_rate": 150,         # service points          0.59 / 0.51     ~300 pts
+    "first_ace_pct": 80,     # first serves in         0.55 / 0.51     ~260 pts
+    "second_ace_pct": 600,   # second-serve points     0.81 / 0.52   ~3,100 pts
+    "ret_winner_rate": 400,  # return points           0.51 / 0.56     ~810 pts
+    "won_rally_len": 200,    # points won              0.59 / 0.53     ~410 pts
+    "gs_share": 1500,        # groundstrokes           0.72 / 0.53     ~860 pts
+    "fh_winner_pct": 500,    # forehand groundstrokes  0.51 / 0.69     ~530 pts
+    "fh_err_pct": 400,       #                         0.57 / 0.54     ~420 pts
+    "bh_winner_pct": 800,    # backhand groundstrokes  0.52 / 0.72     ~930 pts
+    "bh_err_pct": 500,       #                         0.54 / 0.56     ~580 pts
+    "slice_pct": 250,        # rally strokes           one match (0.54 / 0.72)
+    "net_pct": 250,          #                         one match (0.75 / 0.54)
+    "net_winner_pct": 125,   # net shots               0.70 / 0.53   ~1,600 pts
+    # The women's curve ends at 200 net shots (0.49, too few players past it); 400 is the
+    # men's floor, and Spearman-Brown puts the women above 0.6 there.
+    "net_err_pct": 400,      #                         0.54 / —      ~5,100 pts
+    "bits": 300,             # strokes                 one match (0.59 / 0.64)
+    # Not a figure: the tour bands under the figures are cut over players with at least this
+    # many charted points (the style floor), so one-match readings don't widen them.
+    "band_points": 2000,
+}
 
 
 def _player_facts(con) -> pd.DataFrame:
@@ -112,7 +148,8 @@ def _player_facts(con) -> pd.DataFrame:
     First serves in are over every point served, second serves in over the points where the
     first missed. The won rates use the same denominators, so second-serve points won counts
     double faults as losses. No double-fault rate ships: it equals
-    ``(1 - second_in_pct) * (1 - first_in_pct)``. All are floored at ``MIN_ACE_PTS``.
+    ``(1 - second_in_pct) * (1 - first_in_pct)``. Each rate has its own floor in ``FLOORS``,
+    on its own denominator.
     """
     hands = con.execute(
         "WITH seen AS ("
@@ -126,34 +163,29 @@ def _player_facts(con) -> pd.DataFrame:
         # rank(), so a tie ranks both hands 1 and the HAVING drops the player (null hand).
         "SELECT gender, player, min(hand) AS hand FROM voted WHERE rk = 1 "
         "GROUP BY gender, player HAVING count(*) = 1").fetchall()
-    serves = con.execute(
-        "SELECT gender, player,"
-        "       sum(CAST(aces AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE)"
-        "         AS ace_rate,"
-        "       sum(CAST(first_in AS INT)) / CAST(sum(CAST(serve_pts AS INT)) AS DOUBLE)"
-        "         AS first_in_pct,"
-        "       (sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)) - sum(CAST(dfs AS INT)))"
-        "         / CAST(NULLIF(sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)), 0)"
-        "                AS DOUBLE) AS second_in_pct,"
-        "       sum(CAST(first_won AS INT))"
-        "         / CAST(NULLIF(sum(CAST(first_in AS INT)), 0) AS DOUBLE) AS first_won_pct,"
-        "       sum(CAST(second_won AS INT))"
-        "         / CAST(NULLIF(sum(CAST(serve_pts AS INT)) - sum(CAST(first_in AS INT)), 0)"
-        "                AS DOUBLE) AS second_won_pct "
-        "FROM stats_overview WHERE set = 'Total' "
-        f"GROUP BY gender, player HAVING sum(CAST(serve_pts AS INT)) >= {MIN_ACE_PTS}"
-    ).fetchall()
+    tot = pd.DataFrame(con.execute(
+        "SELECT gender, player, sum(CAST(serve_pts AS INT)), sum(CAST(aces AS INT)),"
+        "       sum(CAST(first_in AS INT)), sum(CAST(dfs AS INT)),"
+        "       sum(CAST(first_won AS INT)), sum(CAST(second_won AS INT)) "
+        "FROM stats_overview WHERE set = 'Total' GROUP BY gender, player").fetchall(),
+        columns=["gender", "player", "sp", "aces", "fi", "dfs", "fw", "sw"])
+    second = tot.sp - tot.fi
+
+    def rate(key, num, den):
+        return (num / den).where(den >= FLOORS[key])
+
+    serves = pd.DataFrame({
+        "gender": tot.gender, "player": tot.player,
+        "ace_rate": rate("ace_rate", tot.aces, tot.sp),
+        "first_in_pct": rate("first_in_pct", tot.fi, tot.sp),
+        "second_in_pct": rate("second_in_pct", second - tot.dfs, second),
+        "first_won_pct": rate("first_won_pct", tot.fw, tot.fi),
+        "second_won_pct": rate("second_won_pct", tot.sw, second),
+    })
+    serves = serves[serves.drop(columns=["gender", "player"]).notna().any(axis=1)]
     facts = pd.DataFrame(hands, columns=["gender", "player", "hand"])
-    return facts.merge(
-        pd.DataFrame(serves, columns=["gender", "player", "ace_rate",
-                                      "first_in_pct", "second_in_pct",
-                                      "first_won_pct", "second_won_pct"]),
-        on=["gender", "player"], how="outer")
+    return facts.merge(serves, on=["gender", "player"], how="outer")
 
-
-# Games needed behind a hold or break rate, about four matches of serving. At the panel's
-# 2,000-point gate it excludes nobody.
-MIN_GAMES = 100
 
 # Every game in the corpus, with who served it and who won it. The winner is the winner of
 # the last point, which agrees with the score-progression reading on 262,191 of 262,193 games
@@ -188,10 +220,10 @@ def _game_rates(con) -> pd.DataFrame:
     the men's tour wins 64% of service points and holds 80% of service games.
     """
     hold = pd.DataFrame(
-        con.execute(_GAMES_SQL.format(mine=1, test="=", floor=MIN_GAMES)).fetchall(),
+        con.execute(_GAMES_SQL.format(mine=1, test="=", floor=FLOORS["hold_rate"])).fetchall(),
         columns=["gender", "player", "serve_games", "holds"])
     brk = pd.DataFrame(
-        con.execute(_GAMES_SQL.format(mine=2, test="<>", floor=MIN_GAMES)).fetchall(),
+        con.execute(_GAMES_SQL.format(mine=2, test="<>", floor=FLOORS["break_rate"])).fetchall(),
         columns=["gender", "player", "return_games", "breaks"])
     hold["hold_rate"] = (hold.holds / hold.serve_games).round(4)
     brk["break_rate"] = (brk.breaks / brk.return_games).round(4)
@@ -199,10 +231,6 @@ def _game_rates(con) -> pd.DataFrame:
         brk[["gender", "player", "break_rate", "return_games"]],
         on=["gender", "player"], how="outer")
 
-
-# Return points needed behind a return-winner rate. At about 1.2%, 1,000 points is a dozen
-# winners. Excludes 5 of the 363 players who get a ring.
-MIN_RETURN_PTS = 1000
 
 # Points won on the return itself: the point ended on the second shot, the returner took it,
 # and it was a winner. (A forced error on the second shot is the returner's own.)
@@ -237,27 +265,12 @@ SELECT gender, player, avg(rally_len) AS won_rally_len
 FROM w GROUP BY gender, player HAVING count(*) >= {floor}
 """
 
-# Won points needed: with a rally-length SD of ~3.3, 1,000 points gives a standard error of
-# 0.10, the figure's printed precision.
-MIN_WON_PTS = 1000
-
 
 def _won_point_len(con) -> pd.DataFrame:
     """Mean strokes in the points each ``(gender, player)`` won, across their charted matches."""
-    rows = con.execute(_WON_LEN_SQL.format(floor=MIN_WON_PTS)).fetchall()
+    rows = con.execute(_WON_LEN_SQL.format(floor=FLOORS["won_rally_len"])).fetchall()
     return pd.DataFrame(rows, columns=["gender", "player", "won_rally_len"])
 
-
-# Strokes needed for a shot-mix rate, the same 800 variety uses. At the 2,000-point ring gate
-# it excludes nobody. A floor on nonsense, not a claim of precision.
-MIN_MIX_SHOTS = 800
-
-# The net rates' own floor, since the median player hits only 28 net shots in their charted
-# record. At 200, a ~10% error rate has about twenty misses behind it. These are the least
-# steady figures on the panel (split-half 0.80 for winners, 0.52 for errors), but the two are
-# uncorrelated, so both print. Clearing it also opens the net share for a player under
-# MIN_MIX_SHOTS (Chris Lewis: 559 strokes, 214 at the net).
-MIN_STROKE_SHOTS = 200
 
 _MIX_SQL = (
     "SELECT m.gender, m.player1, m.player2, p.svr, p.first_serve, p.second_serve, p.pt_winner "
@@ -288,33 +301,25 @@ def _shot_mix(con) -> pd.DataFrame:
                       columns=["gender", "player", *MIX_FIELDS])
     gs = df.fh_gs + df.bh_gs
 
-    def rate(num, den, floor, also=None):
-        """A share, null under the floor. ``also`` lets a share through when its group has
-        cleared a floor of its own."""
-        keep = den >= floor if also is None else (den >= floor) | also
-        return (df[num] / den).where(keep).round(4)
-
-    # The net floor as a mask: the net outcome rates use it, and the net share takes it as
-    # `also`.
-    net_ok = df.net_shots >= MIN_STROKE_SHOTS
+    def rate(key, num, den):
+        """A share, null under its floor in ``FLOORS``."""
+        return (df[num] / den).where(den >= FLOORS[key]).round(4)
 
     out = pd.DataFrame({"gender": df.gender, "player": df.player})
-    # Wing shares and outcome rates, grouped the way the panel draws them.
-    out["fh_share"] = rate("fh_gs", gs, MIN_MIX_SHOTS)
-    out["fh_winner_pct"] = rate("fh_winners", df.fh_gs, MIN_MIX_SHOTS)
-    out["fh_err_pct"] = rate("fh_errs", df.fh_gs, MIN_MIX_SHOTS)
-    out["bh_share"] = rate("bh_gs", gs, MIN_MIX_SHOTS)
-    out["bh_winner_pct"] = rate("bh_winners", df.bh_gs, MIN_MIX_SHOTS)
-    out["bh_err_pct"] = rate("bh_errs", df.bh_gs, MIN_MIX_SHOTS)
-    # The slice ships as a share only (0.90 split-half). Its winner rate is too rare to
-    # measure, and its error rate is noisy (0.52 split-half) and mostly repeats the wing error
-    # rates (r ≈ 0.44).
-    out["slice_pct"] = rate("slice_shots", df.rally_shots, MIN_MIX_SHOTS)
-    # The net share also clears on the net floor, so it's never missing beside the two net
-    # rates.
-    out["net_pct"] = rate("net_shots", df.rally_shots, MIN_MIX_SHOTS, net_ok)
-    out["net_winner_pct"] = rate("net_winners", df.net_shots, MIN_STROKE_SHOTS)
-    out["net_err_pct"] = rate("net_errs", df.net_shots, MIN_STROKE_SHOTS)
+    # Wing shares and outcome rates, grouped the way the panel draws them. The two shares
+    # share one floor; each wing's rates have their own.
+    out["fh_share"] = rate("gs_share", "fh_gs", gs)
+    out["fh_winner_pct"] = rate("fh_winner_pct", "fh_winners", df.fh_gs)
+    out["fh_err_pct"] = rate("fh_err_pct", "fh_errs", df.fh_gs)
+    out["bh_share"] = rate("gs_share", "bh_gs", gs)
+    out["bh_winner_pct"] = rate("bh_winner_pct", "bh_winners", df.bh_gs)
+    out["bh_err_pct"] = rate("bh_err_pct", "bh_errs", df.bh_gs)
+    # The slice ships as a share only. Its winner rate is too rare to measure, and its error
+    # rate is noisy (0.52 split-half) and mostly repeats the wing error rates (r ≈ 0.44).
+    out["slice_pct"] = rate("slice_pct", "slice_shots", df.rally_shots)
+    out["net_pct"] = rate("net_pct", "net_shots", df.rally_shots)
+    out["net_winner_pct"] = rate("net_winner_pct", "net_winners", df.net_shots)
+    out["net_err_pct"] = rate("net_err_pct", "net_errs", df.net_shots)
     return out[["gender", "player", *MIX_RATES]]
 
 
@@ -326,7 +331,7 @@ def _return_winners(con) -> pd.DataFrame:
     the women's held near 2.5%, which fits serve-and-volley leaving the men's game. Not
     adjusted for era.
     """
-    rows = con.execute(_RETURN_WINNER_SQL.format(floor=MIN_RETURN_PTS)).fetchall()
+    rows = con.execute(_RETURN_WINNER_SQL.format(floor=FLOORS["ret_winner_rate"])).fetchall()
     df = pd.DataFrame(rows, columns=["gender", "player", "ret_winner_rate"])
     df["ret_winner_rate"] = df.ret_winner_rate.round(4)
     return df
@@ -360,16 +365,21 @@ SELECT gender, player,
          AS first_ace_pct,
        sum(CASE WHEN second AND outcome = 'ace' THEN 1 ELSE 0 END)
          / CAST(NULLIF(sum(CASE WHEN second THEN 1 ELSE 0 END), 0) AS DOUBLE)
-         AS second_ace_pct
-FROM s GROUP BY gender, player HAVING count(*) >= {floor}
+         AS second_ace_pct,
+       sum(CASE WHEN NOT second THEN 1 ELSE 0 END) AS first_n,
+       sum(CASE WHEN second THEN 1 ELSE 0 END) AS second_n
+FROM s GROUP BY gender, player
 """
 
-# No floor of its own: the pooled MIN_ACE_PTS, counted over parsed points.
+
 def _serve_aces(con) -> pd.DataFrame:
     """First- and second-serve ace rates per ``(gender, player)`` — see ``_SERVE_ACE_SQL``."""
-    rows = con.execute(_SERVE_ACE_SQL.format(floor=MIN_ACE_PTS)).fetchall()
-    df = pd.DataFrame(rows, columns=["gender", "player", "first_ace_pct", "second_ace_pct"])
-    return df.round({"first_ace_pct": 4, "second_ace_pct": 4})
+    rows = con.execute(_SERVE_ACE_SQL).fetchall()
+    df = pd.DataFrame(rows, columns=["gender", "player", "first_ace_pct", "second_ace_pct",
+                                     "first_n", "second_n"])
+    df["first_ace_pct"] = df.first_ace_pct.where(df.first_n >= FLOORS["first_ace_pct"])
+    df["second_ace_pct"] = df.second_ace_pct.where(df.second_n >= FLOORS["second_ace_pct"])
+    return df[["gender", "player", "first_ace_pct", "second_ace_pct"]].round(4)
 
 
 def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
@@ -513,7 +523,9 @@ def build() -> int:
     # Won point length, read straight off the point corpus by base name (see _WON_LEN_SQL).
     summary = summary.merge(won_len, on=["player", "gender"], how="left")
 
-    lang = pd.read_csv(REPORTS / "shot_language_players.csv")[["player", "gender", "bits"]]
+    # Variety ships for every player shot_language scored, floored here like the rest.
+    lang = pd.read_csv(REPORTS / "shot_language_players.csv")
+    lang = lang[lang.strokes >= FLOORS["bits"]][["player", "gender", "bits"]]
     summary = summary.merge(lang, on=["player", "gender"], how="left")
 
     # Court-state response profiles: rally family from court_response, return family from
@@ -575,6 +587,7 @@ def build() -> int:
         summary = summary.merge(bp, on=["player", "gender"], how="left")
 
     meta = pd.DataFrame([{"key": f"mu_{g}", "value": round(v, 5)} for g, v in mu.items()]
+                        + [{"key": f"floor_{k}", "value": float(v)} for k, v in FLOORS.items()]
                         + serve_meta)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

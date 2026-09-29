@@ -65,6 +65,21 @@ export async function query(sql, params = []) {
 // gate is applied in the build as `reliable`, and the one figure the panel took from here,
 // the recency window, is now per player on player_serve rather than the tour's largest.
 
+// The sample each career figure needs before it prints, as `floor_<key>` rows in `meta`
+// (build_insights.FLOORS). The build has already applied
+// them, so a figure under its floor arrives null; the panel reads them only to say what a
+// missing figure is waiting for. Empty on an older build, and every note then goes unsaid.
+let _floors = null;
+export function panelFloors() {
+  if (!_floors) {
+    _floors = query("SELECT key, value FROM meta WHERE key LIKE 'floor_%'")
+      .then((rows) => Object.fromEntries(rows.map((r) => [r.key.slice(6), Number(r.value)])))
+      // Not cached on failure, for the same reason initDB drops a failed attempt.
+      .catch(() => { _floors = null; return {}; });
+  }
+  return _floors;
+}
+
 // Where the charted tour sits on each figure the profile band prints (won point length,
 // variety, the four shot-mix rates, return-winner rate), since none has a scale a reader
 // already knows.
@@ -97,8 +112,12 @@ async function loadSpread() {
       `count(${c}) AS c${i}_n,
        quantile_cont(${c}, 0.25) AS c${i}_lo, quantile_cont(${c}, 0.75) AS c${i}_hi,
        quantile_cont(${c}, 0.05) AS c${i}_min, quantile_cont(${c}, 0.95) AS c${i}_max`);
+    // Cut over established players only: a thin player's figure prints above its own floor,
+    // but a tour of one-match readings would spread the band with noise.
+    const min = (await panelFloors()).band_points || 0;
     const rows = await query(
-      `SELECT gender, ${sel.join(", ")} FROM player_summary GROUP BY gender`);
+      `SELECT gender, ${sel.join(", ")} FROM player_summary
+       WHERE points_charted >= ? GROUP BY gender`, [min]);
     for (const r of rows) {
       if (!out[r.gender]) continue;
       // A band needs a population behind it to be worth quoting. Below that the metric still

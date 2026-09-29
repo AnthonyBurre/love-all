@@ -43,8 +43,9 @@ MIN_SHOTS = 800     # players below this aren't ranked for unpredictability
 MIN_PAIR = 25       # min occurrences for a signature pattern
 
 
-def load(con, gender, hands):
-    """Yield (ParsedPoint, {1: name, 2: name}, lefties) over a repeatable sample.
+def load(con, gender, hands, sample: bool = True):
+    """Yield (ParsedPoint, {1: name, 2: name}, lefties) over a repeatable sample, or over
+    every point with ``sample=False``.
 
     ``lefties`` is the set of hitter numbers whose zones need mirroring, resolved per
     point because it depends on which two players are in it.
@@ -53,7 +54,7 @@ def load(con, gender, hands):
         "SELECT m.player1, m.player2, p.svr, p.first_serve, p.second_serve, p.pt_winner "
         "FROM points p JOIN matches m USING (match_id) "
         "WHERE p.svr IN (1,2) AND p.pt_winner IN (1,2) AND m.gender = ? "
-        f"USING SAMPLE reservoir({SAMPLE} ROWS) REPEATABLE (1)"
+        + (f"USING SAMPLE reservoir({SAMPLE} ROWS) REPEATABLE (1)" if sample else "")
     )
     for p1, p2, svr, fs, ss, win in con.execute(sql, [gender]).fetchall():
         pt = parse_point(fs, ss, svr, win)
@@ -70,21 +71,23 @@ def analyze(con, gender):
     # crosscourt forehand is one word whichever hand plays it.
     hands = hand_map(con)
 
-    # Pass 1 — fit the field language model and the point eval on the same sample.
+    # Pass 1 — the field language model over every charted point, and the point eval on the
+    # sample. The model scores the same points it was fit on, so every player's figure is
+    # in-sample alike: fit on a sample, the points it happened to draw would read as less
+    # surprising than the rest, by a margin that differs between the two tours.
     lm, ev = NGramModel(), WinProbModel()
-    for pt, _, lefties in load(con, gender, hands):
+    for pt, _names, lefties in load(con, gender, hands, sample=False):
         lm.add_point(point_tokens(pt, lefties))
+    for pt, _, _lefties in load(con, gender, hands):
         ev.add_point(pt)
 
-    # Pass 2 — measure per-player surprise, signatures, and surprise vs WPA.
+    # Pass 2 — per-player surprise and signatures over every charted point.
     psum, pcnt = Counter(), Counter()
     sig = defaultdict(Counter)       # name -> Counter((incoming, response))
     sigctx = defaultdict(Counter)    # name -> Counter(incoming)
-    surp, wpa = [], []               # non-terminal shots only
-    for pt, names, lefties in load(con, gender, hands):
+    for pt, names, lefties in load(con, gender, hands, sample=False):
         toks = point_tokens(pt, lefties)
         surps = lm.point_surprises(toks)
-        deltas = ev.shot_wpa(pt)
         for i, sh in enumerate(pt.shots):
             name = names[sh.hitter]
             psum[name] += surps[i]
@@ -92,13 +95,20 @@ def analyze(con, gender):
             inc = toks[i - 1] if i > 0 else START
             sig[name][(inc, toks[i])] += 1
             sigctx[name][inc] += 1
+
+    # Pass 3 — surprise against win probability added, on the sample the eval was fit on.
+    surp, wpa = [], []               # non-terminal shots only
+    for pt, _names, lefties in load(con, gender, hands):
+        surps = lm.point_surprises(point_tokens(pt, lefties))
+        deltas = ev.shot_wpa(pt)
+        for i, sh in enumerate(pt.shots):
             if not sh.terminal:
                 surp.append(surps[i])
                 wpa.append(deltas[i]["wpa"])
 
     players = {n: psum[n] / pcnt[n] for n in pcnt if pcnt[n] >= MIN_SHOTS}
     ppl = 2 ** (sum(psum.values()) / max(sum(pcnt.values()), 1))   # per-shot perplexity
-    return dict(lm=lm, players=players, sig=sig, sigctx=sigctx, ppl=ppl,
+    return dict(lm=lm, players=players, sig=sig, sigctx=sigctx, ppl=ppl, psum=psum, pcnt=pcnt,
                 surp=np.array(surp), wpa=np.array(wpa), n_players=len(players))
 
 
@@ -175,18 +185,20 @@ def main():
     fig_unpredictability(results, FIG / "shot_language_predictability.png")
     fig_surprise_wpa(results, FIG / "shot_language_surprise_wpa.png")
 
-    # Per-player data export (for the site's insights db).
+    # Per-player data export (for the site's insights db): every player, with the strokes
+    # behind their figure, since the site sets its own floor (build_insights.FLOORS).
     import csv
     with open(PROJECT_ROOT / "reports" / "shot_language_players.csv", "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["player", "gender", "bits", "signatures"])
+        w.writerow(["player", "gender", "bits", "strokes", "signatures"])
         for g in ("M", "W"):
             r = results[g]
-            for name, bits in r["players"].items():
+            for name, n in r["pcnt"].items():
+                bits = r["psum"][name] / n
                 sigs = signatures(r, name, top=3)
                 sig_str = "; ".join(f"{pretty(inc)}→{pretty(resp)} ({lift:.1f}x)"
                                     for lift, inc, resp, _c in sigs)
-                w.writerow([name, g, round(bits, 3), sig_str])
+                w.writerow([name, g, round(bits, 3), n, sig_str])
 
     md = ["# Shot-sequence language model", ""]
     md.append("*Generated by `experiments/shot_language/run.py`. Each point is a sentence in a "

@@ -1,6 +1,6 @@
 // The matchup drawer: a card per player, and on a charted match the experimental win
 // probability through it, all queried from insights.duckdb via DuckDB-WASM.
-import { query, tourSpread } from "./db.js";
+import { panelFloors, query, tourSpread } from "./db.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong, localStart } from "./schedule.js";
 import { flagEmoji } from "./flags.js";
@@ -11,6 +11,22 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
 const CHART_GUIDE =
   "https://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/";
 const last = (name) => String(name || "").split(" ").slice(-1)[0];
+// A draw side's surname. The feed's short form ("A. Davidovich Fokina") knows where the
+// surname starts. Archived draws predate it, so the fallback is the last word with any
+// particles before it ("de Minaur", "van de Zandschulp"); a double surname without a
+// particle ("Llamas Ruiz") still comes out as its last word.
+const PARTICLES = new Set(["da", "das", "de", "del", "della", "der", "di", "do", "dos", "du",
+  "la", "le", "st", "van", "von"]);
+function surname(side) {
+  const m = String((side && side.short) || "").trim().match(/^\S+\.\s+(.+)$/);
+  if (m) return m[1];
+  const parts = String((side && side.name) || "").trim().split(/\s+/);
+  let i = parts.length - 1;
+  while (i > 1 && PARTICLES.has(parts[i - 1].toLowerCase())) i--;
+  return parts.slice(i).join(" ");
+}
+// The sample each career figure needs (db.panelFloors), set once the panel's data loads.
+let FLOOR = {};
 // One decimal, except "100%" at the top and a bare "0" (no sign) at the bottom, judged after
 // rounding.
 const pct = (x) => {
@@ -451,11 +467,6 @@ function trigSets(d) {
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const num = (v) => (v == null ? null : Number(v));
 
-// Career hold and break rates print only above 2,000 charted points (the same floor as the win
-// probability's confidence bands). No shrinkage: the thin players it would help are excluded.
-const RATE_MIN_PTS = 2000;
-const wellCharted = (d) => !!d && (Number(d.s.points_charted) || 0) >= RATE_MIN_PTS;
-
 function tapeRows() {
   return [
     {
@@ -662,17 +673,14 @@ function wpChart(det, a, b) {
       </svg>
       ${/* An HTML marker placed in percent, since an SVG circle would stretch with the box. */""}
       <span class="wpdot"></span>
-      <span class="wpcap top">${esc(shortName(b.name))}</span>
-      <span class="wpcap bot">${esc(shortName(a.name))}</span>
+      <span class="wpcap top">${esc(surname(b))}</span>
+      <span class="wpcap bot">${esc(surname(a))}</span>
     </div>
     <div class="wpaxis">${setLabels}</div>
     <p class="wpread"><span class="wprl">before a ball was struck</span>
-      <b>${pre}%</b> <span class="wprn">${esc(shortName(b.name))}</span></p>
+      <b>${pre}%</b> <span class="wprn">${esc(surname(b))}</span></p>
   </div>`;
 }
-
-// Surname only; the full names are in the header.
-const shortName = (name) => last(name || "") || String(name || "");
 
 // The crosshair and readout. Pointer events, so a touch drag scrubs the curve on a phone.
 function wireWpChart(root) {
@@ -905,49 +913,71 @@ const FIGS = [
 //
 // The second-serve column is serves that landed, so its rate is over those; the rate over every
 // second-serve point is printed separately. Ace cores are clamped to their fill.
+//
+// A career plot draws what its rates support, since each has its own floor. First serves in
+// and first-serve points won draw the plot (without a fill it is an empty grid); second serves
+// in split the remainder into its two columns, and second-serve points won fills its column.
+// A missing second-serve won rate leaves that column unfilled (r null), and a missing
+// second-serve-in rate leaves the remainder as one undivided column (`split` false).
 function serveSplit(s) {
   if (!s) return null;
-  const band = (h, r, a, hn, hd, rn, rd, an) => ({ h, r, a: Math.min(a || 0, r), hn, hd, rn, rd, an });
+  // `aKnown` tells a core withheld under its floor from a player who served no aces, so the
+  // comparison doesn't bold the other side for it.
+  const band = (h, r, a, hn, hd, rn, rd, an) => ({
+    h, r, a: r == null || a == null ? 0 : Math.min(a, r), aKnown: r != null && a != null,
+    hn, hd, rn, rd, an,
+  });
   const n = num(s.serve_pts);
   // A charted match: the tallies themselves, and the plot is a count of what happened.
   if (n && s.first_in != null && s.first_won != null && s.second_won != null) {
     const fi = Number(s.first_in), fw = Number(s.first_won);
     const df = Number(s.dfs), si = Number(s.second_pts) - df, sw = Number(s.second_won);
     // Older sidecars lack the ace split; the cores then go undrawn.
-    const a1 = num(s.aces_first) || 0, a2 = num(s.aces_second) || 0;
+    const a1 = num(s.aces_first), a2 = num(s.aces_second);
     if (fi < 0 || si < 0 || fw > fi || sw > si) return null;
     return {
       n, counts: true,
-      bands: [band(fi / n, fi ? fw / fi : 0, fi ? a1 / fi : 0, fi, n, fw, fi, a1),
-      band(si / n, si ? sw / si : 0, si ? a2 / si : 0, si, n, sw, si, a2),
+      bands: [band(fi / n, fi ? fw / fi : 0, a1 == null ? null : fi ? a1 / fi : 0, fi, n, fw, fi, a1),
+      band(si / n, si ? sw / si : 0, a2 == null ? null : si ? a2 / si : 0, si, n, sw, si, a2),
       band(df / n, 0, 0, df, n, 0, df, 0)],
       // The scoreboard's second-serve-in rate, printed beside the band.
       second_in: si + df ? si / (si + df) : null,
+      split: true,
+      // Exact on a match: the cores are the aces.
+      aceTot: a1 || a2 ? ((a1 || 0) + (a2 || 0)) / n : null,
     };
   }
   // A career: the same three bands from the four shipped rates. The second band's win rate is
   // divided back out, since the shipped rate is over every point that reached a second serve.
   const fi = num(s.first_in_pct), fwp = num(s.first_won_pct);
   const si = num(s.second_in_pct), swp = num(s.second_won_pct);
-  if ([fi, fwp, si, swp].some((x) => x == null)) return null;
-  // Ace shares are divided back out the same way (build_insights._SERVE_ACE_SQL). Null on older
-  // builds.
+  if (fi == null || fwp == null) return null;
+  // Ace shares are divided back out the same way (build_insights._SERVE_ACE_SQL).
   const fap = num(s.first_ace_pct), sap = num(s.second_ace_pct);
   const second = 1 - fi;
+  const first = band(fi, fwp, fap);
+  // The pooled ace rate is shipped on its own floor, so the total prints even where a core
+  // is withheld.
+  const aceTot = num(s.ace_rate);
+  if (si == null) {
+    return { n: null, counts: false, split: false, second_in: null, aceTot,
+      bands: [first, band(second, null, 0), band(0, null, 0)] };
+  }
   return {
-    n: null, counts: false,
-    bands: [band(fi, fwp, fap),
-    band(second * si, si ? Math.min(1, swp / si) : 0,
+    n: null, counts: false, split: true, second_in: si, aceTot,
+    bands: [first,
+    band(second * si, swp == null ? null : si ? Math.min(1, swp / si) : 0,
       si && sap != null ? Math.min(1, sap / si) : 0),
     band(second * (1 - si), 0, 0)],
-    second_in: si,
   };
 }
 
 // Column order, out from the midline.
 const SVBAND = ["first", "second", "df"];
-// What each column is, for the tooltip that carries its counts.
+// What each column is, for the tooltip that carries its counts. The second column reads as
+// every missed first serve when the plot can't split it.
 const SVSAY = ["1st serves in", "2nd serves in", "double faults"];
+const svSay = (sp, i) => (i === 1 && !sp.split ? "first serves missed" : SVSAY[i]);
 // Width reserved for the gaps between all three columns, drawn or not, so both players share
 // one scale.
 const SV_GAPS = 4;
@@ -972,10 +1002,6 @@ function svGeom(sp) {
 // The word for the double-faults column, long form and the short one a narrow block swaps in.
 const DF_KEY = '<span class="svlong">double</span><span class="svabbr">dbl</span> faults';
 
-// The pooled ace rate: the two cores added back together.
-const acePooled = (sp) =>
-  sp.bands[0].h * sp.bands[0].a + sp.bands[1].h * sp.bands[1].a;
-
 function serveBar(sp, tag, cmp) {
   if (!sp) return `<div class="svcol ${tag} empty"></div>`;
   if (!sp.bands.some((x) => x.h)) return `<div class="svcol ${tag} empty"></div>`;
@@ -987,19 +1013,20 @@ function serveBar(sp, tag, cmp) {
       ? `, ${x.an} of those aces` : `, ${pct(x.a)} of them aces`;
     const say = (sp.counts
       ? `${x.hn} of ${x.hd} service points — ${SVSAY[i]}, ${x.rn} of ${x.rd} won`
-      : `${pct(x.h)} of service points — ${SVSAY[i]}, ${pct(x.r)} won`) + aces;
+      : `${pct(x.h)} of service points — ${svSay(sp, i)}`
+        + (x.r == null ? "" : `, ${pct(x.r)} won`)) + aces;
     // The win rate sits at the top of its fill, or above it when the fill is too short. When
     // the ace figure tucks in as a third line (see svAce), the stack always goes above.
     const ace = svAce(x, i, tag, cmp);
-    const won = i < 2
+    const won = i < 2 && x.r != null
       ? `<b class="svwin${x.r < SV_FIG_H || ace.tucked ? " over" : ""}${sup(cmp, `w${i}`, tag)}">${pct(x.r)}<em>won</em>${ace.tucked}</b>` : "";
     return `<span class="svseg ${SVBAND[i]}"
-      style="--w:calc((100% - ${SV_GAPS}px) * ${x.h.toFixed(5)});--f:${(x.r * 100).toFixed(2)}%;--ace:${(x.a * 100).toFixed(2)}%"
+      style="--w:calc((100% - ${SV_GAPS}px) * ${x.h.toFixed(5)});--f:${((x.r || 0) * 100).toFixed(2)}%;--ace:${(x.a * 100).toFixed(2)}%"
       title="${esc(say)}"><i class="svfill"></i>${ace.core}${won}${ace.fig}</span>`;
   }).join("");
   // The double-fault figure runs along the outer column; --dfm is its midpoint.
   const df = sp.bands[2];
-  const dfLab = `<b class="svdf${sup(cmp, "df", tag)}" style="--dfm:${at(df.h / 2, 0)}"
+  const dfLab = !sp.split ? "" : `<b class="svdf${sup(cmp, "df", tag)}" style="--dfm:${at(df.h / 2, 0)}"
     >${pct(df.h)}<em>${DF_KEY}</em></b>`;
   // The pooled ace figure hangs below the plot at --acm, the midpoint of the two core centres,
   // with curved tines up to each core. --acsp and --acout set the tines so they clear the in-rate
@@ -1020,9 +1047,9 @@ function serveBar(sp, tag, cmp) {
     : { in: "M12 12C12 7 0 5 0 0", out: "M0 12C0 7 12 5 12 0" };
   const tines = (sp.bands[0].a ? tine("in", path.in) : "")
     + (sp.bands[1].a ? tine("out", path.out) : "");
-  const aceLab = (sp.bands[0].a || sp.bands[1].a)
+  const aceLab = sp.aceTot != null
     ? `<div class="svacetot${sup(cmp, "atot", tag)}" style="--acm:${acm};--acsp:${acsp}${acout}">
-        ${tines}<b>${pct(acePooled(sp))}<em><span class="svlong">total </span>ace rate</em></b></div>`
+        ${tines}<b>${pct(sp.aceTot)}<em><span class="svlong">total </span>ace rate</em></b></div>`
     : "";
   return `<div class="svcol ${tag}">
     <div class="svplot">${cols}</div>
@@ -1058,12 +1085,12 @@ const SVDIM = [
 const SVCMP = [
   ["w0", (x) => x.bands[0].h && x.bands[0].r, false],
   ["w1", (x) => x.bands[1].h && x.bands[1].r, false],
-  ["a0", (x) => x.bands[0].h && x.bands[0].a, false],
-  ["a1", (x) => x.bands[1].h && x.bands[1].a, false],
-  ["atot", (x) => (x.bands[0].a || x.bands[1].a) && acePooled(x), false],
+  ["a0", (x) => (x.bands[0].aKnown ? x.bands[0].h && x.bands[0].a : null), false],
+  ["a1", (x) => (x.bands[1].aKnown ? x.bands[1].h && x.bands[1].a : null), false],
+  ["atot", (x) => x.aceTot, false],
   ["h0", (x) => x.bands[0].h, false],
   ["h1", (x) => x.second_in, false],
-  ["df", (x) => x.bands[2].h, true],
+  ["df", (x) => (x.split ? x.bands[2].h : null), true],
 ];
 
 function serveCmp(sa, sb) {
@@ -1095,17 +1122,30 @@ function serveLabels(sp, tag, cmp) {
   return `<div class="svlabels ${tag}"><div class="svdimlabs">${dims}</div></div>`;
 }
 
+// Who among the charted players has no drawing, as a note naming the floor they are short of.
+// Career readings only: a match draws from its own counts. Players with no charting at all are
+// named by the coverage band instead.
+function shortNote(pairs, what, floor, unit) {
+  const names = pairs.filter(([d, drawn]) => d && !drawn).map(([, , side]) => surname(side));
+  return names.length && floor
+    ? `<p class="tapenote">The ${what} needs ${floor.toLocaleString()} charted ${unit};
+       ${shortOf(names)}.</p>` : "";
+}
+
 // The whole serve block. No names or legend: colour and side already say who is who.
-function serveAnatomy(da, db, ma, mb) {
+function serveAnatomy(da, db, ma, mb, sides) {
   const sa = serveSplit(ma || (da && da.s)), sb = serveSplit(mb || (db && db.s));
   if (!sa && !sb) return "";
+  const note = ma || mb || !sides ? ""
+    : shortNote([[da, sa, sides[0]], [db, sb, sides[1]]], "serve plot", FLOOR.first_won_pct,
+      "first serves in");
   const cmp = serveCmp(sa, sb);
   // Room under the plots for the pooled-ace figure (.svpair.aces).
-  const aces = [sa, sb].some((s) => s && (s.bands[0].a || s.bands[1].a)) ? " aces" : "";
+  const aces = [sa, sb].some((s) => s && s.aceTot != null) ? " aces" : "";
   return `<div class="svblock">
     <div class="svpair${aces}">
       ${serveLabels(sa, "a", cmp)}${serveBar(sa, "a", cmp)}${serveBar(sb, "b", cmp)}${serveLabels(sb, "b", cmp)}
-    </div>
+    </div>${note}
   </div>`;
 }
 
@@ -1191,24 +1231,27 @@ const GS_CAP = 0.2;
 // 75px and the figure needs about 16).
 const GS_FIG_OVER = 0.78;
 
-// One player's plot, from career rates or the match's own. Null without the two shares.
+// One player's plot, from career rates or the match's own. The forehand/backhand split needs
+// more groundstrokes than the wing rates do, so a career without it draws two equal wings and
+// prints no shares (`shared` false). Null when there is no rate to draw.
 function gsSplit(s, md) {
   const read = (k) => {
     const mv = md ? num(md[k]) : null;
     return mv != null ? mv : num(s && s[k]);
   };
   const fhs = read("fh_share"), bhs = read("bh_share");
-  if (fhs == null || bhs == null) return null;
+  const shared = fhs != null && bhs != null;
   const wing = (w, name, share) => ({
-    w, name, share,
+    w, name, share: shared ? share : 0.5,
     err: read(`${w}_err_pct`), win: read(`${w}_winner_pct`),
     n: md ? num(md[`${w}_gs`]) : null,
   });
   const fh = wing("fh", "FH", fhs), bh = wing("bh", "BH", bhs);
+  if (![fh, bh].some((x) => x.err != null || x.win != null)) return null;
   // Left to right as the player's own hands are.
   return {
     wings: (s && s.hand) === "L" ? [fh, bh] : [bh, fh],
-    hand: (s && s.hand) || "R", match: !!md,
+    hand: (s && s.hand) || "R", match: !!md, shared,
   };
 }
 
@@ -1250,22 +1293,27 @@ function gsBar(g, tag, cmp) {
   return `<div class="gscol ${tag}">
     <div class="gsplot">${g.wings.map((x) => gsWing(x, cmp, tag)).join("")}
       <i class="gsmid"></i></div>
-    <p class="gslabs">${g.wings.map((x) => `<span style="--w:${(x.share * 100).toFixed(3)}%"><b>${pct(x.share)}</b><em>${x.name}</em>${
+    <p class="gslabs">${g.wings.map((x) => `<span style="--w:${(x.share * 100).toFixed(3)}%">${
+    g.shared ? `<b>${pct(x.share)}</b>` : ""}<em>${x.name}</em>${
     // On a match, the stroke count under each wing.
     x.n == null ? "" : `<i>${esc(`${x.n} shots`)}</i>`}</span>`).join("")}</p>
   </div>`;
 }
 
 // The groundstroke block, laid out like the serve block.
-function groundAnatomy(da, db, ma, mb) {
+function groundAnatomy(da, db, ma, mb, sides) {
   const ga = gsSplit(da && da.s, ma), gb = gsSplit(db && db.s, mb);
   if (!ga && !gb) return "";
+  // The forehand error rate has the lowest floor of the four, so it is the square's.
+  const note = ma || mb || !sides ? ""
+    : shortNote([[da, ga, sides[0]], [db, gb, sides[1]]], "groundstroke square",
+      FLOOR.fh_err_pct, "forehands");
   const cmp = gsCmp(ga, gb);
   // The halves are labelled along the midline.
   return `<div class="gsblock">
     <div class="gspair">${gsBar(ga, "a", cmp)}${gsBar(gb, "b", cmp)}
       <i class="gsaxis" aria-hidden="true"><b class="w">winners</b><b class="e">unforced errors</b></i>
-    </div>
+    </div>${note}
   </div>`;
 }
 
@@ -1396,7 +1444,11 @@ function figureKey(sa, sb, spread, match) {
   const MIX_KEYS = ["slice_pct", "net_pct", "net_winner_pct", "net_err_pct"];
   const hasMix = MIX_KEYS.some(has);
   // The groundstroke square has no key; its shares gate the error-rate entry.
-  const hasGround = [sa, sb].some((s) => s && num(s.fh_share) != null);
+  const GS_RATES = ["fh_winner_pct", "fh_err_pct", "bh_winner_pct", "bh_err_pct"];
+  const hasGround = [sa, sb].some((s) => s && GS_RATES.some((k) => num(s[k]) != null));
+  // A square drawn at equal widths, because the forehand/backhand split isn't settled.
+  const evenGround = !match && [sa, sb].some((s) => s && num(s.fh_share) == null
+    && GS_RATES.some((k) => num(s[k]) != null));
   // Tour bands for the figures shown with a strip (career readings only).
   const bands = [["bits", sp.bits, "Variety", (v) => v.toFixed(1) + " bits"],
   ["won_rally_len", match ? null : sp.won_rally_len, "Won point length",
@@ -1429,17 +1481,23 @@ function figureKey(sa, sb, spread, match) {
       overhead, half-volley or swinging volley; its winner and error rates are out of those
       net shots, not out of every stroke.</div>`,
     !hasMix && !hasGround ? "" : `<div>Every <b>error rate</b> here counts <b>unforced</b>
-      errors only.${match ? "" : ` A career rate needs 800 strokes of its kind, or 200 net shots
-      for the three net figures — nobody has hit 800 volleys.`}</div>`,
+      errors only.${evenGround ? ` A groundstroke square with equal halves and no shares
+      under it has too few groundstrokes yet to settle how they split between the wings.` : ""}</div>`,
     !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from tour
       norms. A model built on the whole tour predicts each next shot from the two before it, and
       variety is how surprised that model is by this player, in bits: a shot it gave even odds
       scores 1 bit. It counts uncommon shot types and uncommon order alike, so slicers and
-      serve-volleyers score high. A player needs 800 charted strokes to get one.${match ? ` It stays a career figure on a charted match: one match moves it by 0.18 bits
+      serve-volleyers score high.${match ? ` It stays a career figure on a charted match: one match moves it by 0.18 bits
       against a tour whose middle half spans 0.26, mostly noise.` : ""}</div>`,
+    // Why a figure is missing, for career readings: each waits for its own sample.
+    match ? "" : `<div>A career figure prints once a player has enough charting for two halves
+      of their matches to agree on it (a split-half correlation of 0.5). That takes one match
+      for the slice and net shares and variety, and thousands of points for the rarest
+      events, such as net errors. A dash means that player hasn't reached it yet.</div>`,
     // The strip entry closes the key, after the figures it is drawn under.
     !bands.length ? "" : `<div>The <b>strip</b> under a figure is where that player sits on the
-      charted tour: the shaded part is the middle half of it, and the ends are the 5th and 95th
+      charted tour${FLOOR.band_points ? ` of players with ${FLOOR.band_points.toLocaleString()} or
+      more charted points` : ""}: the shaded part is the middle half of it, and the ends are the 5th and 95th
       percentiles. ${bands.join(" ")} A player past either end is drawn at it and marked.</div>`,
     !match ? "" : `<div><b>Win probability</b> starts from what the two players' charted
       records had done before this match — their serve and return rates, combined into a
@@ -1454,14 +1512,35 @@ function figureKey(sa, sb, spread, match) {
   </details>`;
 }
 
+// "X has fewer" or "X and Y have fewer", or "" when nobody is short.
+function shortOf(names) {
+  if (!names.length) return "";
+  return `${esc(names.join(" and "))} ${names.length > 1 ? "have" : "has"} fewer`;
+}
+
+// Why a half of the ring is empty or has no tick: the floor it is waiting for, and who is
+// under it. Players with no charting at all are named by the coverage band instead.
+function ringNote(da, db, sides) {
+  const who = [[da, sides[0]], [db, sides[1]]].filter(([d]) => d);
+  const noHold = who.filter(([d]) => num(d.s.hold_rate) == null).map(([, s]) => surname(s));
+  const noBreak = who.filter(([d]) => num(d.s.hold_rate) != null && num(d.s.break_rate) == null)
+    .map(([, s]) => surname(s));
+  const line = (names, what, floor, unit) => names.length && floor
+    ? `A ${what} needs ${floor.toLocaleString()} charted ${unit}; ${shortOf(names)}.` : "";
+  const text = [line(noHold, "hold rate", FLOOR.hold_rate, "service games"),
+    line(noBreak, "break rate", FLOOR.break_rate, "return games")].filter(Boolean).join(" ");
+  return text ? `<p class="tapenote">${text}</p>` : "";
+}
+
 // "Basic stats": the games-won ring between the two players' style columns (see .tapemain).
 // No heading of its own; it follows on from the coverage band.
-function tape(da, db, spread, det) {
-  // The ring only takes sides above the coverage floor, unless the match itself fills it (see
-  // matchSide). An empty half gets a note saying why.
+function tape(da, db, spread, det, sides) {
+  // The ring draws each player's career rates, which the build withholds under their floors,
+  // or the match's own counts on a charted match (see matchSide). A missing arc or tick gets a
+  // note saying why.
   const ma = matchSide(det, 0), mb = matchSide(det, 1);
-  const sa = ma || (wellCharted(da) ? da.s : null);
-  const sb = mb || (wellCharted(db) ? db.s : null);
+  const sa = ma || (da ? da.s : null);
+  const sb = mb || (db ? db.s : null);
   const cells = sa || sb ? tapeRows().map((r) => donut(r, sa, sb)).join("") : "";
   // Extracted once and shared by both layouts.
   const pA = profileParts(da, ma, spread) || EMPTY_PARTS;
@@ -1471,12 +1550,7 @@ function tape(da, db, spread, det) {
   if (!cells && !sideA && !sideB) return "";
   const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
   // Name the thin player, so an empty half reads as "not enough charting".
-  const thin = det ? [] : [[da, sa], [db, sb]]
-    .filter(([d, s]) => d && !s).map(([d]) => last(d.s.player));
-  const thinNote = thin.length
-    ? `<p class="tapenote">Hold and break rates need ${RATE_MIN_PTS.toLocaleString()}
-       charted points to print; ${esc(thin.join(" and "))}
-       ${thin.length > 1 ? "are" : "is"} below that.</p>` : "";
+  const thinNote = det ? "" : ringNote(da, db, sides);
   return `<section class="tape">
     <div class="tapemain" style="--pbrows:${plan.length}">${sideA}${rings}${sideB}${profileCompare(pA, pB, plan)}</div>
     ${thinNote}
@@ -1496,7 +1570,7 @@ const countCards = (html) =>
 function section(title, note, a, b, aHtml, bHtml, kind = "cards", full = "") {
   if (!aHtml && !bHtml && !full) return "";
   const col = (html, side, tag) => `<div class="seccol" data-side="${tag}">
-    <p class="colwho"><span class="tdot ${tag}"></span>${esc(last(side.name) || "TBD")}</p>
+    <p class="colwho"><span class="tdot ${tag}"></span>${esc(surname(side) || "TBD")}</p>
     ${html || `<p class="colnone">nothing at this player's coverage</p>`}</div>`;
   // Row count, so the CSS can run both columns on one set of tracks.
   const rows = 1 + Math.max(countCards(aHtml), countCards(bHtml));
@@ -1649,11 +1723,13 @@ function scoreStack(a, b) {
   return `<div class="mscore">${cells}</div>`;
 }
 
-// Full name and a first-initial form; fitHeader() measures and picks one.
-function nameHtml(name) {
+// Full name and a first-initial form; fitHeader() measures and picks one. The feed's own
+// short form is preferred, since it knows which given names to drop.
+function nameHtml(side) {
+  const name = side.name;
   const full = esc(name || "TBD");
   const parts = String(name || "").trim().split(/\s+/);
-  const abbr = parts.length > 1
+  const abbr = side.short ? esc(side.short) : parts.length > 1
     ? esc(`${parts[0][0].toUpperCase()}. ${parts.slice(1).join(" ")}`) : full;
   return `<span class="mname"><span class="mfull">${full}</span>` +
     `<span class="mabbr">${abbr}</span></span>`;
@@ -1688,7 +1764,7 @@ function headHtml(m, t, round) {
     const seed = s.seed ? `<span class="mseed">${esc(String(s.seed))}</span>` : "";
     const cls = "mp " + tag + (s.winner ? " win" : decided ? " lose" : "");
     // The winner's caret points into their name from the score side.
-    return `<div class="${cls}">${flag}${nameHtml(s.name)}${seed}
+    return `<div class="${cls}">${flag}${nameHtml(s)}${seed}
       ${s.winner ? `<span class="mwin"></span>` : ""}</div>`;
   };
   // Older archived draws carry no per-match date and nothing else to say, so the when
@@ -1760,7 +1836,7 @@ function matchBodyHtml(m, pa, pb, spread, det) {
     head = wp || cov;
   }
   return head +
-    tape(pa, pb, spread, det) +
+    tape(pa, pb, spread, det, [a, b]) +
     section("serve outcome", `every service point on two axes — how often each delivery
       landed, and what it won`, a, b,
       "", "", "text", serveAnatomy(pa, pb, ma, mb)) +
@@ -1813,9 +1889,9 @@ function bodyHtml(m, pa, pb, spread, det) {
     ? `<p class="nochart">Neither player has Match Charting history yet.
        <a href="${CHART_GUIDE}" target="_blank" rel="noopener">Chart a match →</a></p>` : "";
   return (pa || pb ? CHARTED_TITLE + profileBand(pa, pb) : "") +
-    tape(pa, pb, spread) +
+    tape(pa, pb, spread, null, [a, b]) +
     section("serve outcome", `percent in and percent won by first and second serve`, a, b,
-      "", "", "text", serveAnatomy(pa, pb)) +
+      "", "", "text", serveAnatomy(pa, pb, null, null, [a, b])) +
     section("serve direction", `where the first serve goes`, a, b,
       serveHtml(pa), serveHtml(pb), "text") +
     none +
@@ -1823,7 +1899,7 @@ function bodyHtml(m, pa, pb, spread, det) {
       familyCards(pa, "ret", 2), familyCards(pb, "ret", 2), "cards") +
     section("the groundstrokes", `winners and unforced errors per wing, each sized by its
       share of that player's groundstrokes`, a, b,
-      "", "", "text", groundAnatomy(pa, pb)) +
+      "", "", "text", groundAnatomy(pa, pb, null, null, [a, b])) +
     section("court patterns", `what they do with an incoming ball, × how often the tour
       of their own era plays it from the same
       spot${COURT_LEGEND}${PAYOFF_LEGEND}`, a, b,
@@ -2049,6 +2125,7 @@ export async function openMatchup(m, t) {
     // side order belongs to the draw slot that opened it.
     det = orientDetail(det, m.chart_flip);
     spread = (await tourSpread())[t.gender] || {};
+    FLOOR = await panelFloors();
   } catch (e) {
     console.warn("insights db unavailable:", e);
     if (mine !== openSeq) return;

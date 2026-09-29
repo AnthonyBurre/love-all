@@ -57,6 +57,9 @@ class Side:
     # mid-set). Parallel to `sets`. The site bolds a set score only where this is True,
     # so a suspended match's live set doesn't read as won by whoever's ahead in it.
     set_wins: list = field(default_factory=list)
+    # The feed's own short form ("A. Davidovich Fokina"), which knows where the surname
+    # starts; splitting the full name on spaces does not. Empty when the feed has none.
+    short: str = ""
 
 
 @dataclass
@@ -206,7 +209,8 @@ def _side(comp: dict) -> Side:
     return Side(name=ath.get("displayName") or "", country=flag.get("alt"),
                 winner=bool(comp.get("winner")),
                 sets=[ls.get("value") for ls in lines],
-                set_wins=[ls.get("winner") for ls in lines])
+                set_wins=[ls.get("winner") for ls in lines],
+                short=ath.get("shortName") or "")
 
 
 def parse(raw: dict, cal: "dict | None" = None, fetched_at: str = "") -> "list[Tournament]":
