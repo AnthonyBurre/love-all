@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from difflib import get_close_matches
 
 from match_charting_project.live.espn import Side
-from match_charting_project.live.players import normalize
+from match_charting_project.live.players import name_keys, normalize
 
 BYE = "Bye"
 
@@ -85,6 +85,10 @@ def _round_day(matches: list) -> str:
 def _lookup(norm: str, table: dict, cutoff: float = 0.85):
     if norm in table:
         return table[norm]
+    keys = name_keys(norm)
+    same = next((n for n in table if keys & name_keys(n)), None)
+    if same:
+        return table[same]
     close = get_close_matches(norm, list(table), n=1, cutoff=cutoff)
     return table[close[0]] if close else None
 

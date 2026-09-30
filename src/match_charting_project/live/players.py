@@ -22,6 +22,20 @@ def normalize(name: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def name_keys(name: str) -> "set[str]":
+    """Spellings of one name that count as the same player, spaces removed.
+
+    Chinese names in particular arrive surname-first from one source and surname-last from
+    another, with the given name split or not ("Lin Yujun", "Yu Jun Lin"). The keys are the
+    normalized tokens as written plus the order with the surname moved to either end, so
+    two spellings are the same player when their keys overlap.
+    """
+    t = normalize(name).split()
+    if not t:
+        return set()
+    return {"".join(v) for v in (t, t[-1:] + t[:-1], t[1:] + t[:1])}
+
+
 # Tournament name -> stable key, so the charted DB (dirty names like 'Wimbledon ') and the
 # ESPN feed ('Wimbledon', 'French Open') agree. Both build paths must key through this.
 # The Canadian Open alternates cities by tour and year, and the db carries all three

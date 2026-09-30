@@ -139,6 +139,14 @@ def test_feed_agreement_accepts_the_right_sheet_and_rejects_a_wrong_one():
                                              ("Bea Beta", "Dana Delta")])) == 0.0
 
 
+def test_feed_agreement_reads_names_in_either_order():
+    # Chinese names come surname-first from one source and surname-last from the other.
+    sheet = [{"slot": 1, "a": "Lin Yujun", "b": "Storm Hunter"},
+             {"slot": 2, "a": "Eva Lys", "b": "Sun Xinran"}]
+    assert wiki.feed_agreement(sheet, _tour([("Yu Jun Lin", "Storm Hunter"),
+                                             ("Eva Lys", "Xinran Sun")])) == 1.0
+
+
 def test_feed_agreement_is_zero_without_anything_to_compare():
     assert wiki.feed_agreement([], _tour([("A One", "B Two")])) == 0.0
     assert wiki.feed_agreement([{"slot": 1, "a": "A One", "b": "B Two"}], _tour([])) == 0.0
