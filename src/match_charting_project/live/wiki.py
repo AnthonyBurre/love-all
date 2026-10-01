@@ -159,15 +159,19 @@ def _split_params(body: str) -> "list[str]":
 
 
 def _params(block: str) -> dict:
-    """``{'RD1-TEAM01': '…'}`` for one bracket template's parameters."""
+    """``{'RD1-TEAM01': '…'}`` for one bracket template's parameters.
+
+    Pages number positions either way (``RD1-team01`` or ``RD1-team1``); keys come back
+    zero-padded to two digits whichever the page used.
+    """
     out = {}
     for part in _split_params(block):
         key, sep, val = part.partition("=")
         if not sep:
             continue
-        k = key.strip().upper()
-        if re.fullmatch(r"RD\d+-(?:TEAM|SEED)\d+", k):
-            out[k] = val
+        k = re.fullmatch(r"(RD\d+-(?:TEAM|SEED))(\d+)", key.strip().upper())
+        if k:
+            out[f"{k.group(1)}{int(k.group(2)):02d}"] = val
     return out
 
 
@@ -378,7 +382,15 @@ def feed_agreement(slots: "list[dict]", tournament) -> float:
     holds ~84% of a 500's entrants). Pairings are the test: the right draw scores 1.0, a
     wrong or stale one near zero.
     """
-    from match_charting_project.live.players import normalize
+    from match_charting_project.live.players import name_keys, normalize
+
+    # Feed names are read as the sheet's spelling where the two differ only in name order
+    # ("Xinran Sun" / "Sun Xinran"), so a correct sheet isn't marked down for it.
+    spelled = {k: normalize(n) for s in slots for n in (s.get("a"), s.get("b")) if n
+               for k in name_keys(n)}
+
+    def sheet_name(n: str) -> str:
+        return next((spelled[k] for k in name_keys(n) if k in spelled), normalize(n))
 
     pairs = {frozenset((normalize(s["a"]), normalize(s["b"])))
              for s in slots if s.get("a") and s.get("b")}
@@ -386,7 +398,7 @@ def feed_agreement(slots: "list[dict]", tournament) -> float:
         return 0.0
 
     first = min(m.round_rank for m in tournament.matches)
-    live = [frozenset((normalize(m.a.name), normalize(m.b.name)))
+    live = [frozenset((sheet_name(m.a.name), sheet_name(m.b.name)))
             for m in tournament.matches if m.round_rank == first
             and all(sd.name and sd.name != "TBD" for sd in (m.a, m.b))]
     if not live:
