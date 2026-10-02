@@ -144,9 +144,8 @@ function matchSide(det, i) {
     break_rate: o && o.sv_games ? (o.sv_games - o.held) / o.sv_games : null,
     first_in_pct: rate(s.first_in, s.serve_pts),
     second_in_pct: rate(s.second_pts - s.dfs, s.second_pts),
-    // Second-serve points won is over every point that reached a second serve, double faults
-    // included.
     first_won_pct: rate(s.first_won, s.first_in),
+    // Over every point that reached a second serve, double faults included.
     second_won_pct: rate(s.second_won, s.second_pts),
     len_won: s.len_won == null ? null : Number(s.len_won),
     dirs: s.dirs, dirs2: s.dirs2,
@@ -187,9 +186,6 @@ function shotMix(s) {
     net_err_pct: rate(s.net_errs, s.net_shots),
   };
 }
-
-// No shot-quality verdict prints here: class_rel_z still ships but mostly measures rally
-// length. See experiments/class_relative_wpa.
 
 // A collapsed mini-court under a pattern: tap to see where the lead-up shots landed,
 // drawn on the fly from the notation (client twin of viz.rally_svg). Empty when the
@@ -234,7 +230,6 @@ function trigLine(t, hand, base) {
     ? `converts only <b>${conv}%</b>
        <span class="lift">${Math.round(t.conv_delta * 100)}pp vs their other cues</span>`
     : `converts <b>${conv}%</b>`;
-  const against = "their norm";
   // Both denominators print: frequency is over n, conversion over attempts (about a third of n).
   const att = num(t.attempts);
   const counts = att == null ? `n=${Number(t.n)}`
@@ -242,7 +237,7 @@ function trigLine(t, hand, base) {
   return `<div class="trig ${cls}">
     <p class="tcue">after <code>${esc(t.context)}</code></p>
     <p class="tnum">aggressive <b>${Math.round(t.att_rate * 100)}%</b>
-      <span class="lift">${Number(t.att_lift).toFixed(1)}× ${against}</span> ·
+      <span class="lift">${Number(t.att_lift).toFixed(1)}× their norm</span> ·
       ${payoff} <span class="lift">${counts}</span></p>
     ${trigMeter(t, base)}
     ${rallyDrawer(t.context, hand === "L")}</div>`;
@@ -253,7 +248,7 @@ function trigLine(t, hand, base) {
 function serveHtml(d) {
   const rows = (d && d.serve) || [];
   if (!rows.length) return "";
-  // Whole percents, to match serveMatchHtml. Named apart from `pct` to avoid shadowing it.
+  // Whole percents, to match serveMatchHtml.
   const wholePct = (v) => `${Math.round(Number(v) * 100)}%`;
   const order = { deuce: 0, ad: 1 };
   const sorted = [...rows].sort((a, b) => order[a.side] - order[b.side]);
@@ -292,8 +287,7 @@ function serveHtml(d) {
   if (d.s && Number(d.s.serve_bp_sig) === 1 && delta != null && Math.abs(delta) >= BP_MIN) {
     const pts = Math.round(Math.abs(delta) * 100);
     // Whole-career window, unlike the rest of this section, so the line says so.
-    bp = `<p class="srvbp" title="a shift this size clears the experiment's significance
-      test and is large enough to play against; most players show nothing here">on break
+    bp = `<p class="srvbp" title="a shift this size is statistically significant">on break
       points, <b>${pts} points</b> ${delta > 0 ? "wider" : "less wide"} than their own norm
       <span class="srvbpwin">across their whole charted career</span></p>`;
   }
@@ -476,15 +470,11 @@ function realGap(pa, na, pb, nb) {
   return se ? Math.abs(pa - pb) > 1.96 * se : pa !== pb;
 }
 
-function tapeRows() {
-  return [
-    {
-      k: "hold_rate", n: "serve_games", label: "service games held", short: ["games", "won"],
-      hi: 1, top: "100", better: "hi", fmt: pct, unit: "serve",
-      mark: { k: "break_rate", n: "return_games", label: "return" },
-    },
-  ];
-}
+const RING = {
+  k: "hold_rate", n: "serve_games", label: "service games held", short: ["games", "won"],
+  hi: 1, top: "100", better: "hi", fmt: pct, unit: "serve",
+  mark: { k: "break_rate", n: "return_games", label: "return" },
+};
 
 // Ring geometry, in the 100×100 field every donut is drawn in.
 const DN_R = 36, DN_W = 10, DN_C = 50;
@@ -542,8 +532,8 @@ function dnLabel(x, y, side, cls, html) {
 }
 
 // Minimum vertical gap between the two figures, in viewBox units at the smallest ring. Only
-// bites for players who break about as often as they hold (2 of 363); the pair then moves
-// apart around its midpoint.
+// bites for the rare player who breaks about as often as they hold; the pair then moves apart
+// around its midpoint.
 const DN_SEP = 10.5;
 
 function dnSpread(a, b) {
@@ -601,14 +591,13 @@ function donut(r, sa, sb) {
   // The ring's short name, inside the hole.
   const title = r.short
     ? `<p class="dnttl">${r.short.map(esc).join("<br>")}</p>` : "";
-  // The scale ends, inside the hole.
+  // The scale ends, inside the hole. A side gets a tick only where it has an arc.
   return dnCell(`<div class="dnring">
       <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img"
         aria-label="${esc(aria)}">
         <circle class="dtrack" cx="${DN_C}" cy="${DN_C}" r="${DN_R}"/>
         ${va == null ? "" : dnArc(at(va), "a")}${vb == null ? "" : dnArc(at(vb), "b")}
         ${dnOrigin()}${dnEnds()}
-        ${/* a tick only where that side has an arc */""}
         ${va == null || markOf(sa) == null ? "" : dnTick(dnAt(at(markOf(sa)), "a"))}
         ${vb == null || markOf(sb) == null ? "" : dnTick(dnAt(at(markOf(sb)), "b"))}
       </svg>
@@ -664,6 +653,7 @@ function wpChart(det, a, b) {
   const winner = won === 1 ? a : b;
   // Quoted for B, the player the chart climbs toward.
   const pre = Math.round((1 - Number(w.pre)) * 100);
+  // The dot is an HTML marker placed in percent, since an SVG circle would stretch with the box.
   return `<div class="wp" data-n="${n}">
     <div class="wpplot">
       <svg viewBox="0 0 ${WP_W} ${WP_H}" preserveAspectRatio="none" role="img"
@@ -682,13 +672,12 @@ function wpChart(det, a, b) {
           vector-effect="non-scaling-stroke"/>
         <line class="wpcross" x1="0" y1="0" x2="0" y2="${WP_H}" vector-effect="non-scaling-stroke"/>
       </svg>
-      ${/* An HTML marker placed in percent, since an SVG circle would stretch with the box. */""}
       <span class="wpdot"></span>
       <span class="wpcap top">${esc(surname(b))}</span>
       <span class="wpcap bot">${esc(surname(a))}</span>
     </div>
     <div class="wpaxis">${setLabels}</div>
-    <p class="wpread"><span class="wprl">before a ball was struck</span>
+    <p class="wpread"><span class="wprl">pre-match</span>
       <b>${pre}%</b> <span class="wprn">${esc(surname(b))}</span></p>
   </div>`;
 }
@@ -864,7 +853,6 @@ function coverPlain(d, tag) {
 
 function profileBand(da, db) {
   if (!da && !db) return "";
-  // One scale for both players.
   const sc = yearScale(da && da.years, db && db.years);
   const head = sc ? coverSum(da, "a") + coverSum(db, "b")
     : coverPlain(da, "a") + coverPlain(db, "b");
@@ -908,8 +896,6 @@ const FIGS = [
     k: "ret_winner_rate", label: "return winners", unit: "", band: "ret_winner_rate",
     fmt: pct, better: "hi", cn: "ret_pts",
   },
-  // No "shot selection" (sigma) figure: it mostly tracks rally length and a serve-volley
-  // artifact. The triggers section covers the same question.
 ];
 
 // --- the serve, as a two-axis plot -------------------------------------------------------
@@ -1063,7 +1049,7 @@ function serveBar(sp, tag, cmp) {
 }
 
 // The ace core inside a fill, and its figure. The figure goes inside the core if it fits, else
-// just above it, else as a third line in the win figure (8 of 819 careers).
+// just above it, else (rarely) as a third line in the win figure.
 function svAce(x, i, tag, cmp) {
   const none = { core: "", fig: "", tucked: "" };
   if (i > 1 || !x.a) return none;
@@ -1477,17 +1463,16 @@ function figureKey(sa, sb, spread, match) {
 
   const defs = [
     // Style leads, and explains "Between styles", which about a third of players get.
-    !hasStyle ? "" : `<div><b>Style</b> groups players by twelve measured metrics of their
+    !hasStyle ? "" : `<div><b>Style</b> groups players by twelve metrics of their
       charted play, each group named for its centre.
       <b>"Between styles"</b> means the two nearest groups fit this player about equally well.</div>`,
     !has("won_rally_len") && !match ? "" : `<div><b>Average won point length</b> counts the serve
       and the shot that ends the point, over the points that player won.</div>`,
-    !match ? "" : `<div>Every rate on this panel is <b>this match only</b> — the rings, the
-      serve plot, the break points and the placement — except where a line says
-      "career". Those carry no minimum-sample gate, because they are not estimates of how
-      these players usually play: they are counts of what happened over the match's own
-      points.</div>`,
-    !hasOutright ? "" : `<div><b>Return winners</b> are clean winners on the return over every 
+    !match ? "" : `<div>Every rate on this panel is <b>this match only</b>, including the
+      ring, the serve plot, the break points and the placement, except where a line says
+      "career". These rates have no minimum sample, since they count what happened in this
+      match rather than estimate how the players usually play.</div>`,
+    !hasOutright ? "" : `<div><b>Return winners</b> are clean winners on the return over every
       point returned.</div>`,
     !hasMix ? "" : `<div><b>Slice share</b> and <b>net share</b> are out of every non-serve
       stroke that player hit, the return counted as one. A <b>net shot</b> is a volley,
@@ -1513,11 +1498,11 @@ function figureKey(sa, sb, spread, match) {
       charted tour${FLOOR.band_points ? ` of players with ${FLOOR.band_points.toLocaleString()} or
       more charted points` : ""}: the shaded part is the middle half of it, and the ends are the 5th and 95th
       percentiles. ${bands.join(" ")} A player past either end is drawn at it and marked.</div>`,
-    !match ? "" : `<div><b>Win probability</b> starts from what the two players' charted
-      records had done before this match — their serve and return rates, combined into a
-      point-win probability for each — and propagates it up the scoring tree, point to game
-      to set to match, after every point. It is not a live market price and knows nothing
-      about the day: it is what the scoreline was worth against those two records.</div>`,
+    !match ? "" : `<div><b>Win probability</b> starts from the two players' charted records
+      before this match. Their serve and return rates give each a chance of winning a point
+      on serve, and after every point that is carried through the rest of the game, set and
+      match. It reflects the score and those records only, not betting odds or anything
+      about how they played that day.</div>`,
   ].filter(Boolean);
   if (!defs.length) return "";
   return `<details class="notekey figkey">
@@ -1555,7 +1540,7 @@ function tape(da, db, spread, det, sides) {
   const ma = matchSide(det, 0), mb = matchSide(det, 1);
   const sa = ma || (da ? da.s : null);
   const sb = mb || (db ? db.s : null);
-  const cells = sa || sb ? tapeRows().map((r) => donut(r, sa, sb)).join("") : "";
+  const cells = sa || sb ? donut(RING, sa, sb) : "";
   // Extracted once and shared by both layouts.
   const pA = profileParts(da, ma, spread) || EMPTY_PARTS;
   const pB = profileParts(db, mb, spread) || EMPTY_PARTS;
@@ -1565,10 +1550,10 @@ function tape(da, db, spread, det, sides) {
   const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
   // Name the thin player, so an empty half reads as "not enough charting".
   const thinNote = det ? "" : ringNote(da, db, sides);
+  // The key gets the career rows merged in, so it sees style and variety on a match.
   return `<section class="tape">
     <div class="tapemain" style="--pbrows:${plan.length}">${sideA}${rings}${sideB}${profileCompare(pA, pB, plan)}</div>
     ${thinNote}
-    ${/* merged with the career rows so the key sees style and variety on a match */""}
     ${figureKey({ ...(da && da.s), ...sa }, { ...(db && db.s), ...sb }, spread, !!det)}
   </section>`;
 }
@@ -1585,7 +1570,7 @@ function section(title, note, a, b, aHtml, bHtml, kind = "cards", full = "") {
   if (!aHtml && !bHtml && !full) return "";
   const col = (html, side, tag) => `<div class="seccol" data-side="${tag}">
     <p class="colwho"><span class="tdot ${tag}"></span>${esc(surname(side) || "TBD")}</p>
-    ${html || `<p class="colnone">nothing at this player's coverage</p>`}</div>`;
+    ${html || `<p class="colnone">not enough charting yet</p>`}</div>`;
   // Row count, so the CSS can run both columns on one set of tracks.
   const rows = 1 + Math.max(countCards(aHtml), countCards(bHtml));
   // Only the full-width drawing and no columns: drop the placeholders.
@@ -1655,46 +1640,18 @@ function notationHelp() {
       <div><code>FH</code>/<code>BH</code> forehand / backhand ·
         <code>drive</code> flat or topspin · <code>slice</code> slice or chip ·
         <code>net shot</code> volley, overhead, half-volley or swinging volley ·
-        <code>drop shot</code> and <code>lob</code>, the shortest and deepest balls in
-        tennis, each its own · <code>shot</code> stroke type not charted</div>
+        <code>drop shot</code> · <code>lob</code> · <code>shot</code> stroke type not
+        charted</div>
       <div><code>→1/2/3</code> where it was hit, seen from the hitter: zone 1 is a
         right-hander's forehand side, 3 their backhand side (<code>→·</code> =
         direction not charted).</div>
-      <div>A response is named for the line it took — crosscourt, down the line,
-        inside-out — except a net shot, which is named for where it went. Those words
-        all describe where a player was standing, and a volley is cut off in the air
-        wherever they could reach it, so the corner the ball was headed for is not one
-        they ever stood in.</div>
-      <div>Every court drawing reads the same way: the tinted half is the profiled
-        player's side, a solid line in their colour is a ball they hit, and a dashed grey
-        one is the opponent's. Lines run contact to contact, so every kink is a player
-        meeting the ball, and the mark on the one the drawing turns on says what happened
-        there: a hollow ring is a bounce, with the answer leaving from a step behind it,
-        and a filled dot up near the net is a ball taken out of the air, no bounce under
-        it at all. On a court pattern that is the ball they answered, and the arrow is the
-        answer. On a trigger it is the ball they attacked — the shot they went for is what
-        the numbers beside it measure, and it isn't drawn, because the notation never says
-        where it went.</div>
-      <div>Court patterns name zones by the player's own hands (a lefty's FH corner
-        is a righty's BH corner), so "drive into the BH corner → crosscourt BH slice"
-        at <b>1.6×</b> means they answer that ball with the crosscourt slice 1.6× as
-        often as the tour does from the same spot. <b>wins 52% ▲6</b> is the payoff:
-        how often the point ends up theirs after that response, vs the tour playing
-        the same ball.</div>
-      <div>Triggers group a player's point-ending shots as one decision: an
-        <em>aggressive shot</em>, a stroke they went for the finish with. It counts
-        three ways — a winner, their own unforced error, or a shot that forced the
-        reply into an error. <code>A · B</code> is the cue: their shot A, then the
-        opponent's reply B. "Aggressive" is the <em>aggressive shot frequency</em>
-        that cue provokes — how often a stroke there is one — and "converts" is the
-        share that paid, winners and forced errors together. A cue that raises the
-        frequency but sinks conversion is a trap: they take the bait. The first bar
-        in each column is the same pair of numbers over every rally stroke the player
-        hits, with no cue at all: their baseline, and the tick every bar below it is
-        measured against.</div>
-      <div>A rally stroke there is anything from the third ball of the point on, so
-        serves and returns aren't in the denominator. An error the player was forced
-        into counts against whoever forced it, not against them.</div>
+      <div>A response is named for the line it took (crosscourt, down the line,
+        inside-out), except a net shot, which is named for where it went, since a volley
+        is taken wherever the player can reach it.</div>
+      <div>In every court drawing the tinted half is the profiled player's side, a solid
+        line in their colour is a ball they hit, and a dashed grey one is the opponent's.
+        Lines run contact to contact. On the key ball, a hollow ring marks a bounce and a
+        filled dot near the net marks a volley.</div>
     </div>
   </details>`;
 }
@@ -1851,10 +1808,10 @@ function matchBodyHtml(m, pa, pb, spread, det) {
   }
   return head +
     tape(pa, pb, spread, det, [a, b]) +
-    section("serve outcome", `every service point on two axes — how often each delivery
-      landed, and what it won`, a, b,
+    section("serve outcome", `how often each delivery landed, and how often it won the
+      point`, a, b,
       "", "", "text", serveAnatomy(pa, pb, ma, mb)) +
-    section("serve direction", `percent in and percent won by first and second serve`, a, b,
+    section("serve direction", `where first and second serves went`, a, b,
       serveMatchHtml(pa, ma), serveMatchHtml(pb, mb), "text") +
     section("the groundstrokes", `winners and unforced errors per wing, each sized by its
       share of that player's groundstrokes`, a, b,
@@ -1919,13 +1876,12 @@ function bodyHtml(m, pa, pb, spread, det) {
       spot${COURT_LEGEND}${PAYOFF_LEGEND}`, a, b,
       familyCards(pa, "rally", 3), familyCards(pb, "rally", 3), "cards") +
     section("shot-making triggers", `a lead-up that shifts their aggressive shot
-      frequency — the share of their rally strokes that count
-      as a winner, their own unforced error, or a ball that forces the
-      error${meterLegend("their rate with no cue")}`,
+      frequency, the share of their rally strokes that are winners, unforced errors, or
+      shots that force an error${meterLegend("their rate with no cue")}`,
       a, b, ta, tb, "text") +
-    section("opening cues by court", `the same question as above, asked separately of
-      each service court — a wide serve opens opposite wings on the two sides, so a
-      pooled cue averages two different serves${meterLegend("their norm for that shot and court")}`,
+    section("opening cues by court", `the same question as above, asked separately for
+      each service court, since a wide serve opens opposite wings on the two
+      sides${meterLegend("their norm for that shot and court")}`,
       a, b, openSets(pa), openSets(pb), "text") +
     (pa || pb ? COV_NOTE : "");
 }
@@ -2064,16 +2020,11 @@ function fitHeader() {
   const max = parseFloat(cs.getPropertyValue("--mgap-max")) || 0;
   const min = parseFloat(cs.getPropertyValue("--mgap-min")) || 0;
 
-  // the inter-set gap first — the cheapest give, and it never touches a name
   fitScoreGap(grid);
-  // full names, staggered — spend only the gap
   if (fitGap(grid, max, min, 1)) return;
-  // first name to an initial, and the gap offered again against the shorter names
   grid.classList.add("abbr");
   if (fitGap(grid, max, min, 1)) return;
-  // a second line, still staggered, and the gap spent again to hold the names to two
   if (fitGap(grid, max, min, 2)) return;
-  // still not enough: give the stagger up too, and spend the gap into what replaced it
   grid.classList.add("stacked");
   fitGap(grid, max, min, 1);
 }
