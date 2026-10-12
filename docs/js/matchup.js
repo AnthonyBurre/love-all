@@ -1887,9 +1887,11 @@ function bodyHtml(m, pa, pb, spread, det) {
 }
 
 // --- the panel as a dialog ----------------------------------------------------------
-// It claims aria-modal, so it has to behave like one: focus moves in, Tab stays in, the
-// draw behind stops scrolling, and closing hands focus back to the match tile you opened
-// from — otherwise a keyboard lands back at the top of the page each time.
+// On a phone it is a modal sheet, so it behaves like one: focus moves in, Tab stays in, the
+// draw behind stops scrolling. On a desktop it is a drawer beside the draw (see the CSS), with
+// no scrim and no trap, so another match can be opened from the draw while it is up. Either
+// way, closing hands focus back to the match tile you opened from — otherwise a keyboard
+// lands back at the top of the page each time.
 const FOCUSABLE = "a[href], button:not([disabled]), summary, [tabindex]:not([tabindex='-1'])";
 let opener = null;          // the element that opened the panel, to hand focus back to
 // The opener's match id, so focus can go back even after the draw re-renders.
@@ -1903,6 +1905,9 @@ let openSeq = 0;
 const DATA_DOWN = `<p class="nochart">Player charting data isn't loading right now — the
   draw and scores above are unaffected.</p>`;
 
+const DRAWER = matchMedia("(min-width: 701px)");
+const isDrawer = () => DRAWER.matches;
+
 function lockPage(on) {
   // <html> is the scroller. Padding replaces the hidden scrollbar so the page doesn't shift.
   const gap = window.innerWidth - document.documentElement.clientWidth;
@@ -1910,12 +1915,29 @@ function lockPage(on) {
   document.body.style.paddingRight = on && gap ? `${gap}px` : "";
 }
 
+// Sheet or drawer, by the viewport, re-run when it crosses over. The drawer takes room from
+// the page, which tells app.js to lay the draw out again (see its ResizeObserver).
+function setMode(open) {
+  const panel = document.getElementById("matchup");
+  const drawer = open && isDrawer();
+  panel.setAttribute("aria-modal", String(open && !drawer));
+  document.getElementById("scrim").hidden = !open || drawer;
+  lockPage(open && !drawer);
+  document.documentElement.classList.toggle("drawer-open", drawer);
+}
+
+// Mark the tile whose match is open. Exported for app.js, whose re-renders replace the tiles.
+export function markOpenTile() {
+  for (const el of document.querySelectorAll(".match[data-mid]")) {
+    el.classList.toggle("open", el.dataset.mid === openerId);
+  }
+}
+
 export function closeMatchup() {
   const panel = document.getElementById("matchup");
   if (panel.hidden) return;
   panel.hidden = true;
-  document.getElementById("scrim").hidden = true;
-  lockPage(false);
+  setMode(false);
   // Scanned, not selected, since match ids come from the feed.
   const back = opener && document.contains(opener)
     ? opener
@@ -1924,10 +1946,11 @@ export function closeMatchup() {
   if (back) back.focus();
   opener = null;
   openerId = null;
+  markOpenTile();
 }
 
 function onPanelKey(e) {
-  if (e.key !== "Tab") return;
+  if (e.key !== "Tab" || isDrawer()) return;
   const panel = document.getElementById("matchup");
   const items = [...panel.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent);
   if (!items.length) return e.preventDefault();
@@ -2052,16 +2075,21 @@ export async function openMatchup(m, t) {
   const mine = ++openSeq;
   const panel = document.getElementById("matchup");
   const body = document.getElementById("matchupBody");
-  if (panel.hidden) { opener = document.activeElement; openerId = m.id; }
+  // In the drawer a second match can be opened from the draw, and focus goes back to that one.
+  if (panel.hidden || !panel.contains(document.activeElement)) opener = document.activeElement;
+  openerId = m.id;
   panel.hidden = false;
   panel.setAttribute("aria-label", `${m.a.name || "TBD"} vs ${m.b.name || "TBD"}`);
-  document.getElementById("scrim").hidden = false;
-  lockPage(true);
+  setMode(true);
+  markOpenTile();
   if (!wired) {
     panel.addEventListener("keydown", onPanelKey);
     body.addEventListener("scroll", onBodyScroll, { passive: true });
     body.addEventListener("click", onCovTap);
     window.addEventListener("resize", onResize, { passive: true });
+    DRAWER.addEventListener("change", () => {
+      if (!panel.hidden) setMode(true);
+    });
     wired = true;
   }
   const round = t.rounds.find((r) => r.matches.some((x) => x.id === m.id));

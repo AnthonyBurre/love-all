@@ -21,7 +21,7 @@ port of chess engine analysis to tennis points. See
 
 ### Player / Rally Analysis
 
-| experiment | the question | what it found |
+| experiment | question | findings |
 | --- | --- | --- |
 | [`shot_language`](experiments/shot_language/) | How predictable is a player's shot sequence? | Most varied: Llodra, Dent, Rosewall, Nastase; Navratilova, Maria, Niculescu. Most predictable: Hrbaty, Basilashvili; Kleybanova, Hartono, Samsonova. Junkballers and serve-volleyers score high, flat first-strike baseliners low. Zones are mirrored for left-handers, without which handedness alone explained over half the spread. |
 | [`shot_patterns`](experiments/shot_patterns/) | Which lead-ups precede a player's winners, and which precede their errors? | Distinctive, and they match expectations. Sampras finishes at the net. Federer puts away the forehand-corner-to-weak-backhand, and his *trouble* is backhand-to-backhand, his well-known pressure point. |
@@ -40,7 +40,7 @@ port of chess engine analysis to tennis points. See
 
 None of these ship to the site. See [The site](#the-site) for why.
 
-| experiment | the question | what it found |
+| experiment | question | findings |
 | --- | --- | --- |
 | [`match_winprob`](experiments/match_winprob/) | P(win the match) from the score, and what each point is worth. | Federer's 2019 final peaks at **98.8%** serving at 8-7, 40-15, two championship points, then collapses. It stays under 99% because the model credits Djokovic's elite return. |
 | [`score_aware_eval`](experiments/score_aware_eval/) | Does telling the point eval *where in the match* a point sits improve it? | **No.** Points are nearly independent given the rally state, the classic Klaassen–Magnus result. This negative is what justified handling the score with an analytic tree instead. |

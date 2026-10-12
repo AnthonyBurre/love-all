@@ -2,7 +2,7 @@
 // selected tournament, render the bracket into #bracket (full draw or the slices view,
 // see viewFor; round list on phones), and wire the matchup drawer.
 import { renderTree, renderQuarters, renderRoundList, currentRound, headRows } from "./bracket.js";
-import { openMatchup, closeMatchup } from "./matchup.js";
+import { openMatchup, closeMatchup, markOpenTile } from "./matchup.js";
 import { query } from "./db.js";
 import { ename } from "./feed.js";
 
@@ -17,8 +17,8 @@ let covState = "loading";       // "loading" | "ready" | "down"
 // there are depends on the draw — eight sixteenths on a slam, four quarters on a 32 — so it
 // resets when you change event or tour rather than carrying an out-of-range index across.
 const sel = { key: null, gender: null, view: null, section: 0, round: null };
-// A resize that arrived while the matchup panel was up, and so was not spent on the draw
-// underneath it. See the resize listener in main() for why it waits, and dismiss() in
+// A resize that arrived while the phone's matchup sheet was up, and so was not spent on the
+// draw underneath it. See the resize listener in main() for why it waits, and dismiss() in
 // wireDrawer() for where it is spent.
 let resizedBehind = false;
 
@@ -81,14 +81,23 @@ async function main() {
   render();
   loadCoverage();               // shades the match tiers when the WASM db is ready
   wireDrawer();
-  let raf = null;               // connectors are position-dependent: relayout on resize
-  window.addEventListener("resize", () => {
-    // Not while the panel is open: re-rendering the hidden draw is wasted work, and it would
-    // replace the card the panel hands focus back to. Held and run once on close.
-    if (!$("matchup").hidden) { resizedBehind = true; return; }
+  // Connectors are position-dependent: relayout when the draw's width changes, whether from the
+  // window or from the desktop drawer opening beside it.
+  let raf = null;
+  let drawW = $("bracket").clientWidth;
+  new ResizeObserver(() => {
+    const w = $("bracket").clientWidth;
+    if (w === drawW) return;
+    drawW = w;
+    // Not under the phone sheet: re-rendering the covered draw is wasted work, and it would
+    // replace the card the sheet hands focus back to. Held and run once on close.
+    if ($("matchup").getAttribute("aria-modal") === "true" && !$("matchup").hidden) {
+      resizedBehind = true;
+      return;
+    }
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(render);
-  });
+  }).observe($("bracket"));
 }
 
 // Where an event falls in the tennis calendar. The feed carries no start date, so this ordinal
@@ -299,6 +308,10 @@ function updateLegend(t) {
 
 function render() {
   $("status").hidden = true;
+  // A focused tile is replaced by the re-render, so focus moves to its replacement. This is
+  // what returns focus to the tile when the desktop drawer closes: the draw relays out once
+  // the drawer hands its width back, after closeMatchup has already focused the old tile.
+  const focused = document.activeElement?.closest?.(".match[data-mid]")?.dataset.mid;
   const t = pick();
   document.body.dataset.theme = themeFor(t);
   // The tab keeps the site's name and only that. Leading with the selected event would rename
@@ -342,6 +355,11 @@ function render() {
       { selected: sel.section, onPick: (s) => { sel.section = s; render(); } });
   } else {
     renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
+  }
+  markOpenTile();
+  if (focused) {
+    [...document.querySelectorAll(".match[data-mid]")]
+      .find((el) => el.dataset.mid === focused)?.focus({ preventScroll: true });
   }
 }
 
