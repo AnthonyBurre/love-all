@@ -34,18 +34,15 @@ def _insights() -> "tuple[dict, dict]":
     universe = players.universe_from_rows(
         con.execute("SELECT gender, player FROM player_summary").fetchall())
     charted = {}
-    try:
-        for g, y, tk, p1, p2, mid in con.execute(
-                "SELECT gender, year, tourn_key, p1_norm, p2_norm, match_id "
-                "FROM charted_matches").fetchall():
-            # Keyed on the *unordered* pair, because the draw and the chart name the same
-            # meeting in either order. The chart's own player1 rides along in the value:
-            # the per-match sidecar is written from that player's perspective, and the panel
-            # has to know which of its two sides that is. Decided here rather than in the
-            # browser so the comparison runs through the same normalize() that built the key.
-            charted[(g, int(y), tk, frozenset((p1, p2)))] = (mid, p1)
-    except duckdb.CatalogException:
-        pass                              # older insights db without the table
+    for g, y, tk, p1, p2, mid in con.execute(
+            "SELECT gender, year, tourn_key, p1_norm, p2_norm, match_id "
+            "FROM charted_matches").fetchall():
+        # Keyed on the *unordered* pair, because the draw and the chart name the same
+        # meeting in either order. The chart's own player1 rides along in the value: the
+        # per-match sidecar is written from that player's perspective, and the panel has to
+        # know which of its two sides that is. Decided here rather than in the browser so
+        # the comparison runs through the same normalize() that built the key.
+        charted[(g, int(y), tk, frozenset((p1, p2)))] = (mid, p1)
     con.close()
     return universe, charted
 

@@ -36,10 +36,6 @@ ROWS = [
      "recent_n_eff": None, "recent_matches": None, "recent_years": "",
      "reliable": None, "drift_ratio": None},
 ]
-META = [{"gender": "M", "rule": "decay", "rule_param": 10, "recent_matches": 34,
-         "n80_wide": 864, "n80_t": 1175, "n80_pay": 11315, "noise_inflation": 3.74,
-         "tour_deuce_wide": 0.4427, "tour_deuce_t": 0.4611,
-         "tour_ad_wide": 0.5103, "tour_ad_t": 0.4001}]
 
 
 @pytest.fixture
@@ -48,77 +44,51 @@ def reports(tmp_path, monkeypatch):
     return tmp_path
 
 
-def _write(reports, rows=ROWS, meta=META):
+def _write(reports, rows=ROWS):
     pd.DataFrame(rows).to_csv(reports / "serve_tendencies_players.csv", index=False)
-    if meta is not None:
-        pd.DataFrame(meta).to_csv(reports / "serve_tendencies_meta.csv", index=False)
 
 
 def test_ships_the_recent_mix_not_the_career_one(reports):
     _write(reports)
-    serve, _meta = build_insights._serve_placement()
+    serve = build_insights._serve_placement()
     deuce = serve[serve.side == "deuce"].iloc[0]
     assert deuce.wide == pytest.approx(0.55)      # recent, not the 0.30 career value
     assert deuce.t == pytest.approx(0.35)
     assert deuce.career_wide == pytest.approx(0.30)
     assert deuce.career_t == pytest.approx(0.60)
-    assert deuce.career_n == 9000
 
 
 def test_no_duplicate_columns(reports):
     """The renaming bug this file exists for: duplicate labels reach DuckDB as
     ``wide`` and ``wide_1``, and the panel reads whichever came first."""
     _write(reports)
-    serve, _meta = build_insights._serve_placement()
+    serve = build_insights._serve_placement()
     assert len(set(serve.columns)) == len(serve.columns)
 
 
 def test_only_first_serves_with_a_recent_window(reports):
     _write(reports)
-    serve, _meta = build_insights._serve_placement()
+    serve = build_insights._serve_placement()
     assert len(serve) == 2                        # both sides of the 1st-serve rows
     assert set(serve.player) == {"A Player"}      # B Player has no recent window
 
 
-def test_window_is_the_players_own_not_the_tours(reports):
-    """The caption uses the per-player window (19 here), not the tour's largest window from
-    the meta CSV (34)."""
+def test_window_is_the_players_own(reports):
+    """The caption uses each player's own recency window."""
     _write(reports)
-    serve, meta = build_insights._serve_placement()
+    serve = build_insights._serve_placement()
     assert set(serve.matches) == {19}
     assert serve["matches"].dtype.kind == "i"
-    assert {r["key"]: r["value"] for r in meta}["serve_recent_matches_M"] == 34
 
 
 def test_reliability_gate_survives_as_an_int(reports):
     _write(reports)
-    serve, _meta = build_insights._serve_placement()
+    serve = build_insights._serve_placement()
     by_side = serve.set_index("side")
     assert by_side.loc["deuce", "reliable"] == 1
     assert by_side.loc["ad", "reliable"] == 0
     assert by_side["reliable"].dtype.kind == "i"
     assert by_side["n_eff"].dtype.kind == "i"
-
-
-def test_meta_rows_are_prefixed_and_numeric(reports):
-    _write(reports)
-    _serve, meta = build_insights._serve_placement()
-    keys = {r["key"]: r["value"] for r in meta}
-    assert keys["serve_n80_wide_M"] == 864
-    assert keys["serve_tour_ad_t_M"] == pytest.approx(0.4001)
-    assert all(isinstance(r["value"], float) for r in meta)
-
-
-def test_missing_csv_is_not_an_error(reports):
-    """The experiment may not have been run; the site drops the section instead."""
-    serve, meta = build_insights._serve_placement()
-    assert serve is None and meta == []
-
-
-def test_missing_meta_still_ships_the_table(reports):
-    _write(reports, meta=None)
-    serve, meta = build_insights._serve_placement()
-    assert len(serve) == 2 and meta == []
 
 
 # --- pattern families ------------------------------------------------------------------

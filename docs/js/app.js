@@ -171,9 +171,8 @@ function seg(container, items, active, onPick) {
 }
 
 // Wordless view-toggle glyphs: stacked horizontal bars for the top-down quarter
-// view, vertical bars for the full draw's side-by-side round columns.
-// Square ends, no rx — a rounded cap is the one thing the rest of the page no
-// longer has, and at 14px it is most of what the glyph is.
+// view, vertical bars for the full draw's side-by-side round columns. Square ends, no rx, like
+// every other corner on the page; at 14px a rounded cap is most of what the glyph is.
 function barsIcon(vertical) {
   const s = document.createElement("span");
   s.className = "ico";
@@ -240,10 +239,9 @@ function buildTabs() {
   });
   $("genderTabs").style.display = g.length > 1 ? "" : "none";
 
-  // Quarter view needs trustworthy slot ordering (fixture-backed or finished draws).
-  // Whether the toggle is *shown* is render()'s call rather than this one's: visibility also
-  // depends on the viewport (phones have no quarter view), and every path through here ends
-  // in a render(), so setting it here too only made two places to keep in agreement.
+  // Quarter view needs trustworthy slot ordering (fixture-backed or finished draws). Whether
+  // the toggle is *shown* is render()'s call, since that also depends on the viewport (phones
+  // have no quarter view) and every path through here ends in a render().
   const t = pick();
   const q = quarterable(t);
   seg($("viewTabs"), [
@@ -257,10 +255,9 @@ function buildTabs() {
   });
 }
 
-// The size of the field, counted off the draw itself rather than read from the calendar —
-// the calendar's figure is a hand-typed one that has been wrong (it claimed 48 for a
-// Washington draw that was 32). A round-1 slot is two players unless it is a bye, so a 96
-// is 64 slots with 32 of them byes. Unknown for a draw with no slot scaffold, where round
+// The size of the field, counted off the draw itself rather than read from the calendar, whose
+// figure is hand-typed and can be wrong. A round-1 slot is two players unless it is a bye, so
+// a 96 is 64 slots with 32 of them byes. Unknown for a draw with no slot scaffold, where round
 // one is only the matches the feed happens to have named.
 function drawSize(t) {
   if (!t.slotted && !t.completed) return null;

@@ -429,18 +429,15 @@ def _serve_aces(con) -> pd.DataFrame:
                                        "first_n", "second_n"])
 
 
-def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
-    """Per-side first-serve placement for the panel, plus the gates it has to respect.
+def _serve_placement() -> pd.DataFrame:
+    """Per-side first-serve placement for the panel.
 
     The mix is recency-weighted (``serve_tendencies`` step 7: a 10-match half-life predicts
     better than the career mix). ``n_eff`` is its effective sample size and ``reliable`` the
     gate already applied. ``matches`` is the player's own window: matches still carrying a
     tenth of the newest one's weight.
     """
-    path = REPORTS / "serve_tendencies_players.csv"
-    if not path.exists():
-        return None, []
-    df = pd.read_csv(path)
+    df = pd.read_csv(REPORTS / "serve_tendencies_players.csv")
     df = df[(df.serve == "1st") & df.recent_n_eff.notna() & df.recent_wide.notna()]
     # Built column by column: the CSV has both the recent and the career mix, and renaming
     # one onto the other's name would ship duplicate columns.
@@ -450,22 +447,11 @@ def _serve_placement() -> "tuple[pd.DataFrame | None, list]":
         "n_eff": df.recent_n_eff.astype(int),
         "matches": df.recent_matches.fillna(0).astype(int),
         "years": df.recent_years,
-        "career_wide": df.wide, "career_t": df.t, "career_n": df.n,
+        "career_wide": df.wide, "career_t": df.t,
         "reliable": df.reliable.fillna(0).astype(int),
         "drift_ratio": df.drift_ratio,
     })
-
-    # Gates and tour baselines as meta rows, so the site never hardcodes a
-    # threshold the experiment owns. meta is numeric key/value, read by prefix.
-    rows = []
-    mpath = REPORTS / "serve_tendencies_meta.csv"
-    if mpath.exists():
-        for r in pd.read_csv(mpath).to_dict("records"):
-            g = r["gender"]
-            for col in ("n80_wide", "n80_t", "rule_param", "recent_matches",
-                        "tour_deuce_wide", "tour_deuce_t", "tour_ad_wide", "tour_ad_t"):
-                rows.append({"key": f"serve_{col}_{g}", "value": float(r[col])})
-    return serve, rows
+    return serve
 
 
 # state_kind / resp_kind are the two strokes' kinds (drive / slice / net / other). The panel
@@ -514,7 +500,7 @@ def _patterns() -> pd.DataFrame:
 def build() -> int:
     """(Re)create ``insights.duckdb`` from the DB + experiment CSVs. Returns player count."""
     con = duckdb.connect(str(DB_PATH), read_only=True)
-    strength, mu = current_strength(con)
+    strength, _ = current_strength(con)
     cov = coverage(con)
     cov_years = pd.DataFrame(coverage_by_year(con),
                              columns=["gender", "player", "year", "matches", "points"])
@@ -529,14 +515,12 @@ def build() -> int:
     mix = _shot_mix(con)
     con.close()
 
-    # `current_strength` supplies the player list and the tour means in `meta`; its two rates
-    # aren't shipped because nothing on the site reads them.
+    # `current_strength` supplies the player list; its rates and tour means aren't shipped
+    # because nothing on the site reads them.
     summary = pd.DataFrame([
         {"gender": g, "player": p,
          "matches_charted": cov.get((g, p), {}).get("matches", 0),
-         "points_charted": cov.get((g, p), {}).get("points", 0),
-         "year_min": cov.get((g, p), {}).get("year_min"),
-         "year_max": cov.get((g, p), {}).get("year_max")}
+         "points_charted": cov.get((g, p), {}).get("points", 0)}
         for g, p in strength
     ])
 
@@ -624,14 +608,12 @@ def build() -> int:
 
     # Serve placement (serve_tendencies). Wide and T only: charters disagree on body serves by
     # ±4-6%, so body is left out and the two don't sum to 100%.
-    serve, serve_meta = _serve_placement()
-    if serve is not None:
-        bp = pd.read_csv(REPORTS / "serve_tendencies_leverage.csv")
-        bp = bp[(bp.direction == "wide") & (bp.bucket == "break_pt")][
-            ["player", "gender", "delta", "sig", "n"]].rename(
-            columns={"delta": "serve_bp_wide_delta", "sig": "serve_bp_sig",
-                     "n": "serve_bp_n"})
-        summary = summary.merge(bp, on=["player", "gender"], how="left")
+    serve = _serve_placement()
+    bp = pd.read_csv(REPORTS / "serve_tendencies_leverage.csv")
+    bp = bp[(bp.direction == "wide") & (bp.bucket == "break_pt")][
+        ["player", "gender", "delta", "sig"]].rename(
+        columns={"delta": "serve_bp_wide_delta", "sig": "serve_bp_sig"})
+    summary = summary.merge(bp, on=["player", "gender"], how="left")
 
     # Every rate under its floor goes null here; then the counts the panel doesn't read go.
     summary, floor_meta = _apply_floors(summary)
@@ -641,8 +623,7 @@ def build() -> int:
     # are read off, so one-match readings don't widen them.
     floor_meta.append({"key": "floor_band_points", "value": float(ESTABLISHED_PTS)})
 
-    meta = pd.DataFrame([{"key": f"mu_{g}", "value": round(v, 5)} for g, v in mu.items()]
-                        + floor_meta + serve_meta)
+    meta = pd.DataFrame(floor_meta)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.unlink(missing_ok=True)     # fresh file: dropped tables must not ship forever
@@ -650,9 +631,7 @@ def build() -> int:
     tables = [("player_summary", summary), ("player_triggers", triggers),
               ("player_patterns", patterns), ("player_openings", openings),
               ("player_years", years), ("player_matches", matches_by_year), ("meta", meta),
-              ("charted_matches", charted)]
-    if serve is not None:
-        tables.append(("player_serve", serve))
+              ("charted_matches", charted), ("player_serve", serve)]
     for name, df in tables:
         out.register(f"_{name}", df)
         out.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM _{name}")

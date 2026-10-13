@@ -4,26 +4,18 @@ import { panelFloors, query, tourSpread } from "./db.js";
 import { patternSvg, pairSvg, retSvg, shotLine } from "./court.js";
 import { dayLong, localStart } from "./schedule.js";
 import { flagEmoji } from "./flags.js";
-import { ename, isEntrant } from "./feed.js";
+import { ename, isEntrant, wonSet } from "./feed.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const CHART_GUIDE =
   "https://www.tennisabstract.com/blog/2015/09/23/the-match-charting-project-quick-start-guide/";
 const last = (name) => String(name || "").split(" ").slice(-1)[0];
-// A draw side's surname. The feed's short form ("A. Davidovich Fokina") knows where the
-// surname starts. Archived draws predate it, so the fallback is the last word with any
-// particles before it ("de Minaur", "van de Zandschulp"); a double surname without a
-// particle ("Llamas Ruiz") still comes out as its last word.
-const PARTICLES = new Set(["da", "das", "de", "del", "della", "der", "di", "do", "dos", "du",
-  "la", "le", "st", "van", "von"]);
+// A draw side's surname, read off the feed's short form ("A. Davidovich Fokina"), which knows
+// where the surname starts.
 function surname(side) {
   const m = String((side && side.short) || "").trim().match(/^\S+\.\s+(.+)$/);
-  if (m) return m[1];
-  const parts = String((side && side.name) || "").trim().split(/\s+/);
-  let i = parts.length - 1;
-  while (i > 1 && PARTICLES.has(parts[i - 1].toLowerCase())) i--;
-  return parts.slice(i).join(" ");
+  return m ? m[1] : String((side && side.name) || "");
 }
 // The sample each career figure needs (db.panelFloors), set once the panel's data loads.
 let FLOOR = {};
@@ -45,49 +37,26 @@ function matchDate(iso) {
 
 async function playerData(name, gender) {
   if (!name) return null;
-  const s = await query("SELECT * FROM player_summary WHERE player = ? AND gender = ?", [name, gender]);
+  const args = [name, gender];
+  const s = await query("SELECT * FROM player_summary WHERE player = ? AND gender = ?", args);
   if (!s.length) return null;
-  let triggers = [];
-  try {
-    triggers = await query(
-      "SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, attempts " +
-      "FROM player_triggers WHERE player = ? AND gender = ?", [name, gender]);
-  } catch (e) { /* stale insights db: show the card without tendencies */ }
-  let openings = [];
-  try {
-    openings = await query(
-      "SELECT side, role, anchor, context, tag, att_rate, att_lift, conversion, " +
+  const [triggers, openings, patterns, serve, years, ymatches] = await Promise.all([
+    query("SELECT tag, context, att_rate, att_lift, conversion, conv_delta, n, attempts " +
+      "FROM player_triggers WHERE player = ? AND gender = ?", args),
+    query("SELECT side, role, anchor, context, tag, att_rate, att_lift, conversion, " +
       "conv_delta, n, attempts FROM player_openings WHERE player = ? AND gender = ? " +
-      "ORDER BY att_lift DESC", [name, gender]);
-  } catch (e) { /* insights db predates the openings table: skip the section */ }
-  let patterns = [];
-  try {
-    patterns = await query(
-      "SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, n_state, " +
-      "win_rate, tour_win_rate, state_win_rate, serve_side, serve_dir, " +
+      "ORDER BY att_lift DESC", args),
+    query("SELECT family, state, response, state_depth, inc_code, resp_code, lift, count, " +
+      "n_state, win_rate, tour_win_rate, state_win_rate, serve_side, serve_dir, " +
       "state_kind, resp_kind " +
-      "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC",
-      [name, gender]);
-  } catch (e) { /* stale insights db: show the card without patterns */ }
-  let serve = [];
-  try {
-    serve = await query(
-      "SELECT side, wide, t, n_eff, matches, years, career_wide, career_t, reliable, " +
-      "drift_ratio FROM player_serve WHERE player = ? AND gender = ? AND reliable = 1",
-      [name, gender]);
-  } catch (e) { /* stale insights db: show the card without serve direction */ }
-  let years = [];
-  try {
-    years = await query(
-      "SELECT year, matches, points FROM player_years WHERE player = ? AND gender = ? " +
-      "ORDER BY year", [name, gender]);
-  } catch (e) { /* stale insights db: the coverage band prints its counts without the chart */ }
-  let ymatches = [];
-  try {
-    ymatches = await query(
-      "SELECT year, points FROM player_matches WHERE player = ? AND gender = ? " +
-      "ORDER BY year, seq", [name, gender]);
-  } catch (e) { /* insights db predates player_matches: each season bar stays one solid block */ }
+      "FROM player_patterns WHERE player = ? AND gender = ? ORDER BY evidence DESC", args),
+    query("SELECT side, wide, t, n_eff, matches, years, career_wide, career_t, reliable, " +
+      "drift_ratio FROM player_serve WHERE player = ? AND gender = ? AND reliable = 1", args),
+    query("SELECT year, matches, points FROM player_years WHERE player = ? AND gender = ? " +
+      "ORDER BY year", args),
+    query("SELECT year, points FROM player_matches WHERE player = ? AND gender = ? " +
+      "ORDER BY year, seq", args),
+  ]);
   return { s: s[0], triggers, openings, patterns, serve, years, ymatches };
 }
 
@@ -164,16 +133,15 @@ function matchSide(det, i) {
 // Shot mix and per-wing outcomes from the sidecar's per-stroke tallies
 // (build_match_details._fold_point). The mix is over every non-serve stroke; outcome rates are
 // over that wing's groundstrokes. The denominators ride along because the figures print them.
-// All null on a sidecar without these tallies, and the figure falls back to the career reading.
 function shotMix(s) {
-  const n = Number(s.rally_shots) || 0;
-  const gs = (Number(s.fh_gs) || 0) + (Number(s.bh_gs) || 0);
+  const n = Number(s.rally_shots);
+  const gs = Number(s.fh_gs) + Number(s.bh_gs);
   const rate = (w, d) => (d ? Number(w) / Number(d) : null);
   return {
-    shots: s.rally_shots == null ? null : n,
-    net_shots: s.net_shots == null ? null : Number(s.net_shots),
-    fh_gs: s.fh_gs == null ? null : Number(s.fh_gs),
-    bh_gs: s.bh_gs == null ? null : Number(s.bh_gs),
+    shots: n,
+    net_shots: Number(s.net_shots),
+    fh_gs: Number(s.fh_gs),
+    bh_gs: Number(s.bh_gs),
     fh_share: rate(s.fh_gs, gs),
     fh_winner_pct: rate(s.fh_winners, s.fh_gs),
     fh_err_pct: rate(s.fh_errs, s.fh_gs),
@@ -462,8 +430,8 @@ const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const num = (v) => (v == null ? null : Number(v));
 
 // Whether two career rates differ by more than their sampling noise: a two-proportion test at
-// 95%. Only then is one marked the better. A rate without a denominator (a match's own count,
-// or an older build) is taken at face value.
+// 95%. Only then is one marked the better. A rate without a denominator (a match's own count)
+// is taken at face value.
 function realGap(pa, na, pb, nb) {
   if (!na || !nb) return true;
   const se = Math.sqrt(pa * (1 - pa) / na + pb * (1 - pb) / nb);
@@ -841,23 +809,11 @@ function coverPyramid(da, db, sc) {
     ${foot}</div>`;
 }
 
-// Fallback for a build with no player_years table: the summary line carries the year span.
-function coverPlain(d, tag) {
-  if (!d) return coverSum(null, tag);
-  const s = d.s, mt = Number(s.matches_charted) || 0;
-  const span = s.year_min == null ? ""
-    : (s.year_min === s.year_max ? `${s.year_min}: ` : `${s.year_min}–${s.year_max}: `);
-  return `<span class="covsum ${tag}">${span}${mt} ${mt === 1 ? "match" : "matches"} ·
-    ${Number(s.points_charted).toLocaleString()} points</span>`;
-}
-
 function profileBand(da, db) {
   if (!da && !db) return "";
   const sc = yearScale(da && da.years, db && db.years);
-  const head = sc ? coverSum(da, "a") + coverSum(db, "b")
-    : coverPlain(da, "a") + coverPlain(db, "b");
   return `<div class="pband">
-    <p class="covtop">${head}</p>
+    <p class="covtop">${coverSum(da, "a")}${coverSum(db, "b")}</p>
     ${sc ? coverPyramid(da, db, sc) : ""}</div>`;
 }
 
@@ -929,19 +885,18 @@ function serveSplit(s) {
   if (n && s.first_in != null && s.first_won != null && s.second_won != null) {
     const fi = Number(s.first_in), fw = Number(s.first_won);
     const df = Number(s.dfs), si = Number(s.second_pts) - df, sw = Number(s.second_won);
-    // Older sidecars lack the ace split; the cores then go undrawn.
-    const a1 = num(s.aces_first), a2 = num(s.aces_second);
+    const a1 = Number(s.aces_first), a2 = Number(s.aces_second);
     if (fi < 0 || si < 0 || fw > fi || sw > si) return null;
     return {
       n, counts: true,
-      bands: [band(fi / n, fi ? fw / fi : 0, a1 == null ? null : fi ? a1 / fi : 0, fi, n, fw, fi, a1),
-      band(si / n, si ? sw / si : 0, a2 == null ? null : si ? a2 / si : 0, si, n, sw, si, a2),
+      bands: [band(fi / n, fi ? fw / fi : 0, fi ? a1 / fi : 0, fi, n, fw, fi, a1),
+      band(si / n, si ? sw / si : 0, si ? a2 / si : 0, si, n, sw, si, a2),
       band(df / n, 0, 0, df, n, 0, df, 0)],
       // The scoreboard's second-serve-in rate, printed beside the band.
       second_in: si + df ? si / (si + df) : null,
       samp: null,
       // Exact on a match: the cores are the aces.
-      aceTot: a1 || a2 ? ((a1 || 0) + (a2 || 0)) / n : null,
+      aceTot: a1 || a2 ? (a1 + a2) / n : null,
     };
   }
   // A career: the same three bands from the four shipped rates. The second band's win rate is
@@ -1158,8 +1113,7 @@ function figBand(x, band, fmt = (v) => v.toFixed(1)) {
   ></i>`;
 }
 
-// The column's contents as data, shared by the wide columns (profileSide) and the phone
-// comparison (profileCompare).
+// One player's style line and figures as data, for profileCompare.
 function profileParts(d, md, spread) {
   if (!d && !md) return null;
   const s = (d && d.s) || {};
@@ -1318,7 +1272,6 @@ function groundAnatomy(da, db, ma, mb, sides) {
 // Which of two paired figures carries the win — "a" is the first argument, "b" the second, ""
 // when neither: no better end, a value missing, a tie, two values that print the same, or a
 // career gap within the noise (realGap).
-// Shared by the wide columns and the phone comparison so the bolding matches.
 function figWinner(xa, xb) {
   const bd = (xa || xb || {}).better;
   if (!xa || !xb || !bd || xa.v === xb.v || !realGap(xa.raw, xa.n, xb.raw, xb.n)) return "";
@@ -1327,9 +1280,8 @@ function figWinner(xa, xb) {
 
 const EMPTY_PARTS = { arch: "", hand: "", rally: null, figs: [] };
 
-// The rows both columns share, so each figure sits level with its pair and a missing one prints
-// an em dash. Career figures come first (style, hand, and variety on a match), then the match's
-// own.
+// The figure rows both players share, so each figure sits level with its pair and a missing one
+// prints an em dash. Career figures come first (variety on a match), then the match's own.
 function profilePlan(pa, pb) {
   const rows = [];
   const has = (p, l) => p.figs.some((x) => x.label === l);
@@ -1337,8 +1289,6 @@ function profilePlan(pa, pb) {
     const x = p.figs.find((y) => y.label === l);
     return x && x.careerOnly;
   });
-  if (pa.arch || pb.arch) rows.push({ kind: "arch" });
-  if (pa.hand || pb.hand) rows.push({ kind: "hand" });
   // FIGS order, then anything else either side has (the break-point count).
   const seen = new Set();
   const labels = [];
@@ -1355,35 +1305,10 @@ function profilePlan(pa, pb) {
   return rows;
 }
 
-// One player's column. `o` is the opponent, for bolding the better figure.
-function profileSide(p, o, tag, plan) {
-  if (!plan.length) return "";
-  const oppFigs = new Map(o.figs.map((x) => [x.label, x]));
-  const fig = (x, cls) => {
-    const trail = x.better && figWinner(x, oppFigs.get(x.label)) === "b" ? ' class="trail"' : "";
-    // Anchor and note sit under the figure.
-    const note = (x.note ? `<i class="pbanch">${esc(x.note)}</i>` : "")
-      + (x.anchor ? `<i class="pbanch">career ${esc(x.anchor)}</i>`
-        : x.careerOnly ? `<i class="pbanch">career figure</i>` : "");
-    // The tour strip goes under the label.
-    return `<p class="${cls}"><b${trail}>${x.v}</b>${x.unit ? `<span>${esc(x.unit)}</span>` : ""}<em>${esc(x.label)}</em>${figBand(x.raw, x.band, x.fmt)}${note}</p>`;
-  };
-  // A missing figure is a bare em dash; the label is in the other column on the same row.
-  const none = (cls) => `<p class="${cls} pbnone"><b>—</b></p>`;
-  const cell = (r) => {
-    if (r.kind === "arch") return p.arch ? `<p class="pbstyle">${esc(p.arch)}</p>` : none("pbstyle");
-    if (r.kind === "hand") return p.hand ? `<p class="pbhand">${esc(p.hand)}</p>` : none("pbhand");
-    if (r.kind === "rally") return p.rally ? fig(p.rally, "pbq") : none("pbq");
-    const x = p.figs.find((y) => y.label === r.label);
-    return x ? fig(x, "pbfig") : none("pbfig");
-  };
-  return `<div class="pbside ${tag}" data-side="${tag}">${plan.map(cell).join("")}</div>`;
-}
-
-// The phone layout: one row per figure, A's value, the label, B's value.
+// The style and hand lines, then one row per figure: A's value, the label, B's value.
 function profileCompare(A, B, plan) {
   const any = (p) => p.arch || p.hand || p.rally || p.figs.length;
-  if (!any(A) && !any(B)) return "";
+  if (!any(A) && !any(B)) return null;
   const map = (p) => {
     const m = new Map();
     if (p.rally) m.set(p.rally.label, p.rally);
@@ -1391,9 +1316,7 @@ function profileCompare(A, B, plan) {
     return m;
   };
   const ma = map(A), mb = map(B);
-  // Same plan as the wide columns, so both layouts list the same rows.
-  const seq = plan.filter((r) => r.kind === "rally" || r.kind === "fig")
-    .map((r) => (r.kind === "rally" ? (A.rally || B.rally).label : r.label));
+  const seq = plan.map((r) => (r.kind === "rally" ? (A.rally || B.rally).label : r.label));
   const val = (x) => x == null ? "—"
     : `${x.v}${x.unit ? ` <span class="pbcu">${esc(x.unit)}</span>` : ""}` +
     figBand(x.raw, x.band, x.fmt) +
@@ -1412,9 +1335,11 @@ function profileCompare(A, B, plan) {
     ? `<div class="pbcmp-head ${cls}"><span class="a">${esc(a || "—")}</span>` +
     `<span class="b">${esc(b || "—")}</span></div>` : "";
   const tops = head(A.arch, B.arch, "arch") + head(A.hand, B.hand, "hand");
-  // Two siblings, so on a phone the style lines go above the ring and the figures below it.
-  return (tops ? `<div class="pbtops">${tops}</div>` : "") +
-    `<div class="pbcmp">${rows}</div>`;
+  // Two parts, so tape() can put the ring between them.
+  return {
+    tops: tops ? `<div class="pbtops">${tops}</div>` : "",
+    rows: `<div class="pbcmp">${rows}</div>`,
+  };
 }
 
 // The title over the career body. The asterisk points to COV_NOTE at the foot.
@@ -1541,18 +1466,16 @@ function tape(da, db, spread, det, sides) {
   const sa = ma || (da ? da.s : null);
   const sb = mb || (db ? db.s : null);
   const cells = sa || sb ? donut(RING, sa, sb) : "";
-  // Extracted once and shared by both layouts.
   const pA = profileParts(da, ma, spread) || EMPTY_PARTS;
   const pB = profileParts(db, mb, spread) || EMPTY_PARTS;
-  const plan = profilePlan(pA, pB);
-  const sideA = profileSide(pA, pB, "a", plan), sideB = profileSide(pB, pA, "b", plan);
-  if (!cells && !sideA && !sideB) return "";
+  const cmp = profileCompare(pA, pB, profilePlan(pA, pB));
+  if (!cells && !cmp) return "";
   const rings = cells ? `<div class="dnstack">${cells}</div>` : "";
   // Name the thin player, so an empty half reads as "not enough charting".
   const thinNote = det ? "" : ringNote(da, db, sides);
   // The key gets the career rows merged in, so it sees style and variety on a match.
   return `<section class="tape">
-    <div class="tapemain" style="--pbrows:${plan.length}">${sideA}${rings}${sideB}${profileCompare(pA, pB, plan)}</div>
+    <div class="tapemain">${cmp ? cmp.tops : ""}${rings}${cmp ? cmp.rows : ""}</div>
     ${thinNote}
     ${figureKey({ ...(da && da.s), ...sa }, { ...(db && db.s), ...sb }, spread, !!det)}
   </section>`;
@@ -1563,8 +1486,8 @@ function tape(da, db, spread, det, sides) {
 const countCards = (html) =>
   Math.max(1, (String(html || "").match(/class="(?:pcard2|trig )/g) || []).length);
 
-// One topic, one header, two columns, so the two players stay level. `kind` sets phone-narrow
-// behaviour: "cards" stay side by side, "text" stacks. `full` is a drawing on a scale both
+// One topic, one header, two columns, so the two players stay level. `kind` sets the layout:
+// "cards" stay side by side, "text" stacks. `full` is a drawing on a scale both
 // players share, run at full width.
 function section(title, note, a, b, aHtml, bHtml, kind = "cards", full = "") {
   if (!aHtml && !bHtml && !full) return "";
@@ -1673,35 +1596,29 @@ function chartButton(m) {
 }
 
 // The scoreline between the two names, each set's higher score bold. One flat list of cells
-// (A,B per set) that CSS lays out as columns on a wide header and rows on a narrow one.
+// (A,B per set) that CSS lays out as one column per set, or one row per set when the header
+// stacks (fitHeader).
 function scoreStack(a, b) {
   const n = Math.max((a.sets || []).length, (b.sets || []).length);
   if (!n) return `<div class="mscore none">vs</div>`;
-  // Use the feed's per-set verdict when present, so a live set isn't bolded for its leader.
-  const winsA = Array.isArray(a.set_wins) && a.set_wins.length ? a.set_wins : null;
-  const winsB = Array.isArray(b.set_wins) && b.set_wins.length ? b.set_wins : null;
-  const cell = (v, o, wins, i) => {
+  const cell = (s, i) => {
+    const v = s.sets && s.sets[i];
     if (v == null) return `<span class="sg"></span>`;
-    const won = wins ? wins[i] === true : o != null && Math.trunc(v) > Math.trunc(o);
-    return `<span class="sg${won ? " won" : ""}">${Math.trunc(v)}</span>`;
+    return `<span class="sg${wonSet(s, i) ? " won" : ""}">${Math.trunc(v)}</span>`;
   };
   let cells = "";
   for (let i = 0; i < n; i++) {
     const x = a.sets && a.sets[i], y = b.sets && b.sets[i];
     if (x == null && y == null) continue;    // drop the pair, never half of one
-    cells += cell(x, y, winsA, i) + cell(y, x, winsB, i);
+    cells += cell(a, i) + cell(b, i);
   }
   return `<div class="mscore">${cells}</div>`;
 }
 
-// Full name and a first-initial form; fitHeader() measures and picks one. The feed's own
-// short form is preferred, since it knows which given names to drop.
+// Full name and the feed's short form; fitHeader() measures and picks one.
 function nameHtml(side) {
-  const name = side.name;
-  const full = esc(name || "TBD");
-  const parts = String(name || "").trim().split(/\s+/);
-  const abbr = side.short ? esc(side.short) : parts.length > 1
-    ? esc(`${parts[0][0].toUpperCase()}. ${parts.slice(1).join(" ")}`) : full;
+  const full = esc(side.name || "TBD");
+  const abbr = side.short ? esc(side.short) : full;
   return `<span class="mname"><span class="mfull">${full}</span>` +
     `<span class="mabbr">${abbr}</span></span>`;
 }
@@ -1732,14 +1649,13 @@ function headHtml(m, t, round) {
   const side = (s, tag) => {
     const emoji = flagEmoji(s.country);
     const flag = `<span class="mflag"${emoji ? ` title="${esc(s.country)}"` : ""}>${emoji}</span>`;
-    const seed = s.seed ? `<span class="mseed">${esc(String(s.seed))}</span>` : "";
     const cls = "mp " + tag + (s.winner ? " win" : decided ? " lose" : "");
     // The winner's caret points into their name from the score side.
-    return `<div class="${cls}">${flag}${nameHtml(s)}${seed}
+    return `<div class="${cls}">${flag}${nameHtml(s)}
       ${s.winner ? `<span class="mwin"></span>` : ""}</div>`;
   };
-  // Older archived draws carry no per-match date and nothing else to say, so the when
-  // line drops out entirely rather than leaving an empty row under the names.
+  // A match with no date has nothing to say here, so the when line drops out entirely rather
+  // than leaving an empty row under the names.
   const when = whenLine(m);
   // A hairline between the staggered rows ties each scoreline to its name. An unplayed match
   // has no scoreline, so both names share a row (.mgrid.noscore).

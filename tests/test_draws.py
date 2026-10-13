@@ -117,6 +117,26 @@ def test_byes_render_as_the_entrant_already_through():
     assert bye.feeds == "s1" and r1[3].feeds == "s2"
 
 
+def test_a_bye_carries_the_players_own_feed_side():
+    # The fixture's spelling is Wikipedia's; the card shows the feed's, with its flag and
+    # short form, so the bye reads like the rest of that player's path.
+    ann = espn.Side(name="Ann Alpha-Ray", country="FRA", winner=False, sets=[],
+                    short="A. Alpha-Ray")
+    t = _tour([
+        _m("f", 100, "Final", "TBD", "TBD"),
+        espn.Match(id="s1", round_rank=99, round_label="Semifinal", state="pre", detail="",
+                   a=ann, b=espn.Side("TBD", None, False, [])),
+        _m("s2", 99, "Semifinal", "TBD", "Gail Eta"),
+        _m("r2", 1, "Round 1", "Cara Gamma", "Dana Delta"),
+        _m("r3", 1, "Round 1", "Eve Epsilon", "Faye Zeta"),
+    ])
+    fx = {**FX_BYES, "r1": [{**FX_BYES["r1"][0], "a": "Ann Alpha Ray"}, *FX_BYES["r1"][1:]]}
+    bye = draws.slot_rounds(t, fx)[0]["matches"][0]
+    assert (bye.a.name, bye.a.country, bye.a.short) == ("Ann Alpha-Ray", "FRA", "A. Alpha-Ray")
+    assert bye.a is not ann                                   # a copy: seeding it can't leak
+    assert bye.a.seed == "1"
+
+
 def test_byes_only_apply_to_round_one():
     # Later rounds always pair two winners; an undecided one there is a TBD, not a bye.
     t = _tour([

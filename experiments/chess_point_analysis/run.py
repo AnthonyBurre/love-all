@@ -219,7 +219,7 @@ def main() -> None:
         parts = ", ".join(f"{k} **{v[0]:.1%}**" for k, v in serve[g].items())
         md.append(f"- {'Men' if g=='M' else 'Women'}, P(server wins) after a 1st serve: {parts}")
     md.append("\n![serve eval](figures/chess_serve_eval.png)")
-    md.append("\n## Richer state: the optional details now in the eval\n")
+    md.append("\n## Richer state: the optional details in the eval\n")
     md.append("Besides shot direction, the rally state reads **return depth** (7/8/9), **slice vs "
               "drive**, and **net/approach** (+/- modifiers). Raw men's server-win% by each "
               "detail (marginal, so confounded, but the signal is clear):\n")

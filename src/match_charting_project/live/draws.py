@@ -142,8 +142,12 @@ def slot_rounds(tournament, fixture) -> "list | None":
         if len(leftover) == 1 and len(empty) == 1:
             placed[(round_no, empty[0])] = leftover[0]
 
-    # Assemble the full scaffold: live match, bye, or placeholder at every slot.
+    # Assemble the full scaffold: live match, bye, or placeholder at every slot. A seed with a
+    # bye takes the side the feed gives them in their first played match, so the bye card
+    # carries the same name, flag and short form as the rest of their path.
     byes = _bye_slots(fixture)
+    known = {normalize(s.name): s for m in tournament.matches for s in (m.a, m.b)
+             if s.name and s.name not in ("TBD", BYE)}
     out = []
     for round_no, rank in enumerate(ranks, start=1):
         matches = []
@@ -151,9 +155,11 @@ def slot_rounds(tournament, fixture) -> "list | None":
             m = placed.get((round_no, slot))
             if m is None:
                 through = byes.get(slot) if round_no == 1 else None
+                fed = through and _lookup(normalize(through), known)
+                a = (Side(fed.name, fed.country, False, [], short=fed.short) if fed
+                     else Side(through or "TBD", None, False, []))
                 m = Placeholder(id=f"slot-{round_no}-{slot}", round_rank=rank,
-                                round_label=label[rank],
-                                a=Side(through or "TBD", None, False, []),
+                                round_label=label[rank], a=a,
                                 b=Side(BYE if through else "TBD", None, False, []),
                                 bye=bool(through),
                                 # A bye is never played, so it takes no date; an undecided

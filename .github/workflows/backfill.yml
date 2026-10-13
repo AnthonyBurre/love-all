@@ -4,8 +4,7 @@ name: Backfill past draws
 # to the archive the site reads. This is the only way to reach an event that finished before
 # the site was watching — `live.yml` catches every event from its final onwards, and the
 # one-time seed in that workflow only ever takes a single slam (the most recent finished one)
-# and then never runs again, which is why the 2026 Australian Open and Roland Garros are
-# missing while Wimbledon is there.
+# and then never runs again.
 #
 # Cost: harvesting walks a generous per-slam window a day at a time, over both tours — about
 # 70 requests for the Australian Open, 50 for Roland Garros. That is fine for a job run by
@@ -20,7 +19,6 @@ on:
       events:
         description: 'Comma-separated "event:year" pairs (the four slams are supported)'
         required: true
-        default: "australian open:2026,roland garros:2026"
 
 permissions:
   contents: write             # the archive lives on the brackets-history Release

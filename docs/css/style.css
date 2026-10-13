@@ -953,18 +953,20 @@ a {
    background: currentColor;
 }
 
-/* Matchup panel: a centred dialog over a blurred scrim (a bottom sheet on phones). Its header
-   is neutral, so the only colours in it are the two players'. The band metrics are declared
-   on the panel because the close button, a sibling of the band, reads them too. */
+/* Matchup panel: a bottom sheet over a blurred scrim on phones, a drawer beside the draw on
+   wider screens. Its header is neutral, so the only colours in it are the two players'. The
+   band metrics are declared on the panel because the close button, a sibling of the band,
+   reads them too, and --band-t must equal the band's top padding or the corner row is
+   clipped. */
 .matchup {
    --hd-bg: #f5f7f8;
    --hd-ink: #1b2226;
    --hd-mut: #6d777f;
    --hd-line: #dde3e7;
-   --pad-l: 20px;
-   --pad-r: 20px;
-   --band-t: 14px;
-   --band-b: 15px;
+   --pad-l: 12px;
+   --pad-r: 22px;
+   --band-t: 13px;
+   --band-b: 12px;
    --rule-h: 8px;
    /* one height for every chip in the band */
    --chip-h: 20px;
@@ -978,23 +980,24 @@ a {
    z-index: 20;
 }
 
-/* dvh, not vh, so a landscape phone's toolbar doesn't cover the panel's foot. */
+/* max-height leaves at least --close-size above the sheet for the condensed close button, and
+   overflow is visible so the button can sit outside. dvh, not vh, so a landscape phone's
+   toolbar doesn't cover the panel's foot. It takes focus on open; the slide-in is the cue. */
 .matchup {
    position: fixed;
    z-index: 21;
-   top: 50%;
-   left: 50%;
-   transform: translate(-50%, -50%);
-   width: min(880px, 94vw);
-   max-height: min(88dvh, 860px);
+   bottom: 0;
+   left: 0;
+   width: 100%;
+   max-height: min(92dvh, calc(100dvh - var(--close-size)));
    display: flex;
    flex-direction: column;
-   overflow: hidden;
+   overflow: visible;
    background: var(--card);
    border: 0;
    border-radius: var(--radius);
    box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
-   animation: pop .16s ease-out;
+   animation: sheet .2s ease-out;
 }
 
 .matchup[hidden] {
@@ -1005,26 +1008,19 @@ a {
    outline: none;
 }
 
-/* it takes focus on open; the pop is the cue */
-@keyframes pop {
+@keyframes sheet {
    from {
       opacity: 0;
-      transform: translate(-50%, -47.5%) scale(.97);
+      transform: translateY(28px);
    }
 }
 
-/* The panel's contents lay out by the panel's own width rather than the viewport's, so the
-   desktop drawer below gets the same layout as the phone sheet. */
-.matchup {
-   container: mpanel / inline-size;
-}
-
-/* Desktop: a drawer down the right-hand side instead of a centred dialog. Phone-width, so it
-   wears the phone layout. The page makes room for it rather than sitting under a scrim, so the
-   draw stays in view and another match can be opened straight from it. */
+/* Desktop: a drawer down the right-hand side, the same width as a phone so it wears the same
+   layout. The page makes room for it rather than sitting under a scrim, so the draw stays in
+   view and another match can be opened straight from it. */
 @media (min-width: 701px) {
    :root {
-      --drawer-w: clamp(400px, 36vw, 540px);
+      --drawer-w: clamp(400px, 32vw, 480px);
    }
 
    html.drawer-open body {
@@ -1032,18 +1028,11 @@ a {
    }
 
    .matchup {
-      --pad-l: 12px;
-      --pad-r: 22px;
-      --band-t: 13px;
-      --band-b: 12px;
       top: 0;
-      bottom: 0;
       left: auto;
       right: 0;
-      transform: none;
       width: var(--drawer-w);
       max-height: none;
-      overflow: visible;
       border-left: 1px solid var(--line);
       box-shadow: -10px 0 36px rgba(0, 0, 0, .14);
       animation: drawer .2s ease-out;
@@ -1064,9 +1053,9 @@ a {
 }
 
 /* The close button is a 44px target in the top-right corner, with a smaller chip painted
-   into the corner inside it (the same 8px cut as the site's other chips). --close-lane, which
-   the condensed name keeps clear of, measures off the target. On the phone sheet the button
-   sits above the panel instead. */
+   into the corner inside it (the same 8px cut as the site's other chips). Condensed, the
+   button sits above the phone sheet, and off the drawer's edge on a desktop, so neither
+   covers the right-hand name. */
 .matchup {
    --close-size: 44px;
    --close-chip-w: 32px;
@@ -1136,12 +1125,10 @@ a {
 /* Scoreboard header, which never scrolls: event and round, the two players either side of the
    score, then when. The split rule at its foot (violet left, red right) is the colour key for
    everything below. The padding is the names'; the chips and buttons are pulled out through
-   it to the panel's edges. --close-lane is how far the close button reaches past the grid's
-   right edge, plus 8px. */
+   it to the panel's edges. */
 .mtop {
    flex: none;
    position: relative;
-   --close-lane: calc(var(--close-size) - var(--pad-l) + 8px);
    padding: var(--band-t) var(--pad-r) var(--band-b) var(--pad-l);
    color: var(--hd-ink);
    background: var(--hd-bg);
@@ -1257,25 +1244,6 @@ a {
    margin: 0;
 }
 
-.matchup.cond .mp {
-   font-size: 17px;
-}
-
-.matchup.cond .sg {
-   font-size: 14px;
-}
-
-/* smaller names, shorter step off centre */
-.matchup.cond .mgrid {
-   --mrule-step: 7px;
-}
-
-/* Condensed, the right-hand name rises level with the close button, so it keeps clear of it.
-   The phone sheet doesn't (see the max-width: 700px block). */
-.matchup.cond .mp.b {
-   padding-right: var(--close-lane);
-}
-
 .matchup.cond .mflag {
    font-size: 13px;
 }
@@ -1292,10 +1260,6 @@ a {
    .mcorner {
       max-width: calc(100% + var(--pad-l) + var(--pad-r));
    }
-
-   .matchup.cond .mp.b {
-      padding-right: 0;
-   }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1304,7 +1268,6 @@ a {
    .mcorner,
    .mevent,
    .mstate,
-   .mp,
    .matchup .close,
    .matchup .close::before,
    .matchup .close svg {
@@ -1316,20 +1279,21 @@ a {
    with the scores in the middle column so a set reads down. Equal minmax(0, 1fr) outer tracks
    keep the score on the centre line, and a long name wraps. The right margin corrects for the
    band's unequal side paddings. fitHeader() narrows the gap (--mgap) from --mgap-max toward
-   --mgap-min before anything wraps. (Narrow screens use one row; see the 620px block.) */
+   --mgap-min before anything wraps, and stacks the header as a last resort (.mgrid.stacked).
+   Names sit at the outer ends rather than pulled in toward the score; there's no spare width. */
 .mgrid {
    display: grid;
    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
    grid-template-rows: auto auto;
    align-items: center;
    row-gap: 2px;
-   --mgap-max: 40px;
-   --mgap-min: 12px;
+   --mgap-max: 10px;
+   --mgap-min: 4px;
    column-gap: var(--mgap, var(--mgap-max));
    /* The score divider's wings: step off centre, overhang past the games, and a lean of
      atan(8px / chip height), matching the band's 8px cuts. See .mrule. */
-   --mrule-step: 10px;
-   --mrule-pad: 3px;
+   --mrule-step: 7px;
+   --mrule-pad: 2px;
    --mrule-splay: atan(8px / var(--chip-h));
    margin-right: calc(var(--pad-l) - var(--pad-r));
 }
@@ -1338,11 +1302,9 @@ a {
 .mp {
    display: flex;
    align-items: center;
-   gap: 7px;
+   gap: 5px;
    min-width: 0;
-   font-size: 24px;
-   justify-content: flex-end;
-   transition: font-size .18s ease, padding .18s ease;
+   font-size: 17px;
 }
 
 /* The left player takes the lower line and the right player the upper one. */
@@ -1396,17 +1358,14 @@ a {
 }
 
 /* The winner's caret, pointing into their name from the score side, in gold on both sides
-   (--win). Its outer margin is pulled back by the glyph's width so it takes no room from the
-   name. */
+   (--win). It takes its own space rather than overhanging, since the name-to-score gap is
+   only 4-10px. */
 .mwin {
    flex: none;
-   font-size: 14px;
+   margin: 0 -2px;
+   font-size: 12px;
    line-height: 1;
    color: var(--win);
-}
-
-.mp.a .mwin {
-   margin: 0 -12px 0 -2px;
 }
 
 .mp.a .mwin::before {
@@ -1414,29 +1373,14 @@ a {
 }
 
 /* Mirrored for the right-hand player. */
-.mp.b .mwin {
-   margin: 0 -2px 0 -12px;
-}
-
 .mp.b .mwin::before {
    content: "\25B6";
 }
 
 .mflag {
    flex: none;
-   font-size: 16px;
+   font-size: 14px;
    line-height: 1;
-}
-
-.mseed {
-   flex: none;
-   font-size: 10px;
-   font-weight: 700;
-   color: var(--hd-mut);
-   line-height: 1.6;
-   border: 1px solid var(--hd-line);
-   clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
-   padding: 0 7px;
 }
 
 /* The flat A,B,A,B cell list flows down columns, one row per player. Rows are pinned
@@ -1467,8 +1411,8 @@ a {
    display: flex;
    align-items: center;
    justify-content: center;
-   min-width: 16px;
-   font-size: 16px;
+   min-width: 13px;
+   font-size: 14px;
    font-weight: 600;
    line-height: 1.3;
    color: var(--hd-mut);
@@ -1548,10 +1492,10 @@ a {
 /* --pad-t is read by the sticky section headings, which pull back by it. Horizontal padding is
    --pad-l, so the body shares the header's left edge. */
 .mbody {
-   --pad-t: 14px;
+   --pad-t: 12px;
    overflow-y: auto;
    overscroll-behavior: contain;
-   padding: var(--pad-t) var(--pad-l) 22px;
+   padding: var(--pad-t) var(--pad-l) 20px;
 }
 
 /* No padding when there's no body (neither side has an entrant yet). */
@@ -1830,7 +1774,7 @@ a {
 /* --dn-size is the ring's diameter and --dn-pad the room its figures need outside it. */
 .tape {
    border: 1px solid var(--line);
-   padding: 12px 16px 14px;
+   padding: 11px 12px 12px;
    margin-top: 0;
    --dn-size: 160px;
    --dn-pad: 76px;
@@ -1888,14 +1832,8 @@ a {
 .wpplot svg {
    display: block;
    width: 100%;
-   height: 168px;
+   height: 132px;
    overflow: visible;
-}
-
-@container mpanel (max-width: 640px) {
-   .wpplot svg {
-      height: 132px;
-   }
 }
 
 /* Low-alpha fills; the line carries the shape. */
@@ -2102,26 +2040,16 @@ a {
    display: none;
 }
 
-/* The career anchor or denominator under a match figure, each on its own line (a full flex
-   basis, since the figure rows are wrapping flex containers). */
+/* The career anchor or denominator under a match figure, on its own line. */
 .pbanch {
    display: block;
-   flex: 0 0 100%;
    margin-top: 1px;
    font-style: normal;
-   font-size: 9px;
+   font-size: 8.5px;
    font-weight: 500;
    color: var(--muted);
    letter-spacing: 0;
    text-transform: none;
-}
-
-.pbcmp-row .pbanch {
-   font-size: 8.5px;
-}
-
-.pbside[data-side="b"] .pbanch {
-   text-align: right;
 }
 
 /* Match-mode serve strip: three zones per box rather than two, count over share. */
@@ -2158,8 +2086,8 @@ a {
    width. HTML bars rather than SVG, so the stretched width doesn't distort bar heights and
    gaps. */
 .pband {
-   --covrow: 13px;
-   --covbar: 8px;
+   --covrow: 12px;
+   --covbar: 7px;
    margin: 0 0 16px;
 }
 
@@ -2171,7 +2099,7 @@ a {
    align-items: baseline;
    gap: 12px;
    margin: 0 0 8px;
-   font-size: 11px;
+   font-size: 10.5px;
    color: var(--muted);
    font-variant-numeric: tabular-nums;
 }
@@ -2371,141 +2299,12 @@ a {
 
 /* Past eighteen seasons the rows get shorter, so every season keeps a row. */
 .cov.dense {
-   --covrow: 10.5px;
-   --covbar: 6px;
+   --covrow: 10px;
+   --covbar: 5.5px;
 }
 
 .cov.dense .covend {
    font-size: 8.5px;
-}
-
-/* Phones: slightly tighter rows, the same drawing. */
-@container mpanel (max-width: 760px) {
-   .pband {
-      --covrow: 12px;
-      --covbar: 7px;
-   }
-
-   .cov.dense {
-      --covrow: 10px;
-      --covbar: 5.5px;
-   }
-
-   .covtop {
-      font-size: 10.5px;
-   }
-}
-
-/* --- the two style columns (profileSide) ----------------------------------------------
-   Each capped by a rule in its player's colour and mirrored: A hangs on the left edge, B on
-   the right. */
-.pbside {
-   min-width: 0;
-   padding-top: 9px;
-   border-top: 4px solid var(--shot);
-}
-
-.pbside[data-side="a"] {
-   --shot: var(--a);
-}
-
-.pbside[data-side="b"] {
-   --shot: var(--b);
-   text-align: right;
-}
-
-/* The style label is the column's identity, so it's the largest text. */
-.pbstyle {
-   margin: 0;
-   font-size: 14px;
-   font-weight: 700;
-   line-height: 1.25;
-   color: var(--ink);
-}
-
-.pbhand {
-   margin: 1px 0 0;
-   font-size: 11px;
-   color: var(--muted);
-}
-
-/* The column's headline figure (average winning rally length), with a small unit and label. */
-.pbq {
-   margin: 9px 0 0;
-   line-height: 1.1;
-}
-
-/* Proportional digits, since this figure stands alone. */
-.pbq b {
-   font-size: 22px;
-   font-weight: 700;
-   color: var(--ink);
-}
-
-/* A space before the unit word. */
-.pbq span {
-   margin-left: 3px;
-   font-size: 11px;
-   color: var(--muted);
-   font-variant-numeric: tabular-nums;
-}
-
-.pbq em {
-   display: block;
-   margin-top: 1px;
-   font-style: normal;
-   font-size: 10px;
-   font-weight: 700;
-   text-transform: uppercase;
-   letter-spacing: .06em;
-   color: var(--muted);
-}
-
-/* The other figures, a size below the headline, with the label inline. The row wraps, so the
-   tour strip drops to its own line when the column is narrow. */
-.pbfig {
-   margin: 7px 0 0;
-   line-height: 1.2;
-   display: flex;
-   align-items: baseline;
-   gap: 4px;
-   flex-wrap: wrap;
-}
-
-.pbfig b {
-   font-size: 14px;
-   font-weight: 700;
-   color: var(--ink);
-}
-
-/* The losing side of a figure with a better end, in regular weight and muted. */
-.pbfig b.trail {
-   font-weight: 400;
-   color: var(--muted);
-}
-
-.pbfig span {
-   font-size: 10px;
-   color: var(--muted);
-}
-
-.pbfig em {
-   font-style: normal;
-   font-size: 9.5px;
-   font-weight: 700;
-   text-transform: uppercase;
-   letter-spacing: .05em;
-   color: var(--muted);
-}
-
-/* Side B's figures align right, with its column. */
-.pbside[data-side="b"] .pbfig {
-   justify-content: flex-end;
-}
-
-/* The first figure after the headline gets extra space. */
-.pbq+.pbfig {
-   margin-top: 10px;
 }
 
 /* the per-column dot, used where a stacked phone column has to name its own player */
@@ -2523,47 +2322,14 @@ a {
    background: var(--b);
 }
 
-/* --- the style columns and the ring on one grid (tape()) -------------------------------
-   Narrow: the two style columns side by side, the ring in a full-width row below. Wide: the
-   ring moves into a narrow middle track (see the media query below). Both columns share one
-   subgrid row per figure, so a wrapped style label doesn't push one column's figures out of
-   line with the other's. --pbrows is the row count from tape(), plus one row for the ring.
-   row-gap is 0; each figure carries its own margin. */
+/* --- the style lines, the ring and the figure rows, stacked (tape()) ------------------ */
 .tapemain {
    display: grid;
-   grid-template-columns: 1fr 1fr;
-   column-gap: 14px;
-   row-gap: 0;
-   grid-template-rows: repeat(var(--pbrows, 1), auto) auto;
-   align-items: start;
+   grid-template-columns: minmax(0, 1fr);
 }
 
-.tapemain>.pbside {
-   display: grid;
-   grid-template-rows: subgrid;
-   grid-row: 1 / -2;
-   align-items: start;
-}
-
-.tapemain>.pbside.a {
-   grid-column: 1;
-}
-
-.tapemain>.pbside.b {
-   grid-column: 2;
-}
-
-/* The em dash for a missing figure, muted. It holds the row open. */
-.pbnone>b {
-   font-weight: 400;
-   color: var(--muted);
-   opacity: .55;
-}
-
-.pbnone.pbstyle,
-.pbnone.pbhand {
-   color: var(--muted);
-   opacity: .55;
+.tapemain>.pbcmp {
+   margin-top: 18px;
 }
 
 /* --- the groundstrokes, as a square (groundAnatomy) ---------------------------------------
@@ -3372,14 +3138,6 @@ a {
    }
 }
 
-/* The phone comparison (profileCompare): one row per figure, A's value, the label, B's value.
-   .pbtops holds the style and hand lines above the ring; .pbcmp holds the figure rows below
-   it. Hidden until the phone media query below. */
-.pbcmp,
-.pbtops {
-   display: none;
-}
-
 /* --- the tour strip (figBand) ------------------------------------------------------------
    Where a figure sits on its tour: the track runs p5 to p95, and the shaded part is the middle
    half, painted as a gradient so the strip is a single <i>. --lo/--hi/--at are set by
@@ -3428,10 +3186,6 @@ a {
    border-right: 6px solid var(--ink);
 }
 
-.pbside[data-side="b"] .pbband {
-   margin-left: auto;
-}
-
 .pbcmp-row .pbband {
    width: 54px;
    margin-top: 2px;
@@ -3445,7 +3199,9 @@ a {
    margin-left: auto;
 }
 
-/* The player-colour key capping .pbtops on the phone, with a gap at the centre. */
+/* The figure comparison (profileCompare): .pbtops holds the style and hand lines above the
+   ring, .pbcmp one row per figure below it (A's value, the label, B's value). .pbtops is
+   capped by a player-colour key with a gap at the centre. */
 .pbtops::before {
    content: "";
    display: block;
@@ -3534,42 +3290,9 @@ a {
    color: var(--muted);
 }
 
-@container mpanel (max-width: 760px) {
-
-   /* Phone: style and hand, then the ring, then the figure rows, a grid row each. The child
-     combinator beats the `grid-row: -2 / -1` further down. */
-   .tapemain {
-      grid-template-rows: auto auto auto;
-   }
-
-   .tapemain>.pbside {
-      display: none;
-   }
-
-   .tapemain>.pbtops {
-      display: block;
-      grid-column: 1 / -1;
-      grid-row: 1;
-   }
-
-   .tapemain>.dnstack {
-      grid-row: 2;
-      margin-top: 8px;
-   }
-
-   .tapemain>.pbcmp {
-      display: block;
-      grid-column: 1 / -1;
-      grid-row: 3;
-      margin-top: 18px;
-   }
-}
-
 /* The ring, centred in its row, with a fixed reserve either side for its figures (see .dn). */
 .dnstack {
-   grid-column: 1 / -1;
-   grid-row: -2 / -1;
-   margin-top: 18px;
+   margin-top: 8px;
    display: flex;
    flex-direction: column;
    align-items: center;
@@ -3577,56 +3300,8 @@ a {
    min-width: 0;
 }
 
-@container mpanel (min-width: 761px) {
-
-   /* Only the ring centres vertically; the style columns stay at the top. The ring track takes
-     what its figures need from the style columns, which have room to spare. */
-   .tapemain {
-      grid-template-columns: 1fr minmax(270px, 356px) 1fr;
-      align-items: start;
-   }
-
-   .tapemain>.pbside.b {
-      grid-column: 3;
-   }
-
-   /* The ring's own track between the columns, spanning every figure row. */
-   .dnstack {
-      grid-column: 2;
-      grid-row: 1 / -1;
-      margin-top: 0;
-      align-self: center;
-   }
-
-   /* A bigger ring on a wide panel, so close values' figures land further apart. */
-   .tape {
-      --dn-size: 200px;
-      --dn-pad: 76px;
-   }
-
-   /* Rows with a tour strip are mirrored across the ring: strip on the outer edge, label
-     against it, value on the inner edge, and the free space between value and label. Rows
-     without a strip keep the normal layout, and .pbq is left alone. */
-   .pbside[data-side="a"] .pbfig:has(.pbband) {
-      flex-direction: row-reverse;
-   }
-
-   /* The label sits against the strip. Side B zeroes .pbband's own margin-left: auto. */
-   .pbside[data-side="a"] .pbfig:has(.pbband)>em {
-      margin-right: auto;
-   }
-
-   .pbside[data-side="b"] .pbfig:has(.pbband)>em {
-      margin-left: auto;
-   }
-
-   .pbside[data-side="b"] .pbfig:has(.pbband)>.pbband {
-      margin-left: 0;
-   }
-}
-
 /* The room the figures need outside the drawing, sized for the widest label (the leader's hold
-   figure, 71px) at nine or three o'clock, where it overhangs the band by 61px on the 200px ring. */
+   figure, 71px) at nine or three o'clock, where it overhangs the box by 63px on the 160px ring. */
 .dn {
    min-width: 0;
    padding: 0 var(--dn-pad) 20px;
@@ -3688,15 +3363,6 @@ a {
    line-height: 1.25;
    color: var(--muted);
    pointer-events: none;
-}
-
-/* The hole is bigger on the desktop ring, so the name can be bigger. */
-@container mpanel (min-width: 761px) {
-   .dnttl {
-      width: 108px;
-      font-size: 12.5px;
-      letter-spacing: .04em;
-   }
 }
 
 /* --- the floating figures ----------------------------------------------------------
@@ -3899,7 +3565,7 @@ a {
 .seccols {
    display: grid;
    grid-template-columns: 1fr 1fr;
-   column-gap: 14px;
+   column-gap: 10px;
    row-gap: 0;
    grid-template-rows: repeat(var(--rows, 1), auto);
 }
@@ -4562,25 +4228,8 @@ a {
       font-size: 13px;
    }
 
-   /* The dialog becomes a bottom sheet. max-height leaves at least --close-size above it for
-     the condensed close button, and overflow is visible so the button can sit outside. */
-   .matchup {
-      top: auto;
-      bottom: 0;
-      left: 0;
-      transform: none;
-      width: 100%;
-      max-height: min(92dvh, calc(100dvh - var(--close-size)));
-      overflow: visible;
-      animation: sheet .2s ease-out;
-   }
-
    /* Condensed, the close button moves above the sheet onto the scrim, so the right-hand name
      keeps its full width. */
-   .matchup.cond .mp.b {
-      padding-right: 0;
-   }
-
    .matchup.cond .close {
       top: calc(-1 * var(--close-size));
    }
@@ -4600,203 +4249,122 @@ a {
    }
 }
 
-/* The phone header, by the panel's width (see .matchup's container). */
-@container mpanel (max-width: 700px) {
-
-   /* Names at the outer ends rather than pulled in toward the score; there's no spare width. */
-   .mgrid {
-      --mgap-max: 10px;
-      --mgap-min: 4px;
-      --mrule-step: 7px;
-      --mrule-pad: 2px;
-   }
-
-   .mp {
-      font-size: 17px;
-      gap: 5px;
-      justify-content: flex-start;
-   }
-
-   /* No seed badge; it's in the draw behind the panel. */
-   .mp .mseed {
-      display: none;
-   }
-
-   .mflag {
-      font-size: 14px;
-   }
-
-   .sg {
-      font-size: 14px;
-      min-width: 13px;
-   }
-
-   /* The caret takes its own space instead of overhanging, since the name-to-score gap is only
-     4-10px here, and comes down a size. */
-   .mwin {
-      font-size: 12px;
-   }
-
-   .mp.a .mwin,
-   .mp.b .mwin {
-      margin: 0 -2px;
-   }
+/* The court sections stay two-up so the comparison survives, and each card stacks its drawing
+   instead (.msec.cards below). Text sections stack: the shared rows come off, and each column
+   is indented 8px under its player's name. */
+.msec.text .seccols {
+   grid-template-columns: 1fr;
+   grid-template-rows: none;
+   row-gap: 16px;
 }
 
-@keyframes sheet {
-   from {
-      opacity: 0;
-      transform: translateY(28px);
-   }
+.msec.text .seccol {
+   display: block;
+   grid-row: auto;
+   padding-left: 8px;
 }
 
-/* Phone panel: columns that stack name their own player. */
-@media (max-width: 620px) {
-
-   /* The panel's gutter. All four live on the panel because the close button reads them, and
-     --band-t must equal the band's top padding or the corner row is clipped. */
-   .matchup {
-      --pad-l: 12px;
-      --pad-r: 22px;
-      --band-t: 13px;
-      --band-b: 12px;
-   }
+.msec.text .colwho {
+   display: flex;
 }
 
-/* The rest of the phone panel follows the panel's width, so the desktop drawer gets it too. */
-@container mpanel (max-width: 620px) {
-
-   .mbody {
-      --pad-t: 12px;
-      padding-bottom: 20px;
-   }
-
-   .tape {
-      padding: 11px 12px 12px;
-   }
-
-   /* The court sections stay two-up so the comparison survives; the card stacks its drawing
-     instead. Text sections stack. */
-   .seccols {
-      grid-template-columns: 1fr 1fr;
-      column-gap: 10px;
-   }
-
-   /* Stacked, the shared rows come off, and each column is indented 8px under its player's
-     name. */
-   .msec.text .seccols {
-      grid-template-columns: 1fr;
-      grid-template-rows: none;
-      row-gap: 16px;
-   }
-
-   .msec.text .seccol {
-      display: block;
-      grid-row: auto;
-      padding-left: 8px;
-   }
-
-   .msec.text .colwho {
-      display: flex;
-   }
-
-   /* Serve direction stays two-up (:has(.srv) picks it out from the other text sections),
-     with no indent. */
-   .msec.text:has(.srv) .seccols {
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: repeat(var(--rows, 1), auto);
-      row-gap: 0;
-   }
-
-   .msec.text:has(.srv) .seccol {
-      display: grid;
-      grid-row: 1 / -1;
-      grid-template-rows: subgrid;
-      padding-left: 0;
-   }
-
-   .msec.text:has(.srv) .colwho {
-      display: none;
-   }
-
-   /* Four boxes across a phone leave each zone ~35px, so smaller type and padding. */
-   .msec.text:has(.srv) .srvzone {
-      padding: 2px 4px 0;
-      min-height: 46px;
-   }
-
-   .msec.text:has(.srv) .srvzone b {
-      font-size: 11.5px;
-   }
-
-   .msec.text:has(.srv) .srvzone .zl {
-      font-size: 9.5px;
-   }
-
-   .msec.text:has(.srv) .srvlabel {
-      padding: 0 4px;
-      font-size: 10px;
-   }
-
-   /* The match strip (three zones and career figures) doesn't fit half a phone, so each
-     player gets the full row. */
-   .msec.text:has(.zpc) .seccols {
-      grid-template-columns: 1fr;
-      grid-template-rows: none;
-      row-gap: 16px;
-   }
-
-   .msec.text:has(.zpc) .seccol {
-      display: block;
-      grid-row: auto;
-      padding-left: 8px;
-   }
-
-   .msec.text:has(.zpc) .colwho {
-      display: flex;
-   }
-
-   .msec.text:has(.zpc) .srvzone {
-      padding: 2px 8px 0;
-      min-height: 54px;
-   }
-
-   .msec.text:has(.zpc) .srvzone b {
-      font-size: 14px;
-   }
-
-   .msec.text:has(.zpc) .srvzone .zl {
-      font-size: 10.5px;
-   }
-
-   .msec.text:has(.zpc) .srvlabel {
-      padding: 0 8px;
-      font-size: 10.5px;
-   }
-
-   .msec.cards .pcard2 {
-      display: block;
-      margin-bottom: 14px;
-   }
-
-   /* Stacked, the court drawing gets a little wider. */
-   .msec.cards .pcourt {
-      width: 104px;
-      margin-bottom: 3px;
-   }
-
-   .msec.cards .pcourt svg {
-      width: 104px;
-   }
-
-   .msec.cards .plift {
-      font-size: 15px;
-   }
-
-   .msec.cards .pdesc {
-      font-size: 12px;
-   }
+/* Serve direction stays two-up (:has(.srv) picks it out from the other text sections),
+   with no indent. */
+.msec.text:has(.srv) .seccols {
+   grid-template-columns: 1fr 1fr;
+   grid-template-rows: repeat(var(--rows, 1), auto);
+   row-gap: 0;
 }
+
+.msec.text:has(.srv) .seccol {
+   display: grid;
+   grid-row: 1 / -1;
+   grid-template-rows: subgrid;
+   padding-left: 0;
+}
+
+.msec.text:has(.srv) .colwho {
+   display: none;
+}
+
+/* Four boxes across a phone leave each zone ~35px, so smaller type and padding. */
+.msec.text:has(.srv) .srvzone {
+   padding: 2px 4px 0;
+   min-height: 46px;
+}
+
+.msec.text:has(.srv) .srvzone b {
+   font-size: 11.5px;
+}
+
+.msec.text:has(.srv) .srvzone .zl {
+   font-size: 9.5px;
+}
+
+.msec.text:has(.srv) .srvlabel {
+   padding: 0 4px;
+   font-size: 10px;
+}
+
+/* The match strip (three zones and career figures) doesn't fit half a phone, so each
+   player gets the full row. */
+.msec.text:has(.zpc) .seccols {
+   grid-template-columns: 1fr;
+   grid-template-rows: none;
+   row-gap: 16px;
+}
+
+.msec.text:has(.zpc) .seccol {
+   display: block;
+   grid-row: auto;
+   padding-left: 8px;
+}
+
+.msec.text:has(.zpc) .colwho {
+   display: flex;
+}
+
+.msec.text:has(.zpc) .srvzone {
+   padding: 2px 8px 0;
+   min-height: 54px;
+}
+
+.msec.text:has(.zpc) .srvzone b {
+   font-size: 14px;
+}
+
+.msec.text:has(.zpc) .srvzone .zl {
+   font-size: 10.5px;
+}
+
+.msec.text:has(.zpc) .srvlabel {
+   padding: 0 8px;
+   font-size: 10.5px;
+}
+
+.msec.cards .pcard2 {
+   display: block;
+   margin-bottom: 14px;
+}
+
+/* Stacked, the court drawing gets a little wider. */
+.msec.cards .pcourt {
+   width: 104px;
+   margin-bottom: 3px;
+}
+
+.msec.cards .pcourt svg {
+   width: 104px;
+}
+
+.msec.cards .plift {
+   font-size: 15px;
+}
+
+.msec.cards .pdesc {
+   font-size: 12px;
+}
+
 
 @media (max-width: 560px) {
    .legend {
@@ -4805,36 +4373,34 @@ a {
 }
 
 /* The scoreboard's last resort, set by fitHeader() only when the staggered header has run out
-   of width, and only in a panel under 620px, where a wrapped name means a collision. Both names share one
-   row and the score stacks between them, a set per row. */
-@container mpanel (max-width: 620px) {
-   .mgrid.stacked {
-      grid-template-rows: auto;
-      row-gap: 0;
-   }
+   of width, where a wrapped name means a collision. Both names share one row and the score
+   stacks between them, a set per row. */
+.mgrid.stacked {
+   grid-template-rows: auto;
+   row-gap: 0;
+}
 
-   .mgrid.stacked .mp.a,
-   .mgrid.stacked .mp.b {
-      grid-row: 1;
-   }
+.mgrid.stacked .mp.a,
+.mgrid.stacked .mp.b {
+   grid-row: 1;
+}
 
-   .mgrid.stacked .mrule {
-      display: none;
-   }
+.mgrid.stacked .mrule {
+   display: none;
+}
 
-   .mgrid.stacked .mscore {
-      grid-row: 1;
-      align-self: center;
-      grid-auto-flow: row;
-      grid-template-rows: none;
-      grid-template-columns: auto auto;
-      row-gap: 1px;
-      column-gap: 8px;
-   }
+.mgrid.stacked .mscore {
+   grid-row: 1;
+   align-self: center;
+   grid-auto-flow: row;
+   grid-template-rows: none;
+   grid-template-columns: auto auto;
+   row-gap: 1px;
+   column-gap: 8px;
+}
 
-   /* one row per set in source order, so the row pins come off */
-   .mgrid.stacked .mscore .sg:nth-child(odd),
-   .mgrid.stacked .mscore .sg:nth-child(even) {
-      grid-row: auto;
-   }
+/* one row per set in source order, so the row pins come off */
+.mgrid.stacked .mscore .sg:nth-child(odd),
+.mgrid.stacked .mscore .sg:nth-child(even) {
+   grid-row: auto;
 }

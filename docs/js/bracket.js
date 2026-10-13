@@ -4,7 +4,7 @@
 
 import { dayShort, localStart } from "./schedule.js";
 import { flagEmoji } from "./flags.js";
-import { BYE, isEntrant } from "./feed.js";
+import { BYE, isEntrant, wonSet } from "./feed.js";
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -54,23 +54,14 @@ export function matchTier(m, gender, cov) {
   return { cls: "t-none", note: `uncharted matchup — ${note}` };
 }
 
-// Did this side take set i? `wins` is the feed's per-set verdict (true / false / null for
-// undecided), so a suspended match's live set isn't credited to its leader. Older archived
-// draws have no list and are all finished, so the higher score decides.
-function wonSet(mine, theirs, wins, i) {
-  if (Array.isArray(wins) && wins.length > 0) return wins[i] === true;
-  const t = theirs && theirs[i];
-  return t != null && Math.trunc(mine[i]) > Math.trunc(t);
-}
-
 // Per-set score cells: each set is its own span, bold when this side took that set.
 // The match winner then reads as the row with more bold numbers — no need to hunt for
-// the highlighted name. `theirs` is the opponent's sets.
-function setsEl(mine, theirs, wins) {
+// the highlighted name.
+function setsEl(s) {
   const sets = el("span", "sets");
-  (mine || []).forEach((x, i) => {
+  (s.sets || []).forEach((x, i) => {
     if (x == null) return;
-    const won = wonSet(mine, theirs, wins, i);
+    const won = wonSet(s, i);
     sets.append(el("span", "set" + (won ? " won" : ""), String(Math.trunc(x))));
   });
   return sets;
@@ -102,7 +93,7 @@ function sideRow(s, opp) {
   const nm = el("span", "nm");
   if (named) nm.dataset.full = s.name;
   fillName(nm, s, named);
-  row.append(nm, setsEl(s.sets, opp && opp.sets, s.set_wins));
+  row.append(nm, setsEl(s));
   return row;
 }
 
@@ -167,10 +158,10 @@ const isScored = (m) => [m.a, m.b].some((s) => (s.sets || []).some((x) => x != n
 function spine(m) {
   const board = el("div", "spine");
   board.append(el("span", "rule"));
-  for (const [s, opp, side] of [[m.a, m.b, "a"], [m.b, m.a, "b"]]) {
+  for (const [s, side] of [[m.a, "a"], [m.b, "b"]]) {
     (s.sets || []).forEach((x, i) => {
       if (x == null) return;
-      const won = wonSet(s.sets, opp && opp.sets, s.set_wins, i);
+      const won = wonSet(s, i);
       const g = el("span", "gm " + side + (won ? " won" : ""), String(Math.trunc(x)));
       g.style.gridRow = i + 1;
       board.append(g);
@@ -366,7 +357,7 @@ function navZone(cls, label, onTap) {
   return zone;
 }
 
-// Both previews are drawn against a zone that now runs to the screen's own edge, so the
+// Both previews are drawn against a zone that runs to the screen's own edge, so the
 // outermost stage is held a node's radius inside it: a dot centred on the edge itself is
 // sliced in half by the viewport and reads as a clipping bug rather than as a match.
 const NAV_NODE_R = 2;

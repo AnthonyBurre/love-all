@@ -60,17 +60,11 @@ export async function query(sql, params = []) {
   return (await conn.query(sql)).toArray().map((r) => r.toJSON());
 }
 
-// The serve_tendencies gates still ship in `meta` under serve_* keys — the n80 sample
-// thresholds and the tour's own placement mix. Nothing on the site reads them: the sample
-// gate is applied in the build as `reliable`, and the one figure the panel took from here,
-// the recency window, is now per player on player_serve rather than the tour's largest.
-
 // The sample each career figure needs before it prints, as `floor_<key>_<gender>` rows in
 // `meta` (build_insights._apply_floors; each tour's floors follow its own typical rates), plus
 // the ungendered `floor_band_points`. The build has already applied them, so a figure under
 // its floor arrives null; the panel reads them only to say what a missing figure is waiting
-// for. Resolves to one tour's floors keyed without the suffix, or {} on an older build, and
-// every note then goes unsaid.
+// for. Resolves to one tour's floors keyed without the suffix.
 let _floors = null;
 export async function panelFloors(gender) {
   if (!_floors) {
@@ -96,10 +90,11 @@ export async function panelFloors(gender) {
 // are the axis it's drawn on (see figBand() in matchup.js). Cut in SQL, each over its own
 // qualifying players (quantile_cont skips nulls per column).
 //
-// Cached as the promise, so two panels opening at once share one query.
+// Cached as the promise, so two panels opening at once share one query, and dropped on
+// failure for the same reason initDB drops a failed attempt.
 let _spread = null;
 export function tourSpread() {
-  if (!_spread) _spread = loadSpread();
+  if (!_spread) _spread = loadSpread().catch((e) => { _spread = null; throw e; });
   return _spread;
 }
 
@@ -113,34 +108,32 @@ const SPREAD_COLS = [
 
 async function loadSpread() {
   const out = { M: {}, W: {} };
-  try {
-    // Aliased by position, so a column name with anything awkward in it could never reach
-    // the identifier: c3_lo is read back off the same index the name came from.
-    const sel = SPREAD_COLS.map((c, i) =>
-      `count(${c}) AS c${i}_n,
-       quantile_cont(${c}, 0.25) AS c${i}_lo, quantile_cont(${c}, 0.75) AS c${i}_hi,
-       quantile_cont(${c}, 0.05) AS c${i}_min, quantile_cont(${c}, 0.95) AS c${i}_max`);
-    // Cut over established players only: a thin player's figure prints above its own floor,
-    // but a tour of one-match readings would spread the band with noise.
-    const min = (await panelFloors()).band_points || 0;   // ungendered
-    const rows = await query(
-      `SELECT gender, ${sel.join(", ")} FROM player_summary
-       WHERE points_charted >= ? GROUP BY gender`, [min]);
-    for (const r of rows) {
-      if (!out[r.gender]) continue;
-      // A band needs a population behind it to be worth quoting. Below that the metric still
-      // prints — it is the player's own number — it just goes without a tour to read it against.
-      const band = (n, lo, hi, min, max) =>
-        Number(n) >= 40 && lo != null && hi != null && min != null && max != null
-          ? { lo: Number(lo), hi: Number(hi), min: Number(min), max: Number(max), n: Number(n) }
-          : null;
-      const g = {};
-      SPREAD_COLS.forEach((c, i) => {
-        g[c] = band(r[`c${i}_n`], r[`c${i}_lo`], r[`c${i}_hi`],
-          r[`c${i}_min`], r[`c${i}_max`]);
-      });
-      out[r.gender] = g;
-    }
-  } catch (e) { /* stale insights db: the figures print without their tour band */ }
+  // Aliased by position, so a column name with anything awkward in it could never reach
+  // the identifier: c3_lo is read back off the same index the name came from.
+  const sel = SPREAD_COLS.map((c, i) =>
+    `count(${c}) AS c${i}_n,
+     quantile_cont(${c}, 0.25) AS c${i}_lo, quantile_cont(${c}, 0.75) AS c${i}_hi,
+     quantile_cont(${c}, 0.05) AS c${i}_min, quantile_cont(${c}, 0.95) AS c${i}_max`);
+  // Cut over established players only: a thin player's figure prints above its own floor,
+  // but a tour of one-match readings would spread the band with noise.
+  const min = (await panelFloors()).band_points || 0;   // ungendered
+  const rows = await query(
+    `SELECT gender, ${sel.join(", ")} FROM player_summary
+     WHERE points_charted >= ? GROUP BY gender`, [min]);
+  for (const r of rows) {
+    if (!out[r.gender]) continue;
+    // A band needs a population behind it to be worth quoting. Below that the metric still
+    // prints — it is the player's own number — it just goes without a tour to read it against.
+    const band = (n, lo, hi, min, max) =>
+      Number(n) >= 40 && lo != null && hi != null && min != null && max != null
+        ? { lo: Number(lo), hi: Number(hi), min: Number(min), max: Number(max), n: Number(n) }
+        : null;
+    const g = {};
+    SPREAD_COLS.forEach((c, i) => {
+      g[c] = band(r[`c${i}_n`], r[`c${i}_lo`], r[`c${i}_hi`],
+        r[`c${i}_min`], r[`c${i}_max`]);
+    });
+    out[r.gender] = g;
+  }
   return out;
 }

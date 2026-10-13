@@ -3,7 +3,7 @@
 Every figure is produced once per gender (``*_men.png`` / ``*_women.png``);
 men's and women's tennis are treated as distinct throughout the project and are
 never combined into a single chart. Static matplotlib output keeps the repo
-dependency-light and the images embeddable in a future GitHub Pages site.
+dependency-light and the images embeddable in the reports.
 """
 
 import matplotlib

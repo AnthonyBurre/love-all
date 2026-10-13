@@ -15,6 +15,10 @@ export const BYE = "Bye";
 
 export const isEntrant = (s) => !!s.name && s.name !== "TBD" && s.name !== BYE;
 
+// Did this side take set i? Read off the feed's own per-set verdict (`set_wins`: true, false,
+// or null while undecided), so a suspended match's live set isn't credited to its leader.
+export const wonSet = (s, i) => (s.set_wins || [])[i] === true;
+
 // What to call an event on screen. The feed's own name is the title sponsor's — "National
 // Bank Open presented by Rogers" — which is not what anyone calls the thing, so this leads
 // with the name the calendar says people use. Keyed identity stays on the feed name: it's
