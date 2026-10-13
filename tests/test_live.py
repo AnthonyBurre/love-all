@@ -304,9 +304,9 @@ def test_a_calendar_read_within_the_day_is_fresh():
 
 
 def test_a_calendar_read_days_ago_is_stale_even_in_its_own_season():
-    # The regression this gate exists for: the cache is the right season and parses fine,
-    # but predates the National Bank Open draw — so it links no draw page for it, and the
-    # season check it replaced would have held it until January.
+    # The case this gate exists for: the cache is the right season and parses fine, but
+    # predates a newly published draw page, so it links none for that event. A season check
+    # alone would hold it until January.
     assert feeds.calendar_stale(_cal_doc(_iso(days=3))) is True
 
 
@@ -352,7 +352,7 @@ def test_event_meta_names_an_event_the_way_people_do():
 
 def test_event_meta_is_empty_when_the_calendar_cannot_place_the_event():
     # A stop the calendar doesn't cover leaves the site showing the feed's name alone,
-    # which is the state this replaced — never a line of half-filled labels.
+    # never a line of half-filled labels.
     assert feeds.event_meta_for("Nowhere", "Some New Open", "M", 3, CAL_CANADA) == {}
     assert feeds.event_meta_for("Toronto", "National Bank Open", "M", 8,
                                 {"season": 2026, "events": []}) == {}

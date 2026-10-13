@@ -94,11 +94,9 @@ def collect(con, gender: str, hands: dict) -> "tuple[dict, dict]":
     acc: dict = defaultdict(lambda: {"n": 0, "w": 0, "e": 0, "f": 0,
                                      "ctx": defaultdict(lambda: [0, 0, 0, 0]),
                                      "half": defaultdict(lambda: [0, 0, 0, 0])})
-    # Eight slots, not four: [n, w, e, f] per match-hash fold. The pooled tables have
-    # carried a fold split since the cross-validation landed; these did not, which is why
-    # the openings screen was the one table here still selecting and reporting on the same
-    # data. Matches (not points) are the split unit, so a charter's judgment lands wholly
-    # on one side.
+    # Eight slots, not four: [n, w, e, f] per match-hash fold, so the openings screen selects
+    # on one fold and reports on the other, like the pooled tables. Matches (not points) are
+    # the split unit, so a charter's judgment lands wholly on one side.
     openings: dict = defaultdict(lambda: {"base": [0] * 8,
                                           "ctx": defaultdict(lambda: [0] * 8)})
     sql = (

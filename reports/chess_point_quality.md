@@ -8,7 +8,7 @@
 
 ![serve eval](figures/chess_serve_eval.png)
 
-## Richer state: the optional details now in the eval
+## Richer state: the optional details in the eval
 
 Besides shot direction, the rally state reads **return depth** (7/8/9), **slice vs drive**, and **net/approach** (+/- modifiers). Raw men's server-win% by each detail (marginal, so confounded, but the signal is clear):
 
