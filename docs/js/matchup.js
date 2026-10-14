@@ -1098,19 +1098,29 @@ function serveAnatomy(da, db, ma, mb, sides) {
   </div>`;
 }
 
-// Where a figure sits on its tour: p5 to p95 with the middle half shaded, both from the build.
-// Players outside it are drawn at the end and marked. `fmt` formats the band ends like the
-// figure.
-function figBand(x, band, fmt = (v) => v.toFixed(1)) {
-  if (!band || x == null || !(band.max > band.min)) return "";
+// Where both players sit on their tour, on one strip: p5 to p95 with the middle half shaded,
+// both from the build. Each player is a dot in their colour, and a line joins the two so the
+// gap reads against the tour's spread. A player outside the strip is drawn at the end as a
+// wedge pointing off it. `xa` and `xb` are profileParts figures; a side without a band (a
+// match reading) gets no dot.
+function figStrip(xa, xb) {
+  const band = (xa && xa.band) || (xb && xb.band);
+  if (!band || !(band.max > band.min)) return "";
+  const fmt = (xa && xa.band ? xa : xb).fmt || ((v) => v.toFixed(1));
   const at = (v) => (v - band.min) / (band.max - band.min);
-  const f = at(x);
-  const out = f < 0 ? " out lo" : f > 1 ? " out hi" : "";
-  const pos = Math.max(0, Math.min(1, f));
-  return `<i class="pbband${out}"
-    style="--lo:${(at(band.lo) * 100).toFixed(1)}%;--hi:${(at(band.hi) * 100).toFixed(1)}%;--at:${(pos * 100).toFixed(1)}%"
+  const spot = (x) => (x && x.band && x.raw != null ? at(x.raw) : null);
+  const fa = spot(xa), fb = spot(xb);
+  if (fa == null && fb == null) return "";
+  const pc = (f) => (clamp01(f) * 100).toFixed(1);
+  const dot = (f, side) => f == null ? ""
+    : `<i class="pbdot ${side}${f < 0 ? " out lo" : f > 1 ? " out hi" : ""}"
+      style="--at:${pc(f)}%"></i>`;
+  const link = fa == null || fb == null ? ""
+    : `<i class="pblink" style="--x0:${pc(Math.min(fa, fb))}%;--x1:${pc(Math.max(fa, fb))}%"></i>`;
+  return `<span class="pbstrip"
+    style="--lo:${pc(at(band.lo))}%;--hi:${pc(at(band.hi))}%"
     title="the middle half of the charted tour runs ${esc(fmt(band.lo))} to ${esc(fmt(band.hi))}"
-  ></i>`;
+  >${link}${dot(fa, "a")}${dot(fb, "b")}</span>`;
 }
 
 // One player's style line and figures as data, for profileCompare.
@@ -1305,7 +1315,8 @@ function profilePlan(pa, pb) {
   return rows;
 }
 
-// The style and hand lines, then one row per figure: A's value, the label, B's value.
+// The style and hand lines, then one row per figure: A's value, the label over the shared tour
+// strip, B's value.
 function profileCompare(A, B, plan) {
   const any = (p) => p.arch || p.hand || p.rally || p.figs.length;
   if (!any(A) && !any(B)) return null;
@@ -1319,7 +1330,6 @@ function profileCompare(A, B, plan) {
   const seq = plan.map((r) => (r.kind === "rally" ? (A.rally || B.rally).label : r.label));
   const val = (x) => x == null ? "—"
     : `${x.v}${x.unit ? ` <span class="pbcu">${esc(x.unit)}</span>` : ""}` +
-    figBand(x.raw, x.band, x.fmt) +
     (x.note ? `<i class="pbanch">${esc(x.note)}</i>` : "") +
     (x.anchor ? `<i class="pbanch">career ${esc(x.anchor)}</i>`
       : x.careerOnly ? `<i class="pbanch">career</i>` : "");
@@ -1329,7 +1339,8 @@ function profileCompare(A, B, plan) {
     const xa = ma.get(l), xb = mb.get(l), win = figWinner(xa, xb);
     const cls = (side) => side + (win && win !== side ? " trail" : "");
     return `<div class="pbcmp-row"><b class="${cls("a")}">${val(xa)}</b>` +
-      `<span class="pbcl">${esc(l)}</span><b class="${cls("b")}">${val(xb)}</b></div>`;
+      `<span class="pbmid"><span class="pbcl">${esc(l)}</span>${figStrip(xa, xb)}</span>` +
+      `<b class="${cls("b")}">${val(xb)}</b></div>`;
   }).join("");
   const head = (a, b, cls) => a || b
     ? `<div class="pbcmp-head ${cls}"><span class="a">${esc(a || "—")}</span>` +
@@ -1419,10 +1430,11 @@ function figureKey(sa, sb, spread, match) {
       winners takes many more. A dash means that player hasn't reached it yet. The better of
       two figures is set in bold only when the gap is larger than the sampling noise.</div>`,
     // The strip entry closes the key, after the figures it is drawn under.
-    !bands.length ? "" : `<div>The <b>strip</b> under a figure is where that player sits on the
+    !bands.length ? "" : `<div>The <b>strip</b> under a label places both players on the
       charted tour${FLOOR.band_points ? ` of players with ${FLOOR.band_points.toLocaleString()} or
-      more charted points` : ""}: the shaded part is the middle half of it, and the ends are the 5th and 95th
-      percentiles. ${bands.join(" ")} A player past either end is drawn at it and marked.</div>`,
+      more charted points` : ""}, one dot each in their colour: the shaded part is the middle half
+      of the tour, and the ends are the 5th and 95th percentiles. ${bands.join(" ")} A player
+      past either end is drawn at it as a wedge pointing off the strip.</div>`,
     !match ? "" : `<div><b>Win probability</b> starts from the two players' charted records
       before this match. Their serve and return rates give each a chance of winning a point
       on serve, and after every point that is carried through the rest of the game, set and

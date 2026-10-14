@@ -3138,65 +3138,79 @@ a {
    }
 }
 
-/* --- the tour strip (figBand) ------------------------------------------------------------
-   Where a figure sits on its tour: the track runs p5 to p95, and the shaded part is the middle
-   half, painted as a gradient so the strip is a single <i>. --lo/--hi/--at are set by
-   figBand(). */
-.pbband {
+/* --- the shared tour strip (figStrip) -----------------------------------------------------
+   Both players on one track: it runs p5 to p95, and the shaded part is the middle half,
+   painted as a gradient. --lo/--hi on the strip and --at on each dot are set by figStrip(). */
+.pbstrip {
    display: block;
    position: relative;
-   width: 62px;
-   height: 5px;
-   margin-top: 4px;
+   height: 4px;
+   margin: 5px 4px 3px;
+   border-radius: 2px;
    background: linear-gradient(to right,
          color-mix(in srgb, var(--line) 60%, var(--card)) 0 var(--lo),
          color-mix(in srgb, var(--muted) 30%, var(--card)) var(--lo) var(--hi),
          color-mix(in srgb, var(--line) 60%, var(--card)) var(--hi) 100%);
 }
 
-/* The player's mark, in ink so it shows against the shaded middle. */
-.pbband::after {
-   content: "";
+/* The gap between the two players, in ink over the track. */
+.pblink {
    position: absolute;
-   left: var(--at);
-   top: -2px;
-   width: 2px;
-   height: 9px;
-   margin-left: -1px;
+   left: var(--x0);
+   right: calc(100% - var(--x1));
+   top: 1px;
+   height: 2px;
    background: var(--ink);
 }
 
-/* Past the end: the mark sits at that end as a wedge pointing off it. */
-.pbband.out::after {
+/* Each player's place, ringed in the card colour so a dot on the other still shows. */
+.pbdot {
+   position: absolute;
+   left: var(--at);
+   top: 50%;
+   width: 9px;
+   height: 9px;
+   margin: -4.5px 0 0 -4.5px;
+   border-radius: 50%;
+   box-shadow: 0 0 0 1.5px var(--card);
+}
+
+.pbdot.a {
+   background: var(--a);
+}
+
+.pbdot.b {
+   background: var(--b);
+}
+
+/* Past the end: the dot becomes a wedge at that end, pointing off it. */
+.pbdot.out {
    width: 0;
    height: 0;
-   top: -1px;
+   margin-top: -5px;
+   border-radius: 0;
+   box-shadow: none;
    background: none;
-   border-top: 3.5px solid transparent;
-   border-bottom: 3.5px solid transparent;
+   border-top: 5px solid transparent;
+   border-bottom: 5px solid transparent;
 }
 
-.pbband.hi::after {
-   margin-left: -3px;
-   border-left: 6px solid var(--ink);
+.pbdot.out.hi {
+   margin-left: -2px;
+   border-left: 8px solid var(--c);
 }
 
-.pbband.lo::after {
-   margin-left: -3px;
-   border-right: 6px solid var(--ink);
+.pbdot.out.lo {
+   margin-left: -6px;
+   border-right: 8px solid var(--c);
 }
 
-.pbcmp-row .pbband {
-   width: 54px;
-   margin-top: 2px;
+.pbdot.out.a {
+   --c: var(--a);
 }
 
-.pbcmp-row .a .pbband {
-   margin-right: auto;
-}
-
-.pbcmp-row .b .pbband {
-   margin-left: auto;
+.pbdot.out.b {
+   --c: var(--b);
 }
 
 /* The figure comparison (profileCompare): .pbtops holds the style and hand lines above the
@@ -3243,13 +3257,19 @@ a {
    margin-top: 0;
 }
 
-/* Tight rows, since this list runs seven deep on a phone. */
+/* Tight rows, since this list runs seven deep on a phone. The middle column is fixed, so every
+   row's strip runs the same length and the dots line up as a column of scales. */
 .pbcmp-row {
    display: grid;
-   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-   column-gap: 12px;
-   align-items: baseline;
-   margin-top: 6px;
+   grid-template-columns: minmax(0, 1fr) 148px minmax(0, 1fr);
+   column-gap: 10px;
+   align-items: center;
+   margin-top: 8px;
+}
+
+.pbmid {
+   display: block;
+   min-width: 0;
 }
 
 .pbcmp-row b {
@@ -3282,7 +3302,9 @@ a {
 
 /* The label, once, between the two values. */
 .pbcmp-row .pbcl {
+   display: block;
    text-align: center;
+   white-space: nowrap;
    font-size: 9.5px;
    font-weight: 700;
    text-transform: uppercase;
