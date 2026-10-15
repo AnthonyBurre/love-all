@@ -114,15 +114,18 @@ const abbrevHard = (name) => {
   return `${parts[0][0]}. ${rest.slice(i).join(" ")}`;
 };
 // A stacked card has one line, so the name is clipped: abbreviate, drop the seed badge,
-// abbreviate harder, then the CSS ellipsis. A wide card wraps instead and is never
-// ellipsised, so overflow means a single word is wider than the column; after both
-// abbreviation steps, that word is broken mid-way.
+// abbreviate harder, then the CSS ellipsis. A wrapping name (a wide card, or an 8-across
+// one in the by-quarter view) is never ellipsised, so overflow means a single word is wider
+// than the column; after both abbreviation steps, that word is broken mid-way.
 function fitNames(root) {
   for (const nm of root.querySelectorAll(".nm[data-full]")) {
     const who = nm.querySelector(".who");                      // the part that can be shortened
-    const fits = () => who.scrollWidth <= who.clientWidth + 0.5;
+    const eightAcross = !!nm.closest(".qcell.span1");
+    const wraps = eightAcross || !!nm.closest(".match.wide");
+    // An 8-across name is inline beside its flag, so its box is the whole .nm.
+    const box = eightAcross ? nm : who;
+    const fits = () => box.scrollWidth <= box.clientWidth + 0.5;
     if (fits()) continue;
-    const wraps = !!nm.closest(".match.wide");
     who.lastChild.textContent = abbrev(nm.dataset.full);       // "F. Auger-Aliassime", seed kept
     if (fits()) continue;
     if (!wraps) {
