@@ -1361,7 +1361,9 @@ const COV_NOTE = `<p class="covnote">* Charting is volunteer work, so these are 
     someone chose to chart. That weights the numbers toward big occasions rather than
     sampling a career evenly.</p>`;
 
-// The collapsed key, defining only the figures on screen. Tour bands are read off the build.
+// The collapsed key, defining only what is on screen. Terms are spelled as the ring and row
+// labels print them and run in the same order, each with its tour middle half; then how to read
+// the rows, then the parts of the panel below the box.
 function figureKey(sa, sb, spread, match) {
   const has = (k) => {
     const f = FIGS.find((x) => x.k === k);
@@ -1370,81 +1372,95 @@ function figureKey(sa, sb, spread, match) {
   // The style line is a string, not a figure, so it needs its own test — num() on an
   // archetype name is NaN and `has` would drop the entry that most needs to exist.
   const hasStyle = [sa, sb].some((s) => s && s.archetype);
-  // Break points are defined only when on screen.
   const hasBp = [sa, sb].some((s) => s && s.bp_faced != null);
-  // Return winners, the one outright-win figure in the column.
-  const hasOutright = has("ret_winner_rate");
-  const sp = spread || {};
-  // One entry covers all four shot-mix figures, shown if any of them is.
-  const MIX_KEYS = ["slice_pct", "net_pct", "net_winner_pct", "net_err_pct"];
-  const hasMix = MIX_KEYS.some(has);
-  // The groundstroke square has no key; its shares gate the error-rate entry.
+  // The groundstroke square has no key of its own; its rates gate the error-rate line.
   const GS_RATES = ["fh_winner_pct", "fh_err_pct", "bh_winner_pct", "bh_err_pct"];
   const hasGround = [sa, sb].some((s) => s && GS_RATES.some((k) => num(s[k]) != null));
   // A square drawn at equal widths, because the forehand/backhand split isn't settled.
   const evenGround = !match && [sa, sb].some((s) => s && num(s.fh_share) == null
     && GS_RATES.some((k) => num(s[k]) != null));
-  // Tour bands for the figures shown with a strip (career readings only).
-  const bands = [["bits", sp.bits, "Variety", (v) => v.toFixed(1) + " bits"],
-  ["won_rally_len", match ? null : sp.won_rally_len, "Won point length",
-    (v) => v.toFixed(1) + " shots"],
-  ["ret_winner_rate", match ? null : sp.ret_winner_rate, "The return-winner rate", pct],
-  ["slice_pct", match ? null : sp.slice_pct, "The slice share", pct],
-  ["net_pct", match ? null : sp.net_pct, "The net share", pct],
-  ["net_winner_pct", match ? null : sp.net_winner_pct, "The net winner rate", pct],
-  ["net_err_pct", match ? null : sp.net_err_pct, "The net error rate", pct]]
-    .filter(([k, band]) => band && [sa, sb].some((s) => s && num(s[k]) != null))
-    .map(([, band, name, f]) =>
-      `${name}'s middle half runs ${f(band.lo)} to ${f(band.hi)}.`);
+  const sp = spread || {};
+  // A figure's tour middle half, as a strip draws it: career readings only, except variety,
+  // which stays a career figure on a match.
+  const tour = (k, f = pct, unit = "") => {
+    const band = (match && k !== "bits") ? null : sp[k];
+    return band && has(k) ? `${f(band.lo)} to ${f(band.hi)}${unit}` : "";
+  };
+  const tourLine = (...parts) => {
+    const said = parts.filter(([, r]) => r);
+    if (!said.length) return "";
+    const runs = said.map(([name, r]) => (said.length > 1 ? `${name} ${r}` : r)).join("; ");
+    return ` <span class="keytour">Tour middle half: ${runs}.</span>`;
+  };
+  const one = (v) => v.toFixed(1);
+  const term = (label, body) => `<dt>${esc(label)}</dt><dd>${body}</dd>`;
 
-  const defs = [
-    // Style leads, and explains "Between styles", which about a third of players get.
-    !hasStyle ? "" : `<div><b>Style</b> groups players by twelve metrics of their
-      charted play, each group named for its centre.
-      <b>"Between styles"</b> means the two nearest groups fit this player about equally well.</div>`,
-    !has("won_rally_len") && !match ? "" : `<div><b>Average won point length</b> counts the serve
-      and the shot that ends the point, over the points that player won.</div>`,
-    !match ? "" : `<div>Every rate on this panel is <b>this match only</b>, including the
-      ring, the serve plot, the break points and the placement, except where a line says
-      "career". These rates have no minimum sample, since they count what happened in this
-      match rather than estimate how the players usually play.</div>`,
-    !hasOutright ? "" : `<div><b>Return winners</b> are clean winners on the return over every
-      point returned.</div>`,
-    !hasMix ? "" : `<div><b>Slice share</b> and <b>net share</b> are out of every non-serve
-      stroke that player hit, the return counted as one. A <b>net shot</b> is a volley,
-      overhead, half-volley or swinging volley; its winner and error rates are out of those
-      net shots, not out of every stroke.</div>`,
-    !hasMix && !hasGround ? "" : `<div>Every <b>error rate</b> here counts <b>unforced</b>
-      errors only.${evenGround ? ` A groundstroke square with equal halves and no shares
-      under it has too few groundstrokes yet to settle how they split between the wings.` : ""}</div>`,
-    !has("bits") ? "" : `<div><b>Variety</b> is how far a player's shot choices stray from tour
-      norms. A model built on the whole tour predicts each next shot from the two before it, and
-      variety is how surprised that model is by this player, in bits: a shot it gave even odds
-      scores 1 bit. It counts uncommon shot types and uncommon order alike, so slicers and
-      serve-volleyers score high.${match ? ` It stays a career figure on a charted match: one match moves it by 0.18 bits
-      against a tour whose middle half spans 0.26, mostly noise.` : ""}</div>`,
-    // Why a figure is missing, for career readings: each waits for its own sample.
-    match ? "" : `<div>A career rate prints once the player's charting pins it down: within
-      10 points either way, and within half the rate itself, 95% of the time. A common figure
-      such as first serves in gets there within a match or two; a rare one such as return
-      winners takes many more. A dash means that player hasn't reached it yet. The better of
-      two figures is set in bold only when the gap is larger than the sampling noise.</div>`,
-    // The strip entry closes the key, after the figures it is drawn under.
-    !bands.length ? "" : `<div>The <b>strip</b> under a label places both players on the
-      charted tour${FLOOR.band_points ? ` of players with ${FLOOR.band_points.toLocaleString()} or
-      more charted points` : ""}, one dot each in their colour: the shaded part is the middle half
-      of the tour, and the ends are the 5th and 95th percentiles. ${bands.join(" ")} A player
-      past either end is drawn at it as a wedge pointing off the strip.</div>`,
-    !match ? "" : `<div><b>Win probability</b> starts from the two players' charted records
-      before this match. Their serve and return rates give each a chance of winning a point
-      on serve, and after every point that is carried through the rest of the game, set and
-      match. It reflects the score and those records only, not betting odds or anything
-      about how they played that day.</div>`,
+  const figs = [
+    !hasStyle ? "" : term("style", `Players grouped by twelve metrics of their charted play,
+      each group named for its centre. "Between styles" means the two nearest groups fit
+      that player about equally well.`),
+    !has("hold_rate") ? "" : term("games won", `The ring. Each player's arc climbs from 0 at
+      the foot to 100% at the top. The arc is the share of service games held, and the tick
+      across it the share of return games broken. Games rather than points, because point
+      rates sit too close together to tell apart.`),
+    !has("won_rally_len") && !match ? "" : term("avg winning rally", `Shots per point over
+      the points that player won, counting the serve and the shot that ends the
+      point.${tourLine(["", tour("won_rally_len", one, " shots")])}`),
+    !has("bits") ? "" : term("variety", `How far a player's shot choices stray from tour
+      norms. A model built on the whole tour predicts each next shot from the two before it,
+      and variety is how surprised it is by this player, in bits: a shot it gave even odds
+      scores 1 bit. Uncommon shots and uncommon order both count, so slicers and
+      serve-volleyers score high.${match ? ` It stays a career figure on a match: one match
+      moves it by about 0.18 bits, mostly noise.` : ""}${tourLine(["", tour("bits", one, " bits")])}`),
+    !has("slice_pct") && !has("net_pct") ? "" : term("slice share · net share", `Out of
+      every stroke that player hit apart from the serve, the return counted as
+      one.${tourLine(["slice", tour("slice_pct")], ["net", tour("net_pct")])}`),
+    !has("net_winner_pct") && !has("net_err_pct") ? "" : term("net winner rate · net error rate",
+      `Out of that player's net shots: volleys, overheads, half-volleys and swinging volleys.
+      Errors are unforced only.${tourLine(["winners", tour("net_winner_pct")],
+        ["errors", tour("net_err_pct")])}`),
+    !has("ret_winner_rate") ? "" : term("return winners", `Clean winners on the return, out
+      of every point returned.${tourLine(["", tour("ret_winner_rate")])}`),
+    !hasBp ? "" : term("break points saved", `A count, not a rate: a player faces about seven
+      a match, too few for a percentage to mean much.`),
   ].filter(Boolean);
-  if (!defs.length) return "";
+
+  const anyTour = /keytour/.test(figs.join(""));
+  const reading = [
+    !anyTour ? "" : `<p>The <b>strip</b> under a label places both players on the charted
+      tour${FLOOR.band_points ? ` of players with ${FLOOR.band_points.toLocaleString()} or
+      more charted points` : ""}, one dot each. The shaded part is the middle half, the ends
+      the 5th and 95th percentiles; a player past an end is a wedge pointing off it.</p>`,
+    `<p>Where one figure is better, it keeps the ink and the other is muted${match ? ""
+      : `, but only when the gap is larger than the sampling noise`}.</p>`,
+    match
+      ? `<p>Every rate on the panel is <b>this match only</b>, unless a line says "career".
+        They count what happened, so they need no minimum sample.</p>`
+      : `<p>A career rate prints once the player's charting pins it down: within 10 points
+        either way, and within half the rate itself, 95% of the time. Common figures get
+        there in a match or two, rare ones such as return winners take many more. A dash
+        means that player isn't there yet.</p>`,
+  ].filter(Boolean);
+
+  const below = [
+    !hasGround ? "" : `<p>The <b>groundstroke square</b> counts unforced errors only.${
+      evenGround ? ` A square with equal halves and no shares under it has too few
+      groundstrokes yet to settle how they split between the wings.` : ""}</p>`,
+    !match ? "" : `<p><b>Win probability</b> starts from the two players' charted records
+      before the match. Their serve and return rates give each a chance of winning a point on
+      serve, carried after every point through the rest of the game, set and match. It
+      reflects the score and those records only, not betting odds or how they played that
+      day.</p>`,
+  ].filter(Boolean);
+
+  if (!figs.length && !below.length) return "";
   return `<details class="notekey figkey">
     <summary>How these figures are measured</summary>
-    <div class="keytext">${defs.join("")}</div>
+    <div class="keytext">
+      ${figs.length ? `<dl class="keydl">${figs.join("")}</dl>` : ""}
+      <div class="keyread">${reading.join("")}</div>
+      ${below.length ? `<div class="keyread">${below.join("")}</div>` : ""}
+    </div>
   </details>`;
 }
 

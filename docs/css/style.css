@@ -390,11 +390,14 @@ a {
    width: min(250px, 100%);
 }
 
-/* 8-across rows (round of 16, round of 128): name and sets on separate lines, and a smaller
-   tier wedge. */
+/* 8-across rows (round of 16, round of 128): a smaller tier wedge, and name and sets on
+   separate lines. The card is too thin for a name on one line, so the name wraps (first name
+   over surname) with the flag inline after it, and cards stretch to the row's tallest so the
+   row lines up. fitNames shortens a name only when one word is still wider than the card. */
 .qcell.span1 .match {
+   flex-grow: 1;
    width: 100%;
-   padding: 6px 8px 6px 11px;
+   padding: 6px 4px 6px 6px;
    --tier-wedge: 7px;
 }
 
@@ -405,10 +408,27 @@ a {
 }
 
 .qcell.span1 .nm {
-   font-size: 12px;
+   display: block;
+   font-size: 11.5px;
+   line-height: 1.2;
+}
+
+.qcell.span1 .nm .who {
+   display: inline;
+   white-space: normal;
+}
+
+.qcell.span1 .nm .who.breakword {
+   overflow-wrap: break-word;
+}
+
+.qcell.span1 .flag {
+   display: inline-block;
+   margin-left: 4px;
 }
 
 .qcell.span1 .sets {
+   margin-top: 1px;
    font-size: 11px;
    text-align: right;
 }
@@ -733,12 +753,15 @@ a {
    font-style: italic;
 }
 
+/* The seed is a small superscript prefixing the name. Sized in em so it tracks the name's
+   size, and line-height 0 so raising it doesn't open up the line. */
 .seed {
    color: var(--muted);
-   font-size: 10.5px;
+   font-size: .62em;
    font-weight: 600;
-   margin-right: 5px;
-   vertical-align: 8%;
+   line-height: 0;
+   margin-right: 2px;
+   vertical-align: .55em;
 }
 
 /* The player's flag, trailing the name on a draw card. A step under the name in size, and
@@ -3527,6 +3550,48 @@ a {
    margin: 12px 0 0;
    padding-top: 10px;
    border-top: 1px solid var(--line);
+}
+
+/* One term per on-screen figure, set like the row labels (.pbcl) so the two match up. */
+.keydl {
+   margin: 10px 0 0;
+}
+
+.keydl dt {
+   margin-top: 10px;
+   font-size: 9.5px;
+   font-weight: 700;
+   text-transform: uppercase;
+   letter-spacing: .05em;
+   color: var(--ink);
+}
+
+.keydl dt:first-child {
+   margin-top: 0;
+}
+
+.keydl dd {
+   margin: 2px 0 0;
+   line-height: 1.5;
+}
+
+/* The tour range closing a definition, on its own line. */
+.keytour {
+   display: block;
+   font-size: 11px;
+   font-variant-numeric: tabular-nums;
+}
+
+/* How to read the rows, and the parts below the box, each ruled off from the terms. */
+.figkey .keyread {
+   margin: 12px 0 0;
+   padding-top: 8px;
+   border-top: 1px dashed var(--line);
+}
+
+.figkey .keyread p {
+   margin: 6px 0 0;
+   line-height: 1.5;
 }
 
 .segkey {
