@@ -386,16 +386,25 @@ a {
    grid-column: span 8;
 }
 
+/* Cards stretch to the row's tallest, so a row lines up whatever wraps inside each card. The
+   date or live line is pinned to the card's floor, so it lines up across the row too. */
 .qcell .match {
+   flex-grow: 1;
+   display: flex;
+   flex-direction: column;
    width: min(250px, 100%);
+}
+
+.qcell .match .detail {
+   margin-top: auto;
+   padding-top: 4px;
 }
 
 /* 8-across rows (round of 16, round of 128): a smaller tier wedge, and name and sets on
    separate lines. The card is too thin for a name on one line, so the name wraps (first name
-   over surname) with the flag inline after it, and cards stretch to the row's tallest so the
-   row lines up. fitNames shortens a name only when one word is still wider than the card. */
+   over surname) with the flag inline after it. fitNames shortens a name only when one word is
+   still wider than the card. */
 .qcell.span1 .match {
-   flex-grow: 1;
    width: 100%;
    padding: 6px 4px 6px 6px;
    --tier-wedge: 7px;
@@ -431,6 +440,17 @@ a {
    margin-top: 1px;
    font-size: 11px;
    text-align: right;
+}
+
+/* The second player reads bottom-up, sets over name, so the two scorelines sit together in
+   the middle of the card and keep the two names apart. */
+.qcell.span1 .side + .side {
+   flex-direction: column-reverse;
+}
+
+.qcell.span1 .side + .side .sets {
+   margin-top: 0;
+   margin-bottom: 1px;
 }
 
 /* The picked path's wires. The match above the open section gets no extra mark, so it keeps
@@ -1038,12 +1058,13 @@ a {
    }
 }
 
-/* Desktop: a drawer down the right-hand side, the same width as a phone so it wears the same
+/* Desktop: a drawer down the right-hand side, the width of a phone so it wears the same
    layout. The page makes room for it rather than sitting under a scrim, so the draw stays in
-   view and another match can be opened straight from it. */
+   view and another match can be opened straight from it. Where that leaves the draw a phone's
+   width, the slices give way to the round list (see render in app.js). */
 @media (min-width: 701px) {
    :root {
-      --drawer-w: clamp(400px, 32vw, 480px);
+      --drawer-w: 394px;
    }
 
    html.drawer-open body {

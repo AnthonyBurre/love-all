@@ -2,7 +2,7 @@
 // selected tournament, render the bracket into #bracket (full draw or the slices view,
 // see viewFor; round list on phones), and wire the matchup drawer.
 import { renderTree, renderQuarters, renderRoundList, currentRound, headRows } from "./bracket.js";
-import { openMatchup, closeMatchup, markOpenTile } from "./matchup.js";
+import { openMatchup, closeMatchup, markOpenTile, openMatchId } from "./matchup.js";
 import { query } from "./db.js";
 import { ename } from "./feed.js";
 
@@ -21,6 +21,8 @@ const sel = { key: null, gender: null, view: null, section: 0, round: null };
 // draw underneath it. See the resize listener in main() for why it waits, and dismiss() in
 // wireDrawer() for where it is spent.
 let resizedBehind = false;
+// Whether the last render was the round list, so a switch into it can be told from a re-render.
+let wasList = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -114,23 +116,39 @@ const calSlot = (t) => {
   return hit ? hit[1] : 99;
 };
 
-// Distinct tournament groups: live events first, then completed ones strictly newest-to-oldest
-// down the list — by season, then by where the event sits in the calendar, so within a season
-// the later major (Wimbledon over the Australian Open) sits above the earlier one. Events the
-// calendar can't place have no real slot and fall to the bottom of their season.
+// An event's level as a rank, most important first: slam, 1000, 500, then 250 and anything
+// the feed labels otherwise.
+const tierRank = (t) => {
+  const s = t.tier || "";
+  return /grand slam/i.test(s) ? 0 : /1000/.test(s) ? 1 : /500/.test(s) ? 2 : 3;
+};
+
+// Distinct tournament groups. Live events come first, most important first: by level, then by
+// field size (the larger first-round draw across the group's genders), so the page opens on
+// the biggest event being played. Completed ones follow strictly newest-to-oldest down the
+// list: by season, then by where the event sits in the calendar, so within a season the later
+// major (Wimbledon over the Australian Open) sits above the earlier one. Events the calendar
+// can't place have no real slot and fall to the bottom of their season. Ties go by name.
 function groups() {
   const seen = new Map();
   for (const t of data.tournaments) {
     const k = gkey(t);
-    if (!seen.has(k)) {
+    const size = t.rounds?.[0]?.matches.length || 0;
+    const g = seen.get(k);
+    if (!g) {
       seen.set(k, { key: k, label: glabel(t), completed: !!t.completed,
-        season: t.season || 9999, slot: calSlot(t) });
+        season: t.season || 9999, slot: calSlot(t), rank: tierRank(t), size });
+    } else {
+      g.rank = Math.min(g.rank, tierRank(t));
+      g.size = Math.max(g.size, size);
     }
   }
   const recency = (g) => (g.slot === 99 ? -1 : g.slot);   // unplaced events last within a season
+  const live = (a, b) => (a.rank - b.rank) || (b.size - a.size);
+  const done = (a, b) => (b.season - a.season) || (recency(b) - recency(a));
   return [...seen.values()].sort((a, b) =>
-    (a.completed - b.completed) || (b.season - a.season) ||
-    (recency(b) - recency(a)) || a.label.localeCompare(b.label));
+    (a.completed - b.completed) || (a.completed ? done(a, b) : live(a, b)) ||
+    a.label.localeCompare(b.label));
 }
 
 function gendersFor(key) {
@@ -330,10 +348,23 @@ function render() {
 
   // Phones skip the quarter view entirely: the whole draw, one round at a time,
   // opened on the current round. Wide screens keep the quarter view (one top-down
-  // grid, see renderQuarters) or the full tree.
+  // grid, see renderQuarters) or the full tree. A screen too narrow for the quarter view
+  // beside the drawer (a tablet) is squeezed: the draw is left a phone's width, so the
+  // quarter view's toggle shows the round list instead. The full draw stays on offer there,
+  // panned in both directions.
   const mobile = window.matchMedia("(max-width: 700px)").matches;
-  const quarters = !mobile && quarterable(t) && viewFor(t) === "quarters";
+  const squeezed = !mobile && document.documentElement.classList.contains("drawer-open")
+    && window.innerWidth - $("matchup").offsetWidth <= 700;
+  const pickedQuarters = quarterable(t) && viewFor(t) === "quarters";
+  const asList = mobile || (squeezed && pickedQuarters);
+  const quarters = !asList && !mobile && pickedQuarters;
   $("viewTabs").style.display = !mobile && quarterable(t) ? "" : "none";
+  const listTab = $("viewTabs").firstElementChild;
+  if (listTab) {
+    const label = squeezed ? "Rounds" : "Slices";
+    listTab.title = label;
+    listTab.setAttribute("aria-label", label);
+  }
   // The legend sits outside the draw it explains, so it has to be told which one is under
   // it: only the slices view spells charting depth as a count of corner notches, and a key
   // demonstrating four notches above a draw that draws one wedge is a key for the wrong
@@ -341,7 +372,15 @@ function render() {
   // in either case — this only decides whether they also carry the count.
   document.body.dataset.view = quarters ? "quarters" : "draw";
 
-  if (mobile) {
+  // Squeezed into the list by the drawer opening, it opens on the open match's round.
+  const intoList = asList && !wasList && squeezed;
+  if (intoList) {
+    const i = t.rounds.findIndex((r) => r.matches.some((m) => m.id === openMatchId()));
+    if (i !== -1) sel.round = i;
+  }
+  wasList = asList;
+
+  if (asList) {
     if (sel.round == null || sel.round >= t.rounds.length) sel.round = currentRound(t.rounds);
     renderRoundList(t.rounds, $("bracket"), t, cov, openMatchup, {
       selected: sel.round, paired: t.slotted,
@@ -354,6 +393,7 @@ function render() {
     renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
   }
   markOpenTile();
+  if (intoList) document.querySelector(".match.open")?.scrollIntoView({ block: "center" });
   if (focused) {
     [...document.querySelectorAll(".match[data-mid]")]
       .find((el) => el.dataset.mid === focused)?.focus({ preventScroll: true });
