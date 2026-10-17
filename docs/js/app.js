@@ -114,23 +114,39 @@ const calSlot = (t) => {
   return hit ? hit[1] : 99;
 };
 
-// Distinct tournament groups: live events first, then completed ones strictly newest-to-oldest
-// down the list — by season, then by where the event sits in the calendar, so within a season
-// the later major (Wimbledon over the Australian Open) sits above the earlier one. Events the
-// calendar can't place have no real slot and fall to the bottom of their season.
+// An event's level as a rank, most important first: slam, 1000, 500, then 250 and anything
+// the feed labels otherwise.
+const tierRank = (t) => {
+  const s = t.tier || "";
+  return /grand slam/i.test(s) ? 0 : /1000/.test(s) ? 1 : /500/.test(s) ? 2 : 3;
+};
+
+// Distinct tournament groups. Live events come first, most important first: by level, then by
+// field size (the larger first-round draw across the group's genders), so the page opens on
+// the biggest event being played. Completed ones follow strictly newest-to-oldest down the
+// list: by season, then by where the event sits in the calendar, so within a season the later
+// major (Wimbledon over the Australian Open) sits above the earlier one. Events the calendar
+// can't place have no real slot and fall to the bottom of their season. Ties go by name.
 function groups() {
   const seen = new Map();
   for (const t of data.tournaments) {
     const k = gkey(t);
-    if (!seen.has(k)) {
+    const size = t.rounds?.[0]?.matches.length || 0;
+    const g = seen.get(k);
+    if (!g) {
       seen.set(k, { key: k, label: glabel(t), completed: !!t.completed,
-        season: t.season || 9999, slot: calSlot(t) });
+        season: t.season || 9999, slot: calSlot(t), rank: tierRank(t), size });
+    } else {
+      g.rank = Math.min(g.rank, tierRank(t));
+      g.size = Math.max(g.size, size);
     }
   }
   const recency = (g) => (g.slot === 99 ? -1 : g.slot);   // unplaced events last within a season
+  const live = (a, b) => (a.rank - b.rank) || (b.size - a.size);
+  const done = (a, b) => (b.season - a.season) || (recency(b) - recency(a));
   return [...seen.values()].sort((a, b) =>
-    (a.completed - b.completed) || (b.season - a.season) ||
-    (recency(b) - recency(a)) || a.label.localeCompare(b.label));
+    (a.completed - b.completed) || (a.completed ? done(a, b) : live(a, b)) ||
+    a.label.localeCompare(b.label));
 }
 
 function gendersFor(key) {
