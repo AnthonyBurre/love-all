@@ -2,7 +2,7 @@
 // selected tournament, render the bracket into #bracket (full draw or the slices view,
 // see viewFor; round list on phones), and wire the matchup drawer.
 import { renderTree, renderQuarters, renderRoundList, currentRound, headRows } from "./bracket.js";
-import { openMatchup, closeMatchup, markOpenTile } from "./matchup.js";
+import { openMatchup, closeMatchup, markOpenTile, openMatchId } from "./matchup.js";
 import { query } from "./db.js";
 import { ename } from "./feed.js";
 
@@ -21,6 +21,8 @@ const sel = { key: null, gender: null, view: null, section: 0, round: null };
 // draw underneath it. See the resize listener in main() for why it waits, and dismiss() in
 // wireDrawer() for where it is spent.
 let resizedBehind = false;
+// Whether the last render was the round list, so a switch into it can be told from a re-render.
+let wasList = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -346,10 +348,23 @@ function render() {
 
   // Phones skip the quarter view entirely: the whole draw, one round at a time,
   // opened on the current round. Wide screens keep the quarter view (one top-down
-  // grid, see renderQuarters) or the full tree.
+  // grid, see renderQuarters) or the full tree. A screen too narrow for the quarter view
+  // beside the drawer (a tablet) is squeezed: the draw is left a phone's width, so the
+  // quarter view's toggle shows the round list instead. The full draw stays on offer there,
+  // panned in both directions.
   const mobile = window.matchMedia("(max-width: 700px)").matches;
-  const quarters = !mobile && quarterable(t) && viewFor(t) === "quarters";
+  const squeezed = !mobile && document.documentElement.classList.contains("drawer-open")
+    && window.innerWidth - $("matchup").offsetWidth <= 700;
+  const pickedQuarters = quarterable(t) && viewFor(t) === "quarters";
+  const asList = mobile || (squeezed && pickedQuarters);
+  const quarters = !asList && !mobile && pickedQuarters;
   $("viewTabs").style.display = !mobile && quarterable(t) ? "" : "none";
+  const listTab = $("viewTabs").firstElementChild;
+  if (listTab) {
+    const label = squeezed ? "Rounds" : "Slices";
+    listTab.title = label;
+    listTab.setAttribute("aria-label", label);
+  }
   // The legend sits outside the draw it explains, so it has to be told which one is under
   // it: only the slices view spells charting depth as a count of corner notches, and a key
   // demonstrating four notches above a draw that draws one wedge is a key for the wrong
@@ -357,7 +372,15 @@ function render() {
   // in either case — this only decides whether they also carry the count.
   document.body.dataset.view = quarters ? "quarters" : "draw";
 
-  if (mobile) {
+  // Squeezed into the list by the drawer opening, it opens on the open match's round.
+  const intoList = asList && !wasList && squeezed;
+  if (intoList) {
+    const i = t.rounds.findIndex((r) => r.matches.some((m) => m.id === openMatchId()));
+    if (i !== -1) sel.round = i;
+  }
+  wasList = asList;
+
+  if (asList) {
     if (sel.round == null || sel.round >= t.rounds.length) sel.round = currentRound(t.rounds);
     renderRoundList(t.rounds, $("bracket"), t, cov, openMatchup, {
       selected: sel.round, paired: t.slotted,
@@ -370,6 +393,7 @@ function render() {
     renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
   }
   markOpenTile();
+  if (intoList) document.querySelector(".match.open")?.scrollIntoView({ block: "center" });
   if (focused) {
     [...document.querySelectorAll(".match[data-mid]")]
       .find((el) => el.dataset.mid === focused)?.focus({ preventScroll: true });

@@ -1870,6 +1870,9 @@ function setMode(open) {
   document.documentElement.classList.toggle("drawer-open", drawer);
 }
 
+// The id of the match in the panel, or null when it is closed.
+export const openMatchId = () => openerId;
+
 // Mark the tile whose match is open. Exported for app.js, whose re-renders replace the tiles.
 export function markOpenTile() {
   for (const el of document.querySelectorAll(".match[data-mid]")) {

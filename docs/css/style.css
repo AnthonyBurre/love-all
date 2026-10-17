@@ -1058,12 +1058,13 @@ a {
    }
 }
 
-/* Desktop: a drawer down the right-hand side, the same width as a phone so it wears the same
+/* Desktop: a drawer down the right-hand side, the width of a phone so it wears the same
    layout. The page makes room for it rather than sitting under a scrim, so the draw stays in
-   view and another match can be opened straight from it. */
+   view and another match can be opened straight from it. Where that leaves the draw a phone's
+   width, the slices give way to the round list (see render in app.js). */
 @media (min-width: 701px) {
    :root {
-      --drawer-w: clamp(400px, 32vw, 480px);
+      --drawer-w: 394px;
    }
 
    html.drawer-open body {
