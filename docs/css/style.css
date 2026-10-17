@@ -442,6 +442,17 @@ a {
    text-align: right;
 }
 
+/* The second player reads bottom-up, sets over name, so the two scorelines sit together in
+   the middle of the card and keep the two names apart. */
+.qcell.span1 .side + .side {
+   flex-direction: column-reverse;
+}
+
+.qcell.span1 .side + .side .sets {
+   margin-top: 0;
+   margin-bottom: 1px;
+}
+
 /* The picked path's wires. The match above the open section gets no extra mark, so it keeps
    its hover like any other card. */
 .quarters .wires .hot {
