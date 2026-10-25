@@ -27,27 +27,31 @@ jobs:
   backfill:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The version we ship on lives in .python-version
       - id: py
         run: echo "version=$(cat .python-version)" >> "$GITHUB_OUTPUT"
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           python-version: ${{ steps.py.outputs.version }}
 
       - name: Install dependencies
         run: uv sync
 
-      # Start from whatever the archive currently holds, so harvest can see what is already
-      # there and skip it rather than re-walking the feed for a draw we have.
+      # Start from whatever the archive currently holds, so the harvested draws are folded
+      # into it (replacing any older copy of the same draw) rather than into an empty file.
       - name: Fetch the current archive (from the Release)
         env:
           GH_TOKEN: ${{ github.token }}
         run: .github/scripts/history-archive.sh fetch || [ $? -eq 3 ]
 
+      # The input arrives through the environment rather than `${{ }}` in the script, so the
+      # shell reads it as data and a quote or `$(...)` in it can't become a command.
       - name: Harvest each requested draw
+        env:
+          EVENTS: ${{ inputs.events }}
         run: |
-          IFS=',' read -ra PAIRS <<< "${{ inputs.events }}"
+          IFS=',' read -ra PAIRS <<< "$EVENTS"
           for pair in "${PAIRS[@]}"; do
             event="${pair%:*}"; year="${pair##*:}"
             event="$(echo "$event" | xargs)"; year="$(echo "$year" | xargs)"

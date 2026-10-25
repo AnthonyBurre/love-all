@@ -1,6 +1,6 @@
-"""The completed-draw archive: completion detection, accumulate-once, retention, and the
-per-match charted-annotation gate (only flip a finished draw to per-match shading once it
-has any charting)."""
+"""The completed-draw archive: completion detection, accumulate-once, newest-copy merging,
+retention, and the per-match charted-annotation gate (only flip a finished draw to
+per-match shading once it has any charting)."""
 
 from datetime import date
 
@@ -67,6 +67,68 @@ def test_archive_adds_completed_once_and_skips_unfinished():
     # A second pass must not duplicate the frozen snapshot.
     assert history.archive([done], store, today=date(2026, 7, 15)) == 0
     assert len(store) == 1
+
+
+def _stamped(id, stamp, gender="M", **extra):
+    return {"id": id, "gender": gender, "name": "Wimbledon", "tier": "Grand Slam",
+            "year": 2026, "season": 2026, "archived_at": stamp, **extra}
+
+
+def test_upsert_adds_new_entries_and_replaces_older_copies():
+    old = _stamped("w", "2026-07-16T03:29+00:00", set_wins=False)
+    keep = _stamped("ao", "2026-08-31T03:59+00:00")
+    store = [old, keep]
+    fresh = _stamped("w", "2026-10-24T12:00+00:00", set_wins=True)
+    new = _stamped("w", "2026-10-24T12:00+00:00", gender="W")
+    added, replaced = history.upsert(store, [fresh, new])
+    assert added == [new] and replaced == [fresh]
+    # The replacement takes the old entry's place rather than moving to the end.
+    assert store == [fresh, keep, new]
+
+
+def test_upsert_keeps_the_held_copy_when_incoming_is_not_newer():
+    """The hourly run passes back the copy it fetched before a backfill landed, which
+    carries the older stamp, so the re-harvested draw on the Release survives."""
+    held = _stamped("w", "2026-10-24T12:00+00:00", set_wins=True)
+    store = [held]
+    stale = _stamped("w", "2026-07-16T03:29+00:00", set_wins=False)
+    same = _stamped("w", "2026-10-24T12:00+00:00", set_wins=False)
+    assert history.upsert(store, [stale, same]) == ([], [])
+    assert store == [held]
+
+
+def test_harvest_command_replaces_an_archived_draw(tmp_path, monkeypatch):
+    from match_charting_project import cli
+
+    monkeypatch.setattr(history, "HISTORY", tmp_path / "history.json")
+    old = {**_tour("w", "M", _draw([2, 1])), **_stamped("w", "2026-07-16T03:29+00:00")}
+    history.save([old])
+    fresh = {**_tour("w", "M", _draw([2, 1])), **_stamped("w", "2026-10-24T12:00+00:00"),
+             "marker": "fresh"}
+    holey = {**_tour("w", "W", _draw([2, 1], unplayed=1)),
+             **_stamped("w", "2026-10-24T12:00+00:00", gender="W")}
+    monkeypatch.setattr(history, "harvest", lambda event, year: [fresh, holey])
+    cli._history_harvest("Wimbledon", 2026)
+    store = history.load()
+    # The whole draw replaces the old copy; the one with holes is not archived.
+    assert [(e["gender"], e.get("marker")) for e in store] == [("M", "fresh")]
+
+
+def test_merge_command_keeps_the_newer_copy_of_each_entry(tmp_path, monkeypatch):
+    import json
+
+    from match_charting_project import cli
+
+    monkeypatch.setattr(history, "HISTORY", tmp_path / "history.json")
+    release = [_stamped("w", "2026-07-16T03:29+00:00", copy="release"),
+               _stamped("ao", "2026-10-24T12:00+00:00", copy="release")]
+    history.save(release)
+    ours = [_stamped("w", "2026-10-24T12:00+00:00", copy="ours"),     # re-harvested
+            _stamped("ao", "2026-08-31T03:59+00:00", copy="ours")]    # stale hourly copy
+    path = tmp_path / "ours.json"
+    path.write_text(json.dumps(ours))
+    cli._history_merge(str(path))
+    assert {e["id"]: e["copy"] for e in history.load()} == {"w": "ours", "ao": "release"}
 
 
 def test_prune_keeps_recent_slams_plus_newest_event():
