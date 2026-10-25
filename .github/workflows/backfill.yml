@@ -38,8 +38,8 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      # Start from whatever the archive currently holds, so harvest can see what is already
-      # there and skip it rather than re-walking the feed for a draw we have.
+      # Start from whatever the archive currently holds, so the harvested draws are folded
+      # into it (replacing any older copy of the same draw) rather than into an empty file.
       - name: Fetch the current archive (from the Release)
         env:
           GH_TOKEN: ${{ github.token }}

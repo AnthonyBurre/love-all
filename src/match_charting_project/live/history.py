@@ -4,9 +4,11 @@ between events, and every finished match becomes an entry point into the chartin
 Two ways in, one store:
   * ``archive()`` freezes a tournament the moment its final is decided in the live ESPN
     feed we already fetch — no extra requests, and the snapshot never changes afterwards.
-  * ``harvest()`` seeds a past event once, by merging ESPN's *dated* scoreboards across the
+  * ``harvest()`` seeds a past slam by merging ESPN's *dated* scoreboards across the
     event's days (the live feed only carries what's current). This is the only path that
     reaches back before the site was watching; every event after is caught by ``archive()``.
+    Re-harvesting a slam replaces its archived copy (``upsert``), which is how an old
+    snapshot picks up a field added since it was frozen.
 
 The store (``data/history.json``) holds serialized tournament payloads (``brackets.serialize``
 shape) plus ``year``/``season``/``completed``/``archived_at``. It is structural only — the
@@ -97,6 +99,29 @@ def archive(live_payloads: list, store: list, today: "date | None" = None) -> in
         have.add((t["id"], t["gender"]))
         added += 1
     return added
+
+
+def upsert(store: list, incoming: list) -> "tuple[list, list]":
+    """Fold ``incoming`` entries into ``store`` by (id, gender), keeping whichever copy of
+    each has the newer ``archived_at``. Returns the entries added and the entries replaced.
+
+    A harvest stamps its draws with the time it ran, so a deliberate re-harvest always wins
+    over the copy it was run to correct. A run that fetched the archive earlier and only
+    passes its untouched copy back holds an older stamp, so it can't undo that re-harvest.
+    Mutates ``store``.
+    """
+    at = {(e["id"], e["gender"]): i for i, e in enumerate(store)}
+    added, replaced = [], []
+    for e in incoming:
+        key = (e["id"], e["gender"])
+        if key not in at:
+            at[key] = len(store)
+            store.append(e)
+            added.append(e)
+        elif e.get("archived_at", "") > store[at[key]].get("archived_at", ""):
+            store[at[key]] = e
+            replaced.append(e)
+    return added, replaced
 
 
 # How many finished events to keep per non-slam tier. Below the slams these turn over

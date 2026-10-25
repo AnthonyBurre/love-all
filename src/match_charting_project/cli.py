@@ -137,8 +137,9 @@ def _history_harvest(event: str, year: int) -> None:
     if not tours:
         print(f"No {event} {year} draw found in ESPN's feed for that window.")
         return
-    # An archived draw is never replaced, so one with holes in it (a failed day, or an event
-    # still being played) would stay that way. Leave it out and let a re-run pick it up.
+    # A whole draw replaces the archived copy of it, so a re-harvest picks up fields the
+    # older snapshot lacks. One with holes in it (a failed day, or an event still being
+    # played) is left out, so it can't replace a whole copy; a re-run picks it up.
     for t in tours:
         if not history.is_whole(t["rounds"]):
             sizes = [len(r["matches"]) for r in t["rounds"]]
@@ -148,26 +149,25 @@ def _history_harvest(event: str, year: int) -> None:
     if not tours:
         return
     store = history.load()
-    have = {(e["id"], e["gender"]) for e in store}
-    added = [t for t in tours if (t["id"], t["gender"]) not in have]
-    store.extend(added)
+    added, replaced = history.upsert(store, tours)
     history.prune(store)
     history.save(store)
     for t in tours:
         n = sum(len(r["matches"]) for r in t["rounds"])
         kept = (t["id"], t["gender"]) in {(e["id"], e["gender"]) for e in store}
-        note = "added" if t in added else "already archived"
+        note = "added" if t in added else "replaced" if t in replaced else "already archived"
         print(f"  {t['name']} {t['gender']}: {n} matches ({note}"
               f"{'' if kept else ', pruned by retention'})")
     print(f"  archive now holds {len(store)} draws -> {history.HISTORY}")
 
 
 def _history_merge(path: str) -> None:
-    """Fold another archive file into data/history.json, union by (id, gender).
+    """Fold another archive file into data/history.json by (id, gender), keeping the copy of
+    each entry with the newer ``archived_at``.
 
     The backfill job harvests into a copy and merges it at the end, so an hourly deploy
-    running during the harvest doesn't overwrite it. Re-running is harmless; entries already
-    held are left as they are.
+    running during the harvest doesn't overwrite it, and a re-harvested draw replaces the
+    older copy on the Release. Re-running is harmless.
     """
     import json
     from pathlib import Path
@@ -176,17 +176,16 @@ def _history_merge(path: str) -> None:
 
     incoming = json.loads(Path(path).read_text())
     store = history.load()
-    have = {(e["id"], e["gender"]) for e in store}
-    added = [e for e in incoming if (e["id"], e["gender"]) not in have]
-    store.extend(added)
+    added, replaced = history.upsert(store, incoming)
     history.prune(store)
     history.save(store)
     kept = {(e["id"], e["gender"]) for e in store}
-    for e in added:
-        note = "" if (e["id"], e["gender"]) in kept else " (pruned by retention)"
-        print(f"  merged {e['name']} {e.get('season')} {e['gender']}{note}")
-    print(f"  {len(added)} of {len(incoming)} incoming were new; "
-          f"archive now holds {len(store)} draws -> {history.HISTORY}")
+    for verb, entries in (("merged", added), ("replaced", replaced)):
+        for e in entries:
+            note = "" if (e["id"], e["gender"]) in kept else " (pruned by retention)"
+            print(f"  {verb} {e['name']} {e.get('season')} {e['gender']}{note}")
+    print(f"  {len(added)} of {len(incoming)} incoming were new, {len(replaced)} replaced "
+          f"older copies; archive now holds {len(store)} draws -> {history.HISTORY}")
 
 
 def _ingest(what: str, force: bool, provenance: bool) -> None:
