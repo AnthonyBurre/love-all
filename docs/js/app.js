@@ -4,7 +4,7 @@
 import { renderTree, renderQuarters, renderRoundList, currentRound, headRows } from "./bracket.js";
 import { openMatchup, closeMatchup, markOpenTile, openMatchId } from "./matchup.js";
 import { query } from "./db.js";
-import { ename } from "./feed.js";
+import { BYE, ename } from "./feed.js";
 
 let data = null;
 // "G|player" -> { matches, depth } (see loadCoverage), or null while that is unknown — which is every
@@ -124,16 +124,20 @@ const tierRank = (t) => {
 };
 
 // Distinct tournament groups. Live events come first, most important first: by level, then by
-// field size (the larger first-round draw across the group's genders), so the page opens on
-// the biggest event being played. Completed ones follow strictly newest-to-oldest down the
-// list: by season, then by where the event sits in the calendar, so within a season the later
-// major (Wimbledon over the Australian Open) sits above the earlier one. Events the calendar
-// can't place have no real slot and fall to the bottom of their season. Ties go by name.
+// field size (the larger first-round field across the group's genders), so the page opens on
+// the biggest event being played. Field size counts the first round's sides that aren't byes:
+// a 28-player draw is padded to 16 matches, the same as a 32-player one, so a match count
+// would tie them. A "TBD" slot still counts, since it is a player not yet known. Completed
+// ones follow strictly newest-to-oldest down the list: by season, then by where the event
+// sits in the calendar, so within a season the later major (Wimbledon over the Australian
+// Open) sits above the earlier one. Events the calendar can't place have no real slot and
+// fall to the bottom of their season. Ties go by name.
 function groups() {
   const seen = new Map();
   for (const t of data.tournaments) {
     const k = gkey(t);
-    const size = t.rounds?.[0]?.matches.length || 0;
+    const size = (t.rounds?.[0]?.matches || [])
+      .reduce((n, m) => n + (m.a.name !== BYE) + (m.b.name !== BYE), 0);
     const g = seen.get(k);
     if (!g) {
       seen.set(k, { key: k, label: glabel(t), completed: !!t.completed,
