@@ -1169,10 +1169,12 @@ a {
 /* Scoreboard header, which never scrolls: event and round, the two players either side of the
    score, then when. The split rule at its foot (violet left, red right) is the colour key for
    everything below. The padding is the names'; the chips and buttons are pulled out through
-   it to the panel's edges. */
+   it to the panel's edges. overflow-x: clip trims the score divider's wings (.mrule) at the
+   panel's edges, since .matchup itself stays visible for the close button. */
 .mtop {
    flex: none;
    position: relative;
+   overflow-x: clip;
    padding: var(--band-t) var(--pad-r) var(--band-b) var(--pad-l);
    color: var(--hd-ink);
    background: var(--hd-bg);
