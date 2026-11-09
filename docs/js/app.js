@@ -75,14 +75,19 @@ async function main() {
     $("status").textContent = "No Grand Slam, 1000, 500 or ATP 250 draws are live right now. Check back during an event.";
     return;
   }
-  const first = groups()[0];
-  sel.key = first.key;
-  sel.gender = gendersFor(first.key)[0];
+  const linked = readUrl();
   $("controls").hidden = false;
+  const m = linked && findMatch(pick(), linked);
+  if (m) sel.round = roundOf(pick(), m.id);
   buildTabs();
   render();
   loadCoverage();               // shades the match tiers when the WASM db is ready
   wireDrawer();
+  // A link to a match lands on the draw first and opens the panel over it as its own history
+  // entry, so Back closes the panel instead of leaving the site.
+  history.replaceState(null, "", urlFor(null));
+  if (m) openFromDraw(m, pick());
+  window.addEventListener("popstate", applyUrl);
   // Connectors are position-dependent: relayout when the draw's width changes, whether from the
   // window or from the desktop drawer opening beside it.
   let raf = null;
@@ -141,10 +146,12 @@ function groups() {
     const g = seen.get(k);
     if (!g) {
       seen.set(k, { key: k, label: glabel(t), completed: !!t.completed,
-        season: t.season || 9999, slot: calSlot(t), rank: tierRank(t), size });
+        season: t.season || 9999, slot: calSlot(t), rank: tierRank(t), size,
+        genders: new Set([t.gender]) });
     } else {
       g.rank = Math.min(g.rank, tierRank(t));
       g.size = Math.max(g.size, size);
+      g.genders.add(t.gender);
     }
   }
   const recency = (g) => (g.slot === 99 ? -1 : g.slot);   // unplaced events last within a season
@@ -157,6 +164,95 @@ function groups() {
 
 function gendersFor(key) {
   return data.tournaments.filter((t) => gkey(t) === key).map((t) => t.gender);
+}
+
+// The page state lives in the query string, so a reload, a bookmark or a shared link opens the
+// same draw and matchup: `?event=shanghai-masters&tour=atp&view=full&match=184947`. The event
+// is a slug of its dropdown label, which carries the year for finished events. `view` is
+// written only after a toggle click; without it the draw opens on its own default (viewFor).
+const TOUR = { M: "atp", W: "wta" };
+const VIEW = { quarters: "slices", full: "full" };
+const slug = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+  .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+function urlFor(matchId) {
+  const p = new URLSearchParams();
+  const grp = groups().find((g) => g.key === sel.key);
+  if (grp) p.set("event", slug(grp.label));
+  if (TOUR[sel.gender]) p.set("tour", TOUR[sel.gender]);
+  if (sel.view) p.set("view", VIEW[sel.view]);
+  if (matchId) p.set("match", matchId);
+  return `${location.pathname}?${p}`;
+}
+
+// Sets the selection from the query string, falling back to the first event and its first
+// draw for anything missing or unknown. Returns the linked match id, if any.
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  const gs = groups();
+  const grp = gs.find((g) => slug(g.label) === p.get("event")) || gs[0];
+  const gens = gendersFor(grp.key);
+  const want = Object.keys(TOUR).find((k) => TOUR[k] === p.get("tour"));
+  const gender = gens.includes(want) ? want : gens[0];
+  // The round and slice aren't in the URL. They hold across a Back that stays on the same draw,
+  // such as closing a panel, and reset when the draw changes.
+  if (grp.key !== sel.key || gender !== sel.gender) {
+    sel.round = null;
+    sel.section = 0;
+  }
+  sel.key = grp.key;
+  sel.gender = gender;
+  sel.view = Object.keys(VIEW).find((k) => VIEW[k] === p.get("view")) || null;
+  return p.get("match");
+}
+
+const findMatch = (t, id) => {
+  for (const r of t.rounds) for (const m of r.matches) if (m.id === id) return m;
+  return null;
+};
+const roundOf = (t, id) => {
+  const i = t.rounds.findIndex((r) => r.matches.some((m) => m.id === id));
+  return i === -1 ? null : i;
+};
+
+// Rewrites the URL for a control change, keeping the open match. No history entry: Back steps
+// through panels, not through every dropdown change.
+const syncUrl = () => history.replaceState(history.state, "", urlFor(openMatchId()));
+
+// Opening a panel from a closed state adds a history entry; switching to another match while
+// one is open replaces it, so one Back always closes the panel.
+function openFromDraw(m, t) {
+  const wasOpen = openMatchId() != null;
+  openMatchup(m, t);
+  const url = urlFor(m.id);
+  if (wasOpen) history.replaceState({ panel: true }, "", url);
+  else history.pushState({ panel: true }, "", url);
+}
+
+// Closes the panel without touching history; the callers decide what the URL says.
+function closePanel() {
+  if (resizedBehind) { resizedBehind = false; render(); }
+  closeMatchup();
+}
+
+// A control that changes the draw closes the panel, since its match is no longer on screen.
+function leaveMatch() {
+  if (openMatchId() != null) closePanel();
+}
+
+// Back and Forward: bring the page in line with the URL they land on.
+function applyUrl() {
+  const id = readUrl();
+  const t = pick();
+  const m = id && findMatch(t, id);
+  if (m) sel.round = roundOf(t, m.id);
+  resizedBehind = false;        // the render below is the one a held resize was waiting for
+  // Closed before the render, so the draw is laid out at the width the drawer hands back.
+  // render() moves focus from the closed panel's tile to its replacement.
+  if (!m) leaveMatch();
+  buildTabs();
+  render();
+  if (m && m.id !== openMatchId()) openMatchup(m, t);
 }
 
 function pick() {
@@ -220,24 +316,27 @@ function viewFor(t) {
 }
 
 function buildTabs() {
-  // Tournament picker is a dropdown: the current/upcoming event sits on top (its released
-  // draw is what you land on), with finished events following underneath to look back on.
+  // Tournament picker is a dropdown in two groups: current and upcoming events on top (the
+  // first is what you land on), then finished events to look back on. Each option names its
+  // tour, since a sponsor-free event name ("Wuhan Open") doesn't say whose draw it is.
   const selEl = $("tourSelect");
   selEl.innerHTML = "";
   const gs = groups();
+  const tours = (grp) => ["M", "W"].filter((x) => grp.genders.has(x))
+    .map((x) => TOUR[x].toUpperCase()).join(" & ");
   const option = (grp) => {
     const o = document.createElement("option");
     o.value = grp.key;
-    o.textContent = grp.label;
+    o.textContent = `${grp.label} · ${tours(grp)}`;
     if (grp.key === sel.key) o.selected = true;
     return o;
   };
-  for (const grp of gs.filter((g) => !g.completed)) selEl.appendChild(option(grp));
-  const past = gs.filter((g) => g.completed);
-  if (past.length) {
+  for (const [label, list] of [["Current events", gs.filter((g) => !g.completed)],
+    ["Past events", gs.filter((g) => g.completed)]]) {
+    if (!list.length) continue;
     const og = document.createElement("optgroup");
-    og.label = "Past events";
-    for (const grp of past) og.appendChild(option(grp));
+    og.label = label;
+    for (const grp of list) og.appendChild(option(grp));
     selEl.appendChild(og);
   }
   selEl.value = sel.key;
@@ -247,8 +346,10 @@ function buildTabs() {
     sel.round = null;
     sel.section = 0;
     sel.view = null;            // back to the per-event default
+    leaveMatch();
     buildTabs();
     render();
+    syncUrl();
   };
 
   const g = gendersFor(sel.key);
@@ -256,8 +357,10 @@ function buildTabs() {
     sel.gender = x;
     sel.round = null;
     sel.section = 0;            // the two draws can differ in size, so in section count
+    leaveMatch();
     buildTabs();
     render();
+    syncUrl();
   });
   $("genderTabs").style.display = g.length > 1 ? "" : "none";
 
@@ -274,6 +377,7 @@ function buildTabs() {
     sel.round = null;
     buildTabs();
     render();
+    syncUrl();
   });
 }
 
@@ -386,15 +490,15 @@ function render() {
 
   if (asList) {
     if (sel.round == null || sel.round >= t.rounds.length) sel.round = currentRound(t.rounds);
-    renderRoundList(t.rounds, $("bracket"), t, cov, openMatchup, {
+    renderRoundList(t.rounds, $("bracket"), t, cov, openFromDraw, {
       selected: sel.round, paired: t.slotted,
       onPick: (i) => { sel.round = i; render(); },
     });
   } else if (quarters) {
-    renderQuarters(t, $("bracket"), cov, openMatchup,
+    renderQuarters(t, $("bracket"), cov, openFromDraw,
       { selected: sel.section, onPick: (s) => { sel.section = s; render(); } });
   } else {
-    renderTree(t.rounds, $("bracket"), t, cov, openMatchup);
+    renderTree(t.rounds, $("bracket"), t, cov, openFromDraw);
   }
   markOpenTile();
   if (intoList) document.querySelector(".match.open")?.scrollIntoView({ block: "center" });
@@ -435,9 +539,13 @@ async function loadCoverage() {
 function wireDrawer() {
   // closeMatchup handles the scroll lock and focus. The held render runs first, while the
   // panel still covers the swap, so closeMatchup finds the new card by match id.
+  // When the panel has its own history entry, closing it is a Back, and applyUrl does the rest.
+  // A panel without one (Forward history cleared, or an older entry) closes in place.
   const dismiss = () => {
-    if (resizedBehind) { resizedBehind = false; render(); }
-    closeMatchup();
+    if (openMatchId() == null) return;
+    if (history.state?.panel) { history.back(); return; }
+    closePanel();
+    syncUrl();
   };
   $("matchupClose").onclick = dismiss;
   $("scrim").onclick = dismiss;
