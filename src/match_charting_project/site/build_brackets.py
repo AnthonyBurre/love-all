@@ -161,8 +161,11 @@ def payload() -> dict:
         _backfill_event(t, cal)
         _annotate(t, universe, charted)
     # `updated` is the age of the *data*, not of the build. With no live draw there is no
-    # live data to be stale about, so an all-archive build dates itself by the build.
-    return {"updated": fetched_at or datetime.now(timezone.utc).isoformat(timespec="minutes"),
+    # live data to be stale about, so an all-archive build dates itself by when the
+    # scoreboards were last checked. Not by the build clock: off-season that was the only
+    # thing that changed run to run, so every hourly run looked like a new site to deploy.
+    return {"updated": fetched_at or espn.last_checked()
+            or datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "tournaments": tours}
 
 

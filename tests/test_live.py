@@ -458,6 +458,54 @@ def test_an_unreadable_window_polls_rather_than_going_dark():
     assert espn._playing({"events": [{"date": "soon", "endDate": "later"}]}, now) is True
 
 
+def _dated(event: dict, start: datetime, end: datetime) -> dict:
+    return {**event, "date": start.isoformat().replace("+00:00", "Z"),
+            "endDate": end.isoformat().replace("+00:00", "Z")}
+
+
+def test_an_event_below_our_levels_does_not_hold_the_gate_open():
+    # The off-season case: the tour's last 500 is done, but a WTA 125 is mid-draw. Polling
+    # hourly for it spends a request every run on a draw `parse` then drops.
+    now = datetime.now(timezone.utc)
+    w125 = _dated(_event("1100-2026", "IEB+ Argentina Open", "Buenos Aires, Argentina",
+                         "womens-singles"), now - timedelta(days=3), now + timedelta(days=5))
+    assert espn._playing({"events": [w125]}, now, cal=CAL_2026) is False
+
+
+def test_a_served_event_in_its_window_still_holds_it_open():
+    now = datetime.now(timezone.utc)
+    dc = _dated(_event("888-2026", "Mubadala DC Open", "Washington, USA"),
+                now - timedelta(days=3), now + timedelta(days=5))
+    w125 = _dated(_event("1100-2026", "IEB+ Argentina Open", "Buenos Aires, Argentina",
+                         "womens-singles"), now - timedelta(days=3), now + timedelta(days=5))
+    # The calendar places an event by city *and* month, so the entry follows the window.
+    cal = _cal(("M", "Washington", "ATP 500", now.month))
+    assert espn._playing({"events": [w125]}, now, cal=cal) is False
+    assert espn._playing({"events": [w125, dc]}, now, cal=cal) is True
+
+
+def test_an_event_with_no_singles_draw_listed_yet_counts_as_served():
+    # Before its draw is out an event can't be placed, and that is an uncertainty.
+    now = datetime.now(timezone.utc)
+    bare = {"id": "x", "name": "Somewhere Open", "groupings": []}
+    assert espn._playing({"events": [_dated(bare, now - timedelta(hours=1),
+                                            now + timedelta(days=6))]}, now) is True
+
+
+def test_an_all_archive_build_is_dated_by_the_last_check_not_the_clock(tmp_path):
+    # Off-season the build clock was the only thing that changed run to run, so every run
+    # looked like a new site. The newest real fetch only moves when a request is spent.
+    (tmp_path / "live").mkdir()
+    for lg, stamp in (("atp", "2026-11-25T02:12+00:00"), ("wta", "2026-11-25T12:33+00:00")):
+        (tmp_path / "live" / f"{lg}_scoreboard.json").write_text(
+            json.dumps({"events": [], "_fetched_at": stamp}))
+    assert espn.last_checked() == "2026-11-25T12:33+00:00"
+
+
+def test_with_nothing_cached_there_is_no_last_check():
+    assert espn.last_checked() == ""
+
+
 # --- charted coverage, whole and by season ---------------------------------------------
 # The panel prints both: a total per player, and a bar per season under it. They come from
 # one SQL body with two GROUP BYs (players._COVERAGE_ROWS) precisely because a second copy

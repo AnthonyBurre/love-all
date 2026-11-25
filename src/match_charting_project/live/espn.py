@@ -94,19 +94,36 @@ def _iso(value: "str | None") -> "datetime | None":
     return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
 
 
-def _playing(raw: dict, now: datetime) -> bool:
-    """Is a draw in this scoreboard being played (within the grace margin) right now?
+def _served(event: dict, cal: "dict | None") -> bool:
+    """Would the site serve a draw from this event? Only those are worth polling for.
+
+    The tour doesn't stop when the levels we serve do: the off-season scoreboard carries
+    125s and exhibitions, and polling hourly for one of those spends requests on a draw that
+    ``parse`` then drops. An event with no singles draw listed yet can't be placed, so it
+    counts as served.
+    """
+    genders = [_SINGLES[slug] for g in event.get("groupings", [])
+               if (slug := (g.get("grouping") or {}).get("slug")) in _SINGLES]
+    if not genders:
+        return True
+    cal = feeds.load_calendar() if cal is None else cal
+    return any(_tier(event, g, cal) in _TARGET_TIERS for g in genders)
+
+
+def _playing(raw: dict, now: datetime, cal: "dict | None" = None) -> bool:
+    """Is a draw we serve in this scoreboard being played (within the grace margin) now?
 
     Read off the *cached* copy, which is the only thing we know without spending a request.
     Every uncertainty resolves to True: no cache, no events, unparseable dates. A gate that
     guesses wrong in the open direction costs one request; guessing wrong the other way
-    takes the site dark for a tournament.
+    takes the site dark for a tournament. Knowing an event is below the levels we serve
+    is not an uncertainty, so a dated window for one doesn't hold the gate open.
     """
-    windows = [(_iso(e.get("date")), _iso(e.get("endDate"))) for e in raw.get("events", [])]
-    windows = [(s, e) for s, e in windows if s and e]
-    if not windows:
+    dated = [(_iso(e.get("date")), _iso(e.get("endDate")), e) for e in raw.get("events", [])]
+    dated = [(s, end, e) for s, end, e in dated if s and end]
+    if not dated:
         return True
-    return any(s - _GRACE <= now <= e + _GRACE for s, e in windows)
+    return any(s - _GRACE <= now <= end + _GRACE and _served(e, cal) for s, end, e in dated)
 
 
 def _cached_copy(path) -> "tuple[dict, str] | None":
@@ -254,6 +271,15 @@ def parse(raw: dict, cal: "dict | None" = None, fetched_at: str = "") -> "list[T
                                       matches=matches, city=levels.city(venue),
                                       fetched_at=fetched_at))
     return out
+
+
+def last_checked() -> str:
+    """The ISO minute the scoreboards were last actually fetched — the newest stamp across
+    the cached leagues, '' with nothing cached. Unlike the build clock, this only moves
+    when a request is spent, so a run that served the cache dates itself as unchanged."""
+    stamps = [c[1] for lg in ("atp", "wta")
+              if (c := _cached_copy(_CACHE / f"{lg}_scoreboard.json")) and _iso(c[1])]
+    return max(stamps, key=_iso, default="")
 
 
 def current_tournaments() -> "list[Tournament]":
